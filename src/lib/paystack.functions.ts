@@ -61,7 +61,6 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
       | null;
 
     if (!res.ok || !json?.status || !json.data?.authorization_url) {
-      await context.supabase.rpc("create_wallet_funding_intent", { _amount: 0 }).catch(() => null);
       throw new Error(json?.message ?? "Paystack could not start this payment.");
     }
 
