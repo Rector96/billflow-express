@@ -143,7 +143,7 @@ function toTransaction(row: LedgerRow): Transaction {
     status,
     date: fmtDate(row.created_at),
     time: fmtTime(row.created_at),
-    method: isIn ? "Demo Funding" : "Wallet",
+    method: isIn ? (str(meta, "channel") === "paystack" ? "Paystack (test)" : "Wallet Funding") : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
     ...(token ? { token } : {}),
