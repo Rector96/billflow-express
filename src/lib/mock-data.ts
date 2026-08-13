@@ -53,6 +53,7 @@ export const DEMO_USER = {
   phone: "0803 123 4567",
   email: "pablo@example.com",
   initials: "PE",
+  billpayId: "48291736",
 };
 
 export const DEMO_PIN = "1234";

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
+import { BillPayIdCard } from "@/components/app/billpay-id-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +85,9 @@ function ProfilePage() {
       </header>
 
       <div className="space-y-2 px-4 py-5">
+        <div className="pb-2">
+          <BillPayIdCard />
+        </div>
         {items.map((item) =>
           item.to ? (
             <Link
