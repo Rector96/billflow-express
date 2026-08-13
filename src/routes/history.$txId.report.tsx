@@ -1,0 +1,112 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
+import { AppShell } from "@/components/app/app-shell";
+import { PageHeader } from "@/components/app/page-header";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { BRAND } from "@/lib/brand";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/history/$txId/report")({
+  head: () => ({
+    meta: [
+      { title: `Report a transaction — ${BRAND.name}` },
+      { name: "description", content: "Tell us what went wrong and we'll investigate." },
+      { property: "og:title", content: `Report a transaction — ${BRAND.name}` },
+      { property: "og:description", content: "Our support team responds within 24 hours." },
+    ],
+  }),
+  component: ReportPage,
+});
+
+const REASONS = [
+  "Payment not received",
+  "Wrong amount",
+  "Transaction pending",
+  "Token not received",
+  "Other",
+];
+
+function ReportPage() {
+  const { txId } = Route.useParams();
+  const navigate = useNavigate();
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const ticket = `TKT-${txId.replace("TXN-", "")}`;
+
+  if (submitted) {
+    return (
+      <AppShell>
+        <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
+          <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
+            <CheckCircle2 className="size-10" />
+          </span>
+          <h1 className="text-2xl font-extrabold">Report Submitted</h1>
+          <p className="text-sm text-muted-foreground">
+            We've received your report. Ticket ID <span className="font-bold">{ticket}</span>. Our team
+            will get back to you within 24 hours.
+          </p>
+          <Button
+            className="mt-4 h-13 w-full max-w-sm rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/history/$txId", params: { txId } })}
+          >
+            Back to Transaction
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell>
+      <PageHeader title="Report Problem" subtitle={txId} />
+      <div className="space-y-5 px-4 pt-2 pb-6">
+        <div className="space-y-2">
+          <p className="text-sm font-bold">What went wrong?</p>
+          {REASONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setReason(r)}
+              className={cn(
+                "press flex w-full items-center justify-between rounded-2xl border bg-card p-3.5 text-left text-sm font-semibold shadow-card",
+                reason === r ? "border-primary bg-primary-soft text-primary" : "",
+              )}
+            >
+              {r}
+              <span
+                className={cn(
+                  "size-4 rounded-full border-2",
+                  reason === r ? "border-primary bg-primary" : "border-border",
+                )}
+              />
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="details">Tell us what happened</Label>
+          <Textarea
+            id="details"
+            rows={4}
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Add any details that can help us resolve this faster"
+            className="rounded-xl bg-card"
+          />
+        </div>
+
+        <Button
+          className="h-13 w-full rounded-2xl text-base font-bold"
+          disabled={!reason}
+          onClick={() => setSubmitted(true)}
+        >
+          Submit Report
+        </Button>
+      </div>
+    </AppShell>
+  );
+}
