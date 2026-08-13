@@ -89,7 +89,7 @@ function SignupPage() {
     <main className="mx-auto min-h-dvh max-w-md pb-10">
       <PageHeader title="Create your account" />
       <div className="flex justify-center pt-1 pb-2">
-        <BrandLogo className="h-20" />
+        <BrandLogo className="h-[clamp(3rem,14vw,4.5rem)]" />
       </div>
 
       <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
