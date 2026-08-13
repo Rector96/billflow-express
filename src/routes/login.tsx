@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandMark } from "@/components/app/app-shell";
+import { BrandLogo } from "@/components/app/app-shell";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
