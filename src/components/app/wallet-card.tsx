@@ -33,6 +33,7 @@ export function WalletCard({
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <Link
           to="/wallet/fund"
+          search={{ amount: undefined }}
           className="press flex h-12 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-primary"
         >
           <Plus className="size-4" /> Fund Wallet

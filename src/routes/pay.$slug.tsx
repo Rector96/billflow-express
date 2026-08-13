@@ -376,7 +376,7 @@ function PayFlow() {
 
           {insufficient ? (
             <Button className="h-13 w-full rounded-2xl text-base font-bold" asChild>
-              <Link to="/wallet/fund">Fund Wallet</Link>
+              <Link to="/wallet/fund" search={{ amount: undefined }}>Fund Wallet</Link>
             </Button>
           ) : (
             <Button
