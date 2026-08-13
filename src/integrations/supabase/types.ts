@@ -248,13 +248,18 @@ export type Database = {
           amount: number
           balance_after: number
           balance_before: number
+          completed_at: string | null
           created_at: string
           description: string | null
           id: string
           metadata: Json
+          provider: string | null
+          provider_reference: string | null
+          provider_transaction_id: string | null
           reference: string
           status: Database["public"]["Enums"]["tx_status"]
           type: Database["public"]["Enums"]["wallet_tx_type"]
+          updated_at: string
           user_id: string
           wallet_id: string
         }
@@ -262,13 +267,18 @@ export type Database = {
           amount: number
           balance_after: number
           balance_before: number
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
           metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          provider_transaction_id?: string | null
           reference: string
           status?: Database["public"]["Enums"]["tx_status"]
           type: Database["public"]["Enums"]["wallet_tx_type"]
+          updated_at?: string
           user_id: string
           wallet_id: string
         }
@@ -276,13 +286,18 @@ export type Database = {
           amount?: number
           balance_after?: number
           balance_before?: number
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
           metadata?: Json
+          provider?: string | null
+          provider_reference?: string | null
+          provider_transaction_id?: string | null
           reference?: string
           status?: Database["public"]["Enums"]["tx_status"]
           type?: Database["public"]["Enums"]["wallet_tx_type"]
+          updated_at?: string
           user_id?: string
           wallet_id?: string
         }
@@ -348,6 +363,28 @@ export type Database = {
           wallet_status: string
         }[]
       }
+      complete_paystack_funding: {
+        Args: {
+          _paid_amount: number
+          _payload?: Json
+          _provider_transaction_id: string
+          _reference: string
+        }
+        Returns: {
+          amount: number
+          balance_after: number
+          credited: boolean
+          status: Database["public"]["Enums"]["tx_status"]
+        }[]
+      }
+      create_wallet_funding_intent: {
+        Args: { _amount: number }
+        Returns: {
+          amount: number
+          email: string
+          reference: string
+        }[]
+      }
       demo_bill_payment: {
         Args: {
           _amount: number
@@ -381,6 +418,17 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       new_reference: { Args: { prefix: string }; Returns: string }
+      settle_paystack_funding: {
+        Args: {
+          _payload?: Json
+          _reference: string
+          _status: Database["public"]["Enums"]["tx_status"]
+        }
+        Returns: {
+          amount: number
+          status: Database["public"]["Enums"]["tx_status"]
+        }[]
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "support"
