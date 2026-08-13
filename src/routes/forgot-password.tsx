@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/app/page-header";
 import { BRAND } from "@/lib/brand";
+import { supabase } from "@/integrations/supabase/client";
 
 type Step = "request" | "password" | "done";
 type Search = { step: Step };
@@ -69,7 +70,14 @@ function ForgotPassword() {
             if (pw !== confirm) return setError("Passwords do not match");
             setError("");
             setLoading(true);
-            setTimeout(() => navigate({ to: "/forgot-password", search: { step: "done" } }), 800);
+            void supabase.auth.updateUser({ password: pw }).then(({ error: err }) => {
+              setLoading(false);
+              if (err) {
+                setError("We couldn't update your password. Open the reset link again.");
+                return;
+              }
+              navigate({ to: "/forgot-password", search: { step: "done" } });
+            });
           }}
           noValidate
         >
@@ -97,32 +105,37 @@ function ForgotPassword() {
         className="space-y-5 px-6 pt-4"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!contact.trim()) return setError("Enter your phone number or email");
+          if (!/^\S+@\S+\.\S+$/.test(contact.trim()))
+            return setError("Enter the email address on your account");
           setError("");
           setLoading(true);
-          setTimeout(() => {
-            toast.success("Verification code sent");
-            navigate({ to: "/otp", search: { next: "reset" } });
-          }, 800);
+          void supabase.auth
+            .resetPasswordForEmail(contact.trim().toLowerCase(), {
+              redirectTo: `${window.location.origin}/forgot-password?step=password`,
+            })
+            .then(() => {
+              setLoading(false);
+              toast.success("If that email exists, a reset link is on its way.");
+            });
         }}
         noValidate
       >
         <p className="text-sm text-muted-foreground">
-          Enter the phone number or email linked to your account and we'll send you a code.
+          Enter the email linked to your account and we'll send you a secure reset link.
         </p>
         <div className="space-y-2">
-          <Label htmlFor="contact">Phone or Email</Label>
+          <Label htmlFor="contact">Email</Label>
           <Input
             id="contact"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             className="h-13 rounded-xl bg-card"
-            placeholder="080 0000 0000 or you@email.com"
+            placeholder="you@email.com"
           />
         </div>
         {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
         <Button type="submit" disabled={loading} className="h-13 w-full rounded-2xl text-base font-bold">
-          {loading ? "Sending…" : "Send Code"}
+          {loading ? "Sending…" : "Send Reset Link"}
         </Button>
       </form>
     </main>

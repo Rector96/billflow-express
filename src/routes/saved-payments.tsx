@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useApp } from "@/lib/app-store";
+import { friendlyError, useApp } from "@/lib/app-store";
 import { getService, SERVICES, type ServiceSlug } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -65,8 +65,9 @@ function SavedPaymentsPage() {
                 type="button"
                 aria-label={`Remove ${item.label}`}
                 onClick={() => {
-                  removeSaved(item.id);
-                  toast.success("Saved payment removed");
+                  void removeSaved(item.id)
+                    .then(() => toast.success("Saved payment removed"))
+                    .catch((err) => toast.error(friendlyError(err, "Couldn't remove that payment.")));
                 }}
                 className="press grid size-9 place-items-center rounded-lg text-muted-foreground"
               >
@@ -155,18 +156,14 @@ function SavedPaymentsPage() {
                     toast.error("Add a nickname and a valid number");
                     return;
                   }
-                  addSaved({
-                    id: `sp-${Date.now()}`,
-                    label,
-                    provider,
-                    serviceSlug: slug,
-                    masked: `••••${identifier.slice(-3)}`,
-                    identifier,
-                  });
-                  setLabel("");
-                  setIdentifier("");
-                  setOpen(false);
-                  toast.success("Saved payment added");
+                  void addSaved({ label, provider, serviceSlug: slug, identifier })
+                    .then(() => {
+                      setLabel("");
+                      setIdentifier("");
+                      setOpen(false);
+                      toast.success("Saved payment added");
+                    })
+                    .catch((err) => toast.error(friendlyError(err, "Couldn't save that payment.")));
                 }}
               >
                 Save

@@ -26,17 +26,38 @@ const STYLES = {
 } as const;
 
 function NotificationsPage() {
-  const { notifications } = useApp();
+  const { notifications, unreadCount, markAllNotificationsRead, markNotificationRead } = useApp();
 
   return (
     <AppShell>
       <PageHeader title="Notifications" backTo="/home" />
+      {unreadCount > 0 ? (
+        <div className="flex items-center justify-between px-4 pt-2">
+          <p className="text-xs font-semibold text-muted-foreground">{unreadCount} unread</p>
+          <button
+            type="button"
+            onClick={() => void markAllNotificationsRead()}
+            className="press text-xs font-bold text-primary"
+          >
+            Mark all as read
+          </button>
+        </div>
+      ) : null}
       <div className="space-y-3 px-4 pt-2 pb-6">
         {notifications.length ? (
           notifications.map((n) => {
             const s = STYLES[n.type];
             return (
-              <article key={n.id} className="flex gap-3 rounded-2xl border bg-card p-3.5 shadow-card">
+              <article
+                key={n.id}
+                onClick={() => {
+                  if (!n.read) void markNotificationRead(n.id);
+                }}
+                className={cn(
+                  "flex gap-3 rounded-2xl border bg-card p-3.5 shadow-card",
+                  n.read ? "" : "border-primary/40 bg-primary-soft/40",
+                )}
+              >
                 <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", s.cls)}>
                   <s.Icon className="size-5" />
                 </span>

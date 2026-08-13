@@ -6,7 +6,7 @@ import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-b
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
-import { DEMO_USER, MoreIcon, SERVICES, getService, greeting } from "@/lib/mock-data";
+import { MoreIcon, SERVICES, getService, greeting, initialsOf } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -28,7 +28,7 @@ const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] a
 function HomePage() {
   const { profile, transactions, saved } = useApp();
   const navigate = useNavigate();
-  const firstName = profile.name.split(" ")[0] ?? DEMO_USER.firstName;
+  const firstName = profile.name.split(" ")[0] || "there";
 
   return (
     <AppShell>
@@ -52,7 +52,7 @@ function HomePage() {
               aria-label="Your profile"
               className="press grid size-10 place-items-center rounded-full border border-white/30 bg-white/15 text-sm font-bold"
             >
-              {DEMO_USER.initials}
+              {initialsOf(profile.name)}
             </Link>
           </div>
         </div>

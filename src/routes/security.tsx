@@ -91,7 +91,7 @@ function SecurityPage() {
               <AlertDialogAction
                 className="rounded-xl"
                 onClick={() => {
-                  logout();
+                  void logout();
                   navigate({ to: "/login" });
                 }}
               >

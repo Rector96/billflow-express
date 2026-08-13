@@ -45,6 +45,7 @@ export type AppNotification = {
   title: string;
   body: string;
   time: string;
+  read?: boolean;
 };
 
 export const DEMO_USER = {
@@ -430,4 +431,10 @@ export function greeting(): string {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
+}
+
+export function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "BP";
+  return (parts[0]![0]! + (parts[1]?.[0] ?? "")).toUpperCase();
 }

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PageHeader } from "@/components/app/page-header";
 import { BRAND } from "@/lib/brand";
-import { useApp } from "@/lib/app-store";
 
 type Search = { next?: string };
 
@@ -27,7 +26,6 @@ export const Route = createFileRoute("/otp")({
 function OtpPage() {
   const { next } = Route.useSearch();
   const navigate = useNavigate();
-  const { login } = useApp();
   const [code, setCode] = useState("");
   const [seconds, setSeconds] = useState(45);
   const [loading, setLoading] = useState(false);
@@ -48,9 +46,8 @@ function OtpPage() {
       if (next === "reset") {
         navigate({ to: "/forgot-password", search: { step: "password" } });
       } else {
-        login();
         toast.success("Account verified 🎉");
-        navigate({ to: "/home" });
+        navigate({ to: "/login" });
       }
     }, 900);
   };

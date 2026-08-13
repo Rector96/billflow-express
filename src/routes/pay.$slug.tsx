@@ -19,7 +19,7 @@ import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApp, useNewTxId } from "@/lib/app-store";
+import { friendlyError, useApp } from "@/lib/app-store";
 import {
   DEMO_PIN,
   formatNaira,
@@ -65,8 +65,7 @@ function PayFlow() {
   const { slug } = Route.useParams();
   const { saved: savedId } = Route.useSearch();
   const navigate = useNavigate();
-  const { balance, addTransaction, pushNotification, saved } = useApp();
-  const newTxId = useNewTxId();
+  const { balance, payBill, saved } = useApp();
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === savedId);
 
@@ -112,43 +111,30 @@ function PayFlow() {
     setTimeout(() => setVerifying(false), 1500);
   };
 
-  const runPayment = () => {
-    const id = newTxId();
-    setTxId(id);
+  const runPayment = async () => {
     setStep("processing");
-    setTimeout(() => {
-      const title = `${service.name} Payment`;
-      addTransaction({
-        id,
-        title,
-        service: `${provider} ${service.name}`,
+    try {
+      const reference = await payBill({
+        service: service.name,
         serviceSlug: service.slug,
+        provider,
+        product: pack?.name,
         amount: total,
-        direction: "out",
+        identifier: identifier.trim(),
         status: outcome,
-        date: dateStr,
-        time: timeStr,
-        ...(service.customerName ? { customer: service.customerName } : {}),
-        reference: maskTail(identifier),
-        method: "Wallet",
-        ...(outcome === "successful" && service.slug === "electricity"
-          ? { token: "1234 5678 9012 3456" }
-          : {}),
+        title: `${service.name} Payment`,
+        customer: service.customerName,
+        token:
+          outcome === "successful" && service.slug === "electricity"
+            ? "1234 5678 9012 3456"
+            : undefined,
       });
-      pushNotification({
-        id,
-        type: outcome === "successful" ? "success" : outcome === "pending" ? "warning" : "info",
-        title:
-          outcome === "successful"
-            ? `${service.name} payment successful`
-            : outcome === "pending"
-              ? `${service.name} payment pending`
-              : `${service.name} payment failed`,
-        body: `${formatNaira(total, false)} • ${provider}`,
-        time: "Just now",
-      });
+      setTxId(reference);
       setStep("result");
-    }, 2400);
+    } catch (err) {
+      toast.error(friendlyError(err, "We couldn't complete this payment."));
+      setStep("confirm");
+    }
   };
 
   /* ---------- RESULT ---------- */
@@ -304,7 +290,7 @@ function PayFlow() {
                 toast.error("Incorrect PIN. Try 1234 for this demo.");
                 return;
               }
-              runPayment();
+              void runPayment();
             }}
           >
             Confirm
