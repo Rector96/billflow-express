@@ -105,15 +105,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
-          <div className="flex justify-center">
-            <Link
-              to="/services"
-              aria-label="Pay a bill"
-              className="press brand-gradient -mt-7 grid size-14 place-items-center rounded-2xl text-primary-foreground shadow-float"
-            >
+          <Link
+            to="/services"
+            aria-label="Pay a bill"
+            className={cn(
+              "press flex min-h-12 flex-col items-center justify-end gap-1 py-1 text-[11px] font-extrabold tracking-wide",
+              isActive("/services") ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <span className="brand-gradient -mt-7 grid size-14 place-items-center rounded-full text-primary-foreground shadow-float">
               <ScanLine className="size-6" />
-            </Link>
-          </div>
+            </span>
+            PAY
+          </Link>
           <TabLink item={NAV_HISTORY} active={isActive("/history")} />
           <TabLink item={NAV_PROFILE} active={isActive("/profile")} />
         </div>

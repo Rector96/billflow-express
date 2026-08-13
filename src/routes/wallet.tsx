@@ -34,7 +34,7 @@ function WalletPage() {
     <AppShell>
       <PageHeader title="Wallet" backTo="/home" />
       <div className="space-y-7 px-4 pt-2 pb-6">
-        <WalletCard label="Available Balance" withWithdraw />
+        <WalletCard label="Available Balance" />
 
         <section>
           <SectionTitle title="Quick Fund" action="Fund Wallet" to="/wallet/fund" />
@@ -58,7 +58,7 @@ function WalletPage() {
             <Plus className="size-4" /> Enter a custom amount
           </Link>
           <p className="mt-2 text-xs text-muted-foreground">
-            Top up instantly with a saved card or bank transfer. This demo simulates the payment.
+            Demo mode — top-ups are simulated instantly. No card or bank transfer is processed.
           </p>
         </section>
 
