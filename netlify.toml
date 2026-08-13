@@ -1,0 +1,13 @@
+＃ Netlify deployment config for the BillPay demo (TanStack Start + Nitro)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NITRO_PRESET = "netlify"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
