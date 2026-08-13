@@ -58,8 +58,8 @@ export function BrandLogo({ className }: { className?: string }) {
     <img
       src={BRAND.logoUrl}
       alt={`${BRAND.name} — ${BRAND.tagline}`}
-      width={512}
-      height={512}
+      width={304}
+      height={243}
       loading="eager"
       decoding="async"
       className={cn(
