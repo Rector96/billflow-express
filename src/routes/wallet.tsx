@@ -1,4 +1,8 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
+import { formatNaira } from "@/lib/mock-data";
+
+const QUICK_AMOUNTS = [1000, 5000, 10000, 20000];
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { WalletCard } from "@/components/app/wallet-card";
