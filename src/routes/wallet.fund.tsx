@@ -21,6 +21,9 @@ export const Route = createFileRoute("/wallet/fund")({
       { property: "og:description", content: "Top up in seconds with a simulated payment." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    amount: typeof search.amount === "number" ? search.amount : undefined,
+  }),
   component: FundWallet,
 });
 
@@ -30,7 +33,8 @@ function FundWallet() {
   const navigate = useNavigate();
   const { addTransaction, pushNotification, balance } = useApp();
   const newId = useNewTxId();
-  const [amount, setAmount] = useState<number>(5000);
+  const preset = Route.useSearch().amount;
+  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 5000);
   const [custom, setCustom] = useState("");
   const [stage, setStage] = useState<"form" | "processing" | "done">("form");
   const [txId, setTxId] = useState("");
