@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
+import { BillPayIdCard } from "@/components/app/billpay-id-card";
 import {
   AlertDialog,
   AlertDialogAction,
