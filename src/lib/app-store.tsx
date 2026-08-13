@@ -130,14 +130,20 @@ function toTransaction(row: LedgerRow): Transaction {
   return {
     id: str(meta, "bill_reference") ?? row.reference,
     title: str(meta, "title") ?? (isIn ? "Wallet Funded" : (row.description ?? "Payment")),
-    service: str(meta, "service_label") ?? (isIn ? "Demo Top-up" : (row.description ?? "")),
+    service:
+      str(meta, "service_label") ??
+      (isIn
+        ? str(meta, "channel") === "paystack"
+          ? "Paystack Top-up"
+          : "Wallet Top-up"
+        : (row.description ?? "")),
     serviceSlug: str(meta, "service_slug") ?? "wallet",
     amount: money(row.amount),
     direction: isIn ? "in" : "out",
     status,
     date: fmtDate(row.created_at),
     time: fmtTime(row.created_at),
-    method: isIn ? "Demo Funding" : "Wallet",
+    method: isIn ? (str(meta, "channel") === "paystack" ? "Paystack (test)" : "Wallet Funding") : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
     ...(token ? { token } : {}),

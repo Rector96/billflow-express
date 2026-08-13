@@ -58,7 +58,7 @@ function WalletPage() {
             <Plus className="size-4" /> Enter a custom amount
           </Link>
           <p className="mt-2 text-xs text-muted-foreground">
-            Demo mode — top-ups are simulated instantly. No card or bank transfer is processed.
+            Paystack test mode — you pay on Paystack’s secure checkout and your wallet is credited only after the payment is verified. No real money moves.
           </p>
         </section>
 
