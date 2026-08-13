@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
+import { BrandLogo } from "@/components/app/app-shell";
+
 import { PageHeader } from "@/components/app/page-header";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -86,6 +88,10 @@ function SignupPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-md pb-10">
       <PageHeader title="Create your account" />
+      <div className="flex justify-center pt-1 pb-2">
+        <BrandLogo className="h-20" />
+      </div>
+
       <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
         <Field label="Full Name" id="name" value={f.name} onChange={set("name")} error={errors.name} placeholder="Your full name" />
         <Field

@@ -87,9 +87,10 @@ function AdminPage() {
     <div className="min-h-dvh bg-background lg:flex">
       <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar px-3 py-5 lg:flex">
         <div className="mb-6 flex items-center gap-2 px-2">
-          <BrandMark />
+          <BrandMark className="size-8" />
           <span className="text-sm font-extrabold">{BRAND.name} Admin</span>
         </div>
+
         <nav className="flex flex-col gap-1" aria-label="Admin">
           {NAV.map((n) => (
             <span

@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useApp } from "@/lib/app-store";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -41,22 +41,41 @@ const DESKTOP_EXTRA: NavItem[] = [
 
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "brand-gradient grid size-9 shrink-0 place-items-center rounded-xl text-base font-black text-primary-foreground",
-        className,
-      )}
-      aria-hidden
-    >
-      B
-    </span>
+    <img
+      src={BRAND.markUrl}
+      alt={`${BRAND.name} logo`}
+      className={cn("size-9 shrink-0 rounded-xl object-contain", className)}
+    />
   );
 }
+
+export function BrandLogo({ className }: { className?: string }) {
+  return (
+    <img
+      src={BRAND.logoUrl}
+      alt={`${BRAND.name} — ${BRAND.tagline}`}
+      className={cn("h-24 w-auto object-contain", className)}
+    />
+  );
+}
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authed, hydrated } = useApp();
   const navigate = useNavigate();
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (hydrated && !authed) void navigate({ to: "/login", replace: true });
@@ -66,11 +85,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background lg:flex">
+      {offline ? (
+        <div
+          role="status"
+          className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-1.5 text-center text-xs font-bold text-warning-foreground"
+        >
+          You're offline — payments and top-ups can't be completed right now.
+        </div>
+      ) : null}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar px-4 py-6 lg:flex">
         <Link to="/home" className="mb-8 flex items-center gap-2 px-2">
           <BrandMark />
           <span className="text-lg font-extrabold tracking-tight">{BRAND.name}</span>
         </Link>
+
         <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
           {[...MAIN_NAV, ...DESKTOP_EXTRA].map((item) => (
             <Link

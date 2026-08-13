@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
+import { AppShell, BrandMark } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,14 @@ function HomePage() {
     <AppShell>
       <header className="brand-gradient rounded-b-[2rem] px-4 pt-6 pb-20 text-primary-foreground">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="min-w-0">
-            <p className="text-xs opacity-85">{greeting()},</p>
-            <h1 className="truncate text-xl font-extrabold">{firstName} 👋</h1>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <BrandMark className="size-9 bg-white/90 p-1" />
+            <div className="min-w-0">
+              <p className="text-xs opacity-85">{greeting()},</p>
+              <h1 className="truncate text-xl font-extrabold">{firstName} 👋</h1>
+            </div>
           </div>
+
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"

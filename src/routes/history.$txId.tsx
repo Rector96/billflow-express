@@ -46,7 +46,13 @@ function TransactionDetails() {
       <PageHeader title="Transaction Details" backTo="/history" />
       <div className="space-y-5 px-4 pt-2 pb-6">
         <div className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-5 shadow-card">
+          <img
+            src={BRAND.logoUrl}
+            alt={`${BRAND.name} logo`}
+            className="h-14 w-auto object-contain"
+          />
           <StatusBadge status={tx.status} />
+
           <p className="text-sm font-bold">{tx.title}</p>
           <p className="text-3xl font-extrabold tabular-nums">
             {tx.direction === "in" ? "+" : "-"}

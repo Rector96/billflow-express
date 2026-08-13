@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 
-export function BillPayIdCard() {
+export function WalletIdCard() {
   const { profile } = useApp();
   const id = profile.billpayId || "————————";
 

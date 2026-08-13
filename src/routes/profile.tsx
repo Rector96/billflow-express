@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
-import { BillPayIdCard } from "@/components/app/billpay-id-card";
+import { WalletIdCard } from "@/components/app/wallet-id-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,7 +86,7 @@ function ProfilePage() {
 
       <div className="space-y-2 px-4 py-5">
         <div className="pb-2">
-          <BillPayIdCard />
+          <WalletIdCard />
         </div>
         {items.map((item) =>
           item.to ? (

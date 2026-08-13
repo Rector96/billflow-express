@@ -1,0 +1,16 @@
+{
+  "name": "RockPay — Pay. Fund. Connect.",
+  "short_name": "RockPay",
+  "description": "Pay electricity, cable TV, education, airtime and data bills from one secure RockPay wallet.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#4b1fbf",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
