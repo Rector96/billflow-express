@@ -30,6 +30,7 @@ import { Route as PaySlugRouteImport } from './routes/pay.$slug'
 import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
 import { Route as WalletFundRouteImport } from './routes/wallet.fund'
 import { Route as HistoryTxIdReportRouteImport } from './routes/history.$txId.report'
+import { Route as ApiPublicWebhooksPaystackRouteImport } from './routes/api/public/webhooks/paystack'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -136,6 +137,12 @@ const HistoryTxIdReportRoute = HistoryTxIdReportRouteImport.update({
   path: '/report',
   getParentRoute: () => HistoryTxIdRoute,
 } as any)
+const ApiPublicWebhooksPaystackRoute =
+  ApiPublicWebhooksPaystackRouteImport.update({
+    id: '/api/public/webhooks/paystack',
+    path: '/api/public/webhooks/paystack',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/profile/personal': typeof ProfilePersonalRoute
   '/wallet/fund': typeof WalletFundRoute
   '/history/$txId/report': typeof HistoryTxIdReportRoute
+  '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -182,6 +190,7 @@ export interface FileRoutesByTo {
   '/profile/personal': typeof ProfilePersonalRoute
   '/wallet/fund': typeof WalletFundRoute
   '/history/$txId/report': typeof HistoryTxIdReportRoute
+  '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -206,6 +215,7 @@ export interface FileRoutesById {
   '/profile/personal': typeof ProfilePersonalRoute
   '/wallet/fund': typeof WalletFundRoute
   '/history/$txId/report': typeof HistoryTxIdReportRoute
+  '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/profile/personal'
     | '/wallet/fund'
     | '/history/$txId/report'
+    | '/api/public/webhooks/paystack'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/profile/personal'
     | '/wallet/fund'
     | '/history/$txId/report'
+    | '/api/public/webhooks/paystack'
   id:
     | '__root__'
     | '/'
@@ -277,6 +289,7 @@ export interface FileRouteTypes {
     | '/profile/personal'
     | '/wallet/fund'
     | '/history/$txId/report'
+    | '/api/public/webhooks/paystack'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -297,6 +310,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   WalletRoute: typeof WalletRouteWithChildren
   PaySlugRoute: typeof PaySlugRoute
+  ApiPublicWebhooksPaystackRoute: typeof ApiPublicWebhooksPaystackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -448,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryTxIdReportRouteImport
       parentRoute: typeof HistoryTxIdRoute
     }
+    '/api/public/webhooks/paystack': {
+      id: '/api/public/webhooks/paystack'
+      path: '/api/public/webhooks/paystack'
+      fullPath: '/api/public/webhooks/paystack'
+      preLoaderRoute: typeof ApiPublicWebhooksPaystackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -514,6 +535,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   WalletRoute: WalletRouteWithChildren,
   PaySlugRoute: PaySlugRoute,
+  ApiPublicWebhooksPaystackRoute: ApiPublicWebhooksPaystackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
