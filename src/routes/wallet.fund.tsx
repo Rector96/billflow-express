@@ -22,7 +22,7 @@ export const Route = createFileRoute("/wallet/fund")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
-    amount: typeof search.amount === "number" ? search.amount : undefined,
+    amount: typeof search['amount'] === "number" ? (search['amount'] as number) : undefined,
   }),
   component: FundWallet,
 });
