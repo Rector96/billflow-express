@@ -84,6 +84,9 @@ function ProfilePage() {
       </header>
 
       <div className="space-y-2 px-4 py-5">
+        <div className="pb-2">
+          <BillPayIdCard />
+        </div>
         {items.map((item) =>
           item.to ? (
             <Link
