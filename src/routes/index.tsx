@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
-import { BrandMark } from "@/components/app/app-shell";
+import { BrandLogo } from "@/components/app/app-shell";
 
 export const Route = createFileRoute("/")({
   head: () => ({
