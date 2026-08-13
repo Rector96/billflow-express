@@ -1,16 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Eye, EyeOff, Plus, ArrowUpRight } from "lucide-react";
-import { toast } from "sonner";
+import { Eye, EyeOff, Plus } from "lucide-react";
 import { useApp } from "@/lib/app-store";
 import { formatNaira } from "@/lib/mock-data";
 
-export function WalletCard({
-  label = "Wallet Balance",
-  withWithdraw = false,
-}: {
-  label?: string;
-  withWithdraw?: boolean;
-}) {
+export function WalletCard({ label = "Wallet Balance" }: { label?: string }) {
   const { balance, hideBalance, toggleBalance } = useApp();
 
   return (
@@ -30,24 +23,13 @@ export function WalletCard({
         {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
       </p>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <Link
-          to="/wallet/fund"
-          search={{ amount: undefined }}
-          className="press flex h-12 items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-primary"
-        >
-          <Plus className="size-4" /> Fund Wallet
-        </Link>
-        {withWithdraw ? (
-          <button
-            type="button"
-            onClick={() => toast.info("Withdrawals are coming soon")}
-            className="press flex h-12 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 text-sm font-bold"
-          >
-            <ArrowUpRight className="size-4" /> Withdraw
-          </button>
-        ) : null}
-      </div>
+      <Link
+        to="/wallet/fund"
+        search={{ amount: undefined }}
+        className="press mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-primary"
+      >
+        <Plus className="size-4" /> Fund Wallet
+      </Link>
     </section>
   );
 }
