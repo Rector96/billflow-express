@@ -34,13 +34,31 @@ function WalletPage() {
 
         <section>
           <SectionTitle title="Quick Fund" action="Fund Wallet" to="/wallet/fund" />
-          <p className="text-xs text-muted-foreground">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {QUICK_AMOUNTS.map((q) => (
+              <Link
+                key={q}
+                to="/wallet/fund"
+                search={{ amount: q }}
+                className="press flex h-12 items-center justify-center rounded-xl border bg-card text-sm font-bold shadow-card"
+              >
+                {formatNaira(q, false)}
+              </Link>
+            ))}
+          </div>
+          <Link
+            to="/wallet/fund"
+            className="press mt-3 flex h-12 items-center justify-center gap-2 rounded-xl border border-dashed text-sm font-bold text-primary"
+          >
+            <Plus className="size-4" /> Enter a custom amount
+          </Link>
+          <p className="mt-2 text-xs text-muted-foreground">
             Top up instantly with a saved card or bank transfer. This demo simulates the payment.
           </p>
         </section>
 
         <section>
-          <SectionTitle title="Recent Activity" action="See All" to="/history" />
+          <SectionTitle title="Wallet Activity" action="See All" to="/history" />
           <div className="space-y-3">
             {transactions.slice(0, 5).map((tx) => (
               <TransactionRow key={tx.id} tx={tx} />
