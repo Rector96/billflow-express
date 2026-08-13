@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
+import { AppShell, BrandMark } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
