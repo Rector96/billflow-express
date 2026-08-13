@@ -34,7 +34,7 @@ function WalletPage() {
     <AppShell>
       <PageHeader title="Wallet" backTo="/home" />
       <div className="space-y-7 px-4 pt-2 pb-6">
-        <WalletCard label="Available Balance" withWithdraw />
+        <WalletCard label="Available Balance" />
 
         <section>
           <SectionTitle title="Quick Fund" action="Fund Wallet" to="/wallet/fund" />

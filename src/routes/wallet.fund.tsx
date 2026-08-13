@@ -151,7 +151,7 @@ function FundWallet() {
           Continue
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">
-          Demo only — no real payment gateway is connected.
+          Demo mode — funds are simulated. No real payment gateway is connected yet.
         </p>
       </div>
     </AppShell>

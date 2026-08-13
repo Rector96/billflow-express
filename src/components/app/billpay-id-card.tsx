@@ -10,7 +10,7 @@ export function BillPayIdCard() {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(id);
-      toast.success("BillPay ID copied");
+      toast.success(`${BRAND.name} ID copied`);
     } catch {
       toast.error("Couldn't copy — long-press the ID instead");
     }
@@ -47,7 +47,7 @@ export function BillPayIdCard() {
           <button
             type="button"
             onClick={share}
-            aria-label="Share BillPay ID"
+            aria-label={`Share ${BRAND.name} ID`}
             className="press grid size-10 place-items-center rounded-xl border text-muted-foreground"
           >
             <Share2 className="size-4" />
@@ -55,7 +55,7 @@ export function BillPayIdCard() {
         </div>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Your unique BillPay ID. Wallet-to-wallet transfers are not enabled yet.
+        {`Your unique ${BRAND.name} ID. Wallet-to-wallet transfers are not enabled yet.`}
       </p>
     </section>
   );
