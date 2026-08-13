@@ -25,7 +25,7 @@ export function WalletCard({ label = "Wallet Balance" }: { label?: string }) {
 
       <Link
         to="/wallet/fund"
-        search={{ amount: undefined }}
+        search={{}}
         className="press mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-bold text-primary"
       >
         <Plus className="size-4" /> Fund Wallet
