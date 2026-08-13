@@ -41,17 +41,24 @@ const DESKTOP_EXTRA: NavItem[] = [
 
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "brand-gradient grid size-9 shrink-0 place-items-center rounded-xl text-base font-black text-primary-foreground",
-        className,
-      )}
-      aria-hidden
-    >
-      B
-    </span>
+    <img
+      src={BRAND.markUrl}
+      alt={`${BRAND.name} logo`}
+      className={cn("size-9 shrink-0 rounded-xl object-contain", className)}
+    />
   );
 }
+
+export function BrandLogo({ className }: { className?: string }) {
+  return (
+    <img
+      src={BRAND.logoUrl}
+      alt={`${BRAND.name} — ${BRAND.tagline}`}
+      className={cn("h-24 w-auto object-contain", className)}
+    />
+  );
+}
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
