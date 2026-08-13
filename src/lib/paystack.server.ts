@@ -96,7 +96,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     const { data: credit, error } = await supabaseAdmin.rpc("complete_paystack_funding", {
       _reference: reference,
       _paid_amount: Number(row.amount),
-      _provider_transaction_id: data.id ? String(data.id) : null,
+      _provider_transaction_id: data.id ? String(data.id) : "",
       _payload: {
         channel: data.channel ?? null,
         paid_at: data.paid_at ?? null,
