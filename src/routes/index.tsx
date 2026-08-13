@@ -1,24 +1,53 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { BRAND } from "@/lib/brand";
+import { useApp } from "@/lib/app-store";
+import { BrandMark } from "@/components/app/app-shell";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: `${BRAND.name} — Simple. Fast. Secure. bill payments` },
+      {
+        name: "description",
+        content:
+          "Pay electricity, cable TV, education, airtime and data bills from one wallet. Mobile-first and built for Nigeria.",
+      },
+      { property: "og:title", content: `${BRAND.name} — Simple. Fast. Secure.` },
+      {
+        property: "og:description",
+        content: "Fund one wallet and pay every bill in seconds.",
+      },
+    ],
+  }),
+  component: Splash,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Splash() {
+  const navigate = useNavigate();
+  const { authed, seenOnboarding, hydrated } = useApp();
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(() => {
+      if (authed) navigate({ to: "/home" });
+      else if (seenOnboarding) navigate({ to: "/login" });
+      else navigate({ to: "/onboarding" });
+    }, 1600);
+    return () => clearTimeout(t);
+  }, [hydrated, authed, seenOnboarding, navigate]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="brand-gradient flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-primary-foreground">
+      <div className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-4 duration-700">
+        <BrandMark className="size-16 rounded-3xl border border-white/20 bg-white/15 text-3xl" />
+        <h1 className="text-4xl font-extrabold tracking-tight">{BRAND.name}</h1>
+        <p className="text-sm font-medium opacity-85">{BRAND.tagline}</p>
+      </div>
+      <div className="absolute bottom-10 flex items-center gap-2 text-xs opacity-70">
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
+        Loading your experience
+      </div>
+    </main>
   );
 }

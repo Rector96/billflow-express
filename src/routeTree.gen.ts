@@ -10,33 +10,293 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as OtpRouteImport } from './routes/otp'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SavedPaymentsRouteImport } from './routes/saved-payments'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as ServicesRouteImport } from './routes/services'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as HistoryTxIdRouteImport } from './routes/history.$txId'
+import { Route as PaySlugRouteImport } from './routes/pay.$slug'
+import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
+import { Route as WalletFundRouteImport } from './routes/wallet.fund'
+import { Route as HistoryTxIdReportRouteImport } from './routes/history.$txId.report'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OtpRoute = OtpRouteImport.update({
+  id: '/otp',
+  path: '/otp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedPaymentsRoute = SavedPaymentsRouteImport.update({
+  id: '/saved-payments',
+  path: '/saved-payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServicesRoute = ServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryTxIdRoute = HistoryTxIdRouteImport.update({
+  id: '/$txId',
+  path: '/$txId',
+  getParentRoute: () => HistoryRoute,
+} as any)
+const PaySlugRoute = PaySlugRouteImport.update({
+  id: '/pay/$slug',
+  path: '/pay/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfilePersonalRoute = ProfilePersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
+  getParentRoute: () => ProfileRoute,
+} as any)
+const WalletFundRoute = WalletFundRouteImport.update({
+  id: '/fund',
+  path: '/fund',
+  getParentRoute: () => WalletRoute,
+} as any)
+const HistoryTxIdReportRoute = HistoryTxIdReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => HistoryTxIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/otp': typeof OtpRoute
+  '/profile': typeof ProfileRouteWithChildren
+  '/saved-payments': typeof SavedPaymentsRoute
+  '/security': typeof SecurityRoute
+  '/services': typeof ServicesRoute
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/wallet': typeof WalletRouteWithChildren
+  '/history/$txId': typeof HistoryTxIdRouteWithChildren
+  '/pay/$slug': typeof PaySlugRoute
+  '/profile/personal': typeof ProfilePersonalRoute
+  '/wallet/fund': typeof WalletFundRoute
+  '/history/$txId/report': typeof HistoryTxIdReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/otp': typeof OtpRoute
+  '/profile': typeof ProfileRouteWithChildren
+  '/saved-payments': typeof SavedPaymentsRoute
+  '/security': typeof SecurityRoute
+  '/services': typeof ServicesRoute
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/wallet': typeof WalletRouteWithChildren
+  '/history/$txId': typeof HistoryTxIdRouteWithChildren
+  '/pay/$slug': typeof PaySlugRoute
+  '/profile/personal': typeof ProfilePersonalRoute
+  '/wallet/fund': typeof WalletFundRoute
+  '/history/$txId/report': typeof HistoryTxIdReportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/history': typeof HistoryRouteWithChildren
+  '/home': typeof HomeRoute
+  '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/otp': typeof OtpRoute
+  '/profile': typeof ProfileRouteWithChildren
+  '/saved-payments': typeof SavedPaymentsRoute
+  '/security': typeof SecurityRoute
+  '/services': typeof ServicesRoute
+  '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
+  '/wallet': typeof WalletRouteWithChildren
+  '/history/$txId': typeof HistoryTxIdRouteWithChildren
+  '/pay/$slug': typeof PaySlugRoute
+  '/profile/personal': typeof ProfilePersonalRoute
+  '/wallet/fund': typeof WalletFundRoute
+  '/history/$txId/report': typeof HistoryTxIdReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/history'
+    | '/home'
+    | '/login'
+    | '/notifications'
+    | '/onboarding'
+    | '/otp'
+    | '/profile'
+    | '/saved-payments'
+    | '/security'
+    | '/services'
+    | '/signup'
+    | '/support'
+    | '/wallet'
+    | '/history/$txId'
+    | '/pay/$slug'
+    | '/profile/personal'
+    | '/wallet/fund'
+    | '/history/$txId/report'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/history'
+    | '/home'
+    | '/login'
+    | '/notifications'
+    | '/onboarding'
+    | '/otp'
+    | '/profile'
+    | '/saved-payments'
+    | '/security'
+    | '/services'
+    | '/signup'
+    | '/support'
+    | '/wallet'
+    | '/history/$txId'
+    | '/pay/$slug'
+    | '/profile/personal'
+    | '/wallet/fund'
+    | '/history/$txId/report'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/forgot-password'
+    | '/history'
+    | '/home'
+    | '/login'
+    | '/notifications'
+    | '/onboarding'
+    | '/otp'
+    | '/profile'
+    | '/saved-payments'
+    | '/security'
+    | '/services'
+    | '/signup'
+    | '/support'
+    | '/wallet'
+    | '/history/$txId'
+    | '/pay/$slug'
+    | '/profile/personal'
+    | '/wallet/fund'
+    | '/history/$txId/report'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HistoryRoute: typeof HistoryRouteWithChildren
+  HomeRoute: typeof HomeRoute
+  LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
+  OnboardingRoute: typeof OnboardingRoute
+  OtpRoute: typeof OtpRoute
+  ProfileRoute: typeof ProfileRouteWithChildren
+  SavedPaymentsRoute: typeof SavedPaymentsRoute
+  SecurityRoute: typeof SecurityRoute
+  ServicesRoute: typeof ServicesRoute
+  SignupRoute: typeof SignupRoute
+  SupportRoute: typeof SupportRoute
+  WalletRoute: typeof WalletRouteWithChildren
+  PaySlugRoute: typeof PaySlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +308,212 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/otp': {
+      id: '/otp'
+      path: '/otp'
+      fullPath: '/otp'
+      preLoaderRoute: typeof OtpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved-payments': {
+      id: '/saved-payments'
+      path: '/saved-payments'
+      fullPath: '/saved-payments'
+      preLoaderRoute: typeof SavedPaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/services': {
+      id: '/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history/$txId': {
+      id: '/history/$txId'
+      path: '/$txId'
+      fullPath: '/history/$txId'
+      preLoaderRoute: typeof HistoryTxIdRouteImport
+      parentRoute: typeof HistoryRoute
+    }
+    '/pay/$slug': {
+      id: '/pay/$slug'
+      path: '/pay/$slug'
+      fullPath: '/pay/$slug'
+      preLoaderRoute: typeof PaySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/personal': {
+      id: '/profile/personal'
+      path: '/personal'
+      fullPath: '/profile/personal'
+      preLoaderRoute: typeof ProfilePersonalRouteImport
+      parentRoute: typeof ProfileRoute
+    }
+    '/wallet/fund': {
+      id: '/wallet/fund'
+      path: '/fund'
+      fullPath: '/wallet/fund'
+      preLoaderRoute: typeof WalletFundRouteImport
+      parentRoute: typeof WalletRoute
+    }
+    '/history/$txId/report': {
+      id: '/history/$txId/report'
+      path: '/report'
+      fullPath: '/history/$txId/report'
+      preLoaderRoute: typeof HistoryTxIdReportRouteImport
+      parentRoute: typeof HistoryTxIdRoute
+    }
   }
 }
 
+interface HistoryTxIdRouteChildren {
+  HistoryTxIdReportRoute: typeof HistoryTxIdReportRoute
+}
+
+const HistoryTxIdRouteChildren: HistoryTxIdRouteChildren = {
+  HistoryTxIdReportRoute: HistoryTxIdReportRoute,
+}
+
+const HistoryTxIdRouteWithChildren = HistoryTxIdRoute._addFileChildren(
+  HistoryTxIdRouteChildren,
+)
+
+interface HistoryRouteChildren {
+  HistoryTxIdRoute: typeof HistoryTxIdRouteWithChildren
+}
+
+const HistoryRouteChildren: HistoryRouteChildren = {
+  HistoryTxIdRoute: HistoryTxIdRouteWithChildren,
+}
+
+const HistoryRouteWithChildren =
+  HistoryRoute._addFileChildren(HistoryRouteChildren)
+
+interface ProfileRouteChildren {
+  ProfilePersonalRoute: typeof ProfilePersonalRoute
+}
+
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfilePersonalRoute: ProfilePersonalRoute,
+}
+
+const ProfileRouteWithChildren =
+  ProfileRoute._addFileChildren(ProfileRouteChildren)
+
+interface WalletRouteChildren {
+  WalletFundRoute: typeof WalletFundRoute
+}
+
+const WalletRouteChildren: WalletRouteChildren = {
+  WalletFundRoute: WalletFundRoute,
+}
+
+const WalletRouteWithChildren =
+  WalletRoute._addFileChildren(WalletRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  HistoryRoute: HistoryRouteWithChildren,
+  HomeRoute: HomeRoute,
+  LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
+  OnboardingRoute: OnboardingRoute,
+  OtpRoute: OtpRoute,
+  ProfileRoute: ProfileRouteWithChildren,
+  SavedPaymentsRoute: SavedPaymentsRoute,
+  SecurityRoute: SecurityRoute,
+  ServicesRoute: ServicesRoute,
+  SignupRoute: SignupRoute,
+  SupportRoute: SupportRoute,
+  WalletRoute: WalletRouteWithChildren,
+  PaySlugRoute: PaySlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
