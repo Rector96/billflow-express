@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
+import { BrandLogo } from "@/components/app/app-shell";
+
 import { PageHeader } from "@/components/app/page-header";
 import { supabase } from "@/integrations/supabase/client";
 
