@@ -23,9 +23,9 @@ export const Route = createFileRoute("/wallet/fund")({
       { property: "og:description", content: "Top up in seconds and pay your bills." },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>) => ({
-    amount: typeof search['amount'] === "number" ? (search['amount'] as number) : undefined,
-    reference: typeof search['reference'] === "string" ? (search['reference'] as string) : undefined,
+  validateSearch: (search: Record<string, unknown>): { amount?: number; reference?: string } => ({
+    ...(typeof search['amount'] === "number" ? { amount: search['amount'] as number } : {}),
+    ...(typeof search['reference'] === "string" ? { reference: search['reference'] as string } : {}),
   }),
   component: FundWallet,
 });
@@ -154,7 +154,7 @@ function FundWallet() {
               <Button
                 variant="outline"
                 className="h-13 w-full rounded-2xl font-bold"
-                onClick={() => navigate({ to: "/wallet/fund", search: { amount: undefined, reference: undefined } })}
+                onClick={() => navigate({ to: "/wallet/fund", search: {} })}
               >
                 Try again
               </Button>
