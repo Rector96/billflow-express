@@ -59,7 +59,7 @@ function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-10">
-      <BrandLogo className="h-20 self-start" />
+      <BrandLogo className="h-[clamp(3.25rem,16vw,5.5rem)] self-start" />
       <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Welcome Back 👋</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Log in to continue paying your bills with {BRAND.name}.

@@ -35,7 +35,7 @@ function HomePage() {
       <header className="brand-gradient rounded-b-[2rem] px-4 pt-6 pb-20 text-primary-foreground">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <BrandMark className="size-9 bg-white/90 p-1" />
+            <BrandMark className="size-9 bg-white/90 p-1 sm:size-10" />
             <div className="min-w-0">
               <p className="text-xs opacity-85">{greeting()},</p>
               <h1 className="truncate text-xl font-extrabold">{firstName} 👋</h1>

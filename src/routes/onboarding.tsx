@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/app/app-shell";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -49,7 +50,8 @@ function Onboarding() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-8">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <BrandLogo className="h-[clamp(2.75rem,12vw,4rem)]" />
         {index < SLIDES.length - 1 ? (
           <button
             type="button"

@@ -49,7 +49,7 @@ function TransactionDetails() {
           <img
             src={BRAND.logoUrl}
             alt={`${BRAND.name} logo`}
-            className="h-14 w-auto object-contain"
+            className="h-[clamp(2.5rem,11vw,3.5rem)] w-auto object-contain"
           />
           <StatusBadge status={tx.status} />
 

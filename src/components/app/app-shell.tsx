@@ -44,7 +44,11 @@ export function BrandMark({ className }: { className?: string }) {
     <img
       src={BRAND.markUrl}
       alt={`${BRAND.name} logo`}
-      className={cn("size-9 shrink-0 rounded-xl object-contain", className)}
+      width={96}
+      height={96}
+      loading="eager"
+      decoding="async"
+      className={cn("size-8 shrink-0 rounded-xl object-contain sm:size-9", className)}
     />
   );
 }
@@ -54,10 +58,18 @@ export function BrandLogo({ className }: { className?: string }) {
     <img
       src={BRAND.logoUrl}
       alt={`${BRAND.name} — ${BRAND.tagline}`}
-      className={cn("h-24 w-auto object-contain", className)}
+      width={304}
+      height={243}
+      loading="eager"
+      decoding="async"
+      className={cn(
+        "h-[clamp(3rem,14vw,5rem)] w-auto max-w-full shrink-0 object-contain",
+        className,
+      )}
     />
   );
 }
+
 
 
 export function AppShell({ children }: { children: ReactNode }) {
