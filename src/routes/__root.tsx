@@ -79,20 +79,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: `${BRAND.name} — Pay bills in seconds` },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover",
+      },
+      { title: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         name: "description",
         content: `${BRAND.name} lets you pay electricity, cable TV, education, airtime and data bills from one secure wallet.`,
       },
-      { property: "og:title", content: `${BRAND.name} — Pay bills in seconds` },
+      { property: "og:title", content: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         property: "og:description",
         content: "Electricity, cable TV, education, airtime and data — all in one place.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: BRAND.name },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#4b1fbf" },
+      { name: "application-name", content: BRAND.name },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: BRAND.name },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -102,9 +112,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
