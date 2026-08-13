@@ -1,4 +1,6 @@
-＃ Netlify deployment config for the BillPay demo (TanStack Start + Nitro)
+# Netlify deployment config — BillPay demo (TanStack Start + Nitro SSR)
+# Nitro's "netlify" preset emits the static assets to dist/ and the SSR
+# handler to .netlify/functions-internal, so no manual redirects are needed.
 [build]
   command = "npm run build"
   publish = "dist"
@@ -6,8 +8,3 @@
 [build.environment]
   NODE_VERSION = "22"
   NITRO_PRESET = "netlify"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
