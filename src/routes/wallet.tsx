@@ -52,6 +52,7 @@ function WalletPage() {
           </div>
           <Link
             to="/wallet/fund"
+            search={{ amount: undefined }}
             className="press mt-3 flex h-12 items-center justify-center gap-2 rounded-xl border border-dashed text-sm font-bold text-primary"
           >
             <Plus className="size-4" /> Enter a custom amount
