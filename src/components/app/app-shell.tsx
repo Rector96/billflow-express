@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Wallet,
@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useApp } from "@/lib/app-store";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
@@ -54,6 +55,13 @@ export function BrandMark({ className }: { className?: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { authed, hydrated } = useApp();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (hydrated && !authed) void navigate({ to: "/login", replace: true });
+  }, [hydrated, authed, navigate]);
+
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
   return (

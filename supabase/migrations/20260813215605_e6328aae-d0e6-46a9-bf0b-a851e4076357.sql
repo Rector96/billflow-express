@@ -1,0 +1,14 @@
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.is_staff(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.generate_billpay_id() FROM anon, authenticated, public;
+REVOKE EXECUTE ON FUNCTION public.new_reference(text) FROM anon, authenticated, public;
+REVOKE EXECUTE ON FUNCTION public.bootstrap_current_user(text, text) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.demo_fund_wallet(numeric, text) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.admin_dashboard_stats() FROM anon, public;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_staff(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.bootstrap_current_user(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.demo_fund_wallet(numeric, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_dashboard_stats() TO authenticated;

@@ -1,10 +1,11 @@
 import { Copy, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import { DEMO_USER } from "@/lib/mock-data";
+import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 
 export function BillPayIdCard() {
-  const id = DEMO_USER.billpayId;
+  const { profile } = useApp();
+  const id = profile.billpayId || "————————";
 
   const copy = async () => {
     try {
@@ -54,7 +55,7 @@ export function BillPayIdCard() {
         </div>
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Demo only — wallet-to-wallet transfers are not enabled yet.
+        Your unique BillPay ID. Wallet-to-wallet transfers are not enabled yet.
       </p>
     </section>
   );

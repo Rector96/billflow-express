@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
+import { supabase } from "@/integrations/supabase/client";
 import { BrandMark } from "@/components/app/app-shell";
 
 export const Route = createFileRoute("/login")({
@@ -23,26 +24,37 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useApp();
-  const [id, setId] = useState("pablo@example.com");
-  const [password, setPassword] = useState("password");
+  const { refresh } = useApp();
+  const [id, setId] = useState("");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [errors, setErrors] = useState<{ id?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
-    if (!id.trim()) next.id = "Enter your phone number or email";
-    if (password.length < 4) next.password = "Password must be at least 4 characters";
+    if (!/^\S+@\S+\.\S+$/.test(id.trim())) next.id = "Enter the email address on your account";
+    if (password.length < 6) next.password = "Password must be at least 6 characters";
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
-    setTimeout(() => {
-      login();
-      toast.success("Welcome back!");
-      navigate({ to: "/home" });
-    }, 900);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: id.trim().toLowerCase(),
+      password,
+    });
+    if (error) {
+      setLoading(false);
+      toast.error(
+        error.message.toLowerCase().includes("confirm")
+          ? "Please confirm your email address first."
+          : "Email or password is incorrect.",
+      );
+      return;
+    }
+    await refresh();
+    toast.success("Welcome back!");
+    navigate({ to: "/home" });
   };
 
   return (
@@ -55,13 +67,13 @@ function LoginPage() {
 
       <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
         <div className="space-y-2">
-          <Label htmlFor="identifier">Phone or Email</Label>
+          <Label htmlFor="identifier">Email</Label>
           <Input
             id="identifier"
             value={id}
             onChange={(e) => setId(e.target.value)}
             className="h-13 rounded-xl bg-card"
-            placeholder="080 0000 0000 or you@email.com"
+            placeholder="you@email.com"
             aria-invalid={Boolean(errors.id)}
           />
           {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}

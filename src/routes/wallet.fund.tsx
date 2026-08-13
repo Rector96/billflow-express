@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApp, useNewTxId } from "@/lib/app-store";
+import { friendlyError, useApp } from "@/lib/app-store";
 import { formatNaira } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -31,8 +31,7 @@ const QUICK = [1000, 5000, 10000, 20000];
 
 function FundWallet() {
   const navigate = useNavigate();
-  const { addTransaction, pushNotification, balance } = useApp();
-  const newId = useNewTxId();
+  const { fundWallet, balance } = useApp();
   const preset = Route.useSearch().amount;
   const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 5000);
   const [custom, setCustom] = useState("");
@@ -41,36 +40,20 @@ function FundWallet() {
 
   const value = custom ? Number(custom.replace(/\D/g, "")) : amount;
 
-  const start = () => {
+  const start = async () => {
     if (!value || value < 100) {
       toast.error("Enter at least ₦100");
       return;
     }
-    const id = newId();
-    setTxId(id);
     setStage("processing");
-    setTimeout(() => {
-      addTransaction({
-        id,
-        title: "Wallet Funded",
-        service: "Card Top-up (Demo)",
-        serviceSlug: "wallet",
-        amount: value,
-        direction: "in",
-        status: "successful",
-        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-        time: new Date().toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" }),
-        method: "Card",
-      });
-      pushNotification({
-        id,
-        type: "success",
-        title: `Wallet funded with ${formatNaira(value, false)}`,
-        body: "Your top-up was received successfully.",
-        time: "Just now",
-      });
+    try {
+      const reference = await fundWallet(value);
+      setTxId(reference);
       setStage("done");
-    }, 2200);
+    } catch (err) {
+      setStage("form");
+      toast.error(friendlyError(err, "We couldn't complete your top-up."));
+    }
   };
 
   if (stage === "processing") {
@@ -164,7 +147,7 @@ function FundWallet() {
           </div>
         </div>
 
-        <Button onClick={start} className="h-13 w-full rounded-2xl text-base font-bold">
+        <Button onClick={() => void start()} className="h-13 w-full rounded-2xl text-base font-bold">
           Continue
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">

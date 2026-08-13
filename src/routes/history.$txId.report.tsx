@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { friendlyError, useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +37,26 @@ function ReportPage() {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const ticket = `TKT-${txId.replace("TXN-", "")}`;
+  const [sending, setSending] = useState(false);
+  const [ticket, setTicket] = useState("");
+  const { createSupportTicket } = useApp();
+
+  const submit = async () => {
+    setSending(true);
+    try {
+      const id = await createSupportTicket({
+        reference: txId,
+        category: reason === "Payment not received" ? "transaction" : "other",
+        description: `${reason}${details.trim() ? ` — ${details.trim()}` : ""} (Transaction ${txId})`,
+      });
+      setTicket(`TKT-${id.slice(0, 8).toUpperCase()}`);
+      setSubmitted(true);
+    } catch (err) {
+      toast.error(friendlyError(err, "We couldn't submit your report."));
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -101,10 +122,10 @@ function ReportPage() {
 
         <Button
           className="h-13 w-full rounded-2xl text-base font-bold"
-          disabled={!reason}
-          onClick={() => setSubmitted(true)}
+          disabled={!reason || sending}
+          onClick={() => void submit()}
         >
-          Submit Report
+          {sending ? "Submitting…" : "Submit Report"}
         </Button>
       </div>
     </AppShell>

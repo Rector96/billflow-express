@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApp } from "@/lib/app-store";
+import { friendlyError, useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/profile/personal")({
@@ -34,11 +34,10 @@ function PersonalInfo() {
         onSubmit={(e) => {
           e.preventDefault();
           setSaving(true);
-          setTimeout(() => {
-            updateProfile(form);
-            setSaving(false);
-            toast.success("Changes saved");
-          }, 700);
+          void updateProfile({ name: form.name, phone: form.phone, email: form.email })
+            .then(() => toast.success("Changes saved"))
+            .catch((err) => toast.error(friendlyError(err, "Couldn't save your changes.")))
+            .finally(() => setSaving(false));
         }}
       >
         <div className="space-y-2">

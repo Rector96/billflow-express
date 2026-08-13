@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
-import { DEMO_USER } from "@/lib/mock-data";
+import { initialsOf } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -78,7 +78,7 @@ function ProfilePage() {
     <AppShell>
       <header className="brand-gradient rounded-b-[2rem] px-4 pt-8 pb-10 text-center text-primary-foreground">
         <div className="mx-auto grid size-20 place-items-center rounded-full border-2 border-white/30 bg-white/15 text-2xl font-extrabold">
-          {DEMO_USER.initials}
+          {initialsOf(profile.name)}
         </div>
         <h1 className="mt-3 text-xl font-extrabold">{profile.name}</h1>
         <p className="text-sm opacity-85">{profile.phone}</p>
@@ -128,8 +128,7 @@ function ProfilePage() {
               <AlertDialogAction
                 className="rounded-xl"
                 onClick={() => {
-                  logout();
-                  navigate({ to: "/login" });
+                  void logout().then(() => navigate({ to: "/login" }));
                 }}
               >
                 Log out

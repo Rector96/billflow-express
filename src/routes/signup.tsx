@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
 import { PageHeader } from "@/components/app/page-header";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -28,9 +29,9 @@ type Fields = { name: string; phone: string; email: string; password: string; co
 function SignupPage() {
   const navigate = useNavigate();
   const [f, setF] = useState<Fields>({
-    name: "Pablo Emmanuel",
-    phone: "08031234567",
-    email: "pablo@example.com",
+    name: "",
+    phone: "",
+    email: "",
     password: "",
     confirm: "",
   });
@@ -41,7 +42,7 @@ function SignupPage() {
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
     if (f.name.trim().length < 3) next.name = "Enter your full name";
@@ -53,16 +54,39 @@ function SignupPage() {
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
-    setTimeout(() => {
-      toast.success("Account created. Verify your phone number.");
-      navigate({ to: "/otp", search: { next: "signup" } });
-    }, 900);
+    const { data, error } = await supabase.auth.signUp({
+      email: f.email.trim().toLowerCase(),
+      password: f.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/home`,
+        data: { full_name: f.name.trim(), phone: f.phone.replace(/\s/g, "") },
+      },
+    });
+    setLoading(false);
+    if (error) {
+      const msg = error.message.toLowerCase();
+      toast.error(
+        msg.includes("already")
+          ? "An account with that email already exists."
+          : msg.includes("pwned") || msg.includes("weak") || msg.includes("password")
+            ? "That password is too weak or has appeared in a data breach. Try a stronger one."
+            : "We couldn't create your account. Please try again.",
+      );
+      return;
+    }
+    if (data.session) {
+      toast.success("Account created 🎉");
+      navigate({ to: "/home" });
+    } else {
+      toast.success("Account created. Check your email to confirm it.");
+      navigate({ to: "/login" });
+    }
   };
 
   return (
     <main className="mx-auto min-h-dvh max-w-md pb-10">
       <PageHeader title="Create your account" />
-      <form onSubmit={submit} className="space-y-5 px-6 pt-2" noValidate>
+      <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
         <Field label="Full Name" id="name" value={f.name} onChange={set("name")} error={errors.name} placeholder="Your full name" />
         <Field
           label="Phone Number"
