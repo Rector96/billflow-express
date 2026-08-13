@@ -39,15 +39,17 @@ function Splash() {
 
   return (
     <main className="brand-gradient flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-primary-foreground">
-      <div className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-4 duration-700">
-        <BrandMark className="size-16 rounded-3xl border border-white/20 bg-white/15 text-3xl" />
-        <h1 className="text-4xl font-extrabold tracking-tight">{BRAND.name}</h1>
-        <p className="text-sm font-medium opacity-85">{BRAND.tagline}</p>
+      <div className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-5 duration-700">
+        <div className="grid place-items-center rounded-3xl bg-white p-4 shadow-float">
+          <BrandLogo className="h-32" />
+        </div>
+        <p className="text-xs font-bold tracking-[0.28em] opacity-85">{BRAND.tagline}</p>
       </div>
       <div className="absolute bottom-10 flex items-center gap-2 text-xs opacity-70">
         <span className="size-1.5 animate-pulse rounded-full bg-current" />
         Loading your experience
       </div>
     </main>
+
   );
 }
