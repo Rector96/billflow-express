@@ -68,6 +68,14 @@ const FAIL_CODES = new Set([
   "091",
 ]);
 
+/** Mobile data serviceIDs we surface in RockPay (excludes Smile/Spectranet for V1). */
+export const MOBILE_DATA_SERVICE_IDS = new Set([
+  "mtn-data",
+  "airtel-data",
+  "glo-data",
+  "etisalat-data",
+]);
+
 /** In-memory catalogue cache (server process). */
 const catalogueCache = new Map<string, { at: number; data: unknown }>();
 const CATALOGUE_TTL_MS = 5 * 60 * 1000;
@@ -86,13 +94,30 @@ function cacheSet(key: string, data: unknown) {
   catalogueCache.set(key, { at: Date.now(), data });
 }
 
-/** Map RockPay network labels → VTpass serviceID */
+/** Map RockPay network labels → VTpass airtime serviceID */
 export function toVtpassServiceId(provider: string): string {
   const p = provider.trim().toLowerCase();
   if (p.includes("mtn")) return "mtn";
   if (p.includes("glo")) return "glo";
   if (p.includes("airtel")) return "airtel";
   if (p.includes("9mobile") || p.includes("etisalat") || p.includes("9 mobile")) return "etisalat";
+  throw new Error("unsupported_network");
+}
+
+/** Map RockPay network labels / catalogue names → VTpass data serviceID */
+export function toVtpassDataServiceId(provider: string): string {
+  const p = provider.trim().toLowerCase();
+  if (p === "mtn-data" || p.includes("mtn")) return "mtn-data";
+  if (p === "glo-data" || p.includes("glo")) return "glo-data";
+  if (p === "airtel-data" || p.includes("airtel")) return "airtel-data";
+  if (
+    p === "etisalat-data" ||
+    p.includes("9mobile") ||
+    p.includes("etisalat") ||
+    p.includes("9 mobile")
+  ) {
+    return "etisalat-data";
+  }
   throw new Error("unsupported_network");
 }
 
@@ -173,14 +198,22 @@ export async function vtpassListServices(identifier: string): Promise<VtpassServ
     content?: unknown;
   };
   const list = Array.isArray(raw.content) ? raw.content : [];
-  const mapped: VtpassService[] = list.map((row: Record<string, unknown>) => ({
-    serviceID: String(row["serviceID"] ?? ""),
-    name: String(row["name"] ?? row["serviceID"] ?? ""),
-    minimumAmount: row["minimium_amount"] != null ? Number(row["minimium_amount"]) : null,
-    maximumAmount: row["maximum_amount"] != null ? Number(row["maximum_amount"]) : null,
-    productType: row["product_type"] != null ? String(row["product_type"]) : null,
-    image: row["image"] != null ? String(row["image"]) : null,
-  })).filter((s) => s.serviceID);
+  let mapped: VtpassService[] = list
+    .map((row: Record<string, unknown>) => ({
+      serviceID: String(row["serviceID"] ?? ""),
+      name: String(row["name"] ?? row["serviceID"] ?? ""),
+      minimumAmount: row["minimium_amount"] != null ? Number(row["minimium_amount"]) : null,
+      maximumAmount: row["maximum_amount"] != null ? Number(row["maximum_amount"]) : null,
+      productType: row["product_type"] != null ? String(row["product_type"]) : null,
+      image: row["image"] != null ? String(row["image"]) : null,
+    }))
+    .filter((s) => s.serviceID);
+
+  // For mobile data, prefer the four major networks only (hide Smile etc. in V1).
+  if (identifier === "data") {
+    const mobile = mapped.filter((s) => MOBILE_DATA_SERVICE_IDS.has(s.serviceID));
+    if (mobile.length > 0) mapped = mobile;
+  }
 
   if (mapped.length === 0) {
     throw new Error("Service information is temporarily unavailable. Please try again.");
@@ -199,14 +232,14 @@ export async function vtpassListVariations(serviceID: string): Promise<VtpassVar
   )) as { content?: Record<string, unknown> };
   const content = raw.content ?? {};
   const list = (content["variations"] ?? content["varations"] ?? []) as unknown[];
-  const mapped: VtpassVariation[] = (Array.isArray(list) ? list : []).map(
-    (row: Record<string, unknown>) => ({
+  const mapped: VtpassVariation[] = (Array.isArray(list) ? list : [])
+    .map((row: Record<string, unknown>) => ({
       variationCode: String(row["variation_code"] ?? ""),
       name: String(row["name"] ?? ""),
       amount: Number(row["variation_amount"] ?? 0),
       fixedPrice: String(row["fixedPrice"] ?? "Yes").toLowerCase() === "yes",
-    }),
-  ).filter((v) => v.variationCode);
+    }))
+    .filter((v) => v.variationCode);
 
   if (mapped.length === 0) {
     throw new Error("Service information is temporarily unavailable. Please try again.");
@@ -347,7 +380,7 @@ export async function vtpassPayAirtime(input: {
   return parsePayResponse(raw, input.requestId);
 }
 
-/** Generic pay for cable / electricity (and future catalogue products). */
+/** Generic pay for cable / electricity / data (and future catalogue products). */
 export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPayResult> {
   const { baseUrl } = getVtpassConfig();
   const requestId = String(body["request_id"] ?? "");
