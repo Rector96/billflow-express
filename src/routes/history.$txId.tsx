@@ -1,14 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Copy, FileWarning } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Copy, FileWarning, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CareContextLink } from "@/components/app/care-entry";
 import { EmptyState, InfoRow, StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
-import { useApp } from "@/lib/app-store";
-import { formatNaira } from "@/lib/mock-data";
+import { friendlyError, useApp } from "@/lib/app-store";
+import { formatNaira, maskTail } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { requeryAirtime } from "@/lib/airtime.functions";
 
 export const Route = createFileRoute("/history/$txId")({
   head: ({ params }) => ({
@@ -22,12 +26,91 @@ export const Route = createFileRoute("/history/$txId")({
   component: TransactionDetails,
 });
 
+type BillExtra = {
+  provider: string | null;
+  provider_request_id: string | null;
+  provider_transaction_id: string | null;
+  provider_status: string | null;
+  provider_channel: string | null;
+  customer_identifier: string | null;
+  service: string | null;
+  status: string;
+  amount: number;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+};
+
 function TransactionDetails() {
   const { txId } = Route.useParams();
-  const { transactions } = useApp();
+  const { transactions, refresh } = useApp();
   const tx = transactions.find((t) => t.id === txId);
+  const checkAirtime = useServerFn(requeryAirtime);
+  const [bill, setBill] = useState<BillExtra | null>(null);
+  const [loadingBill, setLoadingBill] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  if (!tx) {
+  const loadBill = useCallback(async () => {
+    if (!txId) return;
+    setLoadingBill(true);
+    try {
+      const { data } = await supabase
+        .from("bill_transactions")
+        .select(
+          "provider, provider_request_id, provider_transaction_id, provider_status, provider_channel, customer_identifier, service, status, amount, created_at, metadata",
+        )
+        .eq("internal_reference", txId)
+        .maybeSingle();
+      setBill((data as BillExtra) ?? null);
+    } catch {
+      setBill(null);
+    } finally {
+      setLoadingBill(false);
+    }
+  }, [txId]);
+
+  useEffect(() => {
+    void loadBill();
+  }, [loadBill]);
+
+  const isAirtime =
+    tx?.serviceSlug === "airtime" ||
+    bill?.service === "Airtime" ||
+    (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
+
+  const status = (bill?.status as typeof tx.status | undefined) ?? tx?.status ?? "pending";
+  const amount = bill?.amount != null ? Number(bill.amount) : tx?.amount ?? 0;
+  const network = bill?.provider ?? tx?.service?.split(" ")[0] ?? "";
+  const phone =
+    bill?.customer_identifier ??
+    (typeof tx?.reference === "string" ? tx.reference : "");
+  const channel =
+    bill?.provider_channel ||
+    (typeof bill?.metadata?.["channel"] === "string" ? String(bill.metadata["channel"]) : null) ||
+    (isAirtime ? "vtpass" : null);
+  const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
+
+  const onRefresh = async () => {
+    if (!isAirtime || status !== "pending") return;
+    setRefreshing(true);
+    try {
+      await checkAirtime({ data: { reference: txId } });
+      await refresh();
+      await loadBill();
+      toast.success("Status updated");
+    } catch (e) {
+      toast.error(friendlyError(e, "Could not refresh status"));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const copy = (label: string, value: string) => {
+    if (!value) return;
+    navigator.clipboard?.writeText(value);
+    toast.success(`${label} copied`);
+  };
+
+  if (!tx && !loadingBill && !bill) {
     return (
       <AppShell>
         <PageHeader title="Transaction Details" backTo="/history" />
@@ -45,52 +128,99 @@ function TransactionDetails() {
   return (
     <AppShell>
       <PageHeader title="Transaction Details" backTo="/history" />
-      <div className="space-y-5 px-4 pt-2 pb-6">
+      <div className="space-y-4 px-4 pt-2 pb-6">
         <div className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-5 shadow-card">
           <img
             src={BRAND.logoUrl}
             alt={`${BRAND.name} logo`}
             className="h-[clamp(2.5rem,11vw,3.5rem)] w-auto object-contain"
           />
-          <StatusBadge status={tx.status} />
-
-          <p className="text-sm font-bold">{tx.title}</p>
+          <StatusBadge status={status === "successful" || status === "pending" || status === "failed" ? status : "pending"} />
+          <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
           <p className="text-3xl font-extrabold tabular-nums">
-            {tx.direction === "in" ? "+" : "-"}
-            {formatNaira(tx.amount, false)}
+            {tx?.direction === "in" ? "+" : "-"}
+            {formatNaira(amount, false)}
           </p>
+          {status === "pending" ? (
+            <p className="max-w-xs text-center text-xs text-muted-foreground">
+              Your transaction is still being confirmed.
+            </p>
+          ) : null}
         </div>
 
         <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
-          <InfoRow label="Transaction ID" value={tx.id} />
-          <InfoRow label="Service" value={tx.service} />
-          {tx.customer ? <InfoRow label="Customer" value={tx.customer} /> : null}
-          {tx.reference ? <InfoRow label="Reference" value={tx.reference} /> : null}
-          <InfoRow label="Amount" value={formatNaira(tx.amount)} />
-          <InfoRow label="Date" value={tx.date} />
-          <InfoRow label="Time" value={tx.time} />
-          <InfoRow label="Payment Method" value={tx.method} />
+          {network ? <InfoRow label="Network / Service" value={`${network}${bill?.service ? ` · ${bill.service}` : ""}`} /> : null}
+          {phone ? (
+            <InfoRow
+              label="Number"
+              value={phone.startsWith("0") || phone.length >= 10 ? maskTail(phone.replace(/\D/g, "")) : phone}
+            />
+          ) : null}
+          <InfoRow label="Amount" value={formatNaira(amount)} />
+          <div className="flex items-center justify-between gap-2 py-2.5">
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground">RockPay Reference</p>
+              <p className="truncate font-mono text-xs font-semibold">{txId}</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 rounded-lg text-xs font-bold" onClick={() => copy("Reference", txId)}>
+              <Copy className="size-3.5" /> Copy
+            </Button>
+          </div>
+          {channel ? <InfoRow label="Provider" value={channel === "vtpass" ? "VTpass" : channel} /> : null}
+          {providerRef ? (
+            <div className="flex items-center justify-between gap-2 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">Provider Reference</p>
+                <p className="truncate font-mono text-xs font-semibold">{providerRef}</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 rounded-lg text-xs font-bold" onClick={() => copy("Provider ref", providerRef)}>
+                <Copy className="size-3.5" /> Copy
+              </Button>
+            </div>
+          ) : null}
+          <InfoRow
+            label="Date"
+            value={
+              bill?.created_at
+                ? new Date(bill.created_at).toLocaleString("en-NG", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim()
+            }
+          />
+          {tx?.method ? <InfoRow label="Payment Method" value={tx.method} /> : null}
         </div>
 
-        {tx.token ? (
+        {tx?.token ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
             <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
             <p className="mt-1 text-lg font-extrabold tracking-[0.15em]">{tx.token}</p>
           </div>
         ) : null}
 
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => {
-              navigator.clipboard?.writeText(tx.id);
-              toast.success("Reference copied");
-            }}
-          >
-            <Copy className="size-4" /> Copy reference
-          </Button>
-          <CareContextLink reference={tx.id} status={tx.status} />
+        <div className="space-y-2">
+          {status === "pending" && isAirtime ? (
+            <Button
+              className="h-12 w-full rounded-2xl font-bold"
+              disabled={refreshing}
+              onClick={() => void onRefresh()}
+            >
+              {refreshing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              Refresh Status
+            </Button>
+          ) : null}
+          {status === "failed" ? (
+            <Button className="h-12 w-full rounded-2xl font-bold" asChild>
+              <Link to="/pay/$slug" params={{ slug: "airtime" }}>
+                Try Again
+              </Link>
+            </Button>
+          ) : null}
+          <CareContextLink reference={txId} status={status === "successful" || status === "pending" || status === "failed" ? status : "pending"} />
         </div>
       </div>
     </AppShell>
