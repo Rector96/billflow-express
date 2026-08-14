@@ -1,15 +1,28 @@
 -- Security hardening:
--- 1) Revoke demo funding/payment RPCs from authenticated users
+-- 1) Revoke/disable demo funding/payment RPCs for authenticated users
 -- 2) Transaction PIN table + set/verify/change with bcrypt + rate limit/lockout
 -- 3) secure_bill_payment requires a valid PIN server-side
+--
+-- Safe to re-run (idempotent CREATE OR REPLACE / IF NOT EXISTS).
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
--- ========== REVOKE DEMO MONEY MOVEMENT ==========
-REVOKE ALL ON FUNCTION public.demo_fund_wallet(numeric, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.demo_fund_wallet(numeric, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) TO service_role;
+-- ========== REVOKE DEMO MONEY MOVEMENT (tolerant of signature variants) ==========
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN ('demo_fund_wallet', 'demo_bill_payment')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', r.sig);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', r.sig);
+  END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.demo_fund_wallet(_amount numeric, _description text DEFAULT 'Demo wallet funding')
 RETURNS TABLE (reference text, balance_after numeric)
@@ -29,6 +42,11 @@ BEGIN
   RAISE EXCEPTION 'demo_payment_disabled';
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.demo_fund_wallet(numeric, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.demo_fund_wallet(numeric, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.demo_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb) TO service_role;
 
 CREATE TABLE IF NOT EXISTS public.transaction_pins (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -173,3 +191,6 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.secure_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.secure_bill_payment(text, text, text, numeric, text, public.tx_status, jsonb, text) TO authenticated, service_role;
+
+-- Notify PostgREST to reload schema so new RPCs are visible immediately
+NOTIFY pgrst, 'reload schema';
