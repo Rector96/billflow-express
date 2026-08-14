@@ -81,7 +81,6 @@ export function AdminShell({
     e.preventDefault();
     const term = q.trim();
     if (!term) return;
-    // Route search to transactions or users based on shape
     if (/^WAL-|BIL-|TXN-/i.test(term) || term.length > 20) {
       window.location.href = `/admin/transactions?q=${encodeURIComponent(term)}`;
     } else {
@@ -91,10 +90,10 @@ export function AdminShell({
 
   const Sidebar = (
     <div className="flex h-full flex-col">
-      <div className="mb-6 flex items-center gap-2 px-2">
-        <BrandMark className="size-8" />
+      <div className="mb-6 flex items-center gap-2.5 px-2">
+        <BrandMark className="size-9" />
         <div>
-          <p className="text-sm font-extrabold">{BRAND.name}</p>
+          <p className="text-sm font-extrabold tracking-tight">{BRAND.name}</p>
           <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">Operations</p>
         </div>
       </div>
@@ -107,13 +106,13 @@ export function AdminShell({
               to={n.to}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
                 active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
               )}
             >
-              <n.icon className="size-4 shrink-0" />
+              <n.icon className={cn("size-4 shrink-0", active && "text-primary")} />
               {n.label}
             </Link>
           );
@@ -121,7 +120,7 @@ export function AdminShell({
       </nav>
       <Link
         to="/home"
-        className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/40"
+        className="press mt-4 flex items-center gap-2 rounded-xl border border-border/80 px-3 py-2.5 text-xs font-bold text-muted-foreground hover:bg-muted/50"
       >
         ← Back to app
       </Link>
@@ -130,21 +129,23 @@ export function AdminShell({
 
   return (
     <div className="min-h-dvh bg-background lg:flex">
-      <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar px-3 py-5 lg:flex">{Sidebar}</aside>
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 lg:flex">
+        {Sidebar}
+      </aside>
 
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close menu" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-xl">{Sidebar}</div>
+          <button type="button" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" aria-label="Close menu" onClick={() => setOpen(false)} />
+          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">{Sidebar}</div>
         </div>
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b bg-background/95 px-4 py-3 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur-md lg:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              className="grid size-10 place-items-center rounded-xl border lg:hidden"
+              className="press grid size-10 place-items-center rounded-xl border border-border/80 bg-card shadow-soft lg:hidden"
               onClick={() => setOpen(true)}
               aria-label="Open menu"
             >
@@ -160,13 +161,13 @@ export function AdminShell({
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search users or refs…"
-                className="h-10 w-full rounded-xl border bg-card pr-3 pl-9 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                className="h-10 w-full rounded-xl border border-border/80 bg-card pr-3 pl-9 text-sm shadow-soft outline-none focus:ring-2 focus:ring-primary/25"
               />
             </form>
             {actions}
           </div>
         </header>
-        <div className="flex-1 px-4 py-5 lg:px-8">{children}</div>
+        <div className="page-fade flex-1 px-4 py-5 lg:px-8">{children}</div>
       </main>
     </div>
   );
@@ -184,15 +185,19 @@ export function KpiCard({
   delta?: number | null;
 }) {
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-card">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-extrabold tracking-tight">{value}</p>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+    <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+      <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="mt-1.5 text-xl font-extrabold tracking-tight tabular-nums">{value}</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
         {delta !== undefined ? (
           <span
             className={cn(
-              "font-bold",
-              delta === null ? "text-muted-foreground" : delta >= 0 ? "text-success" : "text-destructive",
+              "rounded-full px-1.5 py-0.5 font-bold",
+              delta === null
+                ? "bg-muted text-muted-foreground"
+                : delta >= 0
+                  ? "bg-success-soft text-success"
+                  : "bg-destructive-soft text-destructive",
             )}
           >
             {formatPct(delta ?? null)}
@@ -206,18 +211,26 @@ export function KpiCard({
 
 export function AdminEmpty({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-dashed bg-card/50 px-6 py-12 text-center">
-      <p className="text-sm font-bold">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+    <div className="rounded-2xl border border-dashed border-border/80 bg-card/60 px-6 py-12 text-center">
+      <p className="text-sm font-extrabold">{title}</p>
+      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{body}</p>
     </div>
   );
 }
 
 export function AdminLoading({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-      <div className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      {label}
+    <div className="space-y-3 py-4" aria-busy="true" aria-label={label}>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border border-border/60 bg-card p-4">
+            <div className="skeleton h-3 w-20" />
+            <div className="skeleton mt-3 h-7 w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="skeleton h-48 w-full rounded-2xl" />
+      <p className="text-center text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }
