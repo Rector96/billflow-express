@@ -373,6 +373,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean }
       admin_dashboard_stats: { Args: never; Returns: Json }
       bootstrap_current_user: {
         Args: { _full_name?: string; _phone?: string }
@@ -455,7 +456,7 @@ export type Database = {
           _amount: number
           _customer_identifier: string
           _metadata?: Json
-          _pin: string
+          _pin?: string
           _product: string
           _provider: string
           _service: string
