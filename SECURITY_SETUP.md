@@ -1,10 +1,12 @@
-# Security setup (required after the PIN / secure payment changes)
+# Security setup (PIN + secure payments)
 
 The app no longer uses client-only demo PIN or unrestricted demo money RPCs.
 
+**Prefer the full external guide:** [EXTERNAL_SUPABASE_SETUP.md](./EXTERNAL_SUPABASE_SETUP.md)
+
 ## 1. Apply the database migration (required)
 
-In the **Supabase SQL Editor** (or `supabase db push`), run:
+On **your** Supabase project (SQL Editor or `supabase db push`), run **all** migrations in order, especially:
 
 `supabase/migrations/20260814020000_security_pin_and_revoke_demo.sql`
 
@@ -27,12 +29,12 @@ After applying, users must **set a 4-digit transaction PIN** under **Profile →
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `VITE_SUPABASE_PROJECT_ID` (optional)
 
-### Server (Netlify / Lovable / Node SSR)
+### Server (Netlify / Node SSR)
 
 - `SUPABASE_URL` (same project URL)
 - `SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server only — never expose to the client)
-- `PAYSTACK_SECRET_KEY` (server only)
+- `PAYSTACK_SECRET_KEY` (server only, `sk_test_...`)
 
 Server functions (PIN set/change, Paystack) read `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` from the process environment. If only `VITE_*` are set, Security page PIN actions will fail on the server.
 
