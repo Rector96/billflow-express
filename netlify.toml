@@ -1,7 +1,10 @@
-# Netlify deployment config — RockPay (TanStack Start + Nitro SSR)
+# Netlify deployment — BillFlow Express (TanStack Start + Nitro SSR)
 # vite.config.ts switches Nitro to the "netlify" preset when NETLIFY=true,
 # which emits static assets to dist/ and the SSR handler to
 # .netlify/functions-internal, with the SSR fallback redirect declared below.
+#
+# Full backend setup: EXTERNAL_SUPABASE_SETUP.md
+
 [build]
   command = "npm run build"
   publish = "dist"
@@ -10,14 +13,14 @@
   NODE_VERSION = "22"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# Required environment variables (set these in Netlify → Site settings → Environment):
-#   VITE_SUPABASE_URL
-#   VITE_SUPABASE_PUBLISHABLE_KEY
-#   VITE_SUPABASE_PROJECT_ID
-#   SUPABASE_URL
-#   SUPABASE_PUBLISHABLE_KEY
-#   SUPABASE_SERVICE_ROLE_KEY   (server-side only)
-#   PAYSTACK_SECRET_KEY         (server-side only)
+# Required environment variables (Site settings → Environment):
+#   VITE_SUPABASE_URL              — your project URL (build-time)
+#   VITE_SUPABASE_PUBLISHABLE_KEY  — anon / sb_publishable_ (build-time)
+#   VITE_SUPABASE_PROJECT_ID       — optional project ref
+#   SUPABASE_URL                   — same URL (runtime SSR)
+#   SUPABASE_PUBLISHABLE_KEY       — same publishable key (runtime)
+#   SUPABASE_SERVICE_ROLE_KEY      — service_role / sb_secret_ (server only)
+#   PAYSTACK_SECRET_KEY            — sk_test_... (server only)
 
 # Nitro's netlify preset emits the SSR handler as the internal function "server".
 # Static files in dist/ win first; everything else (deep links, refreshes, /api/*)
