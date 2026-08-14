@@ -20,6 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { friendlyError, useApp } from "@/lib/app-store";
 import {
+  lastSuccessfulProvider,
+  recentAmountsForService,
+  recentPackagesForService,
+  recentSavedForService,
+  type RecentBeneficiary,
+} from "@/lib/fast-pay";
+import {
   formatNaira,
   getService,
   maskTail,
@@ -79,9 +86,32 @@ function PayFlow() {
   const search = Route.useSearch();
   const savedId = search.saved;
   const navigate = useNavigate();
-  const { balance, payBill, saved } = useApp();
+  const { balance, payBill, saved, transactions } = useApp();
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === savedId);
+
+  const recentBeneficiaries = useMemo(
+    () => (service ? recentSavedForService(service.slug, saved, 3) : []),
+    [service, saved],
+  );
+  const amountPresets = useMemo(
+    () =>
+      service
+        ? recentAmountsForService(service.slug, transactions, service.quickAmounts, 4)
+        : [],
+    [service, transactions],
+  );
+  const recentPacks = useMemo(
+    () =>
+      service?.mode === "package"
+        ? recentPackagesForService(service.slug, transactions, service.packages, 3)
+        : [],
+    [service, transactions],
+  );
+  const lastProvider = useMemo(
+    () => (service ? lastSuccessfulProvider(service.slug, transactions) : null),
+    [service, transactions],
+  );
 
   const prefillProvider = savedItem?.provider ?? search.provider ?? "";
   const prefillIdentifier = savedItem?.identifier ?? search.identifier ?? "";
@@ -105,6 +135,9 @@ function PayFlow() {
   const [outcome] = useState<TxStatus>("successful");
   const [txId, setTxId] = useState("");
   const [error, setError] = useState("");
+  const [fromPrefill, setFromPrefill] = useState(
+    Boolean(savedItem || prefillProvider || prefillIdentifier),
+  );
 
   const total = pack ? pack.price : Number(amount || 0);
   const now = useMemo(() => new Date(), []);
@@ -122,6 +155,30 @@ function PayFlow() {
     );
   }
 
+  const applyBeneficiary = (b: RecentBeneficiary) => {
+    setProvider(b.provider);
+    setIdentifier(b.identifier);
+    setFromPrefill(true);
+    setError("");
+    if (b.lastAmount) setAmount(String(b.lastAmount));
+    if (service.verifies) {
+      setVerifying(true);
+      setStep("verify");
+      setTimeout(() => setVerifying(false), 900);
+    } else {
+      setStep("amount");
+    }
+  };
+
+  const clearPrefill = () => {
+    setFromPrefill(false);
+    setProvider("");
+    setIdentifier("");
+    setAmount("");
+    setPack(null);
+    setStep("provider");
+  };
+
   const startVerify = () => {
     if (!identifier.trim() || identifier.trim().length < 5) {
       setError(`Enter a valid ${service.identifierLabel.toLowerCase()}`);
@@ -134,7 +191,7 @@ function PayFlow() {
     }
     setVerifying(true);
     setStep("verify");
-    setTimeout(() => setVerifying(false), 1500);
+    setTimeout(() => setVerifying(false), 900);
   };
 
   const runPayment = async (authorizedPin: string) => {
@@ -164,6 +221,19 @@ function PayFlow() {
     }
   };
 
+  const PrefillBanner = () =>
+    fromPrefill && (provider || identifier) ? (
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-primary-soft/50 px-2.5 py-2">
+        <p className="text-[11px] font-semibold text-foreground">
+          Using your saved details · {provider}
+          {identifier ? ` · ${maskTail(identifier)}` : ""}
+        </p>
+        <button type="button" className="text-[11px] font-bold text-primary" onClick={clearPrefill}>
+          Change
+        </button>
+      </div>
+    ) : null;
+
   /* ---------- RESULT ---------- */
   if (step === "result") {
     const map = {
@@ -189,51 +259,48 @@ function PayFlow() {
 
     return (
       <AppShell>
-        <div className="px-4 py-8">
-          <div className="animate-in fade-in flex flex-col items-center gap-3 text-center">
-            <span className={cn("animate-in zoom-in grid size-20 place-items-center rounded-full", map.cls)}>
-              <map.Icon className="size-10" />
+        <div className="px-4 py-6">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <span className={cn("grid size-16 place-items-center rounded-full", map.cls)}>
+              <map.Icon className="size-8" />
             </span>
-            <h1 className="text-2xl font-extrabold">{map.title}</h1>
-            <p className="max-w-xs text-sm text-muted-foreground">{map.body}</p>
-            <p className="text-3xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+            <h1 className="text-xl font-extrabold">{map.title}</h1>
+            <p className="max-w-xs text-xs text-muted-foreground">{map.body}</p>
+            <p className="text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
           </div>
 
-          <div className="mt-6 divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
+          <div className="mt-4 divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
             <InfoRow label="Service" value={`${provider} ${service.name}`} />
-            {service.customerName ? <InfoRow label="Customer" value={service.customerName} /> : null}
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
             {pack ? <InfoRow label="Package" value={pack.name} /> : null}
             <InfoRow label="Amount" value={formatNaira(total)} />
-            <InfoRow label="Payment method" value="Wallet Balance" />
-            <InfoRow label="Date" value={`${dateStr} • ${timeStr}`} />
             <InfoRow label="Transaction ID" value={txId} />
           </div>
 
           {outcome === "successful" && service.slug === "electricity" ? (
-            <div className="mt-4 rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
-              <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
-              <p className="mt-1 text-xl font-extrabold tracking-[0.15em]">1234 5678 9012 3456</p>
+            <div className="mt-3 rounded-xl border border-dashed bg-primary-soft p-3 text-center">
+              <p className="text-[10px] font-semibold text-muted-foreground">Electricity Token</p>
+              <p className="mt-1 text-lg font-extrabold tracking-[0.12em]">1234 5678 9012 3456</p>
               <Button
                 variant="outline"
-                className="press mt-3 h-11 w-full rounded-xl font-bold"
+                className="press mt-2 h-10 w-full rounded-xl text-xs font-bold"
                 onClick={() => {
                   navigator.clipboard?.writeText("1234567890123456");
                   toast.success("Token copied");
                 }}
               >
-                <Copy className="size-4" /> Copy Token
+                <Copy className="size-3.5" /> Copy Token
               </Button>
             </div>
           ) : null}
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-4 space-y-2">
             {outcome === "failed" ? (
               <>
-                <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => setStep("confirm")}>
+                <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
                   Try Again
                 </Button>
-                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" asChild>
+                <Button variant="outline" className="h-11 w-full rounded-xl font-bold" asChild>
                   <Link to="/support" search={txId ? { reference: txId } : {}}>
                     Get help from RockPay Care
                   </Link>
@@ -241,43 +308,33 @@ function PayFlow() {
               </>
             ) : null}
             {outcome === "pending" ? (
-              <>
-                <Button
-                  className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => toast.info("Still pending — check back shortly")}
-                >
-                  Refresh Status
-                </Button>
-                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" asChild>
-                  <Link to="/support" search={txId ? { reference: txId } : {}}>
-                    Contact RockPay Care
-                  </Link>
-                </Button>
-              </>
+              <Button variant="outline" className="h-11 w-full rounded-xl font-bold" asChild>
+                <Link to="/support" search={txId ? { reference: txId } : {}}>
+                  Contact RockPay Care
+                </Link>
+              </Button>
             ) : null}
-            {outcome === "successful" ? (
+            {outcome === "successful" && txId ? (
               <Button
                 variant="outline"
-                className="h-13 w-full rounded-2xl font-bold"
+                className="h-11 w-full rounded-xl font-bold"
                 onClick={() => {
-                  if (txId) {
-                    navigator.clipboard?.writeText(txId);
-                    toast.success("Reference copied");
-                  }
+                  navigator.clipboard?.writeText(txId);
+                  toast.success("Reference copied");
                 }}
               >
-                <Copy className="size-4" /> Copy reference
+                <Copy className="size-3.5" /> Copy reference
               </Button>
             ) : null}
             <Button
               variant={outcome === "successful" ? "default" : "ghost"}
-              className="h-13 w-full rounded-2xl font-bold"
+              className="h-11 w-full rounded-xl font-bold"
               onClick={() => navigate({ to: "/home" })}
             >
               {outcome === "successful" ? "Done" : "Back Home"}
             </Button>
             {outcome === "successful" && txId ? (
-              <Button variant="ghost" className="h-11 w-full rounded-2xl text-xs font-bold text-muted-foreground" asChild>
+              <Button variant="ghost" className="h-9 w-full text-xs font-bold text-muted-foreground" asChild>
                 <Link to="/support" search={{ reference: txId }}>
                   Something wrong? RockPay Care
                 </Link>
@@ -293,18 +350,13 @@ function PayFlow() {
   if (step === "processing") {
     return (
       <AppShell>
-        <div className="flex min-h-[75dvh] flex-col items-center justify-center gap-4 px-6 text-center">
-          <Loader2 className="size-12 animate-spin text-primary" />
-          <h1 className="text-xl font-extrabold">Processing Payment</h1>
-          <p className="max-w-xs text-sm text-muted-foreground">
-            Your payment is being processed. Please don't close this page.
+        <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
+          <Loader2 className="size-10 animate-spin text-primary" />
+          <h1 className="text-lg font-extrabold">Confirming your payment securely…</h1>
+          <p className="max-w-xs text-xs text-muted-foreground">
+            Please don't close this page until we finish verifying.
           </p>
-          <div className="mt-2 rounded-2xl border bg-card px-6 py-3 text-center shadow-card">
-            <p className="text-lg font-extrabold">{formatNaira(total, false)}</p>
-            <p className="text-xs text-muted-foreground">
-              {provider} {service.name}
-            </p>
-          </div>
+          <p className="text-base font-extrabold tabular-nums">{formatNaira(total, false)}</p>
         </div>
       </AppShell>
     );
@@ -315,15 +367,15 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Enter Transaction PIN" onBack={() => setStep("confirm")} />
-        <div className="px-4 pt-6">
-          <p className="text-center text-sm text-muted-foreground">
+        <div className="px-4 pt-4">
+          <p className="text-center text-xs text-muted-foreground">
             Enter your 4-digit PIN to authorize this payment.
           </p>
-          <div className="mt-8">
+          <div className="mt-6">
             <PinPad value={pin} onChange={setPin} />
           </div>
           <Button
-            className="mt-8 h-13 w-full rounded-2xl text-base font-bold"
+            className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
             disabled={pin.length < 4}
             onClick={() => {
               const authorized = pin;
@@ -343,53 +395,46 @@ function PayFlow() {
     const insufficient = total > balance;
     return (
       <AppShell>
-        <PageHeader
-          title="Confirm Payment"
-          onBack={() => setStep(service.mode === "package" ? "amount" : "amount")}
-        />
-        <div className="space-y-5 px-4 pt-2 pb-6">
-          <div className="flex flex-col items-center gap-2 rounded-2xl border bg-card p-5 shadow-card">
-            <span className={cn("grid size-12 place-items-center rounded-2xl", service.tint)}>
-              <service.icon className="size-6" />
+        <PageHeader title="Confirm Payment" onBack={() => setStep("amount")} />
+        <div className="space-y-3 px-4 pt-1 pb-6">
+          <div className="flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card p-4">
+            <span className={cn("grid size-10 place-items-center rounded-xl", service.tint)}>
+              <service.icon className="size-5" />
             </span>
-            <p className="text-sm font-bold">
+            <p className="text-xs font-bold">
               {provider} {service.name}
             </p>
-            <p className="text-3xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+            <p className="text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
           </div>
 
-          <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
-            {service.customerName ? <InfoRow label="Customer" value={service.customerName} /> : null}
+          <div className="divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
-            {pack ? <InfoRow label="Package" value={`${pack.name} • ${formatNaira(pack.price, false)}`} /> : null}
+            {pack ? <InfoRow label="Package" value={`${pack.name} · ${formatNaira(pack.price, false)}`} /> : null}
             <InfoRow label="Amount" value={formatNaira(total)} />
-            <InfoRow label="Payment Method" value="Wallet Balance" />
-            <InfoRow label="Current Balance" value={formatNaira(balance)} />
-            <InfoRow label="Balance After" value={formatNaira(Math.max(balance - total, 0))} />
+            <InfoRow label="Wallet balance" value={formatNaira(balance)} />
+            <InfoRow label="After payment" value={formatNaira(Math.max(balance - total, 0))} />
           </div>
 
           {insufficient ? (
-            <div className="flex items-start gap-3 rounded-2xl bg-destructive-soft p-3 text-destructive">
+            <div className="flex items-start gap-2 rounded-xl bg-destructive-soft p-2.5 text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <p className="text-xs font-semibold">
-                Insufficient balance. Fund your wallet to complete this payment.
-              </p>
+              <p className="text-xs font-semibold">Insufficient balance. Fund your wallet first.</p>
             </div>
           ) : null}
 
           {insufficient ? (
-            <Button className="h-13 w-full rounded-2xl font-bold" asChild>
+            <Button className="h-11 w-full rounded-xl font-bold" asChild>
               <Link to="/wallet/fund" search={{}}>Fund Wallet</Link>
             </Button>
           ) : (
             <Button
-              className="h-13 w-full rounded-2xl text-base font-bold"
+              className="h-11 w-full rounded-xl text-sm font-bold"
               onClick={() => {
                 setPin("");
                 setStep("pin");
               }}
             >
-              Pay {formatNaira(total, false)}
+              Confirm & Pay {formatNaira(total, false)}
             </Button>
           )}
         </div>
@@ -402,76 +447,116 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader
-          title={service.mode === "package" ? "Select Package" : "Enter Amount"}
-          subtitle={`${provider} • ${service.name}`}
+          title={service.mode === "package" ? "Select package" : "Enter amount"}
+          subtitle={`${provider} · ${maskTail(identifier) || service.name}`}
           onBack={() => setStep(service.verifies ? "verify" : "identifier")}
         />
-        <div className="space-y-5 px-4 pt-2 pb-6">
+        <div className="space-y-3 px-4 pt-1 pb-6">
+          <PrefillBanner />
+
           {service.mode === "package" ? (
-            <div className="space-y-3">
-              {service.packages?.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPack(p)}
-                  className={cn(
-                    "press flex w-full items-center justify-between gap-3 rounded-2xl border bg-card p-4 text-left shadow-card",
-                    pack?.id === p.id ? "border-primary bg-primary-soft" : "",
-                  )}
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-bold">{p.name}</span>
-                    {p.note ? (
-                      <span className="block text-xs text-muted-foreground">{p.note}</span>
-                    ) : null}
-                  </span>
-                  <span className="shrink-0 text-sm font-extrabold">{formatNaira(p.price, false)}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              {recentPacks.length > 0 ? (
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">Recent plans</p>
+                  <div className="space-y-1.5">
+                    {recentPacks.map((p) => (
+                      <button
+                        key={`r-${p.id}`}
+                        type="button"
+                        onClick={() => setPack(p)}
+                        className={cn(
+                          "press flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left",
+                          pack?.id === p.id
+                            ? "border-primary bg-primary-soft"
+                            : "border-border/70 bg-card",
+                        )}
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold">{p.name}</span>
+                          {p.note ? (
+                            <span className="block text-[10px] text-muted-foreground">{p.note}</span>
+                          ) : null}
+                        </span>
+                        <span className="text-xs font-extrabold">{formatNaira(p.price, false)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="space-y-1.5">
+                {service.packages?.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPack(p)}
+                    className={cn(
+                      "press flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left",
+                      pack?.id === p.id ? "border-primary bg-primary-soft" : "border-border/70 bg-card",
+                    )}
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold">{p.name}</span>
+                      {p.note ? (
+                        <span className="block text-[10px] text-muted-foreground">{p.note}</span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs font-extrabold">{formatNaira(p.price, false)}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           ) : (
             <>
-              <div className="rounded-2xl border bg-card p-5 text-center shadow-card">
-                <Label htmlFor="amount" className="text-xs text-muted-foreground">
+              <div className="rounded-xl border border-border/70 bg-card p-4 text-center">
+                <Label htmlFor="amount" className="text-[10px] text-muted-foreground">
                   Amount to pay
                 </Label>
-                <div className="mt-2 flex items-center justify-center gap-1">
-                  <span className="text-2xl font-extrabold">₦</span>
+                <div className="mt-1 flex items-center justify-center gap-1">
+                  <span className="text-xl font-extrabold">₦</span>
                   <Input
                     id="amount"
                     inputMode="numeric"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
                     placeholder="0"
-                    className="h-14 border-0 bg-transparent text-center text-3xl font-extrabold shadow-none focus-visible:ring-0"
+                    className="h-12 border-0 bg-transparent text-center text-2xl font-extrabold shadow-none focus-visible:ring-0"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-2">
-                {service.quickAmounts?.map((q) => (
+              <div className="grid grid-cols-4 gap-1.5">
+                {amountPresets.map((q) => (
                   <button
                     key={q}
                     type="button"
                     onClick={() => setAmount(String(q))}
                     className={cn(
-                      "press h-11 rounded-xl border bg-card text-xs font-bold",
-                      amount === String(q) ? "border-primary bg-primary-soft text-primary" : "",
+                      "press h-9 rounded-lg border text-[11px] font-bold",
+                      amount === String(q)
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border/70 bg-card",
                     )}
                   >
                     {formatNaira(q, false)}
                   </button>
                 ))}
               </div>
-              <p className="text-center text-xs text-muted-foreground">
-                Min: ₦100 • Max: ₦50,000 per transaction
+              <p className="text-center text-[10px] text-muted-foreground">
+                Min ₦100 · Max ₦50,000 per transaction
               </p>
             </>
           )}
 
           <Button
-            className="h-13 w-full rounded-2xl text-base font-bold"
+            className="h-11 w-full rounded-xl text-sm font-bold"
             disabled={total < 100}
-            onClick={() => setStep("confirm")}
+            onClick={() => {
+              if (service.mode === "package" && !pack) {
+                toast.error("Select a package");
+                return;
+              }
+              setStep("confirm");
+            }}
           >
             Continue
           </Button>
@@ -484,32 +569,30 @@ function PayFlow() {
   if (step === "verify") {
     return (
       <AppShell>
-        <PageHeader title="Verify Customer" onBack={() => setStep("identifier")} />
-        <div className="space-y-5 px-4 pt-2 pb-6">
+        <PageHeader title="Verify" onBack={() => setStep("identifier")} />
+        <div className="space-y-3 px-4 pt-1 pb-6">
+          <PrefillBanner />
           {verifying ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-center gap-2 py-6 text-sm font-semibold text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Verifying {service.identifierLabel.toLowerCase()}…
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 py-4 text-xs font-semibold text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Checking {service.identifierLabel.toLowerCase()}…
               </div>
-              <RowSkeleton />
               <RowSkeleton />
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 rounded-2xl bg-success-soft p-3 text-success">
-                <CheckCircle2 className="size-5" />
-                <p className="text-sm font-bold">Customer Found</p>
+              <div className="flex items-center gap-2 rounded-xl bg-success-soft p-2.5 text-success">
+                <CheckCircle2 className="size-4" />
+                <p className="text-xs font-bold">Customer found</p>
               </div>
-              <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
-                <InfoRow label="Customer Name" value={service.customerName ?? "Verified customer"} />
-                {service.address ? <InfoRow label="Address" value={service.address} /> : null}
-                <InfoRow label={service.identifierLabel} value={identifier} />
+              <div className="divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
+                {service.customerName ? (
+                  <InfoRow label="Customer" value={service.customerName} />
+                ) : null}
+                <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
                 <InfoRow label="Provider" value={provider} />
               </div>
-              <Button
-                className="h-13 w-full rounded-2xl text-base font-bold"
-                onClick={() => setStep("amount")}
-              >
+              <Button className="h-11 w-full rounded-xl text-sm font-bold" onClick={() => setStep("amount")}>
                 Continue
               </Button>
             </>
@@ -524,34 +607,31 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title={service.name} subtitle={provider} onBack={() => setStep("provider")} />
-        <div className="space-y-5 px-4 pt-2 pb-6">
-          <div className="space-y-2">
-            <Label htmlFor="identifier">{service.identifierLabel}</Label>
+        <div className="space-y-3 px-4 pt-1 pb-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="identifier" className="text-xs">
+              {service.identifierLabel}
+            </Label>
             <Input
               id="identifier"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder={service.identifierPlaceholder}
               inputMode={service.numeric ? "numeric" : "text"}
-              className="h-13 rounded-xl bg-card"
+              className="h-11 rounded-xl bg-card"
               aria-invalid={Boolean(error)}
             />
-            {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+            {error ? <p className="text-[11px] font-medium text-destructive">{error}</p> : null}
           </div>
 
           {service.identifierHelp ? (
-            <div className="flex items-start gap-3 rounded-2xl bg-primary-soft p-3">
-              <HelpCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div>
-                <p className="text-xs font-bold">
-                  How to find your {service.identifierLabel.toLowerCase()}
-                </p>
-                <p className="text-xs text-muted-foreground">{service.identifierHelp}</p>
-              </div>
+            <div className="flex items-start gap-2 rounded-xl bg-primary-soft p-2.5">
+              <HelpCircle className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              <p className="text-[10px] text-muted-foreground">{service.identifierHelp}</p>
             </div>
           ) : null}
 
-          <Button className="h-13 w-full rounded-2xl text-base font-bold" onClick={startVerify}>
+          <Button className="h-11 w-full rounded-xl text-sm font-bold" onClick={startVerify}>
             Continue
           </Button>
         </div>
@@ -559,36 +639,68 @@ function PayFlow() {
     );
   }
 
-  /* ---------- PROVIDER ---------- */
+  /* ---------- PROVIDER (+ recent) ---------- */
   return (
     <AppShell>
-      <PageHeader title={`Pay ${service.name}`} backTo="/services" />
-      <div className="space-y-5 px-4 pt-2 pb-6">
+      <PageHeader title={`Pay ${service.name}`} backTo="/home" />
+      <div className="space-y-3 px-4 pt-1 pb-6">
+        {recentBeneficiaries.length > 0 ? (
+          <div>
+            <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">Saved</p>
+            <div className="space-y-1.5">
+              {recentBeneficiaries.map((b) => (
+                <button
+                  key={b.key}
+                  type="button"
+                  onClick={() => applyBeneficiary(b)}
+                  className="press flex w-full items-center gap-2.5 rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left"
+                >
+                  <span className={cn("grid size-8 place-items-center rounded-lg", service.tint)}>
+                    <service.icon className="size-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold">{b.label}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      {b.provider} · {b.masked}
+                    </p>
+                  </div>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div>
-          <p className="text-sm font-bold">{service.providerLabel}</p>
-          <p className="text-xs text-muted-foreground">Choose from the providers below</p>
-        </div>
-        <div className="space-y-2">
-          {service.providers.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => {
-                setProvider(p);
-                setStep("identifier");
-              }}
-              className={cn(
-                "press flex w-full items-center gap-3 rounded-2xl border bg-card p-3.5 text-left shadow-card",
-                provider === p ? "border-primary" : "",
-              )}
-            >
-              <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", service.tint)}>
-                <service.icon className="size-5" />
-              </span>
-              <span className="flex-1 text-sm font-bold">{p}</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
-          ))}
+          <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">{service.providerLabel}</p>
+          <div className="space-y-1.5">
+            {service.providers.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  setProvider(p);
+                  setFromPrefill(false);
+                  setStep("identifier");
+                }}
+                className={cn(
+                  "press flex w-full items-center gap-2.5 rounded-xl border bg-card p-2.5 text-left",
+                  provider === p || lastProvider === p
+                    ? "border-primary/60"
+                    : "border-border/70",
+                )}
+              >
+                <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", service.tint)}>
+                  <service.icon className="size-3.5" />
+                </span>
+                <span className="flex-1 text-xs font-bold">{p}</span>
+                {lastProvider === p ? (
+                  <span className="text-[10px] font-bold text-primary">Recent</span>
+                ) : null}
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </AppShell>
