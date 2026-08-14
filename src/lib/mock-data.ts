@@ -57,8 +57,6 @@ export const DEMO_USER = {
   billpayId: "48291736",
 };
 
-export const DEMO_PIN = "1234";
-
 export type ServiceSlug =
   | "electricity"
   | "cable"
