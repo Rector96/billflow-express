@@ -9,10 +9,20 @@
 export const PAYSTACK_API = "https://api.paystack.co";
 
 export function getPaystackSecret(): string {
-  const key = process.env["PAYSTACK_SECRET_KEY"];
-  if (!key) throw new Error("Paystack is not configured yet.");
+  // Read per-request — never at module scope (edge/SSR inject env at request time).
+  const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  if (!key) {
+    throw new Error(
+      "Paystack is not configured yet. Set PAYSTACK_SECRET_KEY (sk_test_...) in Netlify environment variables and redeploy.",
+    );
+  }
   if (key.startsWith("sk_live_")) {
-    throw new Error("Live Paystack keys are not allowed — this build is test mode only.");
+    throw new Error("Live Paystack keys are not allowed — this build is test mode only. Use sk_test_...");
+  }
+  if (!key.startsWith("sk_test_")) {
+    throw new Error(
+      "Invalid Paystack secret key. Expected a test key starting with sk_test_...",
+    );
   }
   return key;
 }
@@ -33,9 +43,12 @@ export async function paystackVerify(reference: string): Promise<PaystackVerifyD
     headers: { Authorization: `Bearer ${getPaystackSecret()}` },
   });
   const json = (await res.json().catch(() => null)) as
-    | { status?: boolean; data?: PaystackVerifyData }
+    | { status?: boolean; data?: PaystackVerifyData; message?: string }
     | null;
-  if (!res.ok || !json?.status || !json.data) return null;
+  if (!res.ok || !json?.status || !json.data) {
+    console.error("[paystack] verify failed", reference, res.status, json?.message ?? json);
+    return null;
+  }
   return json.data;
 }
 
