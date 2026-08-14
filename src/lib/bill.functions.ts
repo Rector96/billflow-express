@@ -52,7 +52,7 @@ export const secureBillPayment = createServerFn({ method: "POST" })
       _amount: data.amount,
       _customer_identifier: data.customerIdentifier,
       _status: data.status,
-      _metadata: data.metadata,
+      _metadata: data.metadata as unknown as Json,
       _pin: data.pin,
     });
     if (error) {
