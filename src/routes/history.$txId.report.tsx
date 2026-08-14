@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { friendlyError, useApp } from "@/lib/app-store";
+import { friendlyError, toTicketCategory, useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
@@ -23,18 +23,18 @@ export const Route = createFileRoute("/history/$txId/report")({
   component: ReportPage,
 });
 
-const REASONS = [
-  "Payment not received",
-  "Wrong amount",
-  "Transaction pending",
-  "Token not received",
-  "Other",
+const REASONS: Array<{ label: string; category: string; reason: string }> = [
+  { label: "Payment not received", category: "payment_not_received", reason: "not_received" },
+  { label: "Wrong amount", category: "wrong_amount", reason: "wrong_amount" },
+  { label: "Transaction pending", category: "pending_transaction", reason: "taking_too_long" },
+  { label: "Token not received", category: "token_not_received", reason: "token_missing" },
+  { label: "Other", category: "other", reason: "something_else" },
 ];
 
 function ReportPage() {
   const { txId } = Route.useParams();
   const navigate = useNavigate();
-  const [reason, setReason] = useState("");
+  const [reasonLabel, setReasonLabel] = useState("");
   const [details, setDetails] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
@@ -42,12 +42,18 @@ function ReportPage() {
   const { createSupportTicket } = useApp();
 
   const submit = async () => {
+    const picked = REASONS.find((r) => r.label === reasonLabel);
+    if (!picked) {
+      toast.error("Choose what went wrong");
+      return;
+    }
     setSending(true);
     try {
       const id = await createSupportTicket({
         reference: txId,
-        category: reason === "Payment not received" ? "transaction" : "other",
-        description: `${reason}${details.trim() ? ` — ${details.trim()}` : ""} (Transaction ${txId})`,
+        category: toTicketCategory(picked.category),
+        reason: picked.reason,
+        description: `${picked.label}${details.trim() ? ` — ${details.trim()}` : ""} (Transaction ${txId})`,
       });
       setTicket(`TKT-${id.slice(0, 8).toUpperCase()}`);
       setSubmitted(true);
@@ -89,19 +95,19 @@ function ReportPage() {
           <p className="text-sm font-bold">What went wrong?</p>
           {REASONS.map((r) => (
             <button
-              key={r}
+              key={r.label}
               type="button"
-              onClick={() => setReason(r)}
+              onClick={() => setReasonLabel(r.label)}
               className={cn(
                 "press flex w-full items-center justify-between rounded-2xl border bg-card p-3.5 text-left text-sm font-semibold shadow-card",
-                reason === r ? "border-primary bg-primary-soft text-primary" : "",
+                reasonLabel === r.label ? "border-primary bg-primary-soft text-primary" : "",
               )}
             >
-              {r}
+              {r.label}
               <span
                 className={cn(
                   "size-4 rounded-full border-2",
-                  reason === r ? "border-primary bg-primary" : "border-border",
+                  reasonLabel === r.label ? "border-primary bg-primary" : "border-border",
                 )}
               />
             </button>
@@ -122,7 +128,7 @@ function ReportPage() {
 
         <Button
           className="h-13 w-full rounded-2xl text-base font-bold"
-          disabled={!reason || sending}
+          disabled={!reasonLabel || sending}
           onClick={() => void submit()}
         >
           {sending ? "Submitting…" : "Submit Report"}

@@ -72,6 +72,7 @@ type AppState = {
     reference?: string | undefined;
     category: string;
     description: string;
+    reason?: string | undefined;
   }) => Promise<string>;
   refresh: () => Promise<void>;
 };
@@ -79,6 +80,25 @@ type AppState = {
 const Ctx = createContext<AppState | null>(null);
 
 const PREFS_KEY = "billpay-prefs-v1";
+
+const VALID_TICKET_CATEGORIES = new Set([
+  "payment_not_received",
+  "wrong_amount",
+  "pending_transaction",
+  "token_not_received",
+  "other",
+]);
+
+/** Map free-text / legacy labels → ticket_category enum */
+export function toTicketCategory(raw: string): string {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (VALID_TICKET_CATEGORIES.has(s)) return s;
+  if (s.includes("not received") || s === "transaction") return "payment_not_received";
+  if (s.includes("wrong amount") || s.includes("debited")) return "wrong_amount";
+  if (s.includes("pending")) return "pending_transaction";
+  if (s.includes("token")) return "token_not_received";
+  return "other";
+}
 
 /** Prefer actionable messages; hide only raw stacks. */
 export function friendlyError(error: unknown, fallback = "Something went wrong. Please try again.") {
@@ -91,6 +111,14 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
     return "Set a transaction PIN in Security before paying.";
   if (message.includes("invalid_pin") || message.includes("Incorrect PIN"))
     return "Incorrect PIN.";
+  if (message.includes("invalid_phone") || message.includes("valid Nigerian"))
+    return "Enter a valid Nigerian mobile number.";
+  if (message.includes("unsupported_network"))
+    return "That network is not supported for airtime yet.";
+  if (message.includes("VTpass is not configured") || message.includes("VTPASS_API_KEY"))
+    return "Airtime provider is not configured on the server. Check VTpass sandbox keys on Netlify.";
+  if (message.includes("live mode is disabled") || message.includes("VTPASS_MODE"))
+    return "VTpass live mode is disabled. Use sandbox keys only.";
   if (message.includes("demo_funding_disabled") || message.includes("Demo wallet funding"))
     return "Demo wallet funding is disabled. Use Fund Wallet instead.";
   if (message.includes("demo_payment_disabled"))
@@ -98,15 +126,29 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
   if (message.includes("not authenticated") || message.includes("JWT"))
     return "Your session has expired. Please log in again.";
   if (
-    message.includes("secure_bill_payment") ||
-    message.includes("has_transaction_pin") ||
-    message.includes("set_transaction_pin") ||
-    message.includes("change_transaction_pin") ||
-    message.includes("verify_transaction_pin") ||
+    message.includes("create_care_ticket") ||
+    message.includes("support_tickets") ||
+    message.includes("ticket_category") ||
+    message.includes("invalid input value for enum")
+  ) {
+    return "Could not open RockPay Care. Apply the Care database migration, then try again.";
+  }
+  if (
+    message.includes("start_airtime_purchase") ||
+    message.includes("complete_airtime_purchase") ||
     message.includes("Could not find the function") ||
     message.includes("schema cache") ||
     message.includes("PGRST202") ||
     message.includes("42883")
+  ) {
+    return "Payment setup is incomplete. Apply the latest database migrations, then try again.";
+  }
+  if (
+    message.includes("secure_bill_payment") ||
+    message.includes("has_transaction_pin") ||
+    message.includes("set_transaction_pin") ||
+    message.includes("change_transaction_pin") ||
+    message.includes("verify_transaction_pin")
   ) {
     return "Payment security is not fully set up yet. Apply the latest database migration, then set a transaction PIN in Security.";
   }
@@ -452,29 +494,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setNotifications((list) => list.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
       },
-      createSupportTicket: async ({ reference, category, description }) => {
+      createSupportTicket: async ({ reference, category, description, reason }) => {
         if (!userId) throw new Error("not authenticated");
-        let transactionId: string | null = null;
-        if (reference) {
-          const { data } = await supabase
-            .from("bill_transactions")
-            .select("id")
-            .eq("internal_reference", reference)
-            .maybeSingle();
-          transactionId = data?.id ?? null;
-        }
-        const { data, error } = await supabase
-          .from("support_tickets")
-          .insert({
-            user_id: userId,
-            transaction_id: transactionId,
-            category: category as never,
-            description,
-          })
-          .select("id")
-          .single();
+        const cat = toTicketCategory(category);
+        const { data, error } = await supabase.rpc("create_care_ticket", {
+          _category: cat,
+          _description: description,
+          _subject: description.slice(0, 80),
+          _reason: reason ?? null,
+          _transaction_id: null,
+          _reference: reference ?? null,
+        });
         if (error) throw error;
-        return data.id;
+        const row = data as { id: string; ticket_number?: string; duplicate?: boolean };
+        if (!row?.id) throw new Error("Could not open RockPay Care request.");
+        return row.id;
       },
       refresh: loadAll,
     }),
