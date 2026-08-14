@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ReceiptText, Search } from "lucide-react";
+import { ReceiptText, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, TransactionRow } from "@/components/app/ui-bits";
@@ -34,16 +34,16 @@ type DateKey = "all" | "today" | "yesterday" | "7d" | "month" | "last_month";
 
 const STATUS: Array<{ key: StatusKey; label: string }> = [
   { key: "all", label: "All" },
-  { key: "successful", label: "OK" },
+  { key: "successful", label: "Successful" },
   { key: "pending", label: "Pending" },
   { key: "failed", label: "Failed" },
 ];
 
 const CATEGORY: Array<{ key: CategoryKey; label: string }> = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All services" },
   { key: "airtime", label: "Airtime" },
   { key: "data", label: "Data" },
-  { key: "electricity", label: "Power" },
+  { key: "electricity", label: "Electricity" },
   { key: "cable", label: "Cable" },
   { key: "other", label: "Other" },
 ];
@@ -52,7 +52,7 @@ const DATES: Array<{ key: DateKey; label: string }> = [
   { key: "all", label: "Any time" },
   { key: "today", label: "Today" },
   { key: "yesterday", label: "Yesterday" },
-  { key: "7d", label: "7 days" },
+  { key: "7d", label: "Last 7 days" },
   { key: "month", label: "This month" },
   { key: "last_month", label: "Last month" },
 ];
@@ -104,8 +104,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "press h-7 shrink-0 rounded-full border px-2.5 text-[11px] font-bold",
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border/70 bg-card text-muted-foreground",
+        "press h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold transition-colors",
+        active
+          ? "bg-primary text-primary-foreground shadow-soft"
+          : "bg-muted/80 text-muted-foreground hover:bg-muted",
       )}
     >
       {children}
@@ -119,6 +121,7 @@ function HistoryPage() {
   const [category, setCategory] = useState<CategoryKey>("all");
   const [dateKey, setDateKey] = useState<DateKey>("all");
   const [q, setQ] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -134,56 +137,102 @@ function HistoryPage() {
     });
   }, [transactions, status, category, dateKey, q]);
 
+  const extraActive = category !== "all" || dateKey !== "all";
+
   return (
     <AppShell>
-      <PageHeader title="Transactions" backTo="/home" />
+      <PageHeader title="History" backTo="/home" />
       <div className="space-y-3 px-4 pt-1 pb-6">
+        {/* Search */}
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search service, amount, ref…"
+            placeholder="Search transactions"
             aria-label="Search transactions"
-            className="h-9 rounded-xl bg-card pl-8 text-sm"
+            className="h-11 rounded-2xl border-border/60 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        {/* Primary status row — matches mock: All | Successful | Pending | Failed */}
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS.map((t) => (
               <Chip key={t.key} active={status === t.key} onClick={() => setStatus(t.key)}>
                 {t.label}
               </Chip>
             ))}
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {CATEGORY.map((t) => (
-              <Chip key={t.key} active={category === t.key} onClick={() => setCategory(t.key)}>
-                {t.label}
-              </Chip>
-            ))}
-          </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-            {DATES.map((t) => (
-              <Chip key={t.key} active={dateKey === t.key} onClick={() => setDateKey(t.key)}>
-                {t.label}
-              </Chip>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            aria-label="More filters"
+            className={cn(
+              "press grid size-9 shrink-0 place-items-center rounded-full border",
+              moreOpen || extraActive
+                ? "border-primary bg-primary-soft text-primary"
+                : "border-border/70 bg-card text-muted-foreground",
+            )}
+          >
+            <SlidersHorizontal className="size-4" />
+          </button>
         </div>
 
+        {/* Secondary filters — collapsed by default to avoid scatter */}
+        {moreOpen ? (
+          <div className="space-y-2.5 rounded-2xl border border-border/60 bg-card p-3 shadow-soft">
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+                Service
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORY.map((t) => (
+                  <Chip key={t.key} active={category === t.key} onClick={() => setCategory(t.key)}>
+                    {t.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+                Date
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {DATES.map((t) => (
+                  <Chip key={t.key} active={dateKey === t.key} onClick={() => setDateKey(t.key)}>
+                    {t.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            {extraActive ? (
+              <button
+                type="button"
+                className="text-xs font-bold text-primary"
+                onClick={() => {
+                  setCategory("all");
+                  setDateKey("all");
+                }}
+              >
+                Clear service & date filters
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         {list.length ? (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {list.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} compact />
+              <TransactionRow key={tx.id} tx={tx} />
             ))}
           </div>
         ) : (
           <EmptyState
             Icon={ReceiptText}
             title="No matching transactions"
-            body="Try another status, category, date or search term."
+            body="Try another status or open filters for service and date."
           />
         )}
       </div>
