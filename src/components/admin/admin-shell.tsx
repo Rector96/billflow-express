@@ -7,6 +7,7 @@ import {
   HeartHandshake,
   LayoutDashboard,
   Menu,
+  Scale,
   Search,
   Settings,
   Shield,
@@ -26,6 +27,7 @@ export type AdminNavId =
   | "dashboard"
   | "users"
   | "transactions"
+  | "reconciliation"
   | "wallet"
   | "services"
   | "care"
@@ -39,6 +41,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", to: "/admin", icon: LayoutDashboard },
   { id: "users", label: "Users", to: "/admin/users", icon: Users },
   { id: "transactions", label: "Transactions", to: "/admin/transactions", icon: ArrowLeftRight },
+  { id: "reconciliation", label: "Reconciliation", to: "/admin/reconciliation", icon: Scale },
   { id: "wallet", label: "Wallet", to: "/admin/wallet", icon: Wallet },
   { id: "services", label: "Services", to: "/admin/services", icon: Boxes },
   { id: "care", label: "Care", to: "/admin/care", icon: HeartHandshake },
@@ -51,6 +54,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
 
 function activeId(pathname: string): AdminNavId {
   if (pathname.startsWith("/admin/users")) return "users";
+  if (pathname.startsWith("/admin/reconciliation")) return "reconciliation";
   if (pathname.startsWith("/admin/transactions")) return "transactions";
   if (pathname.startsWith("/admin/wallet")) return "wallet";
   if (pathname.startsWith("/admin/services")) return "services";
