@@ -1,12 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { Bell } from "lucide-react";
 import { AppShell, BrandMark } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
-import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
+import { BuyAgainRail } from "@/components/app/buy-again-rail";
+import { CareEntryCard } from "@/components/app/care-entry";
+import { SectionTitle, ServiceTile, TransactionRow, RowSkeleton } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
+import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
-import { MoreIcon, SERVICES, getService, greeting, initialsOf } from "@/lib/mock-data";
+import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -23,51 +28,152 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
+const HOME_SERVICES = ["airtime", "data", "electricity", "cable"] as const;
 
 function HomePage() {
-  const { profile, transactions, saved } = useApp();
   const navigate = useNavigate();
-  const firstName = profile.name.split(" ")[0] || "there";
+  const { profile, transactions, saved, unreadCount, loading, hydrated } = useApp();
+  const firstName = (profile.name.split(" ")[0] || "there").trim();
+
+  const buyAgain = useMemo(
+    () => buildBuyAgain(transactions, saved, 3),
+    [transactions, saved],
+  );
+
+  const savedHome = useMemo(() => {
+    // Unique by service+provider, max 3
+    const seen = new Set<string>();
+    const out = [];
+    for (const item of saved) {
+      const key = `${item.serviceSlug}|${item.provider}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+      if (out.length >= 3) break;
+    }
+    return out;
+  }, [saved]);
+
+  const recent = useMemo(() => transactions.slice(0, 4), [transactions]);
+  const showSkeleton = hydrated && loading && transactions.length === 0 && !profile.name;
 
   return (
     <AppShell>
-      <header className="brand-gradient rounded-b-[2rem] px-4 pt-6 pb-20 text-primary-foreground">
+      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-5 pb-16 text-primary-foreground sm:pt-6 sm:pb-20">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <BrandMark className="size-9 bg-white/90 p-1 sm:size-10" />
+            <BrandMark className="size-9 bg-white/95 p-1 ring-white/30 sm:size-10" />
             <div className="min-w-0">
-              <p className="text-xs opacity-85">{greeting()},</p>
-              <h1 className="truncate text-xl font-extrabold">{firstName} 👋</h1>
+              <p className="text-xs opacity-90">{greeting()},</p>
+              <h1 className="truncate text-lg font-extrabold tracking-tight sm:text-xl">
+                {firstName} 👋
+              </h1>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
-              aria-label="Notifications"
-              className="press relative grid size-10 place-items-center rounded-xl bg-white/15"
+              aria-label={
+                unreadCount > 0
+                  ? `Notifications, ${unreadCount} unread`
+                  : "Notifications"
+              }
+              className="press relative grid size-10 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20"
             >
               <Bell className="size-5" />
-              <span className="absolute top-2 right-2.5 size-2 rounded-full bg-warning" />
+              {unreadCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-extrabold text-warning-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
             </Link>
             <Link
               to="/profile"
               aria-label="Your profile"
               className="press grid size-10 place-items-center rounded-full border border-white/30 bg-white/15 text-sm font-bold"
             >
-              {initialsOf(profile.name)}
+              {initialsOf(profile.name || "U")}
             </Link>
           </div>
         </div>
       </header>
 
-      <div className="-mt-16 space-y-7 px-4 pb-6">
+      <div className="-mt-12 space-y-6 px-4 pb-6 sm:-mt-14 sm:space-y-7">
         <WalletCard />
+
+        {showSkeleton ? (
+          <div className="space-y-3" aria-busy="true">
+            <div className="skeleton h-4 w-28" />
+            <RowSkeleton />
+            <RowSkeleton />
+          </div>
+        ) : (
+          <BuyAgainRail items={buyAgain} empty={buyAgain.length === 0} />
+        )}
+
+        <section>
+          <SectionTitle title="Saved" action="See All" to="/saved-payments" />
+          {savedHome.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/80 bg-card/70 px-4 py-5 text-center">
+              <p className="text-sm font-bold">Save a service for faster payments</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Save meters, phones and smartcards you use often.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-3 h-10 rounded-xl font-bold"
+                onClick={() => navigate({ to: "/saved-payments" })}
+              >
+                Save a Service
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {savedHome.map((item) => {
+                const svc = getService(item.serviceSlug);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-card"
+                  >
+                    <span
+                      className={cn(
+                        "grid size-10 shrink-0 place-items-center rounded-xl",
+                        svc?.tint ?? "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {svc ? <svc.icon className="size-5" /> : null}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{item.label}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.provider} • {item.masked}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-xl px-4 font-bold"
+                      onClick={() =>
+                        navigate({
+                          to: "/pay/$slug",
+                          params: { slug: item.serviceSlug },
+                          search: { saved: item.id },
+                        })
+                      }
+                    >
+                      Pay
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section>
           <SectionTitle title="Pay Bills" />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 sm:gap-3">
             {HOME_SERVICES.map((slug) => {
               const s = getService(slug)!;
               return (
@@ -91,70 +197,27 @@ function HomePage() {
         </section>
 
         <section>
-          <SectionTitle title="Quick Pay" action="See All" to="/saved-payments" />
-          <div className="space-y-3">
-            {saved
-              .filter((item, i, arr) => arr.findIndex((x) => x.serviceSlug === item.serviceSlug) === i)
-              .slice(0, 2)
-              .map((item) => {
-              const svc = getService(item.serviceSlug)!;
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-card"
-                >
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${svc.tint}`}>
-                    <svc.icon className="size-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">{item.label}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.provider} • {item.masked}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="press h-9 rounded-lg px-5 font-bold"
-                    onClick={() =>
-                      navigate({
-                        to: "/pay/$slug",
-                        params: { slug: item.serviceSlug },
-                        search: { saved: item.id },
-                      })
-                    }
-                  >
-                    Pay
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+          <SectionTitle title="Recent Activity" action="View All" to="/history" />
+          {recent.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/80 bg-card/70 px-4 py-6 text-center">
+              <p className="text-sm font-bold">Ready when you are</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pay for airtime, data, electricity and more. Your recent payments will show up here.
+              </p>
+              <Button className="mt-3 h-10 rounded-xl font-bold" onClick={() => navigate({ to: "/services" })}>
+                Make a Payment
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {recent.map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} />
+              ))}
+            </div>
+          )}
         </section>
 
-        <section>
-          <SectionTitle title="Recent Transactions" action="See All" to="/history" />
-          <div className="space-y-3">
-            {transactions.slice(0, 4).map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} />
-            ))}
-          </div>
-        </section>
-
-        <section className="flex items-center gap-3 rounded-2xl bg-primary-soft p-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-            🔒
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold">Easy, Reliable, Secure</p>
-            <p className="text-xs text-muted-foreground">
-              Every payment on {BRAND.name} is recorded and receipted.
-            </p>
-          </div>
-        </section>
-
-        <p className="text-center text-[11px] text-muted-foreground">
-          Demo build — {SERVICES.length} services available with sample data.
-        </p>
+        <CareEntryCard />
       </div>
     </AppShell>
   );
