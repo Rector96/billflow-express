@@ -1,7 +1,7 @@
 # Netlify deployment config — RockPay (TanStack Start + Nitro SSR)
 # vite.config.ts switches Nitro to the "netlify" preset when NETLIFY=true,
 # which emits static assets to dist/ and the SSR handler to
-# .netlify/functions-internal, so no manual redirects are needed.
+# .netlify/functions-internal, with the SSR fallback redirect declared below.
 [build]
   command = "npm run build"
   publish = "dist"
