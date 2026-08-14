@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Clock3,
   Copy,
-  HelpCircle,
   Loader2,
   XCircle,
 } from "lucide-react";
@@ -138,6 +137,8 @@ function PayFlow() {
   const [outcome, setOutcome] = useState<TxStatus>("successful");
   const [resultMessage, setResultMessage] = useState("");
   const [txId, setTxId] = useState("");
+  const [providerRequestId, setProviderRequestId] = useState("");
+  const [providerTxId, setProviderTxId] = useState("");
   const [error, setError] = useState("");
   const [fromPrefill, setFromPrefill] = useState(
     Boolean(savedItem || prefillProvider || prefillIdentifier),
@@ -198,6 +199,8 @@ function PayFlow() {
   const runPayment = async (authorizedPin: string) => {
     setStep("processing");
     setResultMessage("");
+    setProviderRequestId("");
+    setProviderTxId("");
     try {
       if (service.slug === "airtime") {
         const res = await buyAirtime({
@@ -209,6 +212,8 @@ function PayFlow() {
           },
         });
         setTxId(res.reference);
+        setProviderRequestId(res.requestId ?? "");
+        setProviderTxId(res.providerTransactionId ?? "");
         setOutcome(res.status);
         setResultMessage(res.message);
         await refresh();
@@ -244,6 +249,8 @@ function PayFlow() {
       const res = await checkAirtime({ data: { reference: txId } });
       setOutcome(res.status);
       setResultMessage(res.message);
+      setProviderRequestId(res.requestId ?? providerRequestId);
+      setProviderTxId(res.providerTransactionId ?? providerTxId);
       await refresh();
       setStep("result");
     } catch (err) {
@@ -304,7 +311,13 @@ function PayFlow() {
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
             {pack ? <InfoRow label="Package" value={pack.name} /> : null}
             <InfoRow label="Amount" value={formatNaira(total)} />
-            <InfoRow label="Transaction ID" value={txId} />
+            <InfoRow label="RockPay reference" value={txId || "—"} />
+            {service.slug === "airtime" && providerRequestId ? (
+              <InfoRow label="VTpass request ID" value={providerRequestId} />
+            ) : null}
+            {service.slug === "airtime" && providerTxId ? (
+              <InfoRow label="Provider transaction" value={providerTxId} />
+            ) : null}
           </div>
 
           <div className="mt-4 space-y-2">
@@ -339,7 +352,14 @@ function PayFlow() {
                 variant="outline"
                 className="h-11 w-full rounded-xl font-bold"
                 onClick={() => {
-                  navigator.clipboard?.writeText(txId);
+                  const text = [
+                    txId,
+                    providerRequestId ? `VTpass: ${providerRequestId}` : "",
+                    providerTxId ? `Provider TX: ${providerTxId}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n");
+                  navigator.clipboard?.writeText(text);
                   toast.success("Reference copied");
                 }}
               >
