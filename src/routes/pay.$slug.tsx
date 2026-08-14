@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
-import { InfoRow, RowSkeleton } from "@/components/app/ui-bits";
+import { InfoRow } from "@/components/app/ui-bits";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +92,8 @@ function PayFlow() {
   const savedItem = saved.find((s) => s.id === savedId);
   const buyAirtime = useServerFn(purchaseAirtime);
   const checkAirtime = useServerFn(requeryAirtime);
+  const payingLock = useRef(false);
+  const refreshLock = useRef(false);
 
   const recentBeneficiaries = useMemo(
     () => (service ? recentSavedForService(service.slug, saved, 3) : []),
@@ -134,7 +136,8 @@ function PayFlow() {
   const [amount, setAmount] = useState(prefillAmount);
   const [pack, setPack] = useState<Package | null>(null);
   const [pin, setPin] = useState("");
-  const [outcome, setOutcome] = useState<TxStatus>("successful");
+  /** Never assume success — only server outcome after pay */
+  const [outcome, setOutcome] = useState<TxStatus>("pending");
   const [resultMessage, setResultMessage] = useState("");
   const [txId, setTxId] = useState("");
   const [providerRequestId, setProviderRequestId] = useState("");
@@ -197,10 +200,13 @@ function PayFlow() {
   };
 
   const runPayment = async (authorizedPin: string) => {
+    if (payingLock.current) return;
+    payingLock.current = true;
     setStep("processing");
     setResultMessage("");
     setProviderRequestId("");
     setProviderTxId("");
+    setOutcome("pending");
     try {
       if (service.slug === "airtime") {
         const res = await buyAirtime({
@@ -239,24 +245,43 @@ function PayFlow() {
     } catch (err) {
       toast.error(friendlyError(err, "We couldn't complete this payment."));
       setStep("confirm");
+    } finally {
+      payingLock.current = false;
     }
   };
 
   const refreshAirtimeStatus = async () => {
-    if (!txId) return;
+    if (!txId || refreshLock.current) return;
+    refreshLock.current = true;
     setStep("processing");
     try {
       const res = await checkAirtime({ data: { reference: txId } });
       setOutcome(res.status);
       setResultMessage(res.message);
-      setProviderRequestId(res.requestId ?? providerRequestId);
-      setProviderTxId(res.providerTransactionId ?? providerTxId);
+      setProviderRequestId(res.requestId || providerRequestId);
+      setProviderTxId(res.providerTransactionId || providerTxId);
       await refresh();
       setStep("result");
+      if (res.status === "pending") {
+        toast.message("Still confirming — try again in a moment");
+      }
     } catch (err) {
-      toast.error(friendlyError(err, "Could not refresh status."));
+      toast.error(
+        friendlyError(
+          err,
+          "We couldn't confirm this payment yet. Your money is still protected.",
+        ),
+      );
       setStep("result");
+    } finally {
+      refreshLock.current = false;
     }
+  };
+
+  const copyText = (label: string, value: string) => {
+    if (!value) return;
+    navigator.clipboard?.writeText(value);
+    toast.success(`${label} copied`);
   };
 
   const PrefillBanner = () =>
@@ -277,14 +302,16 @@ function PayFlow() {
       successful: {
         Icon: CheckCircle2,
         cls: "bg-success-soft text-success",
-        title: service.slug === "airtime" ? "Airtime purchase successful" : "Payment Successful",
+        title: service.slug === "airtime" ? "Payment successful" : "Payment Successful",
         body: resultMessage || `Your ${service.name.toLowerCase()} payment was successful.`,
       },
       pending: {
         Icon: Clock3,
         cls: "bg-warning-soft text-warning-foreground",
-        title: service.slug === "airtime" ? "Confirming your Airtime…" : "Payment Pending",
-        body: resultMessage || "Your payment is still being confirmed. This is not a failure.",
+        title: "Payment is being confirmed",
+        body:
+          resultMessage ||
+          "This is not a failure. Your money is held until the network confirms.",
       },
       failed: {
         Icon: XCircle,
@@ -296,31 +323,69 @@ function PayFlow() {
 
     return (
       <AppShell>
-        <div className="px-4 py-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <span className={cn("grid size-16 place-items-center rounded-full", map.cls)}>
-              <map.Icon className="size-8" />
+        <div className="px-4 py-5">
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <span className={cn("grid size-14 place-items-center rounded-full", map.cls)}>
+              <map.Icon className="size-7" />
             </span>
-            <h1 className="text-xl font-extrabold">{map.title}</h1>
+            <h1 className="text-lg font-extrabold">{map.title}</h1>
             <p className="max-w-xs text-xs text-muted-foreground">{map.body}</p>
             <p className="text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
           </div>
 
-          <div className="mt-4 divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
+          <div className="mt-3 divide-y rounded-xl border border-border/70 bg-card px-3 py-0.5">
             <InfoRow label="Service" value={`${provider} ${service.name}`} />
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
             {pack ? <InfoRow label="Package" value={pack.name} /> : null}
             <InfoRow label="Amount" value={formatNaira(total)} />
-            <InfoRow label="RockPay reference" value={txId || "—"} />
+            {txId ? (
+              <div className="flex items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">RockPay Reference</p>
+                  <p className="truncate font-mono text-xs font-semibold">{txId}</p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-[11px] font-bold text-primary"
+                  onClick={() => copyText("RockPay reference", txId)}
+                >
+                  Copy
+                </button>
+              </div>
+            ) : null}
             {service.slug === "airtime" && providerRequestId ? (
-              <InfoRow label="VTpass request ID" value={providerRequestId} />
+              <div className="flex items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">VTpass Request ID</p>
+                  <p className="truncate font-mono text-xs font-semibold">{providerRequestId}</p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-[11px] font-bold text-primary"
+                  onClick={() => copyText("VTpass request ID", providerRequestId)}
+                >
+                  Copy
+                </button>
+              </div>
             ) : null}
             {service.slug === "airtime" && providerTxId ? (
-              <InfoRow label="Provider transaction" value={providerTxId} />
+              <div className="flex items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground">Provider Transaction ID</p>
+                  <p className="truncate font-mono text-xs font-semibold">{providerTxId}</p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-[11px] font-bold text-primary"
+                  onClick={() => copyText("Provider transaction ID", providerTxId)}
+                >
+                  Copy
+                </button>
+              </div>
             ) : null}
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-3 space-y-2">
             {outcome === "failed" ? (
               <>
                 <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
@@ -328,7 +393,7 @@ function PayFlow() {
                 </Button>
                 <Button variant="outline" className="h-11 w-full rounded-xl font-bold" asChild>
                   <Link to="/support" search={txId ? { reference: txId } : {}}>
-                    Get help from RockPay Care
+                    RockPay Care
                   </Link>
                 </Button>
               </>
@@ -342,44 +407,51 @@ function PayFlow() {
                 ) : null}
                 <Button variant="outline" className="h-11 w-full rounded-xl font-bold" asChild>
                   <Link to="/support" search={txId ? { reference: txId } : {}}>
-                    Contact RockPay Care
+                    RockPay Care
                   </Link>
                 </Button>
               </>
             ) : null}
-            {outcome === "successful" && txId ? (
-              <Button
-                variant="outline"
-                className="h-11 w-full rounded-xl font-bold"
-                onClick={() => {
-                  const text = [
-                    txId,
-                    providerRequestId ? `VTpass: ${providerRequestId}` : "",
-                    providerTxId ? `Provider TX: ${providerTxId}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join("\n");
-                  navigator.clipboard?.writeText(text);
-                  toast.success("Reference copied");
-                }}
-              >
-                <Copy className="size-3.5" /> Copy reference
-              </Button>
+            {outcome === "successful" ? (
+              <>
+                {service.slug === "airtime" ? (
+                  <Button
+                    className="h-11 w-full rounded-xl font-bold"
+                    onClick={() => {
+                      setStep("provider");
+                      setOutcome("pending");
+                      setTxId("");
+                      setProviderRequestId("");
+                      setProviderTxId("");
+                      setResultMessage("");
+                    }}
+                  >
+                    Buy Again
+                  </Button>
+                ) : null}
+                {txId ? (
+                  <Button variant="outline" className="h-11 w-full rounded-xl font-bold" asChild>
+                    <Link to="/history/$txId" params={{ txId }}>
+                      View Transaction
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button variant="ghost" className="h-10 w-full text-xs font-bold text-muted-foreground" asChild>
+                  <Link to="/support" search={txId ? { reference: txId } : {}}>
+                    RockPay Care
+                  </Link>
+                </Button>
+              </>
             ) : null}
-            <Button
-              variant={outcome === "successful" ? "default" : "ghost"}
-              className="h-11 w-full rounded-xl font-bold"
-              onClick={() => navigate({ to: "/home" })}
-            >
-              {outcome === "successful" ? "Done" : "Back Home"}
-            </Button>
-            {outcome === "successful" && txId ? (
-              <Button variant="ghost" className="h-9 w-full text-xs font-bold text-muted-foreground" asChild>
-                <Link to="/support" search={{ reference: txId }}>
-                  Something wrong? RockPay Care
-                </Link>
+            {outcome !== "successful" ? (
+              <Button variant="ghost" className="h-10 w-full text-xs font-bold" onClick={() => navigate({ to: "/home" })}>
+                Back Home
               </Button>
-            ) : null}
+            ) : (
+              <Button variant="ghost" className="h-10 w-full text-xs font-bold" onClick={() => navigate({ to: "/home" })}>
+                Done
+              </Button>
+            )}
           </div>
         </div>
       </AppShell>
@@ -418,8 +490,9 @@ function PayFlow() {
           </div>
           <Button
             className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-            disabled={pin.length < 4}
+            disabled={pin.length < 4 || payingLock.current}
             onClick={() => {
+              if (payingLock.current || pin.length < 4) return;
               const authorized = pin;
               setPin("");
               void runPayment(authorized);
