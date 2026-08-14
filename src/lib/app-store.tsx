@@ -80,7 +80,7 @@ const Ctx = createContext<AppState | null>(null);
 
 const PREFS_KEY = "billpay-prefs-v1";
 
-/** Never surface raw backend errors to users. */
+/** Prefer actionable messages; hide only raw stacks. */
 export function friendlyError(error: unknown, fallback = "Something went wrong. Please try again.") {
   const message = error instanceof Error ? error.message : String(error ?? "");
   console.error("[billpay]", message);
@@ -97,7 +97,6 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
     return "This payment method is no longer available.";
   if (message.includes("not authenticated") || message.includes("JWT"))
     return "Your session has expired. Please log in again.";
-  // Schema not migrated yet (secure_bill_payment / PIN RPCs missing on Supabase)
   if (
     message.includes("secure_bill_payment") ||
     message.includes("has_transaction_pin") ||
@@ -113,6 +112,23 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
   }
   if (message.includes("Missing Supabase environment"))
     return "Server configuration is incomplete. Check Supabase environment variables on the host.";
+  if (
+    message.includes("Paystack is not configured") ||
+    message.includes("PAYSTACK_SECRET_KEY") ||
+    message.includes("sk_test_") ||
+    message.includes("Live Paystack")
+  ) {
+    return message;
+  }
+  if (message.includes("create_wallet_funding_intent") || message.includes("funding intent"))
+    return "Could not create funding intent. Check wallet setup and try again.";
+  if (message.includes("no email") || message.includes("email required") || message.includes("email on file"))
+    return "Your account needs an email. Update Profile, then try Fund Wallet again.";
+  if (message.includes("Unauthorized") || message.includes("Invalid token"))
+    return "Your session has expired. Please log in again.";
+  if (message && message.length > 0 && message.length < 220 && !message.includes("    at ")) {
+    return message;
+  }
   return fallback;
 }
 
@@ -358,7 +374,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hideBalance,
       toggleBalance: () => setHideBalance((v) => !v),
       fundWallet: async (_amount) => {
-        // Demo funding is disabled. Use Paystack via /wallet/fund only.
         throw new Error("Demo wallet funding is disabled. Use Fund Wallet (Paystack) instead.");
       },
       payBill: async (input) => {
