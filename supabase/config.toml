@@ -1,1 +1,4 @@
-project_id = "jbciznaeaiktxroreyei"
+# Replace with YOUR Supabase project ref (from https://YOUR_REF.supabase.co)
+# Used by the Supabase CLI when you run: supabase link / supabase db push
+# See EXTERNAL_SUPABASE_SETUP.md
+project_id = "YOUR_PROJECT_REF"
