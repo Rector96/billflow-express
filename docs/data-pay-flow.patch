@@ -1,0 +1,106 @@
+--- a/src/routes/pay.$slug.tsx
++++ b/src/routes/pay.$slug.tsx
+@@ -24,6 +24,7 @@
+   listVtpassServices,
+   listVtpassVariations,
+   purchaseCable,
++  purchaseData,
+   purchaseElectricity,
+   requeryBill,
+   verifyVtpassCustomer,
+@@ -112,13 +113,16 @@
+   const loadVariations = useServerFn(listVtpassVariations);
+   const verifyCustomer = useServerFn(verifyVtpassCustomer);
+   const buyCable = useServerFn(purchaseCable);
++  const buyData = useServerFn(purchaseData);
+   const buyElectricity = useServerFn(purchaseElectricity);
+   const checkBill = useServerFn(requeryBill);
+ 
+   const isAirtime = service?.slug === "airtime";
+   const isCable = service?.slug === "cable";
+   const isElectricity = service?.slug === "electricity";
++  const isData = service?.slug === "data";
+   const isProviderBill = isCable || isElectricity;
++  const isLiveCatalog = isCable || isElectricity || isData;
+ 
+   const payingLock = useRef(false);
+   const refreshLock = useRef(false);
+@@ -136,10 +140,10 @@
+   );
+   const recentPacks = useMemo(
+     () =>
+-      service?.mode === "package" && !isCable
++      service?.mode === "package" && !isCable && !isData
+         ? recentPackagesForService(service.slug, transactions, service.packages, 3)
+         : [],
+-    [service, transactions, isCable],
++    [service, transactions, isCable, isData],
+   );
+ 
+   const prefillProvider = savedItem?.provider ?? search.provider ?? "";
+-  const prefillIdentifier = savedItem?.identifier ?? search.identifier ?? "";
++  const prefillIdentifier =
++    savedItem?.identifier ??
++    search.identifier ??
++    (service?.slug === "data" && profile.phone ? profile.phone.replace(/\D/g, "").replace(/^234/, "0") : "") ??
++    "";
+ 
+   const initialStep: Step = (() => {
+     if (isElectricity && (savedItem || prefillProvider)) return "meterType";
++    if (isData && (savedItem || prefillProvider)) return "identifier";
+     if (savedItem || (prefillProvider && prefillIdentifier)) return isProviderBill ? "identifier" : "verify";
+     if (prefillProvider) return isElectricity ? "meterType" : "identifier";
+     return "provider";
+   })();
+
+-  const total = isCable && variation
++  const total = (isCable || isData) && variation
+     ? variation.amount
+     : pack
+       ? pack.price
+       : Number(amount || 0);
+
+-  // Load live catalogue for cable / electricity
++  // Load live catalogue for cable / electricity / data
+   useEffect(() => {
+-    if (!isProviderBill) return;
++    if (!isLiveCatalog) return;
+     let cancelled = false;
+     (async () => {
+       setCatalogLoading(true);
+       setCatalogError("");
+       try {
+-        const category = isCable ? "tv-subscription" : "electricity-bill";
++        const category = isCable
++          ? "tv-subscription"
++          : isElectricity
++            ? "electricity-bill"
++            : "data";
+         const list = await loadServices({ data: { category } });
+         if (!cancelled) setCatalogServices(list);
+       } catch (err) {
+         // ...
+       } finally {
+         if (!cancelled) setCatalogLoading(false);
+       }
+     })();
+     return () => {
+       cancelled = true;
+     };
+-  }, [isProviderBill, isCable, loadServices]);
++  }, [isLiveCatalog, isCable, isElectricity, loadServices]);
+
+-  // Load packages when cable provider selected
++  // Load packages when cable / data provider selected
+   useEffect(() => {
+-    if (!isCable || !serviceID) return;
++    if ((!isCable && !isData) || !serviceID) return;
+     // ... load variations
+-  }, [isCable, serviceID, loadVariations]);
++  }, [isCable, isData, serviceID, loadVariations]);
+
+ // In startVerify: add isData phone validation path before isProviderBill.
+ // In runPayment: add isData branch calling buyData.
+ // In pending UI: include isData for Refresh status.
+ // In amount step: treat isData like isCable for live variations.
+ // In provider options: use isLiveCatalog instead of isProviderBill.
