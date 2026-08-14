@@ -8,7 +8,6 @@ import {
   Copy,
   HelpCircle,
   Loader2,
-  Share2,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,11 +29,26 @@ import {
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
-type Search = { saved?: string | undefined };
+type Search = {
+  saved?: string | undefined;
+  provider?: string | undefined;
+  amount?: number | undefined;
+  identifier?: string | undefined;
+};
 
 export const Route = createFileRoute("/pay/$slug")({
-  validateSearch: (s: Record<string, unknown>): Search =>
-    typeof s["saved"] === "string" ? { saved: s["saved"] } : {},
+  validateSearch: (s: Record<string, unknown>): Search => {
+    const out: Search = {};
+    if (typeof s["saved"] === "string") out.saved = s["saved"];
+    if (typeof s["provider"] === "string") out.provider = s["provider"];
+    if (typeof s["identifier"] === "string") out.identifier = s["identifier"];
+    if (typeof s["amount"] === "number" && Number.isFinite(s["amount"])) out.amount = s["amount"] as number;
+    if (typeof s["amount"] === "string" && s["amount"].trim() !== "") {
+      const n = Number(s["amount"]);
+      if (Number.isFinite(n)) out.amount = n;
+    }
+    return out;
+  },
   head: ({ params }) => {
     const svc = getService(params.slug);
     const name = svc?.name ?? "Payment";
@@ -62,20 +76,33 @@ type Step =
 
 function PayFlow() {
   const { slug } = Route.useParams();
-  const { saved: savedId } = Route.useSearch();
+  const search = Route.useSearch();
+  const savedId = search.saved;
   const navigate = useNavigate();
   const { balance, payBill, saved } = useApp();
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === savedId);
 
-  const [step, setStep] = useState<Step>(savedItem ? "verify" : "provider");
-  const [provider, setProvider] = useState(savedItem?.provider ?? "");
-  const [identifier, setIdentifier] = useState(savedItem?.identifier ?? "");
-  const [verifying, setVerifying] = useState(Boolean(savedItem));
-  const [amount, setAmount] = useState("");
+  const prefillProvider = savedItem?.provider ?? search.provider ?? "";
+  const prefillIdentifier = savedItem?.identifier ?? search.identifier ?? "";
+  const prefillAmount =
+    typeof search.amount === "number" && search.amount > 0 ? String(Math.round(search.amount)) : "";
+
+  // Prefill only — never skip confirm or PIN.
+  const initialStep: Step = (() => {
+    if (savedItem || (prefillProvider && prefillIdentifier)) return "verify";
+    if (prefillProvider) return "identifier";
+    return "provider";
+  })();
+
+  const [step, setStep] = useState<Step>(initialStep);
+  const [provider, setProvider] = useState(prefillProvider);
+  const [identifier, setIdentifier] = useState(prefillIdentifier);
+  const [verifying, setVerifying] = useState(initialStep === "verify");
+  const [amount, setAmount] = useState(prefillAmount);
   const [pack, setPack] = useState<Package | null>(null);
   const [pin, setPin] = useState("");
-  const [outcome, setOutcome] = useState<TxStatus>("successful");
+  const [outcome] = useState<TxStatus>("successful");
   const [txId, setTxId] = useState("");
   const [error, setError] = useState("");
 
@@ -207,7 +234,9 @@ function PayFlow() {
                   Try Again
                 </Button>
                 <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" asChild>
-                  <Link to="/support">Contact Support</Link>
+                  <Link to="/support" search={txId ? { reference: txId } : {}}>
+                    Get help from RockPay Care
+                  </Link>
                 </Button>
               </>
             ) : null}
@@ -215,13 +244,13 @@ function PayFlow() {
               <>
                 <Button
                   className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => toast.info("Status unchanged — still pending")}
+                  onClick={() => toast.info("Still pending — check back shortly")}
                 >
                   Refresh Status
                 </Button>
                 <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" asChild>
-                  <Link to="/history/$txId" params={{ txId }}>
-                    View Transaction
+                  <Link to="/support" search={txId ? { reference: txId } : {}}>
+                    Contact RockPay Care
                   </Link>
                 </Button>
               </>
@@ -230,9 +259,14 @@ function PayFlow() {
               <Button
                 variant="outline"
                 className="h-13 w-full rounded-2xl font-bold"
-                onClick={() => toast.success("Receipt shared (demo)")}
+                onClick={() => {
+                  if (txId) {
+                    navigator.clipboard?.writeText(txId);
+                    toast.success("Reference copied");
+                  }
+                }}
               >
-                <Share2 className="size-4" /> Share Receipt
+                <Copy className="size-4" /> Copy reference
               </Button>
             ) : null}
             <Button
@@ -242,6 +276,13 @@ function PayFlow() {
             >
               {outcome === "successful" ? "Done" : "Back Home"}
             </Button>
+            {outcome === "successful" && txId ? (
+              <Button variant="ghost" className="h-11 w-full rounded-2xl text-xs font-bold text-muted-foreground" asChild>
+                <Link to="/support" search={{ reference: txId }}>
+                  Something wrong? RockPay Care
+                </Link>
+              </Button>
+            ) : null}
           </div>
         </div>
       </AppShell>
@@ -335,27 +376,6 @@ function PayFlow() {
               </p>
             </div>
           ) : null}
-
-          <div className="rounded-2xl border border-dashed p-3">
-            <p className="mb-2 text-[11px] font-bold text-muted-foreground">
-              DEMO ONLY — simulate the outcome
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["successful", "pending", "failed"] as const).map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => setOutcome(o)}
-                  className={cn(
-                    "press h-9 rounded-lg border text-xs font-bold capitalize",
-                    outcome === o ? "border-primary bg-primary-soft text-primary" : "bg-card",
-                  )}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {insufficient ? (
             <Button className="h-13 w-full rounded-2xl font-bold" asChild>
@@ -481,7 +501,7 @@ function PayFlow() {
                 <p className="text-sm font-bold">Customer Found</p>
               </div>
               <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
-                <InfoRow label="Customer Name" value={service.customerName ?? "John Doe"} />
+                <InfoRow label="Customer Name" value={service.customerName ?? "Verified customer"} />
                 {service.address ? <InfoRow label="Address" value={service.address} /> : null}
                 <InfoRow label={service.identifierLabel} value={identifier} />
                 <InfoRow label="Provider" value={provider} />
