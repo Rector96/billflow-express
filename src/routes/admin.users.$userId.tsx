@@ -27,7 +27,6 @@ function AdminUserDetail() {
     billpay_id: string;
   } | null>(null);
   const [balance, setBalance] = useState(0);
-  const [hasPin, setHasPin] = useState(false);
   const [summary, setSummary] = useState({ funded: 0, spent: 0, refunds: 0, tx: 0, ok: 0, fail: 0 });
   const [txs, setTxs] = useState<
     { id: string; reference: string; amount: number; status: TxStatus; description: string; created_at: string; type: string }[]
@@ -40,7 +39,7 @@ function AdminUserDetail() {
       const staff = await requireStaffSession();
       setCanManage(can(staff.perms, "users_manage"));
 
-      const [p, w, ledger, pin] = await Promise.all([
+      const [p, w, ledger] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
         supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
         supabase
@@ -49,7 +48,6 @@ function AdminUserDetail() {
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(100),
-        supabase.from("transaction_pins").select("user_id").eq("user_id", userId).maybeSingle(),
       ]);
 
       if (p.data) {
@@ -63,7 +61,6 @@ function AdminUserDetail() {
         });
       }
       setBalance(n(w.data?.balance));
-      setHasPin(Boolean(pin.data));
 
       let funded = 0,
         spent = 0,
@@ -218,10 +215,10 @@ function AdminUserDetail() {
             </div>
           </div>
 
-          <p className="mt-6 text-sm font-bold">Security (safe fields only)</p>
+          <p className="mt-6 text-sm font-bold">Security</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Transaction PIN set: <span className="font-bold text-foreground">{hasPin ? "Yes" : "No"}</span>
-            . PIN values and passwords are never shown.
+            PIN hashes and passwords are never exposed to staff. PIN presence is not listed here because
+            <code> transaction_pins </code> is service-role only by design.
           </p>
         </div>
       </div>
