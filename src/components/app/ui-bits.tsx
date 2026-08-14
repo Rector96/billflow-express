@@ -24,14 +24,14 @@ export function SectionTitle({
 }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-[15px] font-bold">{title}</h2>
+      <h2 className="text-[15px] font-extrabold tracking-tight">{title}</h2>
       {action ? (
         to ? (
-          <Link to={to} className="text-xs font-bold text-primary">
+          <Link to={to} className="text-xs font-bold text-primary hover:underline">
             {action}
           </Link>
         ) : (
-          <button type="button" onClick={onAction} className="text-xs font-bold text-primary">
+          <button type="button" onClick={onAction} className="text-xs font-bold text-primary hover:underline">
             {action}
           </button>
         )
@@ -49,11 +49,11 @@ export function StatusBadge({ status }: { status: TxStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide",
         map.cls,
       )}
     >
-      <map.Icon className="size-3" />
+      <map.Icon className="size-3" strokeWidth={2.5} />
       {map.label}
     </span>
   );
@@ -76,14 +76,14 @@ export function ServiceTile({
 }) {
   const inner = (
     <>
-      <span className={cn("grid size-11 place-items-center rounded-2xl", tint)}>
+      <span className={cn("grid size-11 place-items-center rounded-2xl shadow-soft", tint)}>
         <Icon className="size-5" />
       </span>
       <span className="text-center text-xs leading-tight font-semibold">{label}</span>
     </>
   );
   const cls =
-    "press flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-3 shadow-card hover:border-primary/30";
+    "press flex min-h-[5.5rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border/80 bg-card p-3 shadow-card hover:border-primary/25 hover:shadow-soft";
   if (to) {
     return (
       <Link to={to} {...(params ? { params } : {})} className={cls}>
@@ -104,11 +104,11 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
     <Link
       to="/history/$txId"
       params={{ txId: tx.id }}
-      className="press flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-card"
+      className="press flex items-center gap-3 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card hover:border-primary/20"
     >
       <span
         className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-xl",
+          "grid size-11 shrink-0 place-items-center rounded-2xl",
           inbound ? "bg-success-soft text-success" : "bg-primary-soft text-primary",
         )}
       >
@@ -121,11 +121,13 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
         </p>
       </div>
       <div className="shrink-0 text-right">
-        <p className={cn("text-sm font-bold", inbound ? "text-success" : "text-foreground")}>
+        <p className={cn("text-sm font-extrabold tabular-nums", inbound ? "text-success" : "text-foreground")}>
           {inbound ? "+" : "-"}
           {formatNaira(tx.amount, false)}
         </p>
-        <StatusBadge status={tx.status} />
+        <div className="mt-0.5 flex justify-end">
+          <StatusBadge status={tx.status} />
+        </div>
       </div>
     </Link>
   );
@@ -133,7 +135,7 @@ export function TransactionRow({ tx }: { tx: Transaction }) {
 
 export function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2.5">
+    <div className="flex items-start justify-between gap-4 border-b border-border/50 py-2.5 last:border-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-right text-sm font-semibold">{value}</span>
     </div>
@@ -150,24 +152,25 @@ export function EmptyState({
   Icon: LucideIcon;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed bg-card/60 px-6 py-12 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
+    <div className="flex flex-col items-center gap-2.5 rounded-2xl border border-dashed border-border/80 bg-card/70 px-6 py-12 text-center">
+      <span className="grid size-14 place-items-center rounded-2xl bg-muted text-muted-foreground shadow-soft">
         <Icon className="size-6" />
       </span>
-      <p className="text-sm font-bold">{title}</p>
-      <p className="max-w-xs text-xs text-muted-foreground">{body}</p>
+      <p className="text-sm font-extrabold">{title}</p>
+      <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">{body}</p>
     </div>
   );
 }
 
 export function RowSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
-      <div className="size-10 shrink-0 animate-pulse rounded-xl bg-muted" />
+    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5">
+      <div className="skeleton size-11 shrink-0 rounded-2xl" />
       <div className="flex-1 space-y-2">
-        <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="skeleton h-3 w-1/2" />
+        <div className="skeleton h-3 w-3/4" />
       </div>
+      <div className="skeleton h-8 w-16" />
     </div>
   );
 }
