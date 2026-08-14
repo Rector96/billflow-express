@@ -26,9 +26,40 @@ function safePayload(raw: unknown): Record<string, unknown> {
   }
 }
 
+function customerMessage(status: AirtimePurchaseResult["status"], amount?: number): string {
+  if (status === "successful") {
+    return amount != null
+      ? `Your Airtime purchase of ₦${Math.round(amount).toLocaleString("en-NG")} was successful.`
+      : "Your Airtime purchase was successful.";
+  }
+  if (status === "failed") {
+    return "Your Airtime purchase failed. Your wallet has been refunded.";
+  }
+  return "Your Airtime purchase is still being confirmed. Your money is protected.";
+}
+
+function mapStartError(message: string): Error {
+  if (message.includes("insufficient_funds")) {
+    return new Error("insufficient_funds");
+  }
+  if (message.includes("invalid_pin")) return new Error("invalid_pin");
+  if (message.includes("pin_locked")) return new Error("pin_locked");
+  if (message.includes("pin_not_set")) return new Error("pin_not_set");
+  if (message.includes("invalid_phone")) {
+    return new Error("Enter a valid Nigerian mobile number.");
+  }
+  if (message.includes("unsupported_network")) {
+    return new Error("unsupported_network");
+  }
+  if (message.includes("invalid amount")) {
+    return new Error("Enter an amount between ₦50 and ₦50,000.");
+  }
+  return new Error(message);
+}
+
 /**
  * Authorize (PIN + debit + pending) then call VTpass sandbox.
- * Outcome is decided only from the provider response.
+ * Outcome is decided only from the provider response — never from the client.
  */
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -75,7 +106,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     );
     if (startError) {
       console.error("[airtime] start", startError.message);
-      throw new Error(startError.message);
+      throw mapStartError(startError.message);
     }
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id) {
@@ -114,6 +145,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     );
     if (finError) {
       console.error("[airtime] complete", finError.message);
+      // Debit already applied — never invent success/fail from the client
       return {
         status: "pending",
         reference: row.internal_reference as string,
@@ -123,19 +155,12 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
         phoneMasked: maskPhone(phone),
         network: serviceId,
         balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: "Your payment is being confirmed.",
+        message: customerMessage("pending"),
       };
     }
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
     const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
-
-    const message =
-      status === "successful"
-        ? "Airtime purchase successful"
-        : status === "failed"
-          ? "Airtime purchase failed"
-          : "Your payment is being confirmed.";
 
     return {
       status,
@@ -146,11 +171,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       phoneMasked: maskPhone(phone),
       network: serviceId,
       balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message,
+      message: customerMessage(status, data.amount),
     };
   });
 
-/** Requery a pending airtime purchase by RockPay internal reference (customer). */
+/** Customer requery — own bill only (RLS + complete ownership). */
 export const requeryAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reference: string }) => {
@@ -159,10 +184,13 @@ export const requeryAirtime = createServerFn({ method: "POST" })
     return { reference };
   })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
-    return runRequery(context.supabase, data.reference, { audit: false });
+    return runRequery(context.supabase, data.reference, {
+      audit: false,
+      userId: context.userId,
+    });
   });
 
-/** Staff requery — same settlement rules; writes admin_audit_logs. */
+/** Staff requery — audited. */
 export const adminRequeryAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reference: string }) => {
@@ -172,12 +200,14 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const { data: staff, error: staffErr } = await context.supabase.rpc("is_staff", {
-      _user_id: (await context.supabase.auth.getUser()).data.user?.id,
+      _user_id: context.userId,
     });
     if (staffErr || !staff) throw new Error("forbidden");
 
-    const result = await runRequery(context.supabase, data.reference, { audit: true });
-    return result;
+    return runRequery(context.supabase, data.reference, {
+      audit: true,
+      userId: context.userId,
+    });
   });
 
 type Sb = {
@@ -188,14 +218,14 @@ type Sb = {
 async function runRequery(
   supabase: Sb,
   reference: string,
-  opts: { audit: boolean },
+  opts: { audit: boolean; userId: string },
 ): Promise<AirtimePurchaseResult> {
   const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
 
   const { data: bills, error } = await supabase
     .from("bill_transactions")
     .select(
-      "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id",
+      "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id, user_id",
     )
     .eq("internal_reference", reference)
     .limit(1);
@@ -204,13 +234,32 @@ async function runRequery(
   const bill = bills?.[0];
   if (!bill) throw new Error("Transaction not found.");
 
+  // Defense in depth (RLS should already scope customer reads)
+  if (!opts.audit && bill.user_id && bill.user_id !== opts.userId) {
+    throw new Error("Transaction not found.");
+  }
+
   const phone = String(bill.customer_identifier ?? "");
   const network = String(bill.provider ?? "");
   const amount = Number(bill.amount);
   const prevStatus = bill.status;
 
+  // Customer: if already final, do not hammer VTpass — return ledger truth
+  if ((bill.status === "successful" || bill.status === "failed") && !opts.audit) {
+    return {
+      status: bill.status as "successful" | "failed",
+      reference: bill.internal_reference,
+      requestId: bill.provider_request_id ?? "",
+      providerTransactionId: bill.provider_transaction_id,
+      amount,
+      phoneMasked: maskPhone(phone),
+      network,
+      balanceAfter: null,
+      message: customerMessage(bill.status as "successful" | "failed", amount),
+    };
+  }
+
   if (bill.status === "successful" || bill.status === "failed") {
-    // Still allow provider snapshot refresh via requery when request id exists (no money change — RPC is idempotent)
     if (bill.provider_request_id) {
       const pay = await vtpassRequery(bill.provider_request_id);
       const outcome = mapVtpassOutcome(pay);
@@ -250,15 +299,14 @@ async function runRequery(
       phoneMasked: maskPhone(phone),
       network,
       balanceAfter: null,
-      message:
-        bill.status === "successful"
-          ? "Airtime purchase successful"
-          : "Airtime purchase failed",
+      message: customerMessage(bill.status as "successful" | "failed", amount),
     };
   }
 
   if (!bill.provider_request_id) {
-    throw new Error("Missing provider reference for requery.");
+    throw new Error(
+      "We couldn't confirm this payment yet. Your money is still protected. Check again shortly or contact RockPay Care.",
+    );
   }
 
   const pay = await vtpassRequery(bill.provider_request_id);
@@ -307,11 +355,6 @@ async function runRequery(
     phoneMasked: maskPhone(phone),
     network,
     balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-    message:
-      status === "successful"
-        ? "Airtime purchase successful"
-        : status === "failed"
-          ? "Airtime purchase failed"
-          : "Your payment is being confirmed.",
+    message: customerMessage(status, amount),
   };
 }
