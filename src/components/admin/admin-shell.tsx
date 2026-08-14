@@ -74,7 +74,6 @@ export function AdminShell({
   const current = activeId(pathname);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-
   const nav = useMemo(() => NAV, []);
 
   const searchSubmit = (e: React.FormEvent) => {
@@ -135,7 +134,12 @@ export function AdminShell({
 
       {open ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" aria-label="Close menu" onClick={() => setOpen(false)} />
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            aria-label="Close menu"
+            onClick={() => setOpen(false)}
+          />
           <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">{Sidebar}</div>
         </div>
       ) : null}
