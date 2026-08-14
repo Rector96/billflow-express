@@ -18,3 +18,11 @@
 #   SUPABASE_PUBLISHABLE_KEY
 #   SUPABASE_SERVICE_ROLE_KEY   (server-side only)
 #   PAYSTACK_SECRET_KEY         (server-side only)
+
+# Nitro's netlify preset emits the SSR handler as the internal function "server".
+# Static files in dist/ win first; everything else (deep links, refreshes, /api/*)
+# is rewritten to the SSR function instead of 404ing.
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
