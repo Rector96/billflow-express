@@ -1,10 +1,28 @@
-# Netlify deployment config — BillPay demo (TanStack Start + Nitro SSR)
-# Nitro's "netlify" preset emits the static assets to dist/ and the SSR
-# handler to .netlify/functions-internal, so no manual redirects are needed.
+# Netlify deployment config — RockPay (TanStack Start + Nitro SSR)
+# vite.config.ts switches Nitro to the "netlify" preset when NETLIFY=true,
+# which emits static assets to dist/ and the SSR handler to
+# .netlify/functions-internal, with the SSR fallback redirect declared below.
 [build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
-  NITRO_PRESET = "netlify"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Required environment variables (set these in Netlify → Site settings → Environment):
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_PUBLISHABLE_KEY
+#   VITE_SUPABASE_PROJECT_ID
+#   SUPABASE_URL
+#   SUPABASE_PUBLISHABLE_KEY
+#   SUPABASE_SERVICE_ROLE_KEY   (server-side only)
+#   PAYSTACK_SECRET_KEY         (server-side only)
+
+# Nitro's netlify preset emits the SSR handler as the internal function "server".
+# Static files in dist/ win first; everything else (deep links, refreshes, /api/*)
+# is rewritten to the SSR function instead of 404ing.
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
