@@ -222,6 +222,33 @@ export type Database = {
           },
         ]
       }
+      transaction_pins: {
+        Row: {
+          created_at: string
+          failed_attempts: number
+          locked_until: string | null
+          pin_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          pin_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          pin_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -363,6 +390,10 @@ export type Database = {
           wallet_status: string
         }[]
       }
+      change_transaction_pin: {
+        Args: { _current_pin: string; _new_pin: string }
+        Returns: boolean
+      }
       complete_paystack_funding: {
         Args: {
           _paid_amount: number
@@ -416,8 +447,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_transaction_pin: { Args: never; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       new_reference: { Args: { prefix: string }; Returns: string }
+      secure_bill_payment: {
+        Args: {
+          _amount: number
+          _customer_identifier: string
+          _metadata?: Json
+          _pin: string
+          _product: string
+          _provider: string
+          _service: string
+          _status: Database["public"]["Enums"]["tx_status"]
+        }
+        Returns: {
+          balance_after: number
+          bill_id: string
+          internal_reference: string
+        }[]
+      }
+      set_transaction_pin: { Args: { _pin: string }; Returns: boolean }
       settle_paystack_funding: {
         Args: {
           _payload?: Json
@@ -429,6 +479,7 @@ export type Database = {
           status: Database["public"]["Enums"]["tx_status"]
         }[]
       }
+      verify_transaction_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "support"
