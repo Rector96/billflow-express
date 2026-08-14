@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Bell, ChevronRight, HeartHandshake } from "lucide-react";
-import { AppShell, BrandMark } from "@/components/app/app-shell";
+import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { BuyAgainRail } from "@/components/app/buy-again-rail";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
@@ -27,7 +27,8 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-const HOME_SERVICES = ["airtime", "data", "electricity", "cable"] as const;
+/** Order matches product mock: utility grid then airtime/data */
+const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
 
 function HomePage() {
   const navigate = useNavigate();
@@ -51,26 +52,25 @@ function HomePage() {
 
   const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
 
+  const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
+
   return (
     <AppShell>
-      <header className="brand-gradient rounded-b-2xl px-4 pt-4 pb-14 text-primary-foreground">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <BrandMark className="size-8 bg-white/95 p-0.5 ring-white/25" />
-            <div className="min-w-0">
-              <p className="text-[11px] opacity-90">{greeting()},</p>
-              <h1 className="truncate text-base font-extrabold tracking-tight">{firstName} 👋</h1>
-            </div>
+      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-5 pb-16 text-primary-foreground">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs opacity-90">{greeting()},</p>
+            <h1 className="truncate text-xl font-extrabold tracking-tight">{firstName} 👋</h1>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
               aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-              className="press relative grid size-9 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20"
+              className="press relative grid size-10 place-items-center rounded-full bg-white/15 ring-1 ring-white/20"
             >
-              <Bell className="size-4" />
+              <Bell className="size-4.5" />
               {unreadCount > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-warning px-0.5 text-[9px] font-extrabold text-warning-foreground">
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[9px] font-extrabold text-warning-foreground">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               ) : null}
@@ -78,7 +78,7 @@ function HomePage() {
             <Link
               to="/profile"
               aria-label="Your profile"
-              className="press grid size-9 place-items-center rounded-full border border-white/30 bg-white/15 text-xs font-bold"
+              className="press grid size-10 place-items-center rounded-full border-2 border-white/40 bg-white/20 text-xs font-bold"
             >
               {initialsOf(profile.name || "U")}
             </Link>
@@ -86,16 +86,14 @@ function HomePage() {
         </div>
       </header>
 
-      <div className="-mt-10 space-y-4 px-4 pb-5">
+      <div className="-mt-11 space-y-5 px-4 pb-5">
         <WalletCard />
 
-        {/* PAY BILLS — primary */}
         <section>
-          <SectionTitle title="Pay Bills" action="All services" to="/services" />
-          <div className="grid grid-cols-5 gap-2">
-            {HOME_SERVICES.map((slug) => {
-              const s = getService(slug)!;
-              return (
+          <SectionTitle title="Pay Bills" action="See all" to="/services" />
+          <div className="grid grid-cols-3 gap-x-2 gap-y-1">
+            {serviceTiles.map((s) =>
+              s ? (
                 <ServiceTile
                   key={s.slug}
                   label={s.short}
@@ -103,79 +101,70 @@ function HomePage() {
                   tint={s.tint}
                   to="/pay/$slug"
                   params={{ slug: s.slug }}
-                  compact
                 />
-              );
-            })}
+              ) : null,
+            )}
             <ServiceTile
               label="More"
               Icon={MoreIcon}
               tint="bg-muted text-muted-foreground"
               to="/services"
-              compact
             />
           </div>
         </section>
 
-        {/* Quick Pay = Buy Again + Saved — subtle */}
         {(buyAgain.length > 0 || savedHome.length > 0) && (
           <section>
-            <SectionTitle title="Quick Pay" action="Saved" to="/saved-payments" />
-            <BuyAgainRail items={buyAgain} compact />
-            {savedHome.length > 0 ? (
-              <div className={cn("space-y-1.5", buyAgain.length > 0 && "mt-1.5")}>
-                {savedHome.map((item) => {
-                  const svc = getService(item.serviceSlug);
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-2.5 py-2"
+            <SectionTitle title="Quick Pay" action="See All" to="/saved-payments" />
+            <div className="space-y-2">
+              <BuyAgainRail items={buyAgain} compact />
+              {savedHome.map((item) => {
+                const svc = getService(item.serviceSlug);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-2xl bg-card px-3 py-2.5 shadow-soft"
+                  >
+                    <span
+                      className={cn(
+                        "grid size-10 shrink-0 place-items-center rounded-xl",
+                        svc?.tint ?? "bg-muted text-muted-foreground",
+                      )}
                     >
-                      <span
-                        className={cn(
-                          "grid size-8 shrink-0 place-items-center rounded-lg",
-                          svc?.tint ?? "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {svc ? <svc.icon className="size-3.5" /> : null}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold">{item.label}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">
-                          {item.provider} · {item.masked}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 shrink-0 rounded-lg px-3 text-xs font-bold"
-                        onClick={() =>
-                          navigate({
-                            to: "/pay/$slug",
-                            params: { slug: item.serviceSlug },
-                            search: { saved: item.id },
-                          })
-                        }
-                      >
-                        Pay
-                      </Button>
+                      {svc ? <svc.icon className="size-4" /> : null}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{item.label}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.provider} · {item.masked}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            ) : null}
+                    <Button
+                      size="sm"
+                      className="h-9 shrink-0 rounded-full px-4 text-xs font-bold"
+                      onClick={() =>
+                        navigate({
+                          to: "/pay/$slug",
+                          params: { slug: item.serviceSlug },
+                          search: { saved: item.id },
+                        })
+                      }
+                    >
+                      Pay
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
 
-        {/* Recent — 3 max */}
         <section>
-          <SectionTitle title="Recent" action="View all" to="/history" />
+          <SectionTitle title="Recent" action="See All" to="/history" />
           {recent.length === 0 ? (
-            <p className="py-2 text-center text-xs text-muted-foreground">
-              Your payments will show up here.
-            </p>
+            <p className="py-3 text-center text-xs text-muted-foreground">Your payments will show up here.</p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {recent.map((tx) => (
                 <TransactionRow key={tx.id} tx={tx} compact />
               ))}
@@ -183,19 +172,18 @@ function HomePage() {
           )}
         </section>
 
-        {/* Care — compact row */}
         <Link
           to="/support"
-          className="press flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3 py-2.5"
+          className="press flex items-center gap-3 rounded-2xl bg-card px-3 py-3 shadow-soft"
         >
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
-            <HeartHandshake className="size-4" />
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+            <HeartHandshake className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold">RockPay Care</p>
-            <p className="text-[10px] text-muted-foreground">Need help with a transaction?</p>
+            <p className="text-sm font-bold">RockPay Care</p>
+            <p className="text-xs text-muted-foreground">Need help with a payment?</p>
           </div>
-          <span className="text-[11px] font-bold text-primary">Get help</span>
+          <span className="text-xs font-bold text-primary">Get help</span>
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
       </div>
