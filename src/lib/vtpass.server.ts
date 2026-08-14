@@ -78,12 +78,12 @@ export const MOBILE_DATA_SERVICE_IDS = new Set([
 
 /** In-memory catalogue cache (server process). */
 const catalogueCache = new Map<string, { at: number; data: unknown }>();
-const CATALOGUE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function cacheGet<T>(key: string): T | null {
   const hit = catalogueCache.get(key);
   if (!hit) return null;
-  if (Date.now() - hit.at > CATALOGUE_TTL_MS) {
+  if (Date.now() - hit.at > CACHE_TTL_MS) {
     catalogueCache.delete(key);
     return null;
   }
@@ -94,30 +94,30 @@ function cacheSet(key: string, data: unknown) {
   catalogueCache.set(key, { at: Date.now(), data });
 }
 
-/** Map RockPay network labels → VTpass airtime serviceID */
 export function toVtpassServiceId(provider: string): string {
   const p = provider.trim().toLowerCase();
-  if (p.includes("mtn")) return "mtn";
-  if (p.includes("glo")) return "glo";
-  if (p.includes("airtel")) return "airtel";
-  if (p.includes("9mobile") || p.includes("etisalat") || p.includes("9 mobile")) return "etisalat";
+  if (p.includes("dstv")) return "dstv";
+  if (p.includes("gotv")) return "gotv";
+  if (p.includes("startimes") || p.includes("startime")) return "startimes";
+  return p;
+}
+
+export function toVtpassDataServiceId(provider: string): string {
+  const p = provider.trim().toLowerCase().replace(/\s+/g, "-");
+  if (p === "mtn" || p === "mtn-data") return "mtn-data";
+  if (p === "airtel" || p === "airtel-data") return "airtel-data";
+  if (p === "glo" || p === "glo-data") return "glo-data";
+  if (p === "9mobile" || p === "etisalat" || p === "etisalat-data") return "etisalat-data";
+  if (MOBILE_DATA_SERVICE_IDS.has(p)) return p;
   throw new Error("unsupported_network");
 }
 
-/** Map RockPay network labels / catalogue names → VTpass data serviceID */
-export function toVtpassDataServiceId(provider: string): string {
+export function toVtpassAirtimeServiceId(provider: string): string {
   const p = provider.trim().toLowerCase();
-  if (p === "mtn-data" || p.includes("mtn")) return "mtn-data";
-  if (p === "glo-data" || p.includes("glo")) return "glo-data";
-  if (p === "airtel-data" || p.includes("airtel")) return "airtel-data";
-  if (
-    p === "etisalat-data" ||
-    p.includes("9mobile") ||
-    p.includes("etisalat") ||
-    p.includes("9 mobile")
-  ) {
-    return "etisalat-data";
-  }
+  if (p === "mtn") return "mtn";
+  if (p === "glo") return "glo";
+  if (p === "airtel") return "airtel";
+  if (p === "9mobile" || p === "etisalat") return "etisalat";
   throw new Error("unsupported_network");
 }
 
@@ -161,7 +161,6 @@ function headersForPost(): HeadersInit {
 
 function headersForGet(): HeadersInit {
   const { apiKey, publicKey, secretKey } = getVtpassConfig();
-  // Prefer public-key for GET when available (VTpass docs); fall back to secret.
   return {
     "Content-Type": "application/json",
     "api-key": apiKey,
@@ -209,7 +208,6 @@ export async function vtpassListServices(identifier: string): Promise<VtpassServ
     }))
     .filter((s) => s.serviceID);
 
-  // For mobile data, prefer the four major networks only (hide Smile etc. in V1).
   if (identifier === "data") {
     const mobile = mapped.filter((s) => MOBILE_DATA_SERVICE_IDS.has(s.serviceID));
     if (mobile.length > 0) mapped = mobile;
@@ -288,7 +286,22 @@ export async function vtpassMerchantVerify(input: {
   const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   const code = String(raw["code"] ?? "");
   const content = (raw["content"] ?? {}) as Record<string, unknown>;
-  const ok = code === "000" || code === "020";
+
+  const pickStr = (...keys: string[]): string | null => {
+    for (const k of keys) {
+      const v = content[k] ?? raw[k];
+      if (v != null && String(v).trim()) return String(v).trim();
+    }
+    return null;
+  };
+
+  // VTpass may return code 000 with WrongBillersCode=true for invalid meters
+  const wrongBiller =
+    content["WrongBillersCode"] === true ||
+    content["WrongBillersCode"] === "true" ||
+    content["wrongBillersCode"] === true;
+
+  const ok = (code === "000" || code === "020") && !wrongBiller;
 
   const minRaw =
     content["Min_Purchase_Amount"] ?? content["min_purchase_amount"] ?? content["Minimum_Amount"];
@@ -296,24 +309,30 @@ export async function vtpassMerchantVerify(input: {
   return {
     ok,
     code,
-    customerName:
-      content["Customer_Name"] != null
-        ? String(content["Customer_Name"])
-        : content["customer_name"] != null
-          ? String(content["customer_name"])
-          : null,
-    address: content["Address"] != null ? String(content["Address"]) : null,
-    status: content["Status"] != null ? String(content["Status"]) : null,
-    dueDate: content["Due_Date"] != null ? String(content["Due_Date"]) : null,
-    customerNumber:
-      content["Customer_Number"] != null ? String(content["Customer_Number"]) : null,
+    customerName: pickStr(
+      "Customer_Name",
+      "customer_name",
+      "CustomerName",
+      "customerName",
+      "Name",
+      "name",
+    ),
+    address: pickStr("Address", "address", "Customer_Address", "customer_address"),
+    status: pickStr("Status", "status"),
+    dueDate: pickStr("Due_Date", "due_date", "DueDate"),
+    customerNumber: pickStr("Customer_Number", "customer_number", "CustomerNumber"),
     minPurchaseAmount: minRaw != null && Number.isFinite(Number(minRaw)) ? Number(minRaw) : null,
-    tariff: content["Tariff"] != null ? String(content["Tariff"]) : null,
-    meterNumber: content["Meter_Number"] != null ? String(content["Meter_Number"]) : null,
+    tariff: pickStr("Tariff", "tariff"),
+    meterNumber: pickStr("Meter_Number", "meter_number", "MeterNumber", "meterNumber"),
     raw: content,
     message: ok
       ? "Verified"
-      : String(raw["response_description"] ?? "Could not verify this number. Check and try again."),
+      : String(
+          raw["response_description"] ??
+            (wrongBiller
+              ? "Meter verification failed. Please check the meter number and try again."
+              : "Could not verify this number. Check and try again."),
+        ),
   };
 }
 
@@ -354,20 +373,19 @@ export async function vtpassPayAirtime(input: {
     amount: input.amount,
     phone: input.phone,
   };
-
-  let res: Response;
   try {
-    res = await fetch(`${baseUrl}/pay`, {
+    const res = await fetch(`${baseUrl}/pay`, {
       method: "POST",
       headers: headersForPost(),
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(60_000),
     });
+    const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return parsePayResponse(raw, input.requestId);
   } catch (err) {
-    console.error("[vtpass] pay network/timeout", input.requestId);
     return {
       code: "TIMEOUT",
-      responseDescription: "timeout",
+      responseDescription: "Provider timeout",
       requestId: input.requestId,
       transactionId: null,
       contentStatus: null,
@@ -375,29 +393,25 @@ export async function vtpassPayAirtime(input: {
       raw: { error: String(err) },
     };
   }
-
-  const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return parsePayResponse(raw, input.requestId);
 }
 
-/** Generic pay for cable / electricity / data (and future catalogue products). */
+/** Generic pay for cable / electricity / data. */
 export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPayResult> {
   const { baseUrl } = getVtpassConfig();
   const requestId = String(body["request_id"] ?? "");
-
-  let res: Response;
   try {
-    res = await fetch(`${baseUrl}/pay`, {
+    const res = await fetch(`${baseUrl}/pay`, {
       method: "POST",
       headers: headersForPost(),
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(60_000),
     });
+    const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return parsePayResponse(raw, requestId);
   } catch (err) {
-    console.error("[vtpass] pay network/timeout", requestId);
     return {
       code: "TIMEOUT",
-      responseDescription: "timeout",
+      responseDescription: "Provider timeout",
       requestId,
       transactionId: null,
       contentStatus: null,
@@ -405,26 +419,23 @@ export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPa
       raw: { error: String(err) },
     };
   }
-
-  const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return parsePayResponse(raw, requestId);
 }
 
 export async function vtpassRequery(requestId: string): Promise<VtpassPayResult> {
   const { baseUrl } = getVtpassConfig();
-  let res: Response;
   try {
-    res = await fetch(`${baseUrl}/requery`, {
+    const res = await fetch(`${baseUrl}/requery`, {
       method: "POST",
       headers: headersForPost(),
       body: JSON.stringify({ request_id: requestId }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(45_000),
     });
+    const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return parsePayResponse(raw, requestId);
   } catch (err) {
-    console.error("[vtpass] requery network/timeout", requestId);
     return {
       code: "TIMEOUT",
-      responseDescription: "timeout",
+      responseDescription: "Provider timeout",
       requestId,
       transactionId: null,
       contentStatus: null,
@@ -432,9 +443,6 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
       raw: { error: String(err) },
     };
   }
-
-  const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return parsePayResponse(raw, requestId);
 }
 
 /** Map VTpass response → RockPay outcome (never trust the browser). */
