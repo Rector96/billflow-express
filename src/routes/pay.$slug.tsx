@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { friendlyError, useApp } from "@/lib/app-store";
 import {
-  DEMO_PIN,
   formatNaira,
   getService,
   maskTail,
@@ -111,7 +110,7 @@ function PayFlow() {
     setTimeout(() => setVerifying(false), 1500);
   };
 
-  const runPayment = async () => {
+  const runPayment = async (authorizedPin: string) => {
     setStep("processing");
     try {
       const reference = await payBill({
@@ -128,6 +127,7 @@ function PayFlow() {
           outcome === "successful" && service.slug === "electricity"
             ? "1234 5678 9012 3456"
             : undefined,
+        pin: authorizedPin,
       });
       setTxId(reference);
       setStep("result");
@@ -276,7 +276,7 @@ function PayFlow() {
         <PageHeader title="Enter Transaction PIN" onBack={() => setStep("confirm")} />
         <div className="px-4 pt-6">
           <p className="text-center text-sm text-muted-foreground">
-            Enter your 4-digit PIN to authorize this payment. Demo PIN: {DEMO_PIN}
+            Enter your 4-digit PIN to authorize this payment.
           </p>
           <div className="mt-8">
             <PinPad value={pin} onChange={setPin} />
@@ -285,12 +285,9 @@ function PayFlow() {
             className="mt-8 h-13 w-full rounded-2xl text-base font-bold"
             disabled={pin.length < 4}
             onClick={() => {
-              if (pin !== DEMO_PIN) {
-                setPin("");
-                toast.error("Incorrect PIN. Try 1234 for this demo.");
-                return;
-              }
-              void runPayment();
+              const authorized = pin;
+              setPin("");
+              void runPayment(authorized);
             }}
           >
             Confirm
@@ -361,7 +358,7 @@ function PayFlow() {
           </div>
 
           {insufficient ? (
-            <Button className="h-13 w-full rounded-2xl text-base font-bold" asChild>
+            <Button className="h-13 w-full rounded-2xl font-bold" asChild>
               <Link to="/wallet/fund" search={{}}>Fund Wallet</Link>
             </Button>
           ) : (
