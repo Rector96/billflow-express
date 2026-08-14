@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Download, FileWarning, Share2 } from "lucide-react";
+import { Copy, FileWarning } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
+import { CareContextLink } from "@/components/app/care-entry";
 import { EmptyState, InfoRow, StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
@@ -34,7 +35,7 @@ function TransactionDetails() {
           <EmptyState
             Icon={FileWarning}
             title="Transaction not found"
-            body="This receipt is no longer available in the demo session."
+            body="This receipt isn't available in your history. It may be older than what we load here."
           />
         </div>
       </AppShell>
@@ -82,22 +83,14 @@ function TransactionDetails() {
           <Button
             variant="outline"
             className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => toast.success("Receipt shared (demo)")}
+            onClick={() => {
+              navigator.clipboard?.writeText(tx.id);
+              toast.success("Reference copied");
+            }}
           >
-            <Share2 className="size-4" /> Share Receipt
+            <Copy className="size-4" /> Copy reference
           </Button>
-          <Button
-            variant="outline"
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => toast.success("Receipt downloaded (demo)")}
-          >
-            <Download className="size-4" /> Download Receipt
-          </Button>
-          <Button variant="ghost" className="h-12 w-full rounded-2xl font-bold text-destructive" asChild>
-            <Link to="/history/$txId/report" params={{ txId: tx.id }}>
-              Report Problem
-            </Link>
-          </Button>
+          <CareContextLink reference={tx.id} status={tx.status} />
         </div>
       </div>
     </AppShell>
