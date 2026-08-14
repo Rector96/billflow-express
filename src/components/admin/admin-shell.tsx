@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   ClipboardList,
   FileBarChart,
+  HeartHandshake,
   LayoutDashboard,
   Menu,
   Search,
@@ -27,6 +28,7 @@ export type AdminNavId =
   | "transactions"
   | "wallet"
   | "services"
+  | "care"
   | "reports"
   | "activity"
   | "audit"
@@ -39,6 +41,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "transactions", label: "Transactions", to: "/admin/transactions", icon: ArrowLeftRight },
   { id: "wallet", label: "Wallet", to: "/admin/wallet", icon: Wallet },
   { id: "services", label: "Services", to: "/admin/services", icon: Boxes },
+  { id: "care", label: "Care", to: "/admin/care", icon: HeartHandshake },
   { id: "reports", label: "Reports", to: "/admin/reports", icon: FileBarChart },
   { id: "activity", label: "Activity", to: "/admin/activity", icon: Activity },
   { id: "audit", label: "Audit Logs", to: "/admin/audit-logs", icon: ClipboardList },
@@ -51,6 +54,7 @@ function activeId(pathname: string): AdminNavId {
   if (pathname.startsWith("/admin/transactions")) return "transactions";
   if (pathname.startsWith("/admin/wallet")) return "wallet";
   if (pathname.startsWith("/admin/services")) return "services";
+  if (pathname.startsWith("/admin/care")) return "care";
   if (pathname.startsWith("/admin/reports")) return "reports";
   if (pathname.startsWith("/admin/activity")) return "activity";
   if (pathname.startsWith("/admin/audit-logs")) return "audit";
@@ -80,6 +84,10 @@ export function AdminShell({
     e.preventDefault();
     const term = q.trim();
     if (!term) return;
+    if (/^RP-/i.test(term)) {
+      window.location.href = `/admin/care?q=${encodeURIComponent(term)}`;
+      return;
+    }
     if (/^WAL-|BIL-|TXN-/i.test(term) || term.length > 20) {
       window.location.href = `/admin/transactions?q=${encodeURIComponent(term)}`;
     } else {
@@ -164,7 +172,7 @@ export function AdminShell({
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search users or refs…"
+                placeholder="Search users, Care, refs…"
                 className="h-10 w-full rounded-xl border border-border/80 bg-card pr-3 pl-9 text-sm shadow-soft outline-none focus:ring-2 focus:ring-primary/25"
               />
             </form>
