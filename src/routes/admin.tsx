@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
   Users,
@@ -38,6 +39,19 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  beforeLoad: async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    if (!session?.user) {
+      throw redirect({ to: "/login" });
+    }
+    const { data: isStaff, error } = await supabase.rpc("is_staff", {
+      _user_id: session.user.id,
+    });
+    if (error || !isStaff) {
+      throw redirect({ to: "/home" });
+    }
+  },
   component: AdminPage,
 });
 
@@ -110,7 +124,7 @@ function AdminPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-extrabold">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Mock analytics — no backend connected.</p>
+            <p className="text-sm text-muted-foreground">Staff-only operational overview.</p>
           </div>
           <Link
             to="/profile"
