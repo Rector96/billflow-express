@@ -59,7 +59,6 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       mapVtpassOutcome,
     } = await import("./vtpass.server");
 
-    // Fail fast if secrets missing (clearer than opaque provider errors).
     getVtpassConfig();
 
     const phone = normalizeNgPhone(data.phone);
@@ -109,14 +108,12 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
           vtpass_code: pay.code,
           vtpass_status: pay.contentStatus,
           response_description: pay.responseDescription,
-          // store limited raw for admin reconciliation
           vtpass_snapshot: safePayload(pay.raw),
         },
       },
     );
     if (finError) {
       console.error("[airtime] complete", finError.message);
-      // Debit already happened — surface pending so user can requery
       return {
         status: "pending",
         reference: row.internal_reference as string,
@@ -153,7 +150,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     };
   });
 
-/** Requery a pending airtime purchase by RockPay internal reference. */
+/** Requery a pending airtime purchase by RockPay internal reference (customer). */
 export const requeryAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reference: string }) => {
@@ -162,52 +159,62 @@ export const requeryAirtime = createServerFn({ method: "POST" })
     return { reference };
   })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
-    const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
+    return runRequery(context.supabase, data.reference, { audit: false });
+  });
 
-    const { data: bills, error } = await context.supabase
-      .from("bill_transactions")
-      .select(
-        "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id",
-      )
-      .eq("internal_reference", data.reference)
-      .limit(1);
+/** Staff requery — same settlement rules; writes admin_audit_logs. */
+export const adminRequeryAirtime = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { reference: string }) => {
+    const reference = String(input?.reference ?? "").trim();
+    if (!reference) throw new Error("Missing transaction reference.");
+    return { reference };
+  })
+  .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
+    const { data: staff, error: staffErr } = await context.supabase.rpc("is_staff", {
+      _user_id: (await context.supabase.auth.getUser()).data.user?.id,
+    });
+    if (staffErr || !staff) throw new Error("forbidden");
 
-    if (error) throw new Error(error.message);
-    const bill = bills?.[0];
-    if (!bill) throw new Error("Transaction not found.");
+    const result = await runRequery(context.supabase, data.reference, { audit: true });
+    return result;
+  });
 
-    const phone = String(bill.customer_identifier ?? "");
-    const network = String(bill.provider ?? "");
-    const amount = Number(bill.amount);
+type Sb = {
+  from: (t: string) => any;
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
 
-    if (bill.status === "successful" || bill.status === "failed") {
-      return {
-        status: bill.status as "successful" | "failed",
-        reference: bill.internal_reference,
-        requestId: bill.provider_request_id ?? "",
-        providerTransactionId: bill.provider_transaction_id,
-        amount,
-        phoneMasked: maskPhone(phone),
-        network,
-        balanceAfter: null,
-        message:
-          bill.status === "successful"
-            ? "Airtime purchase successful"
-            : "Airtime purchase failed",
-      };
-    }
+async function runRequery(
+  supabase: Sb,
+  reference: string,
+  opts: { audit: boolean },
+): Promise<AirtimePurchaseResult> {
+  const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
 
-    if (!bill.provider_request_id) {
-      throw new Error("Missing provider reference for requery.");
-    }
+  const { data: bills, error } = await supabase
+    .from("bill_transactions")
+    .select(
+      "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id",
+    )
+    .eq("internal_reference", reference)
+    .limit(1);
 
-    const pay = await vtpassRequery(bill.provider_request_id);
-    const outcome = mapVtpassOutcome(pay);
-    console.info("[airtime] requery", data.reference, pay.code, pay.contentStatus, outcome);
+  if (error) throw new Error(error.message);
+  const bill = bills?.[0];
+  if (!bill) throw new Error("Transaction not found.");
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_airtime_purchase",
-      {
+  const phone = String(bill.customer_identifier ?? "");
+  const network = String(bill.provider ?? "");
+  const amount = Number(bill.amount);
+  const prevStatus = bill.status;
+
+  if (bill.status === "successful" || bill.status === "failed") {
+    // Still allow provider snapshot refresh via requery when request id exists (no money change — RPC is idempotent)
+    if (bill.provider_request_id) {
+      const pay = await vtpassRequery(bill.provider_request_id);
+      const outcome = mapVtpassOutcome(pay);
+      await supabase.rpc("complete_airtime_purchase", {
         _internal_reference: bill.internal_reference,
         _outcome: outcome,
         _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
@@ -218,27 +225,93 @@ export const requeryAirtime = createServerFn({ method: "POST" })
           requery: true,
           vtpass_snapshot: safePayload(pay.raw),
         },
-      },
-    );
-    if (finError) throw new Error(finError.message);
-
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
-
+      });
+      if (opts.audit) {
+        await supabase.rpc("admin_write_audit", {
+          _action: "airtime_requery",
+          _description: `Requery ${reference} (already ${bill.status})`,
+          _target_type: "bill_transaction",
+          _target_id: bill.id,
+          _metadata: {
+            reference,
+            previous_status: prevStatus,
+            mapped_outcome: outcome,
+            vtpass_code: pay.code,
+          },
+        });
+      }
+    }
     return {
-      status,
+      status: bill.status as "successful" | "failed",
       reference: bill.internal_reference,
-      requestId: bill.provider_request_id,
-      providerTransactionId: pay.transactionId ?? bill.provider_transaction_id,
+      requestId: bill.provider_request_id ?? "",
+      providerTransactionId: bill.provider_transaction_id,
       amount,
       phoneMasked: maskPhone(phone),
       network,
-      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
+      balanceAfter: null,
       message:
-        status === "successful"
+        bill.status === "successful"
           ? "Airtime purchase successful"
-          : status === "failed"
-            ? "Airtime purchase failed"
-            : "Your payment is being confirmed.",
+          : "Airtime purchase failed",
     };
+  }
+
+  if (!bill.provider_request_id) {
+    throw new Error("Missing provider reference for requery.");
+  }
+
+  const pay = await vtpassRequery(bill.provider_request_id);
+  const outcome = mapVtpassOutcome(pay);
+  console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
+
+  const { data: finalized, error: finError } = await supabase.rpc("complete_airtime_purchase", {
+    _internal_reference: bill.internal_reference,
+    _outcome: outcome,
+    _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+    _payload: {
+      vtpass_code: pay.code,
+      vtpass_status: pay.contentStatus,
+      response_description: pay.responseDescription,
+      requery: true,
+      vtpass_snapshot: safePayload(pay.raw),
+    },
   });
+  if (finError) throw new Error(finError.message);
+
+  if (opts.audit) {
+    await supabase.rpc("admin_write_audit", {
+      _action: "airtime_requery",
+      _description: `Requery ${reference}: ${prevStatus} → ${outcome}`,
+      _target_type: "bill_transaction",
+      _target_id: bill.id,
+      _metadata: {
+        reference,
+        previous_status: prevStatus,
+        mapped_outcome: outcome,
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+      },
+    });
+  }
+
+  const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+  const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
+
+  return {
+    status,
+    reference: bill.internal_reference,
+    requestId: bill.provider_request_id,
+    providerTransactionId: pay.transactionId ?? bill.provider_transaction_id,
+    amount,
+    phoneMasked: maskPhone(phone),
+    network,
+    balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
+    message:
+      status === "successful"
+        ? "Airtime purchase successful"
+        : status === "failed"
+          ? "Airtime purchase failed"
+          : "Your payment is being confirmed.",
+  };
+}
