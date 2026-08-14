@@ -3,34 +3,28 @@ import { HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Home / standalone Care entry — no tickets created in Phase 1. */
+/** Compact Care entry — prefer the Home row; this remains for reuse. */
 export function CareEntryCard({ className }: { className?: string }) {
   return (
-    <section
+    <Link
+      to="/support"
       className={cn(
-        "rounded-2xl border border-border/80 bg-card p-4 shadow-card",
+        "press flex items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3 py-2.5",
         className,
       )}
     >
-      <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
-          <HeartHandshake className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-extrabold tracking-tight">RockPay Care</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Need help with a payment, wallet or account? We're here to help.
-          </p>
-          <Button asChild className="mt-3 h-10 rounded-xl font-bold" size="sm">
-            <Link to="/support">Get Help</Link>
-          </Button>
-        </div>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+        <HeartHandshake className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold">RockPay Care</p>
+        <p className="text-[10px] text-muted-foreground">Need help with a transaction?</p>
       </div>
-    </section>
+      <span className="text-[11px] font-bold text-primary">Get help</span>
+    </Link>
   );
 }
 
-/** Contextual Care link for transaction screens — passes reference only. */
 export function CareContextLink({
   reference,
   status,
@@ -42,19 +36,16 @@ export function CareContextLink({
 }) {
   const copy =
     status === "failed"
-      ? { title: "Something went wrong?", cta: "Get help from RockPay Care" }
+      ? { title: "Something went wrong?", cta: "RockPay Care" }
       : status === "pending"
-        ? { title: "Need help?", cta: "Contact RockPay Care" }
-        : { title: "Need help with this transaction?", cta: "Get help" };
+        ? { title: "Need help?", cta: "RockPay Care" }
+        : { title: "Need help with this?", cta: "Get help" };
 
   return (
-    <div className={cn("rounded-2xl border border-border/80 bg-card p-4 text-center shadow-card", className)}>
-      <p className="text-sm font-bold">{copy.title}</p>
-      <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-2xl font-bold">
-        <Link
-          to="/support"
-          search={reference ? { reference } : {}}
-        >
+    <div className={cn("flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5", className)}>
+      <p className="text-xs font-bold">{copy.title}</p>
+      <Button asChild size="sm" variant="outline" className="h-8 rounded-lg text-xs font-bold">
+        <Link to="/support" search={reference ? { reference } : {}}>
           {copy.cta}
         </Link>
       </Button>
