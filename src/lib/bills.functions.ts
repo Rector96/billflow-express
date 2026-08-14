@@ -21,6 +21,11 @@ function maskId(id: string): string {
   return `••••${id.slice(-4)}`;
 }
 
+function maskPhone(phone: string): string {
+  if (phone.length < 7) return "••••";
+  return `${phone.slice(0, 3)}••••${phone.slice(-3)}`;
+}
+
 function safePayload(raw: unknown): Record<string, unknown> {
   try {
     return JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
@@ -34,7 +39,14 @@ function customerMessage(
   slug: string,
   amount?: number,
 ): string {
-  const label = slug === "cable" ? "Cable TV" : slug === "electricity" ? "Electricity" : "Bill";
+  const label =
+    slug === "cable"
+      ? "Cable TV"
+      : slug === "electricity"
+        ? "Electricity"
+        : slug === "data"
+          ? "Data"
+          : "Bill";
   if (status === "successful") {
     return amount != null
       ? `Your ${label} purchase of ₦${Math.round(amount).toLocaleString("en-NG")} was successful.`
@@ -53,15 +65,22 @@ function mapStartError(message: string): Error {
   if (message.includes("pin_not_set")) return new Error("pin_not_set");
   if (message.includes("invalid amount")) return new Error("Enter a valid amount.");
   if (message.includes("unsupported_service")) return new Error("This service is not available yet.");
+  if (message.includes("invalid_phone") || message.includes("Enter a valid Nigerian")) {
+    return new Error("Enter a valid Nigerian mobile number.");
+  }
   return new Error(message);
 }
 
-/** Live DisCo / cable providers from VTpass catalogue (server-cached). */
+/** Live DisCo / cable / data providers from VTpass catalogue (server-cached). */
 export const listVtpassServices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { category: string }) => {
     const category = String(input?.category ?? "").trim();
-    if (category !== "tv-subscription" && category !== "electricity-bill") {
+    if (
+      category !== "tv-subscription" &&
+      category !== "electricity-bill" &&
+      category !== "data"
+    ) {
       throw new Error("Unsupported catalogue category.");
     }
     return { category };
@@ -78,7 +97,7 @@ export const listVtpassServices = createServerFn({ method: "POST" })
     }));
   });
 
-/** Live packages for a cable serviceID. */
+/** Live packages for a cable / data serviceID. */
 export const listVtpassVariations = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { serviceID: string }) => {
@@ -198,7 +217,6 @@ export const purchaseCable = createServerFn({ method: "POST" })
       phone = undefined;
     }
     if (!phone) {
-      // VTpass requires phone — use a safe placeholder from profile if possible later
       phone = "08011111111";
     }
 
@@ -429,7 +447,155 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     };
   });
 
-/** Customer requery for cable/electricity (and compatible airtime via complete_bill if needed). */
+/** Mobile Data purchase via VTpass (live catalogue variations). */
+export const purchaseData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    serviceID: string;
+    phone: string;
+    variationCode: string;
+    amount?: number;
+    pin: string;
+  }) => {
+    const serviceID = String(input?.serviceID ?? "").trim();
+    const phone = String(input?.phone ?? "").trim();
+    const variationCode = String(input?.variationCode ?? "").trim();
+    const pin = String(input?.pin ?? "");
+    if (!serviceID) throw new Error("Select a network.");
+    if (!phone) throw new Error("Enter a phone number.");
+    if (!variationCode) throw new Error("Select a data plan.");
+    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+    return {
+      serviceID,
+      phone,
+      variationCode,
+      pin,
+      amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
+    };
+  })
+  .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
+    const {
+      getVtpassConfig,
+      vtpassListVariations,
+      vtpassPay,
+      mapVtpassOutcome,
+      normalizeNgPhone,
+      toVtpassDataServiceId,
+      MOBILE_DATA_SERVICE_IDS,
+    } = await import("./vtpass.server");
+    getVtpassConfig();
+
+    let serviceID: string;
+    try {
+      serviceID = MOBILE_DATA_SERVICE_IDS.has(data.serviceID)
+        ? data.serviceID
+        : toVtpassDataServiceId(data.serviceID);
+    } catch {
+      throw new Error("Select a supported network.");
+    }
+
+    const phone = normalizeNgPhone(data.phone);
+
+    // Server validates package against live catalogue (never trust client price)
+    const variations = await vtpassListVariations(serviceID);
+    const pack = variations.find((v) => v.variationCode === data.variationCode);
+    if (!pack) throw new Error("Selected plan is no longer available. Refresh and try again.");
+    const amount = Math.round(pack.amount);
+    if (!Number.isFinite(amount) || amount < 50) {
+      throw new Error("Enter a valid amount.");
+    }
+
+    const networkLabel = serviceID
+      .replace(/-data$/i, "")
+      .replace(/etisalat/i, "9mobile")
+      .toUpperCase();
+
+    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+      _service_slug: "data",
+      _service_label: "Data",
+      _provider: serviceID,
+      _product: pack.name,
+      _customer_identifier: phone,
+      _amount: amount,
+      _pin: data.pin,
+      _metadata: {
+        title: "Data Purchase",
+        service_slug: "data",
+        service_label: `${networkLabel} ${pack.name}`,
+        masked: maskPhone(phone),
+        variation_code: data.variationCode,
+        network: networkLabel,
+      },
+    });
+    if (startError) {
+      console.error("[data] start", startError.message);
+      throw mapStartError(startError.message);
+    }
+    const row = Array.isArray(started) ? started[0] : started;
+    if (!row?.internal_reference || !row?.request_id) {
+      throw new Error("Could not start data purchase.");
+    }
+
+    const pay = await vtpassPay({
+      request_id: row.request_id,
+      serviceID,
+      billersCode: phone,
+      variation_code: data.variationCode,
+      amount,
+      phone,
+    });
+    const outcome = mapVtpassOutcome(pay);
+    console.info("[data] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
+
+    const { data: finalized, error: finError } = await context.supabase.rpc("complete_bill_purchase", {
+      _internal_reference: row.internal_reference,
+      _outcome: outcome,
+      _provider_transaction_id: pay.transactionId ?? "",
+      _payload: {
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        purchased_code: pay.purchasedCode,
+        vtpass_snapshot: safePayload(pay.raw),
+      },
+    });
+    if (finError) {
+      console.error("[data] complete", finError.message);
+      return {
+        status: "pending",
+        reference: row.internal_reference as string,
+        requestId: row.request_id as string,
+        providerTransactionId: pay.transactionId,
+        amount,
+        identifierMasked: maskPhone(phone),
+        provider: serviceID,
+        product: pack.name,
+        token: null,
+        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
+        message: customerMessage("pending", "data"),
+        customerName: null,
+      };
+    }
+
+    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+    const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
+    return {
+      status,
+      reference: (fin?.internal_reference ?? row.internal_reference) as string,
+      requestId: row.request_id as string,
+      providerTransactionId: pay.transactionId,
+      amount,
+      identifierMasked: maskPhone(phone),
+      provider: serviceID,
+      product: pack.name,
+      token: pay.purchasedCode,
+      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
+      message: customerMessage(status, "data", amount),
+      customerName: null,
+    };
+  });
+
+/** Customer requery for cable/electricity/data (and compatible airtime via complete_bill if needed). */
 export const requeryBill = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reference: string }) => {
@@ -465,6 +631,11 @@ export const requeryBill = createServerFn({ method: "POST" })
           ? meta["purchased_code"]
           : null;
 
+    const idMasked =
+      slug === "data"
+        ? maskPhone(String(bill.customer_identifier ?? ""))
+        : maskId(String(bill.customer_identifier ?? ""));
+
     if (bill.status === "successful" || bill.status === "failed") {
       return {
         status: bill.status as "successful" | "failed",
@@ -472,7 +643,7 @@ export const requeryBill = createServerFn({ method: "POST" })
         requestId: bill.provider_request_id ?? "",
         providerTransactionId: bill.provider_transaction_id,
         amount,
-        identifierMasked: maskId(String(bill.customer_identifier ?? "")),
+        identifierMasked: idMasked,
         provider: String(bill.provider ?? ""),
         product: bill.product,
         token: tokenExisting,
@@ -517,7 +688,7 @@ export const requeryBill = createServerFn({ method: "POST" })
       requestId: bill.provider_request_id,
       providerTransactionId: pay.transactionId ?? bill.provider_transaction_id,
       amount,
-      identifierMasked: maskId(String(bill.customer_identifier ?? "")),
+      identifierMasked: idMasked,
       provider: String(bill.provider ?? ""),
       product: bill.product,
       token: pay.purchasedCode ?? tokenExisting,
