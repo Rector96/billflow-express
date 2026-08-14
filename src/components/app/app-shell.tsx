@@ -24,12 +24,7 @@ const NAV_WALLET: NavItem = { to: "/wallet", label: "Wallet", icon: Wallet };
 const NAV_HISTORY: NavItem = { to: "/history", label: "History", icon: History };
 const NAV_PROFILE: NavItem = { to: "/profile", label: "Profile", icon: User };
 
-const MAIN_NAV: NavItem[] = [
-  NAV_HOME,
-  NAV_WALLET,
-  NAV_HISTORY,
-  NAV_PROFILE,
-];
+const MAIN_NAV: NavItem[] = [NAV_HOME, NAV_WALLET, NAV_HISTORY, NAV_PROFILE];
 
 const DESKTOP_EXTRA: NavItem[] = [
   { to: "/services", label: "Services", icon: LayoutGrid },
@@ -48,7 +43,10 @@ export function BrandMark({ className }: { className?: string }) {
       height={96}
       loading="eager"
       decoding="async"
-      className={cn("size-8 shrink-0 rounded-xl object-contain sm:size-9", className)}
+      className={cn(
+        "size-9 shrink-0 rounded-2xl object-contain ring-1 ring-black/5",
+        className,
+      )}
     />
   );
 }
@@ -63,14 +61,12 @@ export function BrandLogo({ className }: { className?: string }) {
       loading="eager"
       decoding="async"
       className={cn(
-        "h-[clamp(3rem,14vw,5rem)] w-auto max-w-full shrink-0 object-contain",
+        "h-[clamp(2.75rem,12vw,4.5rem)] w-auto max-w-[min(100%,16rem)] shrink-0 object-contain object-left",
         className,
       )}
     />
   );
 }
-
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -100,61 +96,73 @@ export function AppShell({ children }: { children: ReactNode }) {
       {offline ? (
         <div
           role="status"
-          className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-1.5 text-center text-xs font-bold text-warning-foreground"
+          className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-xs font-bold text-warning-foreground shadow-soft"
         >
           You're offline — payments and top-ups can't be completed right now.
         </div>
       ) : null}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar px-4 py-6 lg:flex">
-        <Link to="/home" className="mb-8 flex items-center gap-2 px-2">
+
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-6 lg:flex">
+        <Link to="/home" className="mb-8 flex items-center gap-2.5 px-2">
           <BrandMark />
-          <span className="text-lg font-extrabold tracking-tight">{BRAND.name}</span>
+          <div className="min-w-0">
+            <span className="block text-base font-extrabold tracking-tight">{BRAND.name}</span>
+            <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+              {BRAND.tagline}
+            </span>
+          </div>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
-          {[...MAIN_NAV, ...DESKTOP_EXTRA].map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
-                isActive(item.to)
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <item.icon className="size-[18px]" />
-              {item.label}
-            </Link>
-          ))}
+        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Main">
+          {[...MAIN_NAV, ...DESKTOP_EXTRA].map((item) => {
+            const active = isActive(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-soft"
+                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+                )}
+              >
+                <item.icon className={cn("size-[18px]", active && "text-primary")} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
+
         <Link
           to="/services"
-          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-primary-foreground shadow-float"
+          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-float"
         >
           <ScanLine className="size-4" /> Pay a bill
         </Link>
       </aside>
 
-      <div className="mx-auto w-full max-w-2xl flex-1 pb-28 lg:max-w-3xl lg:pb-10">{children}</div>
+      <div className="page-fade mx-auto w-full max-w-2xl flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-3xl lg:pb-10">
+        {children}
+      </div>
 
       <nav
         aria-label="Bottom navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 shadow-[0_-8px_24px_-16px_oklch(0.2_0.05_285_/_12%)] backdrop-blur-md lg:hidden"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-1.5 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
           <Link
             to="/services"
             aria-label="Pay a bill"
             className={cn(
-              "press flex min-h-12 flex-col items-center justify-end gap-1 py-1 text-[11px] font-extrabold tracking-wide",
+              "press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-extrabold tracking-wide",
               isActive("/services") ? "text-primary" : "text-muted-foreground",
             )}
           >
-            <span className="brand-gradient -mt-7 grid size-14 place-items-center rounded-full text-primary-foreground shadow-float">
-              <ScanLine className="size-6" />
+            <span className="brand-gradient -mt-6 grid size-[3.25rem] place-items-center rounded-full text-primary-foreground shadow-float ring-4 ring-background">
+              <ScanLine className="size-5" />
             </span>
             PAY
           </Link>
@@ -171,11 +179,18 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "press flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl py-1 text-[11px] font-semibold",
+        "press flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[10px] font-semibold",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >
-      <item.icon className={cn("size-5", active && "stroke-[2.4]")} />
+      <span
+        className={cn(
+          "grid size-9 place-items-center rounded-xl transition-colors",
+          active && "bg-primary-soft",
+        )}
+      >
+        <item.icon className={cn("size-5", active && "stroke-[2.35]")} />
+      </span>
       {item.label}
     </Link>
   );
