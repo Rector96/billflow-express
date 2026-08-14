@@ -8,6 +8,28 @@ export type InitFundingResult = {
   amount: number;
 };
 
+function resolveCallbackUrl(): string | undefined {
+  // Prefer explicit site URL (set on Netlify), then Origin, then Referer.
+  const siteUrl = (process.env["URL"] ?? process.env["DEPLOY_PRIME_URL"] ?? process.env["SITE_URL"] ?? "")
+    .trim()
+    .replace(/\/$/, "");
+  if (siteUrl.startsWith("http")) return `${siteUrl}/wallet/fund`;
+
+  const origin = getRequestHeader("origin")?.trim();
+  if (origin?.startsWith("http")) return `${origin.replace(/\/$/, "")}/wallet/fund`;
+
+  const referer = getRequestHeader("referer")?.trim();
+  if (referer?.startsWith("http")) {
+    try {
+      const u = new URL(referer);
+      return `${u.origin}/wallet/fund`;
+    } catch {
+      /* ignore */
+    }
+  }
+  return undefined;
+}
+
 /**
  * Starts a Paystack (test mode) wallet top-up for the signed-in user.
  * The amount is validated in the database, the ledger row is created as
@@ -25,21 +47,36 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<InitFundingResult> => {
     const { getPaystackSecret, PAYSTACK_API } = await import("./paystack.server");
 
+    // Fail fast if secret is missing — clearer than a vague Paystack API error.
+    const secret = getPaystackSecret();
+
     // The wallet + email come from the authenticated session, never the client.
     const { data: intent, error } = await context.supabase.rpc("create_wallet_funding_intent", {
       _amount: data.amount,
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[paystack] create_wallet_funding_intent", error.message);
+      throw new Error(error.message);
+    }
     const row = Array.isArray(intent) ? intent[0] : intent;
-    if (!row?.reference || !row.email) throw new Error("Could not start this top-up.");
+    if (!row?.reference) {
+      throw new Error("Could not create funding intent (no reference returned).");
+    }
+    if (!row.email) {
+      throw new Error(
+        "Your account has no email on file. Update your profile email, then try Fund Wallet again.",
+      );
+    }
 
-    const origin = getRequestHeader("origin") ?? getRequestHeader("referer")?.replace(/\/[^/]*$/, "");
-    const callbackUrl = origin ? `${origin}/wallet/fund` : undefined;
+    const callbackUrl = resolveCallbackUrl();
+    if (!callbackUrl) {
+      console.warn("[paystack] no callback URL resolved; Paystack will use dashboard default");
+    }
 
     const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${getPaystackSecret()}`,
+        Authorization: `Bearer ${secret}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -61,7 +98,9 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
       | null;
 
     if (!res.ok || !json?.status || !json.data?.authorization_url) {
-      throw new Error(json?.message ?? "Paystack could not start this payment.");
+      const msg = json?.message ?? `Paystack initialize failed (HTTP ${res.status})`;
+      console.error("[paystack] initialize", res.status, msg);
+      throw new Error(msg);
     }
 
     return {
