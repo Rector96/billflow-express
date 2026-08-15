@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, SearchX } from "lucide-react";
+import { Search, SearchX, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
@@ -31,20 +31,20 @@ function ServicesPage() {
   return (
     <AppShell>
       <PageHeader title="Services" backTo="/home" />
-      <div className="space-y-6 px-4 pt-2">
+      <div className="space-y-5 px-4 pt-1 pb-6">
         <div className="relative">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search services"
             aria-label="Search services"
-            className="h-12 rounded-xl bg-card pl-10"
+            className="h-11 rounded-2xl border-border/50 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
         {list.length ? (
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
             {list.map((s) => (
               <ServiceTile
                 key={s.slug}
@@ -64,12 +64,12 @@ function ServicesPage() {
           />
         )}
 
-        <div className="flex items-center gap-3 rounded-2xl bg-primary-soft p-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-lg text-primary-foreground">
-            🛡
+        <div className="flex items-center gap-3 rounded-2xl bg-primary-soft/80 px-3.5 py-3.5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <ShieldCheck className="size-5" />
           </span>
           <div>
-            <p className="text-sm font-bold">Easy, Reliable, Secure</p>
+            <p className="text-sm font-bold">Easy. Reliable. Secure.</p>
             <p className="text-xs text-muted-foreground">Your payments are safe with us.</p>
           </div>
         </div>
