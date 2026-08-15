@@ -1,14 +1,12 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Plus } from "lucide-react";
 import { formatNaira } from "@/lib/mock-data";
-
-const QUICK_AMOUNTS = [1000, 5000, 10000, 20000];
 import { AppShell } from "@/components/app/app-shell";
-import { PageHeader } from "@/components/app/page-header";
-import { WalletCard } from "@/components/app/wallet-card";
 import { SectionTitle, TransactionRow } from "@/components/app/ui-bits";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
+
+const QUICK_AMOUNTS = [1000, 5000, 10000];
 
 export const Route = createFileRoute("/wallet")({
   head: () => ({
@@ -29,22 +27,61 @@ function WalletLayout() {
 }
 
 function WalletPage() {
-  const { transactions } = useApp();
+  const { balance, hideBalance, toggleBalance, transactions } = useApp();
+
   return (
     <AppShell>
-      <PageHeader title="Wallet" backTo="/home" />
-      <div className="space-y-7 px-4 pt-2 pb-6">
-        <WalletCard label="Available Balance" />
+      {/* Purple hero — matches reference wallet screen */}
+      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-4 pb-8 text-primary-foreground">
+        <div className="mb-5 flex items-center gap-3">
+          <Link
+            to="/home"
+            aria-label="Back to home"
+            className="press grid size-9 place-items-center rounded-full bg-white/15 ring-1 ring-white/20"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <h1 className="text-base font-extrabold">Wallet</h1>
+        </div>
 
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-xs font-medium opacity-90">Available Balance</p>
+            <button
+              type="button"
+              onClick={toggleBalance}
+              aria-label={hideBalance ? "Show balance" : "Hide balance"}
+              className="press grid size-7 place-items-center rounded-full bg-white/15"
+            >
+              {hideBalance ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            </button>
+          </div>
+          <p className="mt-1.5 text-[1.85rem] leading-none font-extrabold tracking-tight tabular-nums">
+            {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
+          </p>
+
+          <div className="mt-4 flex justify-center">
+            <Link
+              to="/wallet/fund"
+              search={{}}
+              className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-6 text-sm font-bold text-primary shadow-soft"
+            >
+              <Plus className="size-4" /> Fund Wallet
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="space-y-5 px-4 pt-5 pb-6">
         <section>
-          <SectionTitle title="Quick Fund" action="Fund Wallet" to="/wallet/fund" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SectionTitle title="Quick Fund" />
+          <div className="grid grid-cols-3 gap-2">
             {QUICK_AMOUNTS.map((q) => (
               <Link
                 key={q}
                 to="/wallet/fund"
                 search={{ amount: q }}
-                className="press flex h-12 items-center justify-center rounded-xl border bg-card text-sm font-bold shadow-card"
+                className="press flex h-10 items-center justify-center rounded-xl border border-border/60 bg-card text-xs font-bold shadow-soft"
               >
                 {formatNaira(q, false)}
               </Link>
@@ -53,22 +90,26 @@ function WalletPage() {
           <Link
             to="/wallet/fund"
             search={{}}
-            className="press mt-3 flex h-12 items-center justify-center gap-2 rounded-xl border border-dashed text-sm font-bold text-primary"
+            className="press mt-2.5 flex h-10 items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/30 text-xs font-bold text-primary"
           >
-            <Plus className="size-4" /> Enter a custom amount
+            <Plus className="size-3.5" /> Custom amount
           </Link>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Paystack test mode — you pay on Paystack’s secure checkout and your wallet is credited only after the payment is verified. No real money moves.
+          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            Paystack test mode — credited only after payment is verified.
           </p>
         </section>
 
         <section>
-          <SectionTitle title="Wallet Activity" action="See All" to="/history" />
-          <div className="space-y-3">
-            {transactions.slice(0, 5).map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} />
-            ))}
-          </div>
+          <SectionTitle title="Recent Activity" action="See All" to="/history" />
+          {transactions.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">No wallet activity yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {transactions.slice(0, 5).map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} compact />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </AppShell>
