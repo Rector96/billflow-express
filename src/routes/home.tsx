@@ -27,7 +27,6 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-/** Order matches product mock: utility grid then airtime/data */
 const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
 
 function HomePage() {
@@ -51,15 +50,14 @@ function HomePage() {
   }, [saved]);
 
   const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
-
   const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
 
   return (
     <AppShell>
-      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-5 pb-16 text-primary-foreground">
+      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-5 pb-14 text-primary-foreground">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs opacity-90">{greeting()},</p>
+            <p className="text-xs font-medium opacity-90">{greeting()},</p>
             <h1 className="truncate text-xl font-extrabold tracking-tight">{firstName} 👋</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -68,7 +66,7 @@ function HomePage() {
               aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
               className="press relative grid size-10 place-items-center rounded-full bg-white/15 ring-1 ring-white/20"
             >
-              <Bell className="size-4.5" />
+              <Bell className="size-4" />
               {unreadCount > 0 ? (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[9px] font-extrabold text-warning-foreground">
                   {unreadCount > 9 ? "9+" : unreadCount}
@@ -86,12 +84,12 @@ function HomePage() {
         </div>
       </header>
 
-      <div className="-mt-11 space-y-5 px-4 pb-5">
+      <div className="-mt-10 space-y-5 px-4 pb-5">
         <WalletCard />
 
         <section>
           <SectionTitle title="Pay Bills" action="See all" to="/services" />
-          <div className="grid grid-cols-3 gap-x-2 gap-y-1">
+          <div className="grid grid-cols-3 gap-x-1 gap-y-2">
             {serviceTiles.map((s) =>
               s ? (
                 <ServiceTile
@@ -127,7 +125,7 @@ function HomePage() {
                   >
                     <span
                       className={cn(
-                        "grid size-10 shrink-0 place-items-center rounded-xl",
+                        "grid size-10 shrink-0 place-items-center rounded-full",
                         svc?.tint ?? "bg-muted text-muted-foreground",
                       )}
                     >
@@ -141,7 +139,7 @@ function HomePage() {
                     </div>
                     <Button
                       size="sm"
-                      className="h-9 shrink-0 rounded-full px-4 text-xs font-bold"
+                      className="h-8 shrink-0 rounded-full px-4 text-xs font-bold"
                       onClick={() =>
                         navigate({
                           to: "/pay/$slug",
@@ -176,7 +174,7 @@ function HomePage() {
           to="/support"
           className="press flex items-center gap-3 rounded-2xl bg-card px-3 py-3 shadow-soft"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
             <HeartHandshake className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
