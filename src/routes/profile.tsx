@@ -3,18 +3,14 @@ import {
   Bell,
   Bookmark,
   ChevronRight,
-  FileText,
   KeyRound,
   LifeBuoy,
-  LockKeyhole,
   LogOut,
   ShieldCheck,
   User,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
-import { WalletIdCard } from "@/components/app/wallet-id-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,73 +44,59 @@ function ProfileLayout() {
   return <ProfilePage />;
 }
 
-type Item = { label: string; icon: LucideIcon; to?: string; onClick?: () => void };
+type Item = { label: string; icon: LucideIcon; to: string };
 
 function ProfilePage() {
   const { profile, logout } = useApp();
   const navigate = useNavigate();
 
+  // Order matches reference mock: info → PIN → security → saved → support
   const items: Item[] = [
     { label: "Personal Information", icon: User, to: "/profile/personal" },
-    { label: "Change Password", icon: LockKeyhole, to: "/security" },
-    { label: "Transaction PIN", icon: KeyRound, to: "/security" },
+    { label: "Change PIN", icon: KeyRound, to: "/security" },
     { label: "Security", icon: ShieldCheck, to: "/security" },
     { label: "Saved Payments", icon: Bookmark, to: "/saved-payments" },
     { label: "Notifications", icon: Bell, to: "/notifications" },
     { label: "Support", icon: LifeBuoy, to: "/support" },
-    {
-      label: "Terms & Conditions",
-      icon: FileText,
-      onClick: () => toast.info("Terms & Conditions coming soon"),
-    },
-    {
-      label: "Privacy Policy",
-      icon: FileText,
-      onClick: () => toast.info("Privacy Policy coming soon"),
-    },
   ];
 
   return (
     <AppShell>
-      <header className="brand-gradient rounded-b-[2rem] px-4 pt-8 pb-10 text-center text-primary-foreground">
-        <div className="mx-auto grid size-20 place-items-center rounded-full border-2 border-white/30 bg-white/15 text-2xl font-extrabold">
-          {initialsOf(profile.name)}
+      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-7 pb-9 text-center text-primary-foreground">
+        <div className="mx-auto grid size-[4.5rem] place-items-center rounded-full border-[3px] border-white/35 bg-white/20 text-xl font-extrabold shadow-soft">
+          {initialsOf(profile.name || "U")}
         </div>
-        <h1 className="mt-3 text-xl font-extrabold">{profile.name}</h1>
-        <p className="text-sm opacity-85">{profile.phone}</p>
+        <h1 className="mt-3 text-lg font-extrabold tracking-tight">
+          {profile.name || "Your profile"}
+        </h1>
+        {profile.phone ? (
+          <p className="mt-0.5 text-sm opacity-90">{profile.phone}</p>
+        ) : profile.email ? (
+          <p className="mt-0.5 text-sm opacity-90">{profile.email}</p>
+        ) : null}
       </header>
 
-      <div className="space-y-2 px-4 py-5">
-        <div className="pb-2">
-          <WalletIdCard />
-        </div>
-        {items.map((item) =>
-          item.to ? (
-            <Link
-              key={item.label}
-              to={item.to}
-              className="press flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-card"
-            >
-              <ItemInner item={item} />
-            </Link>
-          ) : (
-            <button
-              key={item.label}
-              type="button"
-              onClick={item.onClick}
-              className="press flex w-full items-center gap-3 rounded-2xl border bg-card p-3.5 text-left shadow-card"
-            >
-              <ItemInner item={item} />
-            </button>
-          ),
-        )}
+      <div className="space-y-2 px-4 py-4">
+        {items.map((item) => (
+          <Link
+            key={item.label}
+            to={item.to}
+            className="press flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 shadow-soft"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+              <item.icon className="size-4" />
+            </span>
+            <span className="flex-1 text-sm font-semibold">{item.label}</span>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        ))}
 
         <AlertDialog>
-          <AlertDialogTrigger className="press mt-2 flex w-full items-center gap-3 rounded-2xl border border-destructive/30 bg-card p-3.5 text-left font-bold text-destructive shadow-card">
-            <span className="grid size-9 place-items-center rounded-xl bg-destructive-soft">
+          <AlertDialogTrigger className="press mt-1 flex w-full items-center gap-3 rounded-2xl bg-card px-3.5 py-3 text-left shadow-soft">
+            <span className="grid size-9 place-items-center rounded-full bg-destructive-soft text-destructive">
               <LogOut className="size-4" />
             </span>
-            <span className="flex-1 text-sm">Logout</span>
+            <span className="flex-1 text-sm font-semibold text-destructive">Logout</span>
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
@@ -139,23 +121,11 @@ function ProfilePage() {
 
         <Link
           to="/admin"
-          className="press mt-4 block rounded-2xl border border-dashed p-3 text-center text-xs font-semibold text-muted-foreground"
+          className="press mt-3 block rounded-2xl border border-dashed border-border/70 p-2.5 text-center text-[11px] font-semibold text-muted-foreground"
         >
-          Preview the desktop admin dashboard (demo)
+          Admin dashboard
         </Link>
       </div>
     </AppShell>
-  );
-}
-
-function ItemInner({ item }: { item: Item }) {
-  return (
-    <>
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-        <item.icon className="size-4" />
-      </span>
-      <span className="flex-1 text-sm font-semibold">{item.label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
-    </>
   );
 }
