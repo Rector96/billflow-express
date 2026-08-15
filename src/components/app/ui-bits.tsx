@@ -75,7 +75,7 @@ export function StatusBadge({ status, compact }: { status: TxStatus; compact?: b
   );
 }
 
-/** Circular icon tiles — matches product mock Pay Bills grid */
+/** Soft circular icons — matches reference mock Pay Bills grid */
 export function ServiceTile({
   label,
   Icon,
@@ -95,8 +95,14 @@ export function ServiceTile({
 }) {
   const inner = (
     <>
-      <span className={cn("grid size-12 place-items-center rounded-2xl", tint)}>
-        <Icon className="size-5" strokeWidth={1.75} />
+      <span
+        className={cn(
+          "grid place-items-center rounded-full",
+          compact ? "size-11" : "size-12",
+          tint,
+        )}
+      >
+        <Icon className={compact ? "size-4.5" : "size-5"} strokeWidth={1.75} />
       </span>
       <span className="text-center text-[11px] leading-tight font-semibold text-foreground">
         {label}
@@ -104,8 +110,8 @@ export function ServiceTile({
     </>
   );
   const cls = cn(
-    "press flex flex-col items-center justify-center gap-2 rounded-2xl bg-transparent p-1",
-    compact ? "min-h-[4.5rem]" : "min-h-[5rem]",
+    "press flex flex-col items-center justify-center gap-1.5 bg-transparent p-1",
+    compact ? "min-h-[4.25rem]" : "min-h-[4.75rem]",
   );
   if (to) {
     return (
@@ -129,7 +135,7 @@ export function TransactionRow({ tx, compact }: { tx: Transaction; compact?: boo
       params={{ txId: tx.id }}
       className={cn(
         "press flex items-center gap-3 rounded-2xl bg-card",
-        compact ? "px-3 py-2.5 shadow-soft" : "border border-border/50 p-3.5 shadow-card",
+        compact ? "px-3 py-2.5 shadow-soft" : "border border-border/40 px-3.5 py-3 shadow-soft",
       )}
     >
       <span
@@ -143,7 +149,8 @@ export function TransactionRow({ tx, compact }: { tx: Transaction; compact?: boo
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-foreground">{tx.title}</p>
         <p className="truncate text-xs text-muted-foreground">
-          {tx.service} · {tx.date}{compact ? "" : `, ${tx.time}`}
+          {tx.service} · {tx.date}
+          {compact ? "" : `, ${tx.time}`}
         </p>
       </div>
       <div className="shrink-0 text-right">
@@ -184,7 +191,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/70 bg-card px-5 py-10 text-center">
-      <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground">
+      <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
         <Icon className="size-5" />
       </span>
       <p className="text-sm font-extrabold">{title}</p>
