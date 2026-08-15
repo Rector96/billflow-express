@@ -107,7 +107,7 @@ function Chip({
         "press h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold transition-colors",
         active
           ? "bg-primary text-primary-foreground shadow-soft"
-          : "bg-muted/80 text-muted-foreground hover:bg-muted",
+          : "bg-card text-muted-foreground ring-1 ring-border/70 hover:bg-muted/60",
       )}
     >
       {children}
@@ -143,7 +143,6 @@ function HistoryPage() {
     <AppShell>
       <PageHeader title="History" backTo="/home" />
       <div className="space-y-3 px-4 pt-1 pb-6">
-        {/* Search */}
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -151,13 +150,13 @@ function HistoryPage() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search transactions"
             aria-label="Search transactions"
-            className="h-11 rounded-2xl border-border/60 bg-card pl-10 text-sm shadow-soft"
+            className="h-10 rounded-2xl border-border/50 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
-        {/* Primary status row — matches mock: All | Successful | Pending | Failed */}
+        {/* All | Successful | Pending | Failed — primary, always visible */}
         <div className="flex items-center gap-2">
-          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS.map((t) => (
               <Chip key={t.key} active={status === t.key} onClick={() => setStatus(t.key)}>
                 {t.label}
@@ -170,19 +169,18 @@ function HistoryPage() {
             aria-expanded={moreOpen}
             aria-label="More filters"
             className={cn(
-              "press grid size-9 shrink-0 place-items-center rounded-full border",
+              "press grid size-8 shrink-0 place-items-center rounded-full border",
               moreOpen || extraActive
                 ? "border-primary bg-primary-soft text-primary"
                 : "border-border/70 bg-card text-muted-foreground",
             )}
           >
-            <SlidersHorizontal className="size-4" />
+            <SlidersHorizontal className="size-3.5" />
           </button>
         </div>
 
-        {/* Secondary filters — collapsed by default to avoid scatter */}
         {moreOpen ? (
-          <div className="space-y-2.5 rounded-2xl border border-border/60 bg-card p-3 shadow-soft">
+          <div className="space-y-2.5 rounded-2xl border border-border/50 bg-card p-3 shadow-soft">
             <div>
               <p className="mb-1.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
                 Service
@@ -225,7 +223,7 @@ function HistoryPage() {
         {list.length ? (
           <div className="space-y-2">
             {list.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} />
+              <TransactionRow key={tx.id} tx={tx} compact />
             ))}
           </div>
         ) : (
