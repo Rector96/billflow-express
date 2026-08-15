@@ -79,7 +79,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     pin: string;
   }) => {
     const amount = Math.round(Number(input?.amount));
-    if (!Number.isFinite(amount) || amount < 50 || amount > 50000) {
+    if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
       throw new Error("Enter an amount between ₦50 and ₦50,000.");
     }
     const pin = String(input?.pin ?? "");
@@ -93,39 +93,48 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const {
       getVtpassConfig,
-      vtpassPayAirtime,
-      mapVtpassOutcome,
-      normalizeNgPhone,
       toVtpassAirtimeServiceId,
+      normalizeNgPhone,
+      vtpassPay,
+      mapVtpassOutcome,
     } = await import("./vtpass.server");
     getVtpassConfig();
 
-    const phone = normalizeNgPhone(data.phone);
-    const serviceId = toVtpassAirtimeServiceId(data.network);
+    let phone: string;
+    try {
+      phone = normalizeNgPhone(data.phone);
+    } catch {
+      throw new Error("Enter a valid Nigerian mobile number.");
+    }
 
-    const { data: started, error: startError } = await context.supabase.rpc(
-      "start_airtime_purchase",
-      {
-        _provider: serviceId,
-        _phone: phone,
-        _amount: data.amount,
-        _pin: data.pin,
-      },
-    );
+    let serviceId: string;
+    try {
+      serviceId = toVtpassAirtimeServiceId(data.network);
+    } catch {
+      throw new Error("unsupported_network");
+    }
+
+    const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
+      _network: serviceId,
+      _phone: phone,
+      _amount: data.amount,
+      _pin: data.pin,
+    });
     if (startError) {
       console.error("[airtime] start", startError.message);
       throw mapStartError(startError.message);
     }
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id) {
-      throw new Error("Could not start airtime payment.");
+      throw new Error("Could not start airtime purchase.");
     }
 
-    const pay = await vtpassPayAirtime({
-      serviceId,
-      phone,
+    const pay = await vtpassPay({
+      request_id: row.request_id,
+      serviceID: serviceId,
+      billersCode: phone,
       amount: data.amount,
-      requestId: row.request_id as string,
+      phone,
     });
     const outcome = mapVtpassOutcome(pay);
     console.info("[airtime] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
@@ -187,6 +196,27 @@ export const requeryAirtime = createServerFn({ method: "POST" })
       supabase: context.supabase,
       userId: context.userId,
       reference: data.reference,
+    });
+  });
+
+/** Staff requery — audited; no customer ownership restriction. */
+export const adminRequeryAirtime = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { reference: string }) => {
+    const reference = String(input?.reference ?? "").trim();
+    if (!reference) throw new Error("Missing transaction reference.");
+    return { reference };
+  })
+  .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
+    const { data: staff, error: staffErr } = await context.supabase.rpc("is_staff", {
+      _user_id: context.userId,
+    });
+    if (staffErr || !staff) throw new Error("forbidden");
+
+    return requeryAirtimeCore({
+      supabase: context.supabase,
+      reference: data.reference,
+      audit: true,
     });
   });
 
