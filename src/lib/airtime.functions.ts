@@ -115,7 +115,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     }
 
     const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
-      _network: serviceId,
+      _provider: serviceId,
       _phone: phone,
       _amount: data.amount,
       _pin: data.pin,
