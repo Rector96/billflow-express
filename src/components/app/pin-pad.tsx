@@ -16,7 +16,7 @@ export function PinPad({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-xs space-y-8">
       <div className="flex justify-center gap-4" role="status" aria-label={`${value.length} of ${length} digits entered`}>
         {Array.from({ length }).map((_, i) => (
           <span
