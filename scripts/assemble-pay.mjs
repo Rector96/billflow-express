@@ -6,4 +6,4 @@ const out = [0, 1, 2, 3, 4]
   .map((i) => readFileSync(join(dir, `pay-part-${i}.tsx.txt`), "utf8"))
   .join("");
 writeFileSync(join(dir, "../src/routes/pay.$slug.tsx"), out);
-console.log("[assemble-pay] wrote pay.$slug.tsx", out.length, "bytes");
+console.log("[assemble-pay] wrote pay.$slug.tsx", Buffer.byteLength(out), "bytes");
