@@ -47,6 +47,7 @@ export type VtpassVerifyResult = {
 };
 
 const FAIL_CODES = new Set([
+  "010", // variation code does not exist
   "011",
   "012",
   "013",
@@ -64,6 +65,7 @@ const FAIL_CODES = new Set([
   "030",
   "034",
   "035",
+  "083", // system error
   "087",
   "091",
 ]);
