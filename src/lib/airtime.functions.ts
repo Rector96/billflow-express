@@ -37,12 +37,24 @@ function customerMessage(
       : "Your Airtime purchase was successful.";
   }
   if (status === "failed") {
-    const hint = providerHint?.trim();
-    // Sandbox: any phone other than 08011111111 is designed to fail at VTpass
-    if (hint) {
-      return `Your Airtime purchase failed (${hint}). Your wallet has been refunded.`;
+    const hint = (providerHint ?? "").trim();
+    const upper = hint.toUpperCase();
+    // VTpass code 028 — product not enabled on merchant account
+    if (upper.includes("WHITELIST") || upper.includes("NOT WHITELISTED")) {
+      return (
+        "This airtime product is not enabled on the VTpass account yet. " +
+        "In VTpass Sandbox → Profile → Product Settings, enable MTN/Glo/Airtel/9mobile airtime, then try again. " +
+        "Your wallet has been refunded."
+      );
     }
-    return "Your Airtime purchase failed. Your wallet has been refunded. On sandbox use phone 08011111111 for a successful test.";
+    // Sandbox success phone is fixed by VTpass
+    if (!hint) {
+      return (
+        "Your Airtime purchase failed. Your wallet has been refunded. " +
+        "On VTpass sandbox, use phone 08011111111 for a successful test."
+      );
+    }
+    return `Your Airtime purchase failed (${hint}). Your wallet has been refunded.`;
   }
   return "Your Airtime purchase is still being confirmed. Your money is protected.";
 }
