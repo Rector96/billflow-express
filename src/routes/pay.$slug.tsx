@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
+import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
