@@ -373,6 +373,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      __apply_migration: { Args: { sql: string }; Returns: undefined }
       _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean }
       admin_dashboard_stats: { Args: never; Returns: Json }
       bootstrap_current_user: {
