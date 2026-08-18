@@ -1,7 +1,5 @@
-/**
- * VTpass server client — SANDBOX only.
- * Secrets never use VITE_* or any client-exposed env.
- */
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type VtpassMode = "sandbox" | "live";
 
@@ -46,14 +44,17 @@ export type VtpassVerifyResult = {
   message: string;
 };
 
+// VTpass purchase/requery codes that represent a definitive failure.
+// Any undocumented/ambiguous response remains pending and is requeryable.
 const FAIL_CODES = new Set([
-  "011",
-  "012",
-  "013",
-  "014",
-  "016",
-  "017",
-  "018",
+  "010", // variation code does not exist
+  "011", // invalid arguments
+  "012", // product does not exist
+  "013", // below minimum amount
+  "014", // duplicate request id
+  "016", // transaction failed
+  "017", // above maximum amount
+  "018", // low wallet balance at provider
   "019",
   "021",
   "022",
@@ -61,11 +62,15 @@ const FAIL_CODES = new Set([
   "024",
   "027",
   "028",
-  "030",
-  "034",
-  "035",
-  "087",
-  "091",
+  "030", // biller/provider unreachable
+  "031",
+  "032", // quantity limit
+  "034", // service suspended
+  "035", // service inactive
+  "040", // transaction reversal
+  "083", // system error
+  "087", // invalid credentials
+  "091", // transaction not processed
 ]);
 
 /** Mobile data serviceIDs we surface in RockPay (excludes Smile/Spectranet for V1). */
@@ -178,14 +183,32 @@ export function normalizeNgPhone(input: string): string {
   return d;
 }
 
+/**
+ * Provider GET wrapper. Provider/network failures must never leak as a raw
+ * browser "Failed to fetch" error. HTTP failures are treated as provider
+ * errors and surfaced with a stable RockPay message.
+ */
 async function vtpassGetJson(path: string): Promise<unknown> {
   const { baseUrl } = getVtpassConfig();
-  const res = await fetch(`${baseUrl}${path}`, {
-    method: "GET",
-    headers: headersForGet(),
-    signal: AbortSignal.timeout(20_000),
-  });
-  return res.json().catch(() => ({}));
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}${path}`, {
+      method: "GET",
+      headers: headersForGet(),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (err) {
+    console.error("[VTpass] GET network error", path, err);
+    throw new Error("VTpass is temporarily unavailable. Please try again.");
+  }
+
+  const raw = await res.json().catch(() => null);
+  if (!res.ok) {
+    console.error("[VTpass] GET HTTP error", res.status, path, raw);
+    throw new Error("VTpass is temporarily unavailable. Please try again.");
+  }
+
+  return raw ?? {};
 }
 
 export async function vtpassListServices(identifier: string): Promise<VtpassService[]> {
@@ -242,10 +265,10 @@ export async function vtpassListVariations(serviceID: string): Promise<VtpassVar
         fixedPrice: String(r["fixedPrice"] ?? "Yes").toLowerCase() === "yes",
       };
     })
-    .filter((v) => v.variationCode);
+    .filter((v) => v.variationCode && Number.isFinite(v.amount) && v.amount >= 0);
 
   if (!mapped.length) {
-    throw new Error("Service information is temporarily unavailable. Please try again.");
+    throw new Error("No plans are currently available for this provider. Please try again later.");
   }
   cacheSet(key, mapped);
   return mapped;
@@ -271,7 +294,8 @@ export async function vtpassMerchantVerify(input: {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30_000),
     });
-  } catch {
+  } catch (err) {
+    console.error("[VTpass] merchant verify network error", input.serviceID, err);
     return {
       ok: false,
       code: "TIMEOUT",
@@ -284,11 +308,29 @@ export async function vtpassMerchantVerify(input: {
       tariff: null,
       meterNumber: null,
       raw: {},
-      message: "Could not verify details right now. Please try again.",
+      message: "VTpass is temporarily unavailable. Please try again.",
     };
   }
 
   const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    console.error("[VTpass] merchant verify HTTP error", res.status, input.serviceID, raw);
+    return {
+      ok: false,
+      code: String(raw["code"] ?? res.status),
+      customerName: null,
+      address: null,
+      status: null,
+      dueDate: null,
+      customerNumber: null,
+      minPurchaseAmount: null,
+      tariff: null,
+      meterNumber: null,
+      raw,
+      message: "VTpass is temporarily unavailable. Please try again.",
+    };
+  }
+
   const code = String(raw["code"] ?? "");
   const content = (raw["content"] ?? {}) as Record<string, unknown>;
 
@@ -401,8 +443,21 @@ export async function vtpassPayAirtime(input: {
       signal: AbortSignal.timeout(60_000),
     });
     const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      console.error("[VTpass] airtime HTTP error", res.status, input.requestId, raw);
+      return {
+        code: String(raw["code"] ?? res.status),
+        responseDescription: String(raw["response_description"] ?? "Provider request failed"),
+        requestId: input.requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
+      };
+    }
     return parsePayResponse(raw, input.requestId);
   } catch (err) {
+    console.error("[VTpass] airtime network error", input.requestId, err);
     return {
       code: "TIMEOUT",
       responseDescription: "Provider timeout",
@@ -427,8 +482,21 @@ export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPa
       signal: AbortSignal.timeout(60_000),
     });
     const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      console.error("[VTpass] pay HTTP error", res.status, requestId, raw);
+      return {
+        code: String(raw["code"] ?? res.status),
+        responseDescription: String(raw["response_description"] ?? "Provider request failed"),
+        requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
+      };
+    }
     return parsePayResponse(raw, requestId);
   } catch (err) {
+    console.error("[VTpass] pay network error", requestId, err);
     return {
       code: "TIMEOUT",
       responseDescription: "Provider timeout",
@@ -451,8 +519,21 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
       signal: AbortSignal.timeout(45_000),
     });
     const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      console.error("[VTpass] requery HTTP error", res.status, requestId, raw);
+      return {
+        code: String(raw["code"] ?? res.status),
+        responseDescription: String(raw["response_description"] ?? "Provider requery failed"),
+        requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
+      };
+    }
     return parsePayResponse(raw, requestId);
   } catch (err) {
+    console.error("[VTpass] requery network error", requestId, err);
     return {
       code: "TIMEOUT",
       responseDescription: "Provider timeout",
@@ -469,27 +550,23 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
 export function mapVtpassOutcome(
   result: VtpassPayResult,
 ): "successful" | "failed" | "pending" {
+  // A network timeout/no response is ambiguous. Never refund based only on
+  // the timeout; leave the ledger pending so the request can be requeried.
   if (result.code === "TIMEOUT" || result.code === "") return "pending";
   if (result.code === "099") return "pending";
   if (FAIL_CODES.has(result.code)) return "failed";
 
-  // 000 = processed — final state is content.transactions.status
-  if (result.code === "000" || result.code === "020") {
+  // VTpass documents 000 as "processed". The transaction status inside the
+  // response determines whether the provider actually delivered the service.
+  if (result.code === "000") {
     const s = (result.contentStatus ?? "").toLowerCase().trim();
-    if (s === "delivered" || s === "successful" || s === "success") {
-      return "successful";
-    }
-    if (s === "failed" || s === "reversed" || s === "refunded") {
-      return "failed";
-    }
-    const desc = (result.responseDescription ?? "").toUpperCase();
-    if (
-      result.transactionId &&
-      (desc.includes("SUCCESS") || desc.includes("DELIVERED"))
-    ) {
-      return "successful";
-    }
+    if (s === "delivered" || s === "successful" || s === "success") return "successful";
+    if (s === "failed" || s === "reversed" || s === "refunded") return "failed";
     return "pending";
   }
+
+  // 020 is a verification response code, not a purchase success code.
+  // For purchase/requery responses, anything not explicitly documented as
+  // successful or failed is ambiguous and must remain pending for requery.
   return "pending";
 }
