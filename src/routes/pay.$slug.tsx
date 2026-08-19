@@ -445,8 +445,8 @@ function PayFlow() {
             variationCode: variation.variationCode,
             amount: Math.round(variation.amount),
             pin: authorizedPin,
-            phone: profile.phone || undefined,
-            customerName: verifiedName || undefined,
+            ...(profile.phone ? { phone: profile.phone } : {}),
+            ...(verifiedName ? { customerName: verifiedName } : {}),
             subscriptionType: "change",
           },
         });
@@ -468,8 +468,8 @@ function PayFlow() {
             meterType,
             amount: total,
             pin: authorizedPin,
-            phone: profile.phone || undefined,
-            customerName: verifiedName || undefined,
+            ...(profile.phone ? { phone: profile.phone } : {}),
+            ...(verifiedName ? { customerName: verifiedName } : {}),
             minAmount: minPurchase,
           },
         });

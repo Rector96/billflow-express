@@ -142,7 +142,11 @@ function AdminUserDetail() {
 
   return (
     <AdminShell title={profile.full_name} subtitle={profile.email}>
-      <Link to="/admin/users" className="mb-4 inline-block text-xs font-bold text-primary">
+      <Link
+        to="/admin/users"
+        search={{ q: "", status: "all" }}
+        className="mb-4 inline-block text-xs font-bold text-primary"
+      >
         ← All users
       </Link>
 

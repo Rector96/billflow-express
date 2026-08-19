@@ -77,7 +77,7 @@ function TransactionDetails() {
     bill?.service === "Airtime" ||
     (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
 
-  const status = (bill?.status as typeof tx.status | undefined) ?? tx?.status ?? "pending";
+  const status = bill?.status ?? tx?.status ?? "pending";
   const amount = bill?.amount != null ? Number(bill.amount) : tx?.amount ?? 0;
   const network = bill?.provider ?? tx?.service?.split(" ")[0] ?? "";
   const phone =

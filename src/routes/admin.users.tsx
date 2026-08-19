@@ -125,6 +125,7 @@ function AdminUsers() {
               key={u.user_id}
               to="/admin/users/$userId"
               params={{ userId: u.user_id }}
+              search={{ q: "", status: "all" }}
               className="block rounded-2xl border bg-card p-4 shadow-card transition-colors hover:border-primary/30"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">

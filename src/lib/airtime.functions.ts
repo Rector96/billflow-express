@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 export type AirtimePurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -18,9 +19,9 @@ function maskPhone(phone: string): string {
   return `${phone.slice(0, 3)}••••${phone.slice(-3)}`;
 }
 
-function safePayload(raw: unknown): Record<string, unknown> {
+function safePayload(raw: unknown): Json {
   try {
-    return JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    return JSON.parse(JSON.stringify(raw)) as Json;
   } catch {
     return {};
   }
