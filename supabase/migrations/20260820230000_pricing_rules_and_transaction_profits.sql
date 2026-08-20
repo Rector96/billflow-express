@@ -135,6 +135,7 @@ ALTER TABLE public.pricing_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transaction_profits ENABLE ROW LEVEL SECURITY;
 
 -- pricing_rules: staff can read; only admin/super_admin can write
+-- has_role signature: has_role(_user_id uuid, _role public.app_role)
 DROP POLICY IF EXISTS pricing_rules_staff_select ON public.pricing_rules;
 CREATE POLICY pricing_rules_staff_select
   ON public.pricing_rules
@@ -148,8 +149,8 @@ CREATE POLICY pricing_rules_admin_insert
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    public.has_role('admin'::public.app_role, auth.uid())
-    OR public.has_role('super_admin'::public.app_role, auth.uid())
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'super_admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS pricing_rules_admin_update ON public.pricing_rules;
@@ -158,12 +159,12 @@ CREATE POLICY pricing_rules_admin_update
   FOR UPDATE
   TO authenticated
   USING (
-    public.has_role('admin'::public.app_role, auth.uid())
-    OR public.has_role('super_admin'::public.app_role, auth.uid())
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'super_admin'::public.app_role)
   )
   WITH CHECK (
-    public.has_role('admin'::public.app_role, auth.uid())
-    OR public.has_role('super_admin'::public.app_role, auth.uid())
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'super_admin'::public.app_role)
   );
 
 DROP POLICY IF EXISTS pricing_rules_admin_delete ON public.pricing_rules;
@@ -172,8 +173,8 @@ CREATE POLICY pricing_rules_admin_delete
   FOR DELETE
   TO authenticated
   USING (
-    public.has_role('admin'::public.app_role, auth.uid())
-    OR public.has_role('super_admin'::public.app_role, auth.uid())
+    public.has_role(auth.uid(), 'admin'::public.app_role)
+    OR public.has_role(auth.uid(), 'super_admin'::public.app_role)
   );
 
 -- transaction_profits: staff can read only.
