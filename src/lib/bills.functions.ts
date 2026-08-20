@@ -512,12 +512,12 @@ export const purchaseData = createServerFn({ method: "POST" })
     if (!phone) throw new Error("Enter a phone number.");
     if (!variationCode) throw new Error("Select a data plan.");
     if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+    // Client-supplied amount is intentionally not used for pricing or debit.
     return {
       serviceID,
       phone,
       variationCode,
       pin,
-      amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
     };
   })
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
@@ -530,6 +530,7 @@ export const purchaseData = createServerFn({ method: "POST" })
       toVtpassDataServiceId,
       MOBILE_DATA_SERVICE_IDS,
     } = await import("./vtpass.server");
+    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
 
     let serviceID: string;
@@ -548,23 +549,34 @@ export const purchaseData = createServerFn({ method: "POST" })
       throw new Error("Selected plan is no longer available. Refresh and try again.");
     }
 
-    const amount = Math.round(Number(pack.amount));
-    if (!Number.isFinite(amount) || amount < 1) {
+    // Trusted VTpass variation amount (provider purchase amount).
+    const providerAmount = Math.round(Number(pack.amount));
+    if (!Number.isFinite(providerAmount) || providerAmount < 1) {
       throw new Error("Selected plan has an invalid amount. Refresh and try again.");
     }
+
+    // Backend-only pricing. Client cannot set the final customer amount.
+    const pricing = await resolvePricing({
+      service: "data",
+      provider: serviceID,
+      productCode: data.variationCode,
+      baseAmount: providerAmount,
+    });
+    const customerAmount = pricing.customerAmount;
 
     const networkLabel = serviceID
       .replace(/-data$/i, "")
       .replace(/etisalat/i, "9mobile")
       .toUpperCase();
 
+    // Wallet debit uses RockPay customer amount (may include markup).
     const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "data",
       _service_label: "Data",
       _provider: serviceID,
       _product: pack.name,
       _customer_identifier: phone,
-      _amount: amount,
+      _amount: customerAmount,
       _pin: data.pin,
       _metadata: {
         title: "Data Purchase",
@@ -573,6 +585,10 @@ export const purchaseData = createServerFn({ method: "POST" })
         masked: maskPhone(phone),
         variation_code: data.variationCode,
         network: networkLabel,
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
       },
     });
     if (startError) {
@@ -584,12 +600,13 @@ export const purchaseData = createServerFn({ method: "POST" })
       throw new Error("Could not start data purchase.");
     }
 
+    // VTpass receives the provider/plan amount only (no RockPay markup).
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID,
       billersCode: phone,
       variation_code: data.variationCode,
-      amount,
+      amount: providerAmount,
       phone,
     });
     const outcome = mapVtpassOutcome(pay);
@@ -600,7 +617,9 @@ export const purchaseData = createServerFn({ method: "POST" })
       txId: pay.transactionId,
       serviceID,
       variation: data.variationCode,
-      amount,
+      providerAmount,
+      customerAmount,
+      pricingRuleId: pricing.pricingRuleId,
       outcome,
     });
 
@@ -614,6 +633,9 @@ export const purchaseData = createServerFn({ method: "POST" })
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
         vtpass_snapshot: safePayload(pay.raw),
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
       },
     });
     if (finError) {
@@ -623,7 +645,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount,
+        amount: customerAmount,
         identifierMasked: maskPhone(phone),
         provider: serviceID,
         product: pack.name,
@@ -640,13 +662,13 @@ export const purchaseData = createServerFn({ method: "POST" })
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount,
+      amount: customerAmount,
       identifierMasked: maskPhone(phone),
       provider: serviceID,
       product: pack.name,
       token: pay.purchasedCode,
       balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, "data", amount, pay.responseDescription),
+      message: customerMessage(status, "data", customerAmount, pay.responseDescription),
       customerName: null,
     };
   });
