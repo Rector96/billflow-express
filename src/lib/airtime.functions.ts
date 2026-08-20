@@ -80,6 +80,10 @@ function mapStartError(message: string): Error {
 /**
  * Authorize (PIN + debit + pending) then call VTpass sandbox.
  * Outcome is decided only from the provider response — never from the client.
+ *
+ * Pricing: client submits requested airtime (providerAmount only).
+ * Backend calculates customerAmount via pricing rules.
+ * Wallet is debited customerAmount; VTpass receives providerAmount.
  */
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -89,6 +93,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     amount: number;
     pin: string;
   }) => {
+    // Requested airtime value only (provider purchase amount). Not the final customer price.
     const amount = Math.round(Number(input?.amount));
     if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
       throw new Error("Enter an amount between ₦50 and ₦50,000.");
@@ -109,6 +114,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       vtpassPayAirtime,
       mapVtpassOutcome,
     } = await import("./vtpass.server");
+    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
 
     let phone: string;
@@ -125,10 +131,23 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("unsupported_network");
     }
 
+    // Trusted requested airtime value sent to VTpass.
+    const providerAmount = data.amount;
+
+    // Backend-only pricing. Client cannot set the final customer amount.
+    const pricing = await resolvePricing({
+      service: "airtime",
+      provider: serviceId,
+      productCode: null,
+      baseAmount: providerAmount,
+    });
+    const customerAmount = pricing.customerAmount;
+
+    // Wallet debit uses RockPay customer amount (may include markup).
     const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
       _provider: serviceId,
       _phone: phone,
-      _amount: data.amount,
+      _amount: customerAmount,
       _pin: data.pin,
     });
     if (startError) {
@@ -140,11 +159,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("Could not start airtime purchase.");
     }
 
-    // Airtime VTU: request_id, serviceID, amount, phone only (VTpass docs)
+    // VTpass receives requested airtime only (no RockPay markup).
     const pay = await vtpassPayAirtime({
       requestId: String(row.request_id),
       serviceId,
-      amount: data.amount,
+      amount: providerAmount,
       phone,
     });
     const outcome = mapVtpassOutcome(pay);
@@ -153,6 +172,9 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       status: pay.contentStatus,
       desc: pay.responseDescription,
       txId: pay.transactionId,
+      providerAmount,
+      customerAmount,
+      pricingRuleId: pricing.pricingRuleId,
       outcome,
     });
 
@@ -167,6 +189,10 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
           vtpass_status: pay.contentStatus,
           response_description: pay.responseDescription,
           vtpass_snapshot: safePayload(pay.raw),
+          provider_amount: providerAmount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          pricing_fallback: pricing.usedFallback,
         },
       },
     );
@@ -177,11 +203,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount: data.amount,
+        amount: customerAmount,
         phoneMasked: maskPhone(phone),
         network: serviceId,
         balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage("pending", data.amount),
+        message: customerMessage("pending", customerAmount),
       };
     }
 
@@ -193,11 +219,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount: data.amount,
+      amount: customerAmount,
       phoneMasked: maskPhone(phone),
       network: serviceId,
       balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, data.amount, pay.responseDescription),
+      message: customerMessage(status, customerAmount, pay.responseDescription),
     };
   });
 
