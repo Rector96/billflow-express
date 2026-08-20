@@ -149,7 +149,7 @@ function TicketThread() {
     <AppShell>
       <PageHeader
         title={ticket.ticket_number ?? "RockPay Care"}
-        subtitle={ticket.subject ?? undefined}
+        {...(ticket.subject ? { subtitle: ticket.subject } : {})}
         backTo="/support"
       />
       <div className="flex min-h-[70dvh] flex-col px-4 pb-4">

@@ -6,7 +6,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/app-store";
-import { formatTicketStatus, statusBadgeClass } from "@/lib/care";
+import { formatTicketStatus, statusBadgeClass, type TicketStatus } from "@/lib/care";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +105,7 @@ function StaffTicket() {
     }
   };
 
-  const setStatus = async (status: string) => {
+  const setStatus = async (status: TicketStatus) => {
     try {
       const { error } = await supabase.rpc("staff_care_set_status", {
         _ticket_id: ticketId,

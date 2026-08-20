@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 export type BillPurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -26,9 +27,9 @@ function maskPhone(phone: string): string {
   return `${phone.slice(0, 3)}••••${phone.slice(-3)}`;
 }
 
-function safePayload(raw: unknown): Record<string, unknown> {
+function safePayload(raw: unknown): Json {
   try {
-    return JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    return JSON.parse(JSON.stringify(raw)) as Json;
   } catch {
     return {};
   }
@@ -181,7 +182,7 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
       minPurchaseAmount: result.minPurchaseAmount,
       tariff: result.tariff,
       meterNumber: result.meterNumber,
-      snapshot: result.raw,
+      snapshot: safePayload(result.raw),
     };
   });
 

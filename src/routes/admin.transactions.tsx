@@ -54,13 +54,21 @@ type BillRow = {
   user_phone: string;
 };
 
+type TransactionFilter = "all" | TxStatus;
+
+const transactionFilters: TransactionFilter[] = ["all", "successful", "pending", "failed"];
+
 const PAGE = 30;
 
 function AdminTransactions() {
   const search = Route.useSearch();
   const requery = useServerFn(adminRequeryAirtime);
   const [q, setQ] = useState(search.q);
-  const [status, setStatus] = useState(search.status || "all");
+  const [status, setStatus] = useState<TransactionFilter>(
+    ["all", "pending", "successful", "failed", "reversed"].includes(search.status)
+      ? (search.status as TransactionFilter)
+      : "all",
+  );
   const [channel, setChannel] = useState("all");
   const [service, setService] = useState("all");
   const [dateKey, setDateKey] = useState("all");
@@ -191,7 +199,9 @@ function AdminTransactions() {
 
   useEffect(() => {
     if (search.q) setQ(search.q);
-    if (search.status) setStatus(search.status);
+    if (transactionFilters.includes(search.status as TransactionFilter)) {
+      setStatus(search.status as TransactionFilter);
+    }
   }, [search.q, search.status]);
 
   const openDetail = async (row: BillRow) => {
@@ -285,7 +295,7 @@ function AdminTransactions() {
             key={s}
             type="button"
             onClick={() => {
-              setStatus(s);
+              setStatus(s as TransactionFilter);
               setPage(0);
             }}
             className={cn(
@@ -435,7 +445,12 @@ function AdminTransactions() {
                 <p className="font-bold">{selected.user_label}</p>
                 {selected.user_email ? <p className="text-xs text-muted-foreground">{selected.user_email}</p> : null}
                 {selected.user_phone ? <p className="text-xs text-muted-foreground">{selected.user_phone}</p> : null}
-                <Link to="/admin/users/$userId" params={{ userId: selected.user_id }} className="text-xs font-bold text-primary">
+                <Link
+                  to="/admin/users/$userId"
+                  params={{ userId: selected.user_id }}
+                  search={{ q: "", status: "all" }}
+                  className="text-xs font-bold text-primary"
+                >
                   Open profile
                 </Link>
               </section>

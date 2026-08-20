@@ -11,6 +11,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppNotification, SavedPayment, ServiceSlug, Transaction, TxStatus } from "./mock-data";
+import type { TicketCategory } from "./care";
 
 export type Profile = {
   name: string;
@@ -81,7 +82,7 @@ const Ctx = createContext<AppState | null>(null);
 
 const PREFS_KEY = "billpay-prefs-v1";
 
-const VALID_TICKET_CATEGORIES = new Set([
+const VALID_TICKET_CATEGORIES: ReadonlySet<TicketCategory> = new Set([
   "payment_not_received",
   "wrong_amount",
   "pending_transaction",
@@ -90,9 +91,9 @@ const VALID_TICKET_CATEGORIES = new Set([
 ]);
 
 /** Map free-text / legacy labels → ticket_category enum */
-export function toTicketCategory(raw: string): string {
+export function toTicketCategory(raw: string): TicketCategory {
   const s = String(raw ?? "").trim().toLowerCase();
-  if (VALID_TICKET_CATEGORIES.has(s)) return s;
+  if (VALID_TICKET_CATEGORIES.has(s as TicketCategory)) return s as TicketCategory;
   if (s.includes("not received") || s === "transaction") return "payment_not_received";
   if (s.includes("wrong amount") || s.includes("debited")) return "wrong_amount";
   if (s.includes("pending")) return "pending_transaction";

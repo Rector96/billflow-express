@@ -299,16 +299,16 @@ function AdminDashboard() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link to="/admin/transactions" className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link to="/admin/transactions" search={{ q: "", status: "all" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
               All transactions
             </Link>
-            <Link to="/admin/transactions?status=failed" className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link to="/admin/transactions" search={{ q: "", status: "failed" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
               Failed monitor
             </Link>
-            <Link to="/admin/transactions?status=pending" className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link to="/admin/transactions" search={{ q: "", status: "pending" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
               Pending queue
             </Link>
-            <Link to="/admin/users" className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link to="/admin/users" search={{ q: "", status: "all" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
               Users
             </Link>
           </div>

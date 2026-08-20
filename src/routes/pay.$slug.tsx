@@ -445,8 +445,8 @@ function PayFlow() {
             variationCode: variation.variationCode,
             amount: Math.round(variation.amount),
             pin: authorizedPin,
-            phone: profile.phone || undefined,
-            customerName: verifiedName || undefined,
+            ...(profile.phone ? { phone: profile.phone } : {}),
+            ...(verifiedName ? { customerName: verifiedName } : {}),
             subscriptionType: "change",
           },
         });
@@ -468,8 +468,8 @@ function PayFlow() {
             meterType,
             amount: total,
             pin: authorizedPin,
-            phone: profile.phone || undefined,
-            customerName: verifiedName || undefined,
+            ...(profile.phone ? { phone: profile.phone } : {}),
+            ...(verifiedName ? { customerName: verifiedName } : {}),
             minAmount: minPurchase,
           },
         });
@@ -550,7 +550,7 @@ function PayFlow() {
 
   const PrefillBanner = () =>
     fromPrefill && (provider || identifier) ? (
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-primary-soft/50 px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2 rounded-2xl border border-primary/20 bg-primary-soft/80 px-3 py-2.5 shadow-soft">
         <p className="text-[11px] font-semibold text-foreground">
           Using your saved details · {provider}
           {identifier ? ` · ${maskTail(identifier)}` : ""}
@@ -588,87 +588,96 @@ function PayFlow() {
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-md px-4 py-8 sm:py-10">
-          <div className="flex flex-col items-center gap-1.5 text-center">
-            <span className={cn("grid size-14 place-items-center rounded-full", map.cls)}>
-              <map.Icon className="size-7" />
-            </span>
-            <h1 className="text-lg font-extrabold">{map.title}</h1>
-            <p className="max-w-xs text-xs text-muted-foreground">{map.body}</p>
-            <p className="text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+          <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-soft sm:p-5">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <span className={cn("grid size-16 place-items-center rounded-full ring-8 ring-white shadow-soft", map.cls)}>
+                <map.Icon className="size-8" />
+              </span>
+              <div className="space-y-1">
+                <h1 className="text-xl font-extrabold tracking-tight">{map.title}</h1>
+                <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">{map.body}</p>
+              </div>
+              <div className="mt-1 rounded-2xl bg-muted px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Amount paid
+                </p>
+                <p className="mt-1 text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 divide-y rounded-2xl border border-border/70 bg-background/50 px-3 py-1">
+              <InfoRow
+                label="Service"
+                value={`${provider || serviceID} ${variation?.name || pack?.name || service.name}`}
+              />
+              <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
+              {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
+              {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
+              <InfoRow label="Amount" value={formatNaira(total)} />
+              {token ? (
+                <div className="flex items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground">Electricity token</p>
+                    <p className="break-all font-mono text-xs font-semibold">{token}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] font-bold text-primary"
+                    onClick={() => copyText("Token", token)}
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
+              {txId ? (
+                <div className="flex items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground">RockPay Reference</p>
+                    <p className="truncate font-mono text-xs font-semibold">{txId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] font-bold text-primary"
+                    onClick={() => copyText("RockPay reference", txId)}
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
+              {providerRequestId ? (
+                <div className="flex items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground">VTpass Request ID</p>
+                    <p className="truncate font-mono text-xs font-semibold">{providerRequestId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] font-bold text-primary"
+                    onClick={() => copyText("VTpass request ID", providerRequestId)}
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
+              {providerTxId ? (
+                <div className="flex items-center justify-between gap-2 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground">Provider Transaction ID</p>
+                    <p className="truncate font-mono text-xs font-semibold">{providerTxId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[11px] font-bold text-primary"
+                    onClick={() => copyText("Provider transaction ID", providerTxId)}
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <div className="mt-3 divide-y rounded-xl border border-border/70 bg-card px-3 py-0.5">
-            <InfoRow
-              label="Service"
-              value={`${provider || serviceID} ${variation?.name || pack?.name || service.name}`}
-            />
-            <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
-            {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
-            {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
-            <InfoRow label="Amount" value={formatNaira(total)} />
-            {token ? (
-              <div className="flex items-center justify-between gap-2 py-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">Electricity token</p>
-                  <p className="break-all font-mono text-xs font-semibold">{token}</p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-[11px] font-bold text-primary"
-                  onClick={() => copyText("Token", token)}
-                >
-                  Copy
-                </button>
-              </div>
-            ) : null}
-            {txId ? (
-              <div className="flex items-center justify-between gap-2 py-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">RockPay Reference</p>
-                  <p className="truncate font-mono text-xs font-semibold">{txId}</p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-[11px] font-bold text-primary"
-                  onClick={() => copyText("RockPay reference", txId)}
-                >
-                  Copy
-                </button>
-              </div>
-            ) : null}
-            {providerRequestId ? (
-              <div className="flex items-center justify-between gap-2 py-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">VTpass Request ID</p>
-                  <p className="truncate font-mono text-xs font-semibold">{providerRequestId}</p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-[11px] font-bold text-primary"
-                  onClick={() => copyText("VTpass request ID", providerRequestId)}
-                >
-                  Copy
-                </button>
-              </div>
-            ) : null}
-            {providerTxId ? (
-              <div className="flex items-center justify-between gap-2 py-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-muted-foreground">Provider Transaction ID</p>
-                  <p className="truncate font-mono text-xs font-semibold">{providerTxId}</p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-[11px] font-bold text-primary"
-                  onClick={() => copyText("Provider transaction ID", providerTxId)}
-                >
-                  Copy
-                </button>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-2">
             {outcome === "failed" ? (
               <>
                 <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
@@ -683,7 +692,7 @@ function PayFlow() {
             ) : null}
             {outcome === "pending" ? (
               <>
-                {(isAirtime || isProviderBill || isData) ? (
+                {isAirtime || isProviderBill || isData ? (
                   <Button className="h-11 w-full rounded-xl font-bold" onClick={() => void refreshStatus()}>
                     Refresh status
                   </Button>
@@ -738,13 +747,26 @@ function PayFlow() {
   if (step === "processing") {
     return (
       <AppShell>
-        <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
-          <Loader2 className="size-10 animate-spin text-primary" />
-          <h1 className="text-lg font-extrabold">Processing your payment…</h1>
-          <p className="max-w-xs text-xs text-muted-foreground">
-            Please don't close this page until we finish verifying.
-          </p>
-          <p className="text-base font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+        <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
+          <div className="w-full rounded-[30px] border border-border/70 bg-card p-5 text-center shadow-soft">
+            <div className="mx-auto grid size-16 place-items-center rounded-full bg-primary-soft text-primary ring-8 ring-primary/5">
+              <Loader2 className="size-8 animate-spin" />
+            </div>
+            <h1 className="mt-5 text-xl font-extrabold tracking-tight">Processing your payment</h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Please keep this screen open while we verify and complete your transaction.
+            </p>
+            <div className="mt-5 rounded-2xl bg-muted px-3 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Payment amount
+              </p>
+              <p className="mt-1 text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-warning-soft px-3 py-2 text-left text-warning-foreground">
+              <Clock3 className="size-4 shrink-0" />
+              <p className="text-[11px] font-semibold">This can take a few moments depending on network confirmation.</p>
+            </div>
+          </div>
         </div>
       </AppShell>
     );
@@ -755,24 +777,37 @@ function PayFlow() {
       <AppShell>
         <PageHeader title="Enter Transaction PIN" onBack={() => setStep("confirm")} />
         <div className="mx-auto flex min-h-[calc(100dvh-10rem)] w-full max-w-md flex-col justify-center px-4 py-8 sm:min-h-[calc(100dvh-8rem)]">
-          <p className="text-center text-xs text-muted-foreground">
-            Enter your 4-digit PIN to authorize this payment.
-          </p>
-          <div className="mt-8">
-            <PinPad value={pin} onChange={setPin} />
+          <div className="rounded-[26px] border border-border/70 bg-card p-4 shadow-soft sm:p-5">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-primary-soft px-3 py-2.5 text-left">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Amount
+                </p>
+                <p className="mt-1 text-lg font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+              </div>
+              <span className={cn("grid size-10 place-items-center rounded-xl", service.tint)}>
+                <service.icon className="size-4" />
+              </span>
+            </div>
+            <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+              Enter your 4-digit PIN to authorize this payment.
+            </p>
+            <div className="mt-5">
+              <PinPad value={pin} onChange={setPin} />
+            </div>
+            <Button
+              className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
+              disabled={pin.length < 4 || payingLock.current}
+              onClick={() => {
+                if (payingLock.current || pin.length < 4) return;
+                const authorized = pin;
+                setPin("");
+                void runPayment(authorized);
+              }}
+            >
+              Confirm payment
+            </Button>
           </div>
-          <Button
-            className="mt-8 h-11 w-full rounded-xl text-sm font-bold"
-            disabled={pin.length < 4 || payingLock.current}
-            onClick={() => {
-              if (payingLock.current || pin.length < 4) return;
-              const authorized = pin;
-              setPin("");
-              void runPayment(authorized);
-            }}
-          >
-            Confirm
-          </Button>
         </div>
       </AppShell>
     );
@@ -783,31 +818,45 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Confirm Payment" onBack={() => setStep("amount")} />
-        <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6 pb-10 sm:pt-8">
-          <div className="flex flex-col items-center gap-1 rounded-xl border border-border/70 bg-card p-4">
-            <span className={cn("grid size-10 place-items-center rounded-xl", service.tint)}>
-              <service.icon className="size-5" />
-            </span>
-            <p className="text-xs font-bold">
-              {provider || serviceID} {service.name}
-            </p>
-            <p className="text-2xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
+          <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-soft">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className={cn("grid size-11 shrink-0 place-items-center rounded-2xl", service.tint)}>
+                  <service.icon className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {provider || serviceID}
+                  </p>
+                  <p className="truncate text-sm font-extrabold">{service.name}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Total
+                </p>
+                <p className="mt-1 text-lg font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
-            <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
-            {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
-            {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
-            {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
-            {variation ? <InfoRow label={isData ? "Data plan" : "Package"} value={variation.name} /> : null}
-            {pack ? <InfoRow label="Package" value={`${pack.name} · ${formatNaira(pack.price, false)}`} /> : null}
-            <InfoRow label="Amount" value={formatNaira(total)} />
-            <InfoRow label="Wallet balance" value={formatNaira(balance)} />
-            <InfoRow label="After payment" value={formatNaira(Math.max(balance - total, 0))} />
+          <div className="rounded-[24px] border border-border/70 bg-card p-3 shadow-soft">
+            <div className="divide-y divide-border/70">
+              <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
+              {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
+              {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
+              {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
+              {variation ? <InfoRow label={isData ? "Data plan" : "Package"} value={variation.name} /> : null}
+              {pack ? <InfoRow label="Package" value={`${pack.name} · ${formatNaira(pack.price, false)}`} /> : null}
+              <InfoRow label="Amount" value={formatNaira(total)} />
+              <InfoRow label="Wallet balance" value={formatNaira(balance)} />
+              <InfoRow label="After payment" value={formatNaira(Math.max(balance - total, 0))} />
+            </div>
           </div>
 
           {insufficient ? (
-            <div className="flex items-start gap-2 rounded-xl bg-destructive-soft p-2.5 text-destructive">
+            <div className="flex items-start gap-2 rounded-2xl bg-destructive-soft p-3 text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
               <p className="text-xs font-semibold">Insufficient balance. Fund your wallet first.</p>
             </div>
@@ -849,7 +898,7 @@ function PayFlow() {
             )
           }
         />
-        <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6 pb-10 sm:pt-8">
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
           <PrefillBanner />
           {isPackageLive ? (
             variationsLoading ? (
@@ -861,23 +910,33 @@ function PayFlow() {
                 Service information is temporarily unavailable. Please try again.
               </p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {variations.map((v) => (
                   <button
                     key={v.variationCode}
                     type="button"
                     onClick={() => setVariation(v)}
                     className={cn(
-                      "press flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left",
+                      "press flex w-full items-start justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
                       variation?.variationCode === v.variationCode
-                        ? "border-primary bg-primary-soft"
+                        ? "border-primary bg-primary-soft ring-2 ring-primary/10"
                         : "border-border/70 bg-card",
                     )}
                   >
-                    <span className="min-w-0">
-                      <span className="block text-xs font-bold">{v.name}</span>
-                    </span>
-                    <span className="text-xs font-extrabold">{formatNaira(v.amount, false)}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold">{v.name}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {isData ? "Data plan" : "Package"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-extrabold tabular-nums">{formatNaira(v.amount, false)}</p>
+                      {variation?.variationCode === v.variationCode ? (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                          Selected
+                        </span>
+                      ) : null}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -886,38 +945,58 @@ function PayFlow() {
             <>
               {recentPacks.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">Recent plans</p>
-                  <div className="space-y-1.5">
+                  <p className="mb-2 text-[11px] font-bold text-muted-foreground">Recent plans</p>
+                  <div className="space-y-2">
                     {recentPacks.map((p) => (
                       <button
                         key={`r-${p.id}`}
                         type="button"
                         onClick={() => setPack(p)}
                         className={cn(
-                          "press flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left",
-                          pack?.id === p.id ? "border-primary bg-primary-soft" : "border-border/70 bg-card",
+                          "press flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
+                          pack?.id === p.id ? "border-primary bg-primary-soft ring-2 ring-primary/10" : "border-border/70 bg-card",
                         )}
                       >
-                        <span className="block text-xs font-bold">{p.name}</span>
-                        <span className="text-xs font-extrabold">{formatNaira(p.price, false)}</span>
+                        <div className="min-w-0">
+                          <span className="block text-sm font-extrabold">{p.name}</span>
+                          {p.note ? <span className="mt-1 block text-[10px] text-muted-foreground">{p.note}</span> : null}
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-base font-extrabold tabular-nums">{formatNaira(p.price, false)}</span>
+                          {pack?.id === p.id ? (
+                            <span className="mt-1 inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                              Active
+                            </span>
+                          ) : null}
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
               ) : null}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {service.packages?.map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => setPack(p)}
                     className={cn(
-                      "press flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left",
-                      pack?.id === p.id ? "border-primary bg-primary-soft" : "border-border/70 bg-card",
+                      "press flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
+                      pack?.id === p.id ? "border-primary bg-primary-soft ring-2 ring-primary/10" : "border-border/70 bg-card",
                     )}
                   >
-                    <span className="block text-xs font-bold">{p.name}</span>
-                    <span className="text-xs font-extrabold">{formatNaira(p.price, false)}</span>
+                    <div className="min-w-0">
+                      <span className="block text-sm font-extrabold">{p.name}</span>
+                      {p.note ? <span className="mt-1 block text-[10px] text-muted-foreground">{p.note}</span> : null}
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-base font-extrabold tabular-nums">{formatNaira(p.price, false)}</span>
+                      {pack?.id === p.id ? (
+                        <span className="mt-1 inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                          Active
+                        </span>
+                      ) : null}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -929,11 +1008,11 @@ function PayFlow() {
                   Minimum: {formatNaira(minPurchase, false)}
                 </p>
               ) : null}
-              <div className="rounded-xl border border-border/70 bg-card p-4 text-center">
-                <Label htmlFor="amount" className="text-[10px] text-muted-foreground">
+              <div className="rounded-[26px] border border-border/70 bg-card p-4 text-center shadow-soft">
+                <Label htmlFor="amount" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Amount to pay
                 </Label>
-                <div className="mt-1 flex items-center justify-center gap-1">
+                <div className="mt-3 flex items-center justify-center gap-1 rounded-2xl bg-background px-3 py-2">
                   <span className="text-xl font-extrabold">₦</span>
                   <Input
                     id="amount"
@@ -941,21 +1020,21 @@ function PayFlow() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
                     placeholder="0"
-                    className="h-12 border-0 bg-transparent text-center text-2xl font-extrabold shadow-none focus-visible:ring-0"
+                    className="h-12 border-0 bg-transparent text-center text-3xl font-extrabold shadow-none focus-visible:ring-0"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {amountPresets.map((q) => (
                   <button
                     key={q}
                     type="button"
                     onClick={() => setAmount(String(q))}
                     className={cn(
-                      "press h-9 rounded-lg border text-[11px] font-bold",
+                      "press h-12 rounded-2xl border text-sm font-extrabold shadow-soft",
                       amount === String(q)
-                        ? "border-primary bg-primary-soft text-primary"
-                        : "border-border/70 bg-card",
+                        ? "border-primary bg-primary-soft text-primary ring-2 ring-primary/10"
+                        : "border-border/70 bg-card text-foreground",
                     )}
                   >
                     {formatNaira(q, false)}
@@ -998,27 +1077,31 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Verify" onBack={() => setStep("identifier")} />
-        <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6 pb-10 sm:pt-8">
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
           <PrefillBanner />
           {verifying ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-xs font-semibold text-muted-foreground">
+            <div className="flex items-center justify-center gap-2 rounded-[24px] border border-border/70 bg-card py-10 text-xs font-semibold text-muted-foreground shadow-soft">
               <Loader2 className="size-4 animate-spin" /> {isElectricity ? "Verifying meter…" : "Verifying with provider…"}
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 rounded-xl bg-success-soft p-2.5 text-success">
-                <CheckCircle2 className="size-4" />
-                <p className="text-xs font-bold">{isElectricity ? "Meter Verified" : "Verified"}</p>
+              <div className="rounded-[26px] border border-success/30 bg-success-soft p-4 shadow-soft">
+                <div className="flex items-center gap-2.5 text-success">
+                  <CheckCircle2 className="size-5" />
+                  <p className="text-sm font-extrabold">{isElectricity ? "Meter verified" : "Verified"}</p>
+                </div>
               </div>
-              <div className="divide-y rounded-xl border border-border/70 bg-card px-3 py-1">
-                <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
-                <InfoRow label="Provider" value={provider || serviceID} />
-                {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
-                {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
-                {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
-                {minPurchase > 0 ? (
-                  <InfoRow label="Minimum" value={formatNaira(minPurchase, false)} />
-                ) : null}
+              <div className="rounded-[24px] border border-border/70 bg-card p-3 shadow-soft">
+                <div className="divide-y divide-border/70">
+                  <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
+                  <InfoRow label="Provider" value={provider || serviceID} />
+                  {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
+                  {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
+                  {isElectricity ? <InfoRow label="Meter type" value={meterType} /> : null}
+                  {minPurchase > 0 ? (
+                    <InfoRow label="Minimum" value={formatNaira(minPurchase, false)} />
+                  ) : null}
+                </div>
               </div>
               <Button className="h-11 w-full rounded-xl text-sm font-bold" onClick={() => setStep("amount")}>
                 Continue
@@ -1038,24 +1121,26 @@ function PayFlow() {
           subtitle={provider || serviceID}
           onBack={() => setStep(isElectricity ? "meterType" : "provider")}
         />
-        <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6 pb-10 sm:pt-8">
-          <div className="space-y-1.5">
-            <Label htmlFor="identifier" className="text-xs">
-              {service.identifierLabel}
-            </Label>
-            <Input
-              id="identifier"
-              value={identifier}
-              onChange={(e) => {
-                const v = isData || isAirtime ? e.target.value.replace(/\D/g, "") : e.target.value;
-                setIdentifier(v);
-                if (error) setError("");
-              }}
-              placeholder={service.identifierPlaceholder}
-              inputMode={service.numeric || isData ? "numeric" : "text"}
-              className="h-11 rounded-xl bg-card"
-            />
-            {error ? <p className="text-[11px] font-medium text-destructive">{error}</p> : null}
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
+          <div className="rounded-[26px] border border-border/70 bg-card p-4 shadow-soft">
+            <div className="space-y-1.5">
+              <Label htmlFor="identifier" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {service.identifierLabel}
+              </Label>
+              <Input
+                id="identifier"
+                value={identifier}
+                onChange={(e) => {
+                  const v = isData || isAirtime ? e.target.value.replace(/\D/g, "") : e.target.value;
+                  setIdentifier(v);
+                  if (error) setError("");
+                }}
+                placeholder={service.identifierPlaceholder}
+                inputMode={service.numeric || isData ? "numeric" : "text"}
+                className="h-12 rounded-2xl border-border/80 bg-background text-base shadow-none"
+              />
+              {error ? <p className="text-[11px] font-medium text-destructive">{error}</p> : null}
+            </div>
           </div>
           <Button className="h-11 w-full rounded-xl text-sm font-bold" onClick={() => void startVerify()}>
             {isProviderBill ? "Verify & Continue" : "Continue"}
@@ -1069,7 +1154,7 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Meter type" subtitle={provider || serviceID} onBack={() => setStep("provider")} />
-        <div className="mx-auto w-full max-w-md space-y-1.5 px-4 pt-6 pb-10 sm:pt-8">
+        <div className="mx-auto w-full max-w-md space-y-2 px-4 pt-6 pb-10 sm:pt-8">
           {(["prepaid", "postpaid"] as const).map((t) => (
             <button
               key={t}
@@ -1079,11 +1164,18 @@ function PayFlow() {
                 setStep("identifier");
               }}
               className={cn(
-                "press flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left",
-                meterType === t ? "border-primary/60" : "border-border/70",
+                "press flex w-full items-center justify-between rounded-2xl border p-3.5 text-left shadow-soft",
+                meterType === t
+                  ? "border-primary bg-primary-soft ring-2 ring-primary/10"
+                  : "border-border/70 bg-card",
               )}
             >
-              <span className="text-xs font-bold capitalize">{t}</span>
+              <div>
+                <span className="block text-sm font-extrabold capitalize">{t}</span>
+                <span className="mt-1 block text-[10px] text-muted-foreground">
+                  {t === "prepaid" ? "Pay as you use" : "Bill settlement after use"}
+                </span>
+              </div>
               <ChevronRight className="size-4 text-muted-foreground" />
             </button>
           ))}
@@ -1100,23 +1192,25 @@ function PayFlow() {
   return (
     <AppShell>
       <PageHeader title={`Pay ${service.name}`} backTo="/home" />
-      <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6 pb-10 sm:pt-8">
+      <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
         {recentBeneficiaries.length > 0 ? (
           <div>
-            <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">Saved</p>
-            <div className="space-y-1.5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Recently used
+            </p>
+            <div className="space-y-2">
               {recentBeneficiaries.map((b) => (
                 <button
                   key={b.key}
                   type="button"
                   onClick={() => applyBeneficiary(b)}
-                  className="press flex w-full items-center gap-2.5 rounded-xl border border-border/70 bg-card px-2.5 py-2 text-left"
+                  className="press flex w-full items-center gap-2.5 rounded-2xl border border-primary/20 bg-primary-soft/70 px-2.5 py-2.5 text-left shadow-soft"
                 >
-                  <span className={cn("grid size-8 place-items-center rounded-lg", service.tint)}>
-                    <service.icon className="size-3.5" />
+                  <span className={cn("grid size-9 place-items-center rounded-xl", service.tint)}>
+                    <service.icon className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold">{b.label}</p>
+                    <p className="truncate text-xs font-extrabold">{b.label}</p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {b.provider} · {b.masked}
                     </p>
@@ -1129,7 +1223,9 @@ function PayFlow() {
         ) : null}
 
         <div>
-          <p className="mb-1.5 text-[11px] font-bold text-muted-foreground">{service.providerLabel}</p>
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            {service.providerLabel}
+          </p>
           {isLiveCatalog && catalogLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
               <Loader2 className="size-4 animate-spin" /> Loading providers…
@@ -1165,34 +1261,50 @@ function PayFlow() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              {providerOptions.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setProvider(p.label);
-                    setServiceID(p.id);
-                    setFromPrefill(false);
-                    setVariation(null);
-                    setVerifiedName("");
-                    if (isElectricity) setStep("meterType");
-                    else setStep("identifier");
-                  }}
-                  className={cn(
-                    "press flex w-full items-center gap-2.5 rounded-xl border bg-card p-2.5 text-left",
-                    serviceID === p.id || provider === p.id || lastProvider === p.id
-                      ? "border-primary/60"
-                      : "border-border/70",
-                  )}
-                >
-                  <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", service.tint)}>
-                    <service.icon className="size-3.5" />
-                  </span>
-                  <span className="flex-1 text-xs font-bold">{p.label}</span>
-                  <ChevronRight className="size-4 text-muted-foreground" />
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {providerOptions.map((p) => {
+                const isSelected = serviceID === p.id || provider === p.id;
+                const isRecent = lastProvider === p.id && !isSelected;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setProvider(p.label);
+                      setServiceID(p.id);
+                      setFromPrefill(false);
+                      setVariation(null);
+                      setVerifiedName("");
+                      if (isElectricity) setStep("meterType");
+                      else setStep("identifier");
+                    }}
+                    className={cn(
+                      "press relative flex min-h-[88px] flex-col items-start justify-between rounded-2xl border p-3 text-left shadow-soft",
+                      isSelected
+                        ? "border-primary bg-primary-soft ring-2 ring-primary/10"
+                        : "border-border/70 bg-card hover:border-primary/40",
+                    )}
+                  >
+                    <span className={cn("grid size-9 place-items-center rounded-xl", service.tint)}>
+                      <service.icon className="size-4" />
+                    </span>
+                    <div className="w-full">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-extrabold">{p.label}</span>
+                        {isSelected ? (
+                          <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
+                            <CheckCircle2 className="size-3.5" />
+                          </span>
+                        ) : isRecent ? (
+                          <span className="rounded-full bg-success-soft px-1.5 py-0.5 text-[9px] font-bold text-success">
+                            Recent
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

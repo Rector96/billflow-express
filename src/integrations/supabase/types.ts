@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: {
+          id: string
+          actor_user_id: string
+          action: string
+          target_type: string | null
+          target_id: string | null
+          description: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          actor_user_id: string
+          action: string
+          target_type?: string | null
+          target_id?: string | null
+          description?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          actor_user_id?: string
+          action?: string
+          target_type?: string | null
+          target_id?: string | null
+          description?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
       bill_transactions: {
         Row: {
           amount: number
@@ -25,6 +58,12 @@ export type Database = {
           metadata: Json
           product: string | null
           provider: string
+          provider_request_id: string | null
+          provider_transaction_id: string | null
+          provider_channel: string | null
+          provider_response_code: string | null
+          provider_status: string | null
+          provider_response_message: string | null
           service: string
           status: Database["public"]["Enums"]["tx_status"]
           updated_at: string
@@ -41,6 +80,12 @@ export type Database = {
           metadata?: Json
           product?: string | null
           provider: string
+          provider_request_id?: string | null
+          provider_transaction_id?: string | null
+          provider_channel?: string | null
+          provider_response_code?: string | null
+          provider_status?: string | null
+          provider_response_message?: string | null
           service: string
           status?: Database["public"]["Enums"]["tx_status"]
           updated_at?: string
@@ -57,6 +102,12 @@ export type Database = {
           metadata?: Json
           product?: string | null
           provider?: string
+          provider_request_id?: string | null
+          provider_transaction_id?: string | null
+          provider_channel?: string | null
+          provider_response_code?: string | null
+          provider_status?: string | null
+          provider_response_message?: string | null
           service?: string
           status?: Database["public"]["Enums"]["tx_status"]
           updated_at?: string
@@ -187,6 +238,8 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          ticket_number: string | null
+          subject: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           transaction_id: string | null
           updated_at: string
@@ -197,6 +250,8 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          ticket_number?: string | null
+          subject?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           transaction_id?: string | null
           updated_at?: string
@@ -207,6 +262,8 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          ticket_number?: string | null
+          subject?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           transaction_id?: string | null
           updated_at?: string
@@ -220,6 +277,41 @@ export type Database = {
             referencedRelation: "bill_transactions"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      support_messages: {
+        Row: {
+          id: string
+          ticket_id: string
+          sender_id: string
+          body: string
+          is_internal: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          sender_id: string
+          body: string
+          is_internal?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          sender_id?: string
+          body?: string
+          is_internal?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          }
         ]
       }
       transaction_pins: {
@@ -482,6 +574,116 @@ export type Database = {
         }[]
       }
       verify_transaction_pin: { Args: { _pin: string }; Returns: boolean }
+      start_airtime_purchase: {
+        Args: {
+          _provider: string
+          _phone: string
+          _amount: number
+          _pin: string
+          _request_id?: string | null
+        }
+        Returns: {
+          bill_id: string
+          internal_reference: string
+          request_id: string
+          balance_after: number
+        }[]
+      }
+      complete_airtime_purchase: {
+        Args: {
+          _internal_reference: string
+          _outcome: Database["public"]["Enums"]["tx_status"]
+          _provider_transaction_id?: string | null
+          _payload?: Json
+        }
+        Returns: {
+          bill_id: string
+          internal_reference: string
+          status: Database["public"]["Enums"]["tx_status"]
+          balance_after: number
+          refunded: boolean
+        }[]
+      }
+      start_bill_purchase: {
+        Args: {
+          _service_slug: string
+          _service_label: string
+          _provider: string
+          _product: string
+          _customer_identifier: string
+          _amount: number
+          _pin: string
+          _metadata?: Json
+          _request_id?: string | null
+        }
+        Returns: {
+          bill_id: string
+          internal_reference: string
+          request_id: string
+          balance_after: number
+        }[]
+      }
+      complete_bill_purchase: {
+        Args: {
+          _internal_reference: string
+          _outcome: Database["public"]["Enums"]["tx_status"]
+          _provider_transaction_id?: string | null
+          _payload?: Json
+        }
+        Returns: {
+          bill_id: string
+          internal_reference: string
+          status: Database["public"]["Enums"]["tx_status"]
+          balance_after: number
+          refunded: boolean
+        }[]
+      }
+      create_care_ticket: {
+        Args: {
+          _category: Database["public"]["Enums"]["ticket_category"]
+          _description: string
+          _subject?: string | null
+          _reason?: string | null
+          _transaction_id?: string | null
+          _reference?: string | null
+        }
+        Returns: Json
+      }
+      admin_ops_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_tx_volume_series: {
+        Args: { _days?: number | null }
+        Returns: Json
+      }
+      admin_care_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_service_breakdown: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      admin_reconciliation_queue: {
+        Args: { _limit?: number | null }
+        Returns: Json
+      }
+      admin_set_account_status: {
+        Args: { _user_id: string; _status: string; _reason?: string }
+        Returns: boolean
+      }
+      staff_care_reply: {
+        Args: { _ticket_id: string; _body: string; _internal?: boolean | null }
+        Returns: string
+      }
+      staff_care_set_status: {
+        Args: {
+          _ticket_id: string
+          _status: Database["public"]["Enums"]["ticket_status"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "support"
@@ -497,7 +699,12 @@ export type Database = {
         | "pending_transaction"
         | "token_not_received"
         | "other"
-      ticket_status: "open" | "in_progress" | "resolved" | "closed"
+      ticket_status:
+        | "open"
+        | "in_progress"
+        | "resolved"
+        | "closed"
+        | "waiting_for_customer"
       tx_status: "pending" | "successful" | "failed" | "reversed"
       wallet_tx_type:
         | "deposit"
@@ -647,7 +854,7 @@ export const Constants = {
         "token_not_received",
         "other",
       ],
-      ticket_status: ["open", "in_progress", "resolved", "closed"],
+      ticket_status: ["open", "in_progress", "resolved", "closed", "waiting_for_customer"],
       tx_status: ["pending", "successful", "failed", "reversed"],
       wallet_tx_type: [
         "deposit",
