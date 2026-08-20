@@ -117,7 +117,7 @@ COMMENT ON COLUMN public.transaction_profits.provider_cost IS
   'Actual effective VTpass/provider cost. NULL until reliably known. Never invent.';
 
 COMMENT ON COLUMN public.transaction_profits.provider_commission IS
-  'Commission or discount returned by the the provider. NULL unless actually returned. Never invent.';
+  'Commission or discount returned by the provider. NULL unless actually returned. Never invent.';
 
 COMMENT ON COLUMN public.transaction_profits.rockpay_fee IS
   'RockPay markup/convenience fee charged to the customer because of the pricing rule (e.g. +₦10). Separate from provider_commission.';
