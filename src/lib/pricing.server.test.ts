@@ -63,7 +63,7 @@ describe("percentage markup", () => {
       rule({ id: "p1", service: "airtime", markup_type: "percentage", markup_value: 2 }),
     ];
     const r = applyPricingRule({ service: "airtime", baseAmount: 500 }, rules);
-    expect(r.customerAmount).toBe(510); // 500 + 2%
+    expect(r.customerAmount).toBe(510);
     expect(r.rockpayFee).toBe(10);
   });
 });
@@ -181,7 +181,6 @@ describe("min / max", () => {
         min_amount: 50,
       }),
     ];
-    // base 10 + 1 = 11 → clamped to 50
     const r = applyPricingRule({ service: "airtime", baseAmount: 10 }, rules);
     expect(r.customerAmount).toBe(50);
   });
@@ -196,7 +195,6 @@ describe("min / max", () => {
         max_amount: 120,
       }),
     ];
-    // 100 + 50% = 150 → capped to 120
     const r = applyPricingRule({ service: "airtime", baseAmount: 100 }, rules);
     expect(r.customerAmount).toBe(120);
   });
@@ -231,5 +229,24 @@ describe("selectMatchingRule", () => {
       rule({ id: "x", service: "cable", markup_type: "fixed", markup_value: 1 }),
     ];
     expect(selectMatchingRule(rules, "airtime", "mtn", null)).toBeNull();
+  });
+});
+
+describe("electricity service pricing", () => {
+  test("fixed fee on electricity base amount", () => {
+    const rules = [
+      rule({
+        id: "e1",
+        service: "electricity",
+        provider: "ikeja-electric",
+        markup_type: "fixed",
+        markup_value: 50,
+      }),
+    ];
+    const r = selectMatchingRule(rules, "electricity", "ikeja-electric", "prepaid");
+    expect(r?.id).toBe("e1");
+    const priced = computeFromRule(r!, 5000);
+    expect(priced.customerAmount).toBe(5050);
+    expect(priced.rockpayFee).toBe(50);
   });
 });
