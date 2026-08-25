@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { resolvePricing } from "./pricing.server";
+import { maybeRecordTransactionProfit } from "./transaction-profits.server";
 
 export type BillPurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -274,13 +276,21 @@ export const purchaseCable = createServerFn({ method: "POST" })
       );
     }
 
-    const amount = pack.fixedPrice
+    const providerAmount = pack.fixedPrice
       ? Math.round(pack.amount)
       : data.amount;
 
-    if (amount < 50) {
+    if (providerAmount < 50) {
       throw new Error("Enter a valid amount.");
     }
+
+    const pricing = await resolvePricing({
+      service: "cable",
+      provider: data.serviceID,
+      productCode: data.variationCode,
+      baseAmount: providerAmount,
+    });
+    const customerAmount = pricing.customerAmount;
 
     let phone = data.phone;
 
@@ -301,7 +311,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
         _provider: data.serviceID,
         _product: pack.name,
         _customer_identifier: data.billersCode,
-        _amount: amount,
+        _amount: customerAmount,
         _pin: data.pin,
         _metadata: {
           title: "Cable TV Payment",
@@ -311,6 +321,10 @@ export const purchaseCable = createServerFn({ method: "POST" })
           customer: data.customerName ?? null,
           variation_code: data.variationCode,
           subscription_type: data.subscriptionType,
+          provider_amount: providerAmount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          pricing_fallback: pricing.usedFallback,
         },
       });
 
@@ -330,7 +344,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
       serviceID: data.serviceID,
       billersCode: data.billersCode,
       variation_code: data.variationCode,
-      amount,
+      amount: providerAmount,
       phone,
       subscription_type: data.subscriptionType || "change",
     });
@@ -367,7 +381,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount,
+        amount: customerAmount,
         identifierMasked: maskId(data.billersCode),
         provider: data.serviceID,
         product: pack.name,
@@ -386,6 +400,24 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const status =
       (fin?.status ?? outcome) as BillPurchaseResult["status"];
 
+    if (status === "successful") {
+      try {
+        await maybeRecordTransactionProfit(context.supabase as never, {
+          internalReference: row.internal_reference as string,
+          customerAmount,
+          providerAmount,
+          rockpayFee: pricing.rockpayFee,
+          pricingRuleId: pricing.pricingRuleId,
+          service: "cable",
+          provider: data.serviceID,
+          productCode: data.variationCode,
+          providerCost: providerAmount,
+        });
+      } catch (profitError) {
+        console.error("[cable] profit", profitError);
+      }
+    }
+
     return {
       status,
       reference:
@@ -393,7 +425,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
           row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount,
+      amount: customerAmount,
       identifierMasked: maskId(data.billersCode),
       provider: data.serviceID,
       product: pack.name,
@@ -402,7 +434,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
         fin?.balance_after != null
           ? Number(fin.balance_after)
           : null,
-      message: customerMessage(status, "cable", amount),
+      message: customerMessage(status, "cable", customerAmount),
       customerName: data.customerName ?? null,
     };
   });
@@ -514,6 +546,15 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
 
     if (!phone) phone = "08011111111";
 
+    const providerAmount = data.amount;
+    const pricing = await resolvePricing({
+      service: "electricity",
+      provider: data.serviceID,
+      productCode: data.meterType,
+      baseAmount: providerAmount,
+    });
+    const customerAmount = pricing.customerAmount;
+
     const { data: started, error: startError } =
       await context.supabase.rpc("start_bill_purchase", {
         _service_slug: "electricity",
@@ -521,7 +562,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         _provider: data.serviceID,
         _product: data.meterType,
         _customer_identifier: data.billersCode,
-        _amount: data.amount,
+        _amount: customerAmount,
         _pin: data.pin,
         _metadata: {
           title: "Electricity Payment",
@@ -531,6 +572,10 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
           customer: resolvedCustomerName,
           meter_type: data.meterType,
           verified_at: new Date().toISOString(),
+          provider_amount: providerAmount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          pricing_fallback: pricing.usedFallback,
         },
       });
 
@@ -545,14 +590,13 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
       throw new Error("Could not start electricity payment.");
     }
 
-    // UPDATED ACCORDING TO THE SCREENSHOT
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID: data.serviceID,
       billersCode: data.billersCode,
       variation_code: data.meterType,
       type: data.meterType,
-      amount: data.amount,
+      amount: providerAmount,
       phone,
     });
 
@@ -589,7 +633,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount: data.amount,
+        amount: customerAmount,
         identifierMasked: maskId(data.billersCode),
         provider: data.serviceID,
         product: data.meterType,
@@ -608,6 +652,24 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const status =
       (fin?.status ?? outcome) as BillPurchaseResult["status"];
 
+    if (status === "successful") {
+      try {
+        await maybeRecordTransactionProfit(context.supabase as never, {
+          internalReference: row.internal_reference as string,
+          customerAmount,
+          providerAmount,
+          rockpayFee: pricing.rockpayFee,
+          pricingRuleId: pricing.pricingRuleId,
+          service: "electricity",
+          provider: data.serviceID,
+          productCode: data.meterType,
+          providerCost: providerAmount,
+        });
+      } catch (profitError) {
+        console.error("[electricity] profit", profitError);
+      }
+    }
+
     return {
       status,
       reference:
@@ -615,7 +677,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
           row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount: data.amount,
+      amount: customerAmount,
       identifierMasked: maskId(data.billersCode),
       provider: data.serviceID,
       product: data.meterType,
@@ -624,7 +686,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         fin?.balance_after != null
           ? Number(fin.balance_after)
           : null,
-      message: customerMessage(status, "electricity", data.amount),
+      message: customerMessage(status, "electricity", customerAmount),
       customerName: resolvedCustomerName,
     };
   });
@@ -700,9 +762,9 @@ export const purchaseData = createServerFn({ method: "POST" })
       );
     }
 
-    const amount = Math.round(pack.amount);
+    const providerAmount = Math.round(pack.amount);
 
-    if (!Number.isFinite(amount) || amount < 50) {
+    if (!Number.isFinite(providerAmount) || providerAmount < 50) {
       throw new Error("Enter a valid amount.");
     }
 
@@ -711,6 +773,14 @@ export const purchaseData = createServerFn({ method: "POST" })
       .replace(/etisalat/i, "9mobile")
       .toUpperCase();
 
+    const pricing = await resolvePricing({
+      service: "data",
+      provider: serviceID,
+      productCode: data.variationCode,
+      baseAmount: providerAmount,
+    });
+    const customerAmount = pricing.customerAmount;
+
     const { data: started, error: startError } =
       await context.supabase.rpc("start_bill_purchase", {
         _service_slug: "data",
@@ -718,7 +788,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         _provider: serviceID,
         _product: pack.name,
         _customer_identifier: phone,
-        _amount: amount,
+        _amount: customerAmount,
         _pin: data.pin,
         _metadata: {
           title: "Data Purchase",
@@ -727,6 +797,10 @@ export const purchaseData = createServerFn({ method: "POST" })
           masked: maskPhone(phone),
           variation_code: data.variationCode,
           network: networkLabel,
+          provider_amount: providerAmount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          pricing_fallback: pricing.usedFallback,
         },
       });
 
@@ -746,7 +820,7 @@ export const purchaseData = createServerFn({ method: "POST" })
       serviceID,
       billersCode: phone,
       variation_code: data.variationCode,
-      amount,
+      amount: providerAmount,
       phone,
     });
 
@@ -782,7 +856,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount,
+        amount: customerAmount,
         identifierMasked: maskPhone(phone),
         provider: serviceID,
         product: pack.name,
@@ -801,6 +875,24 @@ export const purchaseData = createServerFn({ method: "POST" })
     const status =
       (fin?.status ?? outcome) as BillPurchaseResult["status"];
 
+    if (status === "successful") {
+      try {
+        await maybeRecordTransactionProfit(context.supabase as never, {
+          internalReference: row.internal_reference as string,
+          customerAmount,
+          providerAmount,
+          rockpayFee: pricing.rockpayFee,
+          pricingRuleId: pricing.pricingRuleId,
+          service: "data",
+          provider: serviceID,
+          productCode: data.variationCode,
+          providerCost: providerAmount,
+        });
+      } catch (profitError) {
+        console.error("[data] profit", profitError);
+      }
+    }
+
     return {
       status,
       reference:
@@ -808,7 +900,7 @@ export const purchaseData = createServerFn({ method: "POST" })
           row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount,
+      amount: customerAmount,
       identifierMasked: maskPhone(phone),
       provider: serviceID,
       product: pack.name,
@@ -817,7 +909,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         fin?.balance_after != null
           ? Number(fin.balance_after)
           : null,
-      message: customerMessage(status, "data", amount),
+      message: customerMessage(status, "data", customerAmount),
       customerName: null,
     };
   });
@@ -860,7 +952,50 @@ export const requeryBill = createServerFn({ method: "POST" })
 
     const meta = (bill.metadata ?? {}) as Record<string, unknown>;
     const slug = String(meta["service_slug"] ?? "bill");
-    const amount = Number(bill.amount);
+    const customerAmount = Number(bill.amount);
+    const providerAmountValue = meta["provider_amount"];
+    const providerAmount =
+      providerAmountValue != null && providerAmountValue !== "" &&
+      Number.isFinite(Number(providerAmountValue))
+        ? Number(providerAmountValue)
+        : null;
+    const profitService =
+      slug === "data" || slug === "cable" || slug === "electricity"
+        ? slug
+        : null;
+
+    const recordProfitIfApplicable = async (status: string) => {
+      if (
+        status !== "successful" ||
+        providerAmount == null ||
+        profitService == null
+      ) return;
+
+      try {
+        await maybeRecordTransactionProfit(context.supabase as never, {
+          internalReference: bill.internal_reference,
+          customerAmount,
+          providerAmount,
+          rockpayFee:
+            meta["rockpay_fee"] != null
+              ? Number(meta["rockpay_fee"])
+              : null,
+          pricingRuleId:
+            typeof meta["pricing_rule_id"] === "string"
+              ? meta["pricing_rule_id"]
+              : null,
+          service: profitService,
+          provider: bill.provider ? String(bill.provider) : null,
+          productCode:
+            typeof meta["variation_code"] === "string"
+              ? meta["variation_code"]
+              : bill.product,
+          providerCost: providerAmount,
+        });
+      } catch (profitError) {
+        console.error("[bill] profit", profitError);
+      }
+    };
 
     const tokenExisting =
       typeof meta["token"] === "string"
@@ -878,12 +1013,14 @@ export const requeryBill = createServerFn({ method: "POST" })
       bill.status === "successful" ||
       bill.status === "failed"
     ) {
+      await recordProfitIfApplicable(bill.status);
+
       return {
         status: bill.status as "successful" | "failed",
         reference: bill.internal_reference,
         requestId: bill.provider_request_id ?? "",
         providerTransactionId: bill.provider_transaction_id,
-        amount,
+        amount: customerAmount,
         identifierMasked: idMasked,
         provider: String(bill.provider ?? ""),
         product: bill.product,
@@ -892,7 +1029,7 @@ export const requeryBill = createServerFn({ method: "POST" })
         message: customerMessage(
           bill.status as "successful" | "failed",
           slug,
-          amount,
+          customerAmount,
         ),
         customerName:
           typeof meta["customer"] === "string"
@@ -951,6 +1088,8 @@ export const requeryBill = createServerFn({ method: "POST" })
     const status =
       (fin?.status ?? outcome) as BillPurchaseResult["status"];
 
+    await recordProfitIfApplicable(status);
+
     return {
       status,
       reference: bill.internal_reference,
@@ -958,7 +1097,7 @@ export const requeryBill = createServerFn({ method: "POST" })
       providerTransactionId:
         pay.transactionId ??
         bill.provider_transaction_id,
-      amount,
+      amount: customerAmount,
       identifierMasked: idMasked,
       provider: String(bill.provider ?? ""),
       product: bill.product,
@@ -967,7 +1106,7 @@ export const requeryBill = createServerFn({ method: "POST" })
         fin?.balance_after != null
           ? Number(fin.balance_after)
           : null,
-      message: customerMessage(status, slug, amount),
+      message: customerMessage(status, slug, customerAmount),
       customerName:
         typeof meta["customer"] === "string"
           ? meta["customer"]
