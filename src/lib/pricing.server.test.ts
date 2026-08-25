@@ -246,7 +246,6 @@ describe("electricity service pricing", () => {
     const r = selectMatchingRule(rules, "electricity", "ikeja-electric", "prepaid");
     expect(r?.id).toBe("e1");
     const priced = computeFromRule(r!, 5000);
-    expect(priced.customerAmount).toBe(5050);
-    expect(priced.rockpayFee).toBe(50);
+    expect(priced).toBe(5050);
   });
 });

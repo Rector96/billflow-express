@@ -450,6 +450,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Demo wallet funding is disabled. Use Fund Wallet (Paystack) instead.");
       },
       payBill: async (input) => {
+        if (!["airtime", "data", "cable", "electricity"].includes(input.serviceSlug)) {
+          throw new Error("This service is not available yet.");
+        }
         const { data, error } = await supabase.rpc("secure_bill_payment", {
           _service: input.service,
           _provider: input.provider,

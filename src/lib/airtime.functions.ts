@@ -84,6 +84,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     phone: string;
     amount: number;
     pin: string;
+    requestId?: string;
   }) => {
     const amount = Math.round(Number(input?.amount));
     if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
@@ -95,7 +96,8 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     if (!network) throw new Error("Select a network.");
     const phone = String(input?.phone ?? "").trim();
     if (!phone) throw new Error("Enter a phone number.");
-    return { network, phone, amount, pin };
+    const requestId = String(input?.requestId ?? "").trim();
+    return { network, phone, amount, pin, requestId: requestId || `airtime-${crypto.randomUUID()}` };
   })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const {
@@ -131,11 +133,22 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     });
     const customerAmount = pricing.customerAmount;
 
+    const { data: duplicate } = await context.supabase
+      .from("bill_transactions")
+      .select("internal_reference, status")
+      .eq("provider_request_id", data.requestId)
+      .eq("user_id", context.userId)
+      .limit(1);
+    if (duplicate?.[0]) {
+      throw new Error("This payment request has already been submitted. Refresh its status.");
+    }
+
     const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
       _provider: serviceId,
       _phone: phone,
       _amount: customerAmount,
       _pin: data.pin,
+      _request_id: data.requestId,
     });
     if (startError) {
       console.error("[airtime] start", startError.message);
@@ -147,13 +160,14 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     }
 
     try {
-      const { data: existingRows } = await context.supabase
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: existingRows } = await (supabaseAdmin as any)
         .from("bill_transactions")
         .select("metadata")
         .eq("internal_reference", row.internal_reference)
         .limit(1);
       const prev = (existingRows?.[0]?.metadata ?? {}) as Record<string, unknown>;
-      await context.supabase
+      const { error: metadataError } = await (supabaseAdmin as any)
         .from("bill_transactions")
         .update({
           metadata: {
@@ -166,8 +180,18 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
           },
         })
         .eq("internal_reference", row.internal_reference);
+      if (metadataError) throw metadataError;
     } catch (e) {
       console.warn("[airtime] could not persist provider_amount metadata before pay", e);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
+        _user_id: context.userId,
+        _internal_reference: row.internal_reference,
+        _outcome: "failed",
+        _provider_transaction_id: "",
+        _payload: { metadata_error: true },
+      });
+      throw new Error("Could not prepare this payment safely. Your wallet was not charged.");
     }
 
     const pay = await vtpassPayAirtime({
@@ -188,9 +212,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       outcome,
     });
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_airtime_purchase",
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
+      "trusted_complete_airtime_purchase",
       {
+        _user_id: context.userId,
         _internal_reference: row.internal_reference,
         _outcome: outcome,
         _provider_transaction_id: pay.transactionId ?? "",
@@ -226,8 +252,9 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
 
     if (status === "successful") {
       try {
-        const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-        await maybeRecordTransactionProfit(context.supabase, {
+          const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          await maybeRecordTransactionProfit(supabaseAdmin as any, {
           internalReference: String(fin?.internal_reference ?? row.internal_reference),
           customerAmount,
           providerAmount,
@@ -285,6 +312,7 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
 
     return requeryAirtimeCore({
       supabase: context.supabase,
+      userId: context.userId,
       reference: data.reference,
       audit: true,
     });
@@ -356,7 +384,9 @@ export async function requeryAirtimeCore(opts: {
   const outcome = mapVtpassOutcome(pay);
   console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
 
-  const { data: finalized, error: finError } = await supabase.rpc("complete_airtime_purchase", {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
+    _user_id: opts.userId,
     _internal_reference: bill.internal_reference,
     _outcome: outcome,
     _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
@@ -392,6 +422,7 @@ export async function requeryAirtimeCore(opts: {
   if (status === "successful") {
     try {
       const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const meta = (bill.metadata ?? {}) as Record<string, unknown>;
       const providerAmountRaw = meta["provider_amount"];
       const providerAmount =
@@ -416,7 +447,7 @@ export async function requeryAirtimeCore(opts: {
               : null;
         const pricingRuleId =
           typeof meta["pricing_rule_id"] === "string" ? meta["pricing_rule_id"] : null;
-        await maybeRecordTransactionProfit(supabase, {
+        await maybeRecordTransactionProfit(supabaseAdmin as any, {
           internalReference: bill.internal_reference,
           customerAmount: amount,
           providerAmount,

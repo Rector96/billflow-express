@@ -82,7 +82,7 @@ export async function maybeRecordTransactionProfit(
       : null;
   const profit = computeProfit(customerAmount, providerCost);
 
-  const { data, error } = await supabase.rpc("record_transaction_profit", {
+  const { data, error } = await supabase.rpc("trusted_record_transaction_profit", {
     _internal_reference: input.internalReference.trim(),
     _customer_amount: customerAmount,
     _provider_cost: providerCost,

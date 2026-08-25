@@ -199,6 +199,8 @@ function PayFlow() {
   const [txId, setTxId] = useState("");
   const [providerRequestId, setProviderRequestId] = useState("");
   const [providerTxId, setProviderTxId] = useState("");
+  const [airtimeRequestId, setAirtimeRequestId] = useState(() => `airtime-${crypto.randomUUID()}`);
+  const [paymentRequestId, setPaymentRequestId] = useState(() => `bill-${crypto.randomUUID()}`);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [fromPrefill, setFromPrefill] = useState(
@@ -396,6 +398,9 @@ function PayFlow() {
     setToken("");
     setOutcome("pending");
     try {
+      if (!isAirtime && !isData && !isCable && !isElectricity) {
+        throw new Error("This service is not available yet.");
+      }
       if (isAirtime) {
         const res = await buyAirtime({
           data: {
@@ -403,6 +408,7 @@ function PayFlow() {
             phone: identifier.trim(),
             amount: total,
             pin: authorizedPin,
+            requestId: airtimeRequestId,
           },
         });
         setTxId(res.reference);
@@ -424,6 +430,7 @@ function PayFlow() {
             phone: displayNgPhone(identifier),
             variationCode: variation.variationCode,
             pin: authorizedPin,
+            requestId: paymentRequestId,
           },
         });
         setTxId(res.reference);
@@ -448,6 +455,7 @@ function PayFlow() {
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
             subscriptionType: "change",
+            requestId: paymentRequestId,
           },
         });
         setTxId(res.reference);
@@ -471,6 +479,7 @@ function PayFlow() {
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
             minAmount: minPurchase,
+            requestId: paymentRequestId,
           },
         });
         setTxId(res.reference);
@@ -714,6 +723,8 @@ function PayFlow() {
                     setTxId("");
                     setProviderRequestId("");
                     setProviderTxId("");
+                    setAirtimeRequestId(`airtime-${crypto.randomUUID()}`);
+                    setPaymentRequestId(`bill-${crypto.randomUUID()}`);
                     setToken("");
                     setResultMessage("");
                     setVariation(null);
