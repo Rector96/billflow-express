@@ -550,18 +550,27 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
 export function mapVtpassOutcome(
   result: VtpassPayResult,
 ): "successful" | "failed" | "pending" {
+  const code = result.code.trim();
+  const normalizedCode = code === "0" || code === "00" || code === "000" ? "000" : code;
+  const status = (result.contentStatus ?? "").toLowerCase().trim().replace(/[_-]+/g, " ");
+
+  if (status === "failed" || status === "reversed" || status === "refunded") return "failed";
+  if (status === "pending" || status === "processing" || status === "in progress" || status === "queued") {
+    return "pending";
+  }
+
   // A network timeout/no response is ambiguous. Never refund based only on
   // the timeout; leave the ledger pending so the request can be requeried.
-  if (result.code === "TIMEOUT" || result.code === "") return "pending";
-  if (result.code === "099") return "pending";
-  if (FAIL_CODES.has(result.code)) return "failed";
+  if (code.toUpperCase() === "TIMEOUT" || code === "") return "pending";
+  if (normalizedCode === "099") return "pending";
+  if (FAIL_CODES.has(normalizedCode)) return "failed";
 
   // VTpass documents 000 as "processed". The transaction status inside the
   // response determines whether the provider actually delivered the service.
-  if (result.code === "000") {
-    const s = (result.contentStatus ?? "").toLowerCase().trim();
-    if (s === "delivered" || s === "successful" || s === "success") return "successful";
-    if (s === "failed" || s === "reversed" || s === "refunded") return "failed";
+  if (normalizedCode === "000") {
+    if (status === "delivered" || status === "successful" || status === "success" || status === "") {
+      return "successful";
+    }
     return "pending";
   }
 

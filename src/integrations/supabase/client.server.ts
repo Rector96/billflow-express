@@ -25,6 +25,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set('apikey', supabaseKey);
+    headers.set('Authorization', `Bearer ${supabaseKey}`);
     return fetch(input, { ...init, headers });
   };
 }

@@ -221,8 +221,20 @@ async function settleBillPurchase(
   );
   if (error) {
     console.error(`[${input.slug}] complete`, error.message);
+    await (supabaseAdmin as any)
+      .from("bill_transactions")
+      .update({
+        ...(input.providerTransactionId
+          ? { provider_transaction_id: input.providerTransactionId }
+          : {}),
+        provider_response_code: input.providerResult.code,
+        provider_status: input.providerResult.contentStatus,
+        provider_response_message: input.providerResult.responseDescription,
+        provider_channel: "vtpass",
+      })
+      .eq("internal_reference", input.requestId);
     return {
-      status: "pending",
+      status: outcome,
       reference: input.requestId,
       requestId: input.providerRequestId,
       providerTransactionId: input.providerTransactionId,
@@ -232,7 +244,7 @@ async function settleBillPurchase(
       product: input.product,
       token: null,
       balanceAfter: null,
-      message: customerMessage("pending", input.slug),
+      message: customerMessage(outcome, input.slug, input.amount, input.providerResult.responseDescription),
       customerName: input.customerName,
     };
   }

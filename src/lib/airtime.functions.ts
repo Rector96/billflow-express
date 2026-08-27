@@ -234,8 +234,18 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     );
     if (finError) {
       console.error("[airtime] complete", finError.message);
+      await (supabaseAdmin as any)
+        .from("bill_transactions")
+        .update({
+          ...(pay.transactionId ? { provider_transaction_id: pay.transactionId } : {}),
+          provider_response_code: pay.code,
+          provider_status: pay.contentStatus,
+          provider_response_message: pay.responseDescription,
+          provider_channel: "vtpass",
+        })
+        .eq("internal_reference", row.internal_reference);
       return {
-        status: "pending",
+        status: outcome,
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
@@ -243,7 +253,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
         phoneMasked: maskPhone(phone),
         network: serviceId,
         balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage("pending", customerAmount),
+        message: customerMessage(outcome, customerAmount, pay.responseDescription),
       };
     }
 
