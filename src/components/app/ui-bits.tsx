@@ -45,19 +45,19 @@ export function StatusBadge({ status, compact }: { status: TxStatus; compact?: b
     successful: {
       label: "Successful",
       short: "Successful",
-      cls: "bg-success-soft text-success",
+      cls: "border border-success/30 bg-success-soft text-success",
       Icon: CheckCircle2,
     },
     pending: {
       label: "Pending",
       short: "Pending",
-      cls: "bg-warning-soft text-warning-foreground",
+      cls: "border border-warning/35 bg-warning-soft text-warning-foreground",
       Icon: Clock3,
     },
     failed: {
       label: "Failed",
       short: "Failed",
-      cls: "bg-destructive-soft text-destructive",
+      cls: "border border-destructive/30 bg-destructive-soft text-destructive",
       Icon: XCircle,
     },
   }[status];

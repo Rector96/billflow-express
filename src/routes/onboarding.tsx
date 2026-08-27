@@ -23,17 +23,17 @@ const SLIDES = [
   {
     icon: Receipt,
     title: "Pay Your Bills Easily",
-    body: "Electricity, cable TV, education and more — all in one place.",
+    body: "Electricity, cable TV, education, and more in one place.",
   },
   {
     icon: Wallet,
     title: "One Wallet. Everything You Need.",
-    body: "Fund your wallet once and use it whenever you need to pay.",
+    body: "Fund once, then pay whenever you need to.",
   },
   {
     icon: ShieldCheck,
     title: "Fast & Secure",
-    body: "Your payments and transactions are safely recorded.",
+    body: "Every payment is recorded securely.",
   },
 ];
 
@@ -63,11 +63,14 @@ function Onboarding() {
         ) : null}
       </div>
 
-      <div key={index} className="animate-in fade-in slide-in-from-right-4 flex flex-1 flex-col items-center justify-center gap-6 text-center duration-300">
+      <div
+        key={index}
+        className="animate-in fade-in slide-in-from-right-4 flex flex-1 flex-col items-center justify-center gap-5 text-center duration-300"
+      >
         <span className="brand-gradient grid size-28 place-items-center rounded-[2rem] text-primary-foreground shadow-float">
           <slide.icon className="size-12" />
         </span>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <h1 className="text-2xl font-extrabold tracking-tight">{slide.title}</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">{slide.body}</p>
         </div>

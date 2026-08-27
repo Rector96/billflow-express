@@ -43,17 +43,17 @@ export const TX_ISSUE_OPTIONS: Array<{ reason: string; category: TicketCategory;
 export function statusBadgeClass(status: string): string {
   switch (status) {
     case "open":
-      return "bg-primary-soft text-primary";
+      return "border border-primary/25 bg-primary-soft text-primary";
     case "in_progress":
-      return "bg-warning-soft text-warning-foreground";
+      return "border border-warning/35 bg-warning-soft text-warning-foreground";
     case "waiting_for_customer":
-      return "bg-warning-soft text-warning-foreground";
+      return "border border-warning/35 bg-warning-soft text-warning-foreground";
     case "resolved":
-      return "bg-success-soft text-success";
+      return "border border-success/30 bg-success-soft text-success";
     case "closed":
-      return "bg-muted text-muted-foreground";
+      return "border border-border bg-muted text-muted-foreground";
     default:
-      return "bg-muted text-muted-foreground";
+      return "border border-border bg-muted text-muted-foreground";
   }
 }
 

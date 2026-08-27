@@ -120,7 +120,11 @@ function LoginPage() {
           </div>
 
           <div className="flex justify-end">
-            <Link to="/forgot-password" search={{ step: "request" }} className="text-sm font-semibold text-primary">
+            <Link
+              to="/forgot-password"
+              search={{ step: "request" }}
+              className="text-sm font-semibold text-primary"
+            >
               Forgot password?
             </Link>
           </div>
@@ -133,6 +137,11 @@ function LoginPage() {
             {loading ? "Logging in…" : "Log in"}
           </Button>
         </form>
+
+        <p className="mt-5 text-center text-xs font-medium text-muted-foreground">
+          <LockKeyhole className="mr-1 inline size-3.5 align-[-2px] text-success" />
+          Your details are protected with secure sign-in.
+        </p>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
