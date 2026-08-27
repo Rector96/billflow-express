@@ -93,7 +93,14 @@ function SignupPage() {
       </div>
 
       <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
-        <Field label="Full Name" id="name" value={f.name} onChange={set("name")} error={errors.name} placeholder="Your full name" />
+        <Field
+          label="Full Name"
+          id="name"
+          value={f.name}
+          onChange={set("name")}
+          error={errors.name}
+          placeholder="Your full name"
+        />
         <Field
           label="Phone Number"
           id="phone"
@@ -103,9 +110,33 @@ function SignupPage() {
           placeholder="080 0000 0000"
           inputMode="numeric"
         />
-        <Field label="Email" id="email" value={f.email} onChange={set("email")} error={errors.email} placeholder="you@email.com" type="email" />
-        <Field label="Password" id="password" value={f.password} onChange={set("password")} error={errors.password} placeholder="Create a password" type="password" />
-        <Field label="Confirm Password" id="confirm" value={f.confirm} onChange={set("confirm")} error={errors.confirm} placeholder="Repeat your password" type="password" />
+        <Field
+          label="Email"
+          id="email"
+          value={f.email}
+          onChange={set("email")}
+          error={errors.email}
+          placeholder="you@email.com"
+          type="email"
+        />
+        <Field
+          label="Password"
+          id="password"
+          value={f.password}
+          onChange={set("password")}
+          error={errors.password}
+          placeholder="Create a password"
+          type="password"
+        />
+        <Field
+          label="Confirm Password"
+          id="confirm"
+          value={f.confirm}
+          onChange={set("confirm")}
+          error={errors.confirm}
+          placeholder="Repeat your password"
+          type="password"
+        />
 
         <div className="flex items-start gap-3 rounded-2xl border bg-card p-3">
           <Checkbox
@@ -114,13 +145,30 @@ function SignupPage() {
             onCheckedChange={(v) => setAgree(v === true)}
             className="mt-0.5"
           />
-          <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-muted-foreground">
-            I agree to the Terms &amp; Conditions and Privacy Policy.
+          <Label
+            htmlFor="agree"
+            className="text-xs leading-relaxed font-medium text-muted-foreground"
+          >
+            I agree to the{" "}
+            <Link to="/terms" className="font-bold text-primary">
+              Terms &amp; Conditions
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="font-bold text-primary">
+              Privacy Policy
+            </Link>
+            .
           </Label>
         </div>
-        {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
+        {errors.agree ? (
+          <p className="text-xs font-medium text-destructive">{errors.agree}</p>
+        ) : null}
 
-        <Button type="submit" disabled={loading} className="h-13 w-full rounded-2xl text-base font-bold">
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-13 w-full rounded-2xl text-base font-bold"
+        >
           {loading ? "Creating account…" : "Create Account"}
         </Button>
 

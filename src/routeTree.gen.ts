@@ -18,12 +18,14 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OtpRouteImport } from './routes/otp'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SavedPaymentsRouteImport } from './routes/saved-payments'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminActivityRouteImport } from './routes/admin.activity'
@@ -40,6 +42,7 @@ import { Route as AdminWalletRouteImport } from './routes/admin.wallet'
 import { Route as HistoryTxIdRouteImport } from './routes/history.$txId'
 import { Route as PaySlugRouteImport } from './routes/pay.$slug'
 import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
+import { Route as ProfilePrivacyRouteImport } from './routes/profile.privacy'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
 import { Route as WalletFundRouteImport } from './routes/wallet.fund'
 import { Route as AdminCareTicketIdRouteImport } from './routes/admin.care.$ticketId'
@@ -92,6 +95,11 @@ const OtpRoute = OtpRouteImport.update({
   path: '/otp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -120,6 +128,11 @@ const SignupRoute = SignupRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WalletRoute = WalletRouteImport.update({
@@ -202,6 +215,11 @@ const ProfilePersonalRoute = ProfilePersonalRouteImport.update({
   path: '/personal',
   getParentRoute: () => ProfileRoute,
 } as any)
+const ProfilePrivacyRoute = ProfilePrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => ProfileRoute,
+} as any)
 const SupportTicketIdRoute = SupportTicketIdRouteImport.update({
   id: '/$ticketId',
   path: '/$ticketId',
@@ -244,12 +262,14 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRouteWithChildren
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
@@ -265,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/profile/personal': typeof ProfilePersonalRoute
+  '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/wallet/fund': typeof WalletFundRoute
   '/admin/': typeof AdminIndexRoute
@@ -282,12 +303,14 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRouteWithChildren
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
@@ -303,6 +326,7 @@ export interface FileRoutesByTo {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/profile/personal': typeof ProfilePersonalRoute
+  '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/wallet/fund': typeof WalletFundRoute
   '/admin': typeof AdminIndexRoute
@@ -322,12 +346,14 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
+  '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRouteWithChildren
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
+  '/terms': typeof TermsRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
@@ -343,6 +369,7 @@ export interface FileRoutesById {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/profile/personal': typeof ProfilePersonalRoute
+  '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/wallet/fund': typeof WalletFundRoute
   '/admin/': typeof AdminIndexRoute
@@ -363,12 +390,14 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/otp'
+    | '/privacy'
     | '/profile'
     | '/saved-payments'
     | '/security'
     | '/services'
     | '/signup'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
@@ -384,6 +413,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/profile/personal'
+    | '/profile/privacy'
     | '/support/$ticketId'
     | '/wallet/fund'
     | '/admin/'
@@ -401,12 +431,14 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/otp'
+    | '/privacy'
     | '/profile'
     | '/saved-payments'
     | '/security'
     | '/services'
     | '/signup'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
@@ -422,6 +454,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/profile/personal'
+    | '/profile/privacy'
     | '/support/$ticketId'
     | '/wallet/fund'
     | '/admin'
@@ -440,12 +473,14 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/onboarding'
     | '/otp'
+    | '/privacy'
     | '/profile'
     | '/saved-payments'
     | '/security'
     | '/services'
     | '/signup'
     | '/support'
+    | '/terms'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
@@ -461,6 +496,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/profile/personal'
+    | '/profile/privacy'
     | '/support/$ticketId'
     | '/wallet/fund'
     | '/admin/'
@@ -480,12 +516,14 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OtpRoute: typeof OtpRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRouteWithChildren
   SavedPaymentsRoute: typeof SavedPaymentsRoute
   SecurityRoute: typeof SecurityRoute
   ServicesRoute: typeof ServicesRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRouteWithChildren
+  TermsRoute: typeof TermsRoute
   WalletRoute: typeof WalletRouteWithChildren
   PaySlugRoute: typeof PaySlugRoute
   ApiPublicWebhooksPaystackRoute: typeof ApiPublicWebhooksPaystackRoute
@@ -556,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -596,6 +641,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wallet': {
@@ -708,6 +760,13 @@ declare module '@tanstack/react-router' {
       path: '/personal'
       fullPath: '/profile/personal'
       preLoaderRoute: typeof ProfilePersonalRouteImport
+      parentRoute: typeof ProfileRoute
+    }
+    '/profile/privacy': {
+      id: '/profile/privacy'
+      path: '/privacy'
+      fullPath: '/profile/privacy'
+      preLoaderRoute: typeof ProfilePrivacyRouteImport
       parentRoute: typeof ProfileRoute
     }
     '/support/$ticketId': {
@@ -836,10 +895,12 @@ const HistoryRouteWithChildren =
 
 interface ProfileRouteChildren {
   ProfilePersonalRoute: typeof ProfilePersonalRoute
+  ProfilePrivacyRoute: typeof ProfilePrivacyRoute
 }
 
 const ProfileRouteChildren: ProfileRouteChildren = {
   ProfilePersonalRoute: ProfilePersonalRoute,
+  ProfilePrivacyRoute: ProfilePrivacyRoute,
 }
 
 const ProfileRouteWithChildren =
@@ -877,12 +938,14 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
   OtpRoute: OtpRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRouteWithChildren,
   SavedPaymentsRoute: SavedPaymentsRoute,
   SecurityRoute: SecurityRoute,
   ServicesRoute: ServicesRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRouteWithChildren,
+  TermsRoute: TermsRoute,
   WalletRoute: WalletRouteWithChildren,
   PaySlugRoute: PaySlugRoute,
   ApiPublicWebhooksPaystackRoute: ApiPublicWebhooksPaystackRoute,

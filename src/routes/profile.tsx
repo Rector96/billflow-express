@@ -6,6 +6,7 @@ import {
   KeyRound,
   LifeBuoy,
   LogOut,
+  FileText,
   ShieldCheck,
   User,
   type LucideIcon,
@@ -57,6 +58,7 @@ function ProfilePage() {
     { label: "Security", icon: ShieldCheck, to: "/security" },
     { label: "Saved Payments", icon: Bookmark, to: "/saved-payments" },
     { label: "Notifications", icon: Bell, to: "/notifications" },
+    { label: "Privacy Policy", icon: FileText, to: "/profile/privacy" },
     { label: "Support", icon: LifeBuoy, to: "/support" },
   ];
 
