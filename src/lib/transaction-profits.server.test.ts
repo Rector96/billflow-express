@@ -3,6 +3,7 @@ import {
   shouldRecordProfit,
   computeProfit,
 } from "./transaction-profits.server";
+import { parseVtpassMoney } from "./vtpass.server";
 
 describe("shouldRecordProfit", () => {
   test("records only on successful", () => {
@@ -25,13 +26,30 @@ describe("computeProfit", () => {
     expect(computeProfit(510, undefined)).toBeNull();
   });
 
-  test("customer_amount - provider_cost when known", () => {
+  test("customer_amount - provider_cost when known (gross profit)", () => {
     expect(computeProfit(510, 500)).toBe(10);
     expect(computeProfit(10500, 10000)).toBe(500);
+    // VTpass total_amount lower than face value (commission already netted by provider)
+    expect(computeProfit(1000, 970)).toBe(30);
   });
 
   test("never treat rockpay_fee alone as profit", () => {
     expect(computeProfit(510, null)).toBeNull();
+  });
+});
+
+describe("parseVtpassMoney", () => {
+  test("parses numbers and numeric strings", () => {
+    expect(parseVtpassMoney(97.5)).toBe(97.5);
+    expect(parseVtpassMoney("97.50")).toBe(97.5);
+    expect(parseVtpassMoney("1,000.25")).toBe(1000.25);
+  });
+
+  test("null for missing/invalid", () => {
+    expect(parseVtpassMoney(null)).toBeNull();
+    expect(parseVtpassMoney(undefined)).toBeNull();
+    expect(parseVtpassMoney("")).toBeNull();
+    expect(parseVtpassMoney("abc")).toBeNull();
   });
 });
 
