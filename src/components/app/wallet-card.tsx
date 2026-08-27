@@ -11,7 +11,7 @@ export function WalletCard({ label = "Wallet Balance" }: { label?: string }) {
   const { balance, hideBalance, toggleBalance } = useApp();
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border/40 bg-card px-4 py-4 text-card-foreground shadow-float">
+    <section className="relative overflow-hidden rounded-2xl border border-border/80 bg-card px-4 py-4 text-card-foreground shadow-float">
       <div className="relative flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <button

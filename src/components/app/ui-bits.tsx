@@ -92,6 +92,7 @@ export function ServiceTile({
   params?: Record<string, string>;
   onClick?: () => void;
   compact?: boolean;
+  card?: boolean;
 }) {
   const inner = (
     <>
@@ -110,7 +111,8 @@ export function ServiceTile({
     </>
   );
   const cls = cn(
-    "press flex flex-col items-center justify-center gap-1.5 bg-transparent p-1",
+    "press flex flex-col items-center justify-center gap-1.5 p-1",
+    card ? "rounded-xl border border-border/70 bg-card px-2 py-2.5 shadow-soft" : "bg-transparent",
     compact ? "min-h-[4.25rem]" : "min-h-[4.75rem]",
   );
   if (to) {

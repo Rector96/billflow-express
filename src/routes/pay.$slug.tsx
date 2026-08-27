@@ -599,7 +599,12 @@ function PayFlow() {
         <div className="mx-auto w-full max-w-md px-4 py-8 sm:py-10">
           <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-soft sm:p-5">
             <div className="flex flex-col items-center gap-2 text-center">
-              <span className={cn("grid size-16 place-items-center rounded-full ring-8 ring-white shadow-soft", map.cls)}>
+              <span
+                className={cn(
+                  "grid size-16 place-items-center rounded-full border-2 ring-8 ring-white shadow-soft",
+                  map.cls,
+                )}
+              >
                 <map.Icon className="size-8" />
               </span>
               <div className="space-y-1">

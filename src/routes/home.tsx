@@ -89,7 +89,7 @@ function HomePage() {
 
         <section>
           <SectionTitle title="Pay Bills" action="See all" to="/services" />
-          <div className="grid grid-cols-3 gap-x-1 gap-y-2">
+          <div className="grid grid-cols-3 gap-2">
             {serviceTiles.map((s) =>
               s ? (
                 <ServiceTile
@@ -99,6 +99,7 @@ function HomePage() {
                   tint={s.tint}
                   to="/pay/$slug"
                   params={{ slug: s.slug }}
+                  card
                 />
               ) : null,
             )}
@@ -107,6 +108,7 @@ function HomePage() {
               Icon={MoreIcon}
               tint="bg-muted text-muted-foreground"
               to="/services"
+              card
             />
           </div>
         </section>
