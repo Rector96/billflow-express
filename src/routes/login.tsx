@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,74 +58,89 @@ function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-10">
-      <BrandLogo className="h-[clamp(3.25rem,16vw,5.5rem)] self-start" />
-      <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Welcome Back 👋</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Log in to continue paying your bills with {BRAND.name}.
-      </p>
+    <main className="flex min-h-dvh items-center justify-center bg-muted/35 px-4 py-8 sm:px-6">
+      <div className="w-full max-w-md rounded-[1.75rem] border border-border/70 bg-card p-6 shadow-card sm:p-8">
+        <BrandLogo className="h-[clamp(3.25rem,16vw,5.5rem)] self-start" />
+        <h1 className="mt-7 text-2xl font-extrabold tracking-tight">Welcome back</h1>
+        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+          Log in to continue paying your bills with {BRAND.name}.
+        </p>
 
-      <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="identifier">Email</Label>
-          <Input
-            id="identifier"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            className="h-13 rounded-xl bg-card"
-            placeholder="you@email.com"
-            aria-invalid={Boolean(errors.id)}
-          />
-          {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={show ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-13 rounded-xl bg-card pr-12"
-              placeholder="Enter your password"
-              aria-invalid={Boolean(errors.password)}
-            />
-            <button
-              type="button"
-              aria-label={show ? "Hide password" : "Show password"}
-              onClick={() => setShow((v) => !v)}
-              className="absolute inset-y-0 right-3 grid place-items-center text-muted-foreground"
-            >
-              {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-            </button>
+        <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
+          <div className="space-y-2">
+            <Label htmlFor="identifier">Email address</Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="identifier"
+                type="email"
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                className="h-13 rounded-xl bg-background pl-10"
+                placeholder="you@email.com"
+                aria-invalid={Boolean(errors.id)}
+                aria-describedby={errors.id ? "identifier-error" : undefined}
+              />
+            </div>
+            {errors.id ? (
+              <p id="identifier-error" className="text-xs font-medium text-destructive">
+                {errors.id}
+              </p>
+            ) : null}
           </div>
-          {errors.password ? (
-            <p className="text-xs font-medium text-destructive">{errors.password}</p>
-          ) : null}
-        </div>
 
-        <div className="flex justify-end">
-          <Link to="/forgot-password" search={{ step: "request" }} className="text-sm font-semibold text-primary">
-            Forgot Password?
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                type={show ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-13 rounded-xl bg-background pl-10 pr-12"
+                placeholder="Enter your password"
+                aria-invalid={Boolean(errors.password)}
+                aria-describedby={errors.password ? "password-error" : undefined}
+              />
+              <button
+                type="button"
+                aria-label={show ? "Hide password" : "Show password"}
+                onClick={() => setShow((v) => !v)}
+                className="absolute inset-y-0 right-3 grid size-8 place-items-center self-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+              </button>
+            </div>
+            {errors.password ? (
+              <p id="password-error" className="text-xs font-medium text-destructive">
+                {errors.password}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex justify-end">
+            <Link to="/forgot-password" search={{ step: "request" }} className="text-sm font-semibold text-primary">
+              Forgot password?
+            </Link>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-13 w-full rounded-2xl text-base font-bold"
+          >
+            {loading ? "Logging in…" : "Log in"}
+          </Button>
+        </form>
+
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link to="/signup" className="font-bold text-primary">
+            Sign up
           </Link>
-        </div>
-
-        <Button
-          type="submit"
-          disabled={loading}
-          className="h-13 w-full rounded-2xl text-base font-bold"
-        >
-          {loading ? "Logging in…" : "Login"}
-        </Button>
-      </form>
-
-      <p className="mt-auto pt-10 text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
-        <Link to="/signup" className="font-bold text-primary">
-          Sign Up
-        </Link>
-      </p>
+        </p>
+      </div>
     </main>
   );
 }

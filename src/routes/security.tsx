@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, Fingerprint, KeyRound, LockKeyhole, MonitorSmartphone } from "lucide-react";
+import { ChevronRight, Fingerprint, KeyRound, LockKeyhole, LogOut, MonitorSmartphone } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -187,17 +187,20 @@ function SecurityPage() {
           <AlertDialogTrigger className="press w-full rounded-2xl border border-destructive/30 bg-card p-3.5 text-left text-sm font-bold text-destructive shadow-card">
             Logout From All Devices
           </AlertDialogTrigger>
-          <AlertDialogContent className="rounded-2xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Log out everywhere?</AlertDialogTitle>
-              <AlertDialogDescription>
-                All active sessions will be signed out immediately.
+          <AlertDialogContent className="gap-6 rounded-[1.5rem] p-5 sm:max-w-sm sm:p-6">
+            <AlertDialogHeader className="items-center text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-destructive-soft text-destructive">
+                <LogOut className="size-6" />
+              </span>
+              <AlertDialogTitle className="pt-1 text-xl font-extrabold">Log out everywhere?</AlertDialogTitle>
+              <AlertDialogDescription className="max-w-xs leading-6">
+                All active sessions will be signed out immediately, including this device.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="gap-2 sm:grid sm:grid-cols-2 sm:space-x-0">
+              <AlertDialogCancel className="mt-0 h-11 rounded-xl">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="rounded-xl"
+                className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => {
                   void logout();
                   navigate({ to: "/login" });

@@ -6,6 +6,7 @@ import {
   KeyRound,
   LifeBuoy,
   LogOut,
+  ShieldAlert,
   FileText,
   ShieldCheck,
   User,
@@ -100,17 +101,20 @@ function ProfilePage() {
             </span>
             <span className="flex-1 text-sm font-semibold text-destructive">Logout</span>
           </AlertDialogTrigger>
-          <AlertDialogContent className="rounded-2xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Log out of {BRAND.name}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                You'll need to log in again to access your wallet.
+          <AlertDialogContent className="gap-6 rounded-[1.5rem] p-5 sm:max-w-sm sm:p-6">
+            <AlertDialogHeader className="items-center text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-destructive-soft text-destructive">
+                <ShieldAlert className="size-6" />
+              </span>
+              <AlertDialogTitle className="pt-1 text-xl font-extrabold">Log out of {BRAND.name}?</AlertDialogTitle>
+              <AlertDialogDescription className="max-w-xs leading-6">
+                You&apos;ll need to log in again to access your wallet and payment history.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="gap-2 sm:grid sm:grid-cols-2 sm:space-x-0">
+              <AlertDialogCancel className="mt-0 h-11 rounded-xl">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="rounded-xl"
+                className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => {
                   void logout().then(() => navigate({ to: "/login" }));
                 }}
