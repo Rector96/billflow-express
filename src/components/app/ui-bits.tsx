@@ -60,7 +60,12 @@ export function StatusBadge({ status, compact }: { status: TxStatus; compact?: b
       cls: "border border-destructive/30 bg-destructive-soft text-destructive",
       Icon: XCircle,
     },
-  }[status];
+  }[status] ?? {
+    label: "Unknown",
+    short: "Unknown",
+    cls: "border border-border/60 bg-muted text-muted-foreground",
+    Icon: Clock3,
+  };
   return (
     <span
       className={cn(

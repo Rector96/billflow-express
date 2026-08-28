@@ -32,7 +32,7 @@ const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] a
 function HomePage() {
   const navigate = useNavigate();
   const { profile, transactions, saved, unreadCount } = useApp();
-  const firstName = (profile.name.split(" ")[0] || "there").trim();
+  const firstName = ((profile?.name ?? "").split(" ")[0] || "there").trim();
 
   const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
 
@@ -78,7 +78,7 @@ function HomePage() {
               aria-label="Your profile"
               className="press grid size-10 place-items-center rounded-full border-2 border-white/40 bg-white/20 text-xs font-bold"
             >
-              {initialsOf(profile.name || "U")}
+              {initialsOf(profile?.name || "U")}
             </Link>
           </div>
         </div>
