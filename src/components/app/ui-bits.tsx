@@ -84,6 +84,7 @@ export function ServiceTile({
   params,
   onClick,
   compact,
+  card,
 }: {
   label: string;
   Icon: LucideIcon;
