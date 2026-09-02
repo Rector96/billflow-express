@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -58,7 +58,11 @@ export type Database = {
           metadata: Json
           product: string | null
           provider: string
+          provider_channel: string | null
           provider_request_id: string | null
+          provider_response_code: string | null
+          provider_response_message: string | null
+          provider_status: string | null
           provider_transaction_id: string | null
           service: string
           status: Database["public"]["Enums"]["tx_status"]
@@ -76,7 +80,11 @@ export type Database = {
           metadata?: Json
           product?: string | null
           provider: string
+          provider_channel?: string | null
           provider_request_id?: string | null
+          provider_response_code?: string | null
+          provider_response_message?: string | null
+          provider_status?: string | null
           provider_transaction_id?: string | null
           service: string
           status?: Database["public"]["Enums"]["tx_status"]
@@ -94,7 +102,11 @@ export type Database = {
           metadata?: Json
           product?: string | null
           provider?: string
+          provider_channel?: string | null
           provider_request_id?: string | null
+          provider_response_code?: string | null
+          provider_response_message?: string | null
+          provider_status?: string | null
           provider_transaction_id?: string | null
           service?: string
           status?: Database["public"]["Enums"]["tx_status"]
@@ -464,6 +476,7 @@ export type Database = {
       admin_care_stats: { Args: never; Returns: Json }
       admin_dashboard_stats: { Args: never; Returns: Json }
       admin_ops_stats: { Args: never; Returns: Json }
+      admin_reconciliation_queue: { Args: { _limit?: number }; Returns: Json }
       admin_service_breakdown: { Args: never; Returns: Json }
       admin_set_account_status: {
         Args: { _reason?: string; _status: string; _user_id: string }
@@ -501,6 +514,21 @@ export type Database = {
         Returns: boolean
       }
       complete_airtime_purchase: {
+        Args: {
+          _internal_reference: string
+          _outcome: Database["public"]["Enums"]["tx_status"]
+          _payload?: Json
+          _provider_transaction_id?: string
+        }
+        Returns: {
+          balance_after: number
+          bill_id: string
+          internal_reference: string
+          refunded: boolean
+          status: Database["public"]["Enums"]["tx_status"]
+        }[]
+      }
+      complete_bill_purchase: {
         Args: {
           _internal_reference: string
           _outcome: Database["public"]["Enums"]["tx_status"]
@@ -638,6 +666,25 @@ export type Database = {
           request_id: string
         }[]
       }
+      start_bill_purchase: {
+        Args: {
+          _amount: number
+          _customer_identifier: string
+          _metadata?: Json
+          _pin: string
+          _product: string
+          _provider: string
+          _request_id?: string
+          _service_label: string
+          _service_slug: string
+        }
+        Returns: {
+          balance_after: number
+          bill_id: string
+          internal_reference: string
+          request_id: string
+        }[]
+      }
       verify_transaction_pin: { Args: { _pin: string }; Returns: boolean }
       vtpass_request_id: { Args: never; Returns: string }
     }
@@ -683,12 +730,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -712,11 +759,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -737,11 +784,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -762,11 +809,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -779,11 +826,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
