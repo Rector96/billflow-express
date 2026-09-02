@@ -29,6 +29,47 @@ export function can(perms: Set<AdminPerm>, need: AdminPerm) {
   return perms.has(need);
 }
 
+/** Nav item → required permission. null means any staff with "view". */
+export type AdminNavId =
+  | "dashboard"
+  | "users"
+  | "transactions"
+  | "reconciliation"
+  | "wallet"
+  | "services"
+  | "care"
+  | "reports"
+  | "activity"
+  | "audit"
+  | "staff"
+  | "settings";
+
+const NAV_PERMS: Record<AdminNavId, AdminPerm | null> = {
+  dashboard: null,
+  users: null,
+  transactions: null,
+  reconciliation: null,
+  wallet: null,
+  services: null,
+  care: null,
+  reports: null,
+  activity: null,
+  audit: null,
+  staff: "staff_manage",
+  settings: "settings",
+};
+
+export function navPermFor(id: AdminNavId): AdminPerm | null {
+  return NAV_PERMS[id] ?? null;
+}
+
+export function canAccessNav(perms: Set<AdminPerm>, id: AdminNavId): boolean {
+  if (!can(perms, "view")) return false;
+  const need = navPermFor(id);
+  if (need == null) return true;
+  return can(perms, need);
+}
+
 export async function requireStaffSession(): Promise<{
   session: Session;
   roles: StaffRole[];
