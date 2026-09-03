@@ -1,7 +1,51 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PayFlow } from "@/components/app/pay-flow";
-import { getService } from "@/lib/mock-data";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { AppShell } from "@/components/app/app-shell";
+import { ExamPinsFlow } from "@/components/app/exam-pins-flow";
+import { PageHeader } from "@/components/app/page-header";
+import { InfoRow } from "@/components/app/ui-bits";
+import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
+import { PinPad } from "@/components/app/pin-pad";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { friendlyError, useApp } from "@/lib/app-store";
+import { useServerFn } from "@tanstack/react-start";
+import { purchaseAirtime, requeryAirtime } from "@/lib/airtime.functions";
+import {
+  listVtpassServices,
+  listVtpassVariations,
+  purchaseCable,
+  purchaseData,
+  purchaseElectricity,
+  requeryBill,
+  verifyVtpassCustomer,
+} from "@/lib/bills.functions";
+import {
+  lastSuccessfulProvider,
+  recentAmountsForService,
+  recentPackagesForService,
+  recentSavedForService,
+  type RecentBeneficiary,
+} from "@/lib/fast-pay";
+import {
+  formatNaira,
+  getService,
+  maskTail,
+  type Package,
+  type TxStatus,
+} from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
+import { cn } from "@/lib/utils";
 
 type Search = {
   saved?: string | undefined;
@@ -33,9 +77,5 @@ export const Route = createFileRoute("/pay/$slug")({
       ],
     };
   },
-  component: function PayRoute() {
-    const { slug } = Route.useParams();
-    const search = Route.useSearch();
-    return <PayFlow slug={slug} search={search} />;
-  },
+  component: PayFlow,
 });
