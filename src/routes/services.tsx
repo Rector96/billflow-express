@@ -45,16 +45,24 @@ function ServicesPage() {
 
         {list.length ? (
           <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
-            {list.map((s) => (
-              <ServiceTile
-                key={s.slug}
-                label={s.short}
-                Icon={s.icon}
-                tint={s.tint}
-                to="/pay/$slug"
-                params={{ slug: s.slug }}
-              />
-            ))}
+            {list.map((s) => {
+              const soon =
+                s.slug === "education" ||
+                s.slug === "exam-pins" ||
+                s.slug === "internet" ||
+                s.slug === "water" ||
+                s.slug === "insurance";
+              return (
+                <ServiceTile
+                  key={s.slug}
+                  label={soon ? `${s.short} · Soon` : s.short}
+                  Icon={s.icon}
+                  tint={s.tint}
+                  to="/pay/$slug"
+                  params={{ slug: s.slug }}
+                />
+              );
+            })}
           </div>
         ) : (
           <EmptyState
