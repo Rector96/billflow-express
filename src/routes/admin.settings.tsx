@@ -1,9 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { BRAND } from "@/lib/brand";
+import { can, requireStaffSession } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({ meta: [{ title: `Settings — ${BRAND.name} Admin` }] }),
+  beforeLoad: async () => {
+    const staff = await requireStaffSession();
+    if (!can(staff.perms, "settings")) {
+      throw redirect({ to: "/admin" });
+    }
+  },
   component: AdminSettings,
 });
 
