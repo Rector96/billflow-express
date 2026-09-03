@@ -7,8 +7,9 @@ import { inflateSync } from "node:zlib";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const partsDir = join(__dirname, "pay-parts");
 const target = join(__dirname, "..", "src", "routes", "pay.$slug.tsx");
-const b64 = readFileSync(join(partsDir, "b64-0.txt"), "utf8").trim()
-  + readFileSync(join(partsDir, "b64-1.txt"), "utf8").trim();
+const b64 = [0, 1, 2, 3]
+  .map((i) => readFileSync(join(partsDir, `b64-${i}.txt`), "utf8").trim())
+  .join("");
 const buf = inflateSync(Buffer.from(b64, "base64"));
 writeFileSync(target, buf);
 console.log("[restore-pay] wrote", target, "bytes", buf.length);
