@@ -92,7 +92,8 @@ export function computeFromRule(rule: PricingRuleRow, baseAmount: number): numbe
       amount = base + (base * value) / 100;
       break;
     case "selling_price":
-      amount = value;
+      // Never sell below provider/base cost — avoids negative rockpay_fee.
+      amount = Math.max(value, base);
       break;
     default:
       throw new Error("Unsupported markup type.");
@@ -107,6 +108,8 @@ export function computeFromRule(rule: PricingRuleRow, baseAmount: number): numbe
     amount = Math.min(amount, roundMoney(Number(rule.max_amount)));
   }
 
+  // Final floor: customer must never pay less than provider base.
+  amount = Math.max(amount, base);
   amount = roundMoney(amount);
   if (!Number.isFinite(amount) || amount < 0) {
     throw new Error("Calculated price is invalid.");
