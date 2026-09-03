@@ -1,14 +1,12 @@
-// Restores src/routes/pay.$slug.tsx (compressed payload).
+#!/usr/bin/env node
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gunzipSync } from "node:zlib";
+import { inflateSync } from "node:zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
-const target = join(root, "src/routes/pay.$slug.tsx");
-
-// Payload written by build agent — run: node scripts/restore-pay.mjs
-// If this file is incomplete, checkout pay from git history df9c3c82
-console.error("[restore-pay] Incomplete script on remote — expand from agent artifact.");
-process.exit(1);
+const target = join(__dirname, "..", "src", "routes", "pay.$slug.tsx");
+const b64 = "eNrtfftu20iW9/9+imohmKUGlmQ7yXTa8WUTp4MN0MkaiadnF54sTEmUxS8UqSYp2/o0Agb7CrvPMK+w/3+P0k/ynVM31pWkZOcyvROg2yJZ11Onzq1+VRXP5llekhUZ5VFYRq/jJHqfLcpol/wUp592yaKI3oU38TV8I2syybMZ6fxzGaZFGY4+DSDPqOzlmCHvPN+JRWGQ68fJJBqVtIC30SyjP95HE/r3Q6kWRwtRcu8Q8iKJ8vIszkdJtAuPZ9No9Ik9HvDnmzxL38fX05I+J9no02P89VMWjqOcJvo3kV/UkyxG8TjqmdWRMguLUramyNJU78yL+fzDNEqSqv+DUQYf0ygti0E4n+N/vQKTqNl+vAtn53FavE6yW3/WCFL15pCsN4F0av7z8Dr6lwi74889hzS9KU2kZn2TTrL3dbUu4t4wLgu9uuWHMpq/zMbLXfEwj/JdUi7nkXjxNirDutYsewWk0oqN0/NwXJMnTnvzcKxmebkoyyx1Z1nEgyH9rHd3vii96WP8qib/KRxGiTd5gl/V5JM8jtJxsvwxz7Ocsi8whJI9iYeMAcosj4xJ8CHKb6L8deqdOvA71xo3X+SjaQh1xHkZz2Aa5tEviyhf8mezXva2P1mkozLO0kKfRklclD+X87AosCHxKCp2tbc/h3kc0nz4XlR9Fg7ZtBMvXoVlqD7/mMDMzuNRXC7xNW/hyzhJ8BE6HE+WrIKzBVBlBly0o7d7CGkLb6thOn5YjKC1xWSRnOfZDUzbnNU0gmF6McsWMFivs5z3qvp0DpSFKeH89iG8icb6B8ra7+nXl1EaTaBLYb40GzuB9gCPLvVWTrJ8FpbvYAQoba6jUil4FhafLsI4kZXwhsnnizuUgYvCrGsGgqw3BnprE+L9i3evjJEf5mGqzZpRaqRYlHGClN2hFX6IQhg8ckzbXiApTg9JAaOYXpO/kEU6ht6n0fg5DjOnuDdBSAcAPqeL2RDEk/EZ8qZlPIm9JayhUdEdbfcIRr8kVONA2wwdFHRQpAweFcniutMNsOU3YRIDeSLWnUMSFIc4gFk+PmI1wQRNP6XZbXrSPZSdPqG9Jrw2KPpQocf6Of0WT0iAlMompLjsUAp1PpLj42NQCbTkThdz9ukXyFclcuUXNHQWIT6yUqqkroIqYjqLqj6zwtTkruLY0Imi2Ph1yO9+R97Rn/24eB2nMZBeSdtlVbFHVo0sJiw4EzRXxtuNlSnf+vB2FnTJd5gEOsUGSgxVCtWxlmkNes4TYXVmw1OzuSlLvab/z6NykaeYAN+ucT6i+gRGAtEb5uGsIOuuyTDFzQjKqWZ4wFL2kS95W3hzwxmyMaQ/7dPfp6ekA6pzBoPSea42QHRzBgr1kFzyJ4LWSFwm0SG5gmzk0QpLWZNf//rf8JuKAVru+oo1XeTBd4ekM46KUR7PUaR2drFJJdTLi1pmi5yX1y+zn7LbKD8DUR501wSFMYlTEpJJdEvKcF70lfI/sh9rSS+pLg/RKkDrBoRYV8oZ0P/kGJL9hVSczR6hr1F+AYn4s8Kr7AXTHPyBDzZ7gL5M4nzGn8Bm6MgaUE0gX7EXeVQsklJKvTOQpEl2zccNZzsp2O83r4Rses7JJ55mwEezxYxpGUXGpQs0AZ9rBUsFygXrjXg+y8ZVkfBBq0KK0ENl8kziu2h8DloV0g2zLInClEnKwe9/DwYu2CBgLQDJyLv4GugUpmSWwchFZITGMQhCampAFTiaedQTkrLo9snvBztC15IYtD58eXf9lmYPqHkkmtaVdTNNHJUEZR1N08+jeRIC9w/+/GoAchZmK5X2MAfHfWrHFH+Ky2nQOXj8BCYyTPNxP4nS63JK5//+4y4t62rv0QrSJziPHnfXV1UZauI9zD/4j8vvn/3wcdCHXpTBuKsUwPLxyTT4jz2a8HJv/+Ofx6tn60cyC5Bwp+r7OC6gC8t31+dT4GCr61xX/R31fKz3j8/HgIlRJpOA40FMgW1wzNRsH8zScyq/AtoLLuKEOpRpmILU0qC6e0N1H/3GVGH1PRV+4rHqNaolrMgwTMIUbCQQtsxgZKWClwH2TBEycxCN3gnM5Oku2iITZPI1KxQsb73VYl4rwllKZbXVZTTDduPvPlgh4yAoqJgvQINSuvPOoRwTOYcLaXUfq8Z8YNjo";
+const buf = inflateSync(Buffer.from(b64, "base64"));
+writeFileSync(target, buf);
+console.log("[restore-pay] wrote", target, "bytes", buf.length);
