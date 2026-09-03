@@ -17,25 +17,19 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BrandMark } from "@/components/app/app-shell";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
-import { formatPct } from "@/lib/admin";
+import {
+  canAccessNav,
+  formatPct,
+  requireStaffSession,
+  type AdminNavId,
+  type AdminPerm,
+  type StaffRole,
+} from "@/lib/admin";
 
-export type AdminNavId =
-  | "dashboard"
-  | "users"
-  | "transactions"
-  | "reconciliation"
-  | "wallet"
-  | "services"
-  | "care"
-  | "reports"
-  | "activity"
-  | "audit"
-  | "staff"
-  | "settings";
 
 const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", to: "/admin", icon: LayoutDashboard },
@@ -82,7 +76,33 @@ export function AdminShell({
   const current = activeId(pathname);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const nav = useMemo(() => NAV, []);
+  const [perms, setPerms] = useState<Set<AdminPerm> | null>(null);
+  const [roles, setRoles] = useState<StaffRole[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const staff = await requireStaffSession();
+        if (cancelled) return;
+        setPerms(staff.perms);
+        setRoles(staff.roles);
+      } catch {
+        if (!cancelled) {
+          setPerms(new Set<AdminPerm>(["view"]));
+          setRoles([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const nav = useMemo(() => {
+    if (!perms) return NAV;
+    return NAV.filter((n) => canAccessNav(perms, n.id));
+  }, [perms]);
 
   const searchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +125,9 @@ export function AdminShell({
         <BrandMark className="size-9" />
         <div>
           <p className="text-sm font-extrabold tracking-tight">{BRAND.name}</p>
-          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">Operations</p>
+          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+            {roles.length ? roles.join(" · ") : "Operations"}
+          </p>
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5" aria-label="Admin">
