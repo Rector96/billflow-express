@@ -1,11 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { BRAND } from "@/lib/brand";
+import { can, requireStaffSession } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/staff")({
   head: () => ({ meta: [{ title: `Staff — ${BRAND.name} Admin` }] }),
+  beforeLoad: async () => {
+    const staff = await requireStaffSession();
+    if (!can(staff.perms, "staff_manage")) {
+      throw redirect({ to: "/admin" });
+    }
+  },
   component: AdminStaff,
 });
 
