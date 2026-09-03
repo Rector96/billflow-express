@@ -119,42 +119,95 @@ function AdminUsers() {
       ) : filtered.length === 0 ? (
         <AdminEmpty title="No users found" body="Try another search or status filter." />
       ) : (
-        <div className="space-y-2">
-          {filtered.map((u) => (
-            <Link
-              key={u.user_id}
-              to="/admin/users/$userId"
-              params={{ userId: u.user_id }}
-              search={{ q: "", status: "all" }}
-              className="block rounded-2xl border bg-card p-4 shadow-card transition-colors hover:border-primary/30"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-bold">{u.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                  <p className="text-xs text-muted-foreground">{u.phone}</p>
+        <>
+          <div className="space-y-2 lg:hidden">
+            {filtered.map((u) => (
+              <Link
+                key={u.user_id}
+                to="/admin/users/$userId"
+                params={{ userId: u.user_id }}
+                search={{ q: "", status: "all" }}
+                className="block rounded-2xl border bg-card p-4 shadow-card transition-colors hover:border-primary/30"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{u.full_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    <p className="text-xs text-muted-foreground">{u.phone}</p>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-extrabold">{formatNaira(u.balance, false)}</p>
+                    <p className="text-xs text-muted-foreground">{u.tx_count} txs</p>
+                    <span
+                      className={cn(
+                        "mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                        u.account_status === "active"
+                          ? "bg-success-soft text-success"
+                          : "bg-warning-soft text-warning",
+                      )}
+                    >
+                      {u.account_status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right text-sm">
-                  <p className="font-extrabold">{formatNaira(u.balance, false)}</p>
-                  <p className="text-xs text-muted-foreground">{u.tx_count} txs</p>
-                  <span
-                    className={cn(
-                      "mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-                      u.account_status === "active"
-                        ? "bg-success-soft text-success"
-                        : "bg-warning-soft text-warning",
-                    )}
-                  >
-                    {u.account_status}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Joined {new Date(u.created_at).toLocaleDateString("en-NG")}
-              </p>
-            </Link>
-          ))}
-        </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Joined {new Date(u.created_at).toLocaleDateString("en-NG")}
+                </p>
+              </Link>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border bg-card shadow-card lg:block">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b bg-muted/50 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2.5">Name</th>
+                  <th className="px-3 py-2.5">Contact</th>
+                  <th className="px-3 py-2.5 text-right">Balance</th>
+                  <th className="px-3 py-2.5">Txs</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5">Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((u) => (
+                  <tr key={u.user_id} className="border-b border-border/60 hover:bg-muted/40">
+                    <td className="px-3 py-2.5">
+                      <Link
+                        to="/admin/users/$userId"
+                        params={{ userId: u.user_id }}
+                        search={{ q: "", status: "all" }}
+                        className="font-bold text-foreground hover:text-primary"
+                      >
+                        {u.full_name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      <div className="truncate">{u.email}</div>
+                      <div>{u.phone}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-extrabold tabular-nums">{formatNaira(u.balance, false)}</td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{u.tx_count}</td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={cn(
+                          "inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                          u.account_status === "active"
+                            ? "bg-success-soft text-success"
+                            : "bg-warning-soft text-warning",
+                        )}
+                      >
+                        {u.account_status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                      {new Date(u.created_at).toLocaleDateString("en-NG")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </AdminShell>
   );
