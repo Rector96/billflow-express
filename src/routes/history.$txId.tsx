@@ -79,12 +79,14 @@ function TransactionDetails() {
     bill?.service === "Airtime" ||
     (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
   const billServiceSlug =
-    typeof bill?.metadata?.service_slug === "string" ? bill.metadata.service_slug : "";
+    typeof bill?.metadata?.["service_slug"] === "string" ? bill.metadata["service_slug"] : "";
   const isExamPins = tx?.serviceSlug === "exam-pins" || billServiceSlug === "exam-pins";
   const examToken =
     tx?.token ||
-    (typeof bill?.metadata?.token === "string" ? bill.metadata.token : null) ||
-    (typeof bill?.metadata?.purchased_code === "string" ? bill.metadata.purchased_code : null);
+    (typeof bill?.metadata?.["token"] === "string" ? bill.metadata["token"] : null) ||
+    (typeof bill?.metadata?.["purchased_code"] === "string"
+      ? bill.metadata["purchased_code"]
+      : null);
 
   const status = bill?.status ?? tx?.status ?? "pending";
   const amount = bill?.amount != null ? Number(bill.amount) : (tx?.amount ?? 0);

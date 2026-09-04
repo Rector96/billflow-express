@@ -638,6 +638,22 @@ export type Database = {
           refunded: boolean
         }[]
       }
+      trusted_complete_bill_purchase: {
+        Args: {
+          _user_id: string
+          _internal_reference: string
+          _outcome: Database["public"]["Enums"]["tx_status"]
+          _provider_transaction_id?: string | null
+          _payload?: Json
+        }
+        Returns: {
+          bill_id: string
+          internal_reference: string
+          status: Database["public"]["Enums"]["tx_status"]
+          balance_after: number
+          refunded: boolean
+        }[]
+      }
       create_care_ticket: {
         Args: {
           _category: Database["public"]["Enums"]["ticket_category"]

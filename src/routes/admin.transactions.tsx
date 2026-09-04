@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/admin/transactions")({
   head: () => ({ meta: [{ title: `Transactions — ${BRAND.name} Admin` }] }),
   validateSearch: (s: Record<string, unknown>) => ({
-    q: typeof s.q === "string" ? s.q : "",
-    status: typeof s.status === "string" ? s.status : "all",
+    q: typeof s["q"] === "string" ? s["q"] : "",
+    status: typeof s["status"] === "string" ? s["status"] : "all",
   }),
   component: AdminTransactions,
 });

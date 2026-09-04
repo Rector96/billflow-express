@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { mapVtpassOutcome, type VtpassPayResult, type VtpassVariation } from "./vtpass.server";
 
 const EXAM_IDS = new Set(["waec", "neco", "nabteb", "jamb"]);
@@ -51,9 +52,9 @@ async function loadVariationsSoft(serviceID: string): Promise<VtpassVariation[]>
   }
 }
 
-function safePayload(raw: unknown): Record<string, unknown> {
+function safePayload(raw: unknown): Json {
   try {
-    return JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    return JSON.parse(JSON.stringify(raw)) as Json;
   } catch {
     return {};
   }
