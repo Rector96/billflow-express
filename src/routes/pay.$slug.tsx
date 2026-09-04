@@ -146,6 +146,7 @@ function PayFlow() {
 
   const payingLock = useRef(false);
   const refreshLock = useRef(false);
+  const payCtaRef = useRef<HTMLDivElement | null>(null);
 
   const recentBeneficiaries = useMemo(
     () => (service ? recentSavedForService(service.slug, saved, 3) : []),
@@ -938,7 +939,12 @@ function PayFlow() {
                   <button
                     key={v.variationCode}
                     type="button"
-                    onClick={() => setVariation(v)}
+                    onClick={() => {
+                      setVariation(v);
+                      window.setTimeout(() => {
+                        payCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }, 80);
+                    }}
                     className={cn(
                       "press flex w-full items-start justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
                       variation?.variationCode === v.variationCode
@@ -974,7 +980,12 @@ function PayFlow() {
                       <button
                         key={`r-${p.id}`}
                         type="button"
-                        onClick={() => setPack(p)}
+                        onClick={() => {
+                      setPack(p);
+                      window.setTimeout(() => {
+                        payCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }, 80);
+                    }}
                         className={cn(
                           "press flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
                           pack?.id === p.id ? "border-primary bg-primary-soft ring-2 ring-primary/10" : "border-border/70 bg-card",
@@ -1002,7 +1013,12 @@ function PayFlow() {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setPack(p)}
+                    onClick={() => {
+                      setPack(p);
+                      window.setTimeout(() => {
+                        payCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }, 80);
+                    }}
                     className={cn(
                       "press flex w-full items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left shadow-soft",
                       pack?.id === p.id ? "border-primary bg-primary-soft ring-2 ring-primary/10" : "border-border/70 bg-card",
@@ -1069,31 +1085,44 @@ function PayFlow() {
               </div>
             </>
           )}
-          <Button
-            className="h-11 w-full rounded-xl text-sm font-bold"
-            disabled={
-              total < 50 ||
-              (isPackageLive && !variation) ||
-              (service.mode === "package" && !isPackageLive && !pack)
-            }
-            onClick={() => {
-              if (isPackageLive && !variation) {
-                toast.error(isData ? "Select a data plan" : "Select a package");
-                return;
+          <div ref={payCtaRef} className="scroll-mt-24 space-y-2 pt-1">
+            {isPackageLive && variation ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary-soft/50 px-3.5 py-2.5 text-sm">
+                <p className="text-[11px] font-semibold text-muted-foreground">Selected plan</p>
+                <div className="mt-0.5 flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate font-extrabold">{variation.name}</p>
+                  <p className="shrink-0 font-extrabold tabular-nums text-primary">
+                    {formatNaira(variation.amount, false)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+            <Button
+              className="h-12 w-full rounded-2xl text-sm font-bold shadow-soft"
+              disabled={
+                total < 50 ||
+                (isPackageLive && !variation) ||
+                (service.mode === "package" && !isPackageLive && !pack)
               }
-              if (isElectricity && minPurchase > 0 && total < minPurchase) {
-                toast.error(`Minimum amount is ${formatNaira(minPurchase, false)}`);
-                return;
-              }
-              if (service.mode === "package" && !isPackageLive && !pack) {
-                toast.error("Select a package");
-                return;
-              }
-              setStep("confirm");
-            }}
-          >
-            Continue
-          </Button>
+              onClick={() => {
+                if (isPackageLive && !variation) {
+                  toast.error(isData ? "Select a data plan" : "Select a package");
+                  return;
+                }
+                if (isElectricity && minPurchase > 0 && total < minPurchase) {
+                  toast.error(`Minimum amount is ${formatNaira(minPurchase, false)}`);
+                  return;
+                }
+                if (service.mode === "package" && !isPackageLive && !pack) {
+                  toast.error("Select a package");
+                  return;
+                }
+                setStep("confirm");
+              }}
+            >
+              Continue
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
