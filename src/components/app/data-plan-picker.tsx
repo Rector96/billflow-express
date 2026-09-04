@@ -47,7 +47,6 @@ export function planDurationLabel(name: string): string | null {
   return null;
 }
 
-/** Short title that fits a 3-col card without overflow. */
 function cardTitle(name: string): string {
   const size = planSizeLabel(name);
   if (size) return size;
@@ -114,7 +113,13 @@ export function DataPlanPicker({
 
   return (
     <div className="space-y-3">
-      {/* Compact network + phone strip */}
+      <style>{`
+        @keyframes rpFadeSlide {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {(networkLabel || phoneLabel) && (
         <div className="flex items-center gap-2.5 rounded-2xl bg-muted/40 px-3 py-2.5">
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold tracking-wide text-primary-foreground">
@@ -131,9 +136,8 @@ export function DataPlanPicker({
         </div>
       )}
 
-      {/* Underline tabs — compact */}
-      <div className="overflow-x-auto scrollbar-none">
-        <div className="flex min-w-max items-end gap-0 border-b border-border/40">
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-end border-b border-border/40">
           {availableTabs.map((t) => {
             const active = tab === t.id;
             return (
@@ -159,23 +163,11 @@ export function DataPlanPicker({
         </div>
       </div>
 
-      {/* 3-col plan grid */}
       <div
         key={tab}
-        className="grid grid-cols-3 gap-2 [animation:fadeSlide_220ms_ease-out]"
-        style={
-          {
-            // lightweight keyframe without global CSS file dependency
-          } as React.CSSProperties
-        }
+        className="grid grid-cols-3 gap-2"
+        style={{ animation: "rpFadeSlide 220ms ease-out" }}
       >
-        <style>{`
-          @keyframes fadeSlide {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
-
         {list.length === 0 ? (
           <p className="col-span-3 py-10 text-center text-[11px] text-muted-foreground">
             No plans in this category
@@ -193,7 +185,7 @@ export function DataPlanPicker({
                 type="button"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "group relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
+                  "relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
                   "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
                   "active:scale-[0.97]",
                   selected
@@ -201,7 +193,6 @@ export function DataPlanPicker({
                     : "border-transparent bg-[#F3F1F8] hover:border-primary/25 hover:bg-[#EFEAF8]",
                 )}
               >
-                {/* Selected accent bar */}
                 <span
                   className={cn(
                     "absolute inset-x-0 top-0 h-[2px] bg-primary transition-opacity duration-300",
@@ -209,15 +200,15 @@ export function DataPlanPicker({
                   )}
                 />
 
-                <div className="min-w-0 pr-0.5">
+                <div className="min-w-0">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
                     {duration ?? "PLAN"}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight text-foreground",
+                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight",
                       "transition-colors duration-300",
-                      selected && "text-primary",
+                      selected ? "text-primary" : "text-foreground",
                     )}
                   >
                     {title}
@@ -233,13 +224,14 @@ export function DataPlanPicker({
                   <p className="truncate text-[12px] font-bold tabular-nums leading-none text-foreground">
                     {formatNaira(p.amount, false)}
                   </p>
-                  {selected ? (
-                    <p className="mt-1 text-[9px] font-semibold text-primary transition-opacity duration-300">
-                      Selected
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-[9px] text-transparent">Selected</p>
-                  )}
+                  <p
+                    className={cn(
+                      "mt-1 text-[9px] font-semibold transition-opacity duration-300",
+                      selected ? "text-primary opacity-100" : "opacity-0",
+                    )}
+                  >
+                    Selected
+                  </p>
                 </div>
               </button>
             );
