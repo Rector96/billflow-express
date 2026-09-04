@@ -24,7 +24,6 @@ export const Route = createFileRoute("/wallet/fund")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { amount?: number; reference?: string } => {
-    // Paystack may return reference or trxref on callback
     const ref =
       typeof search["reference"] === "string"
         ? (search["reference"] as string)
@@ -39,7 +38,8 @@ export const Route = createFileRoute("/wallet/fund")({
   component: FundWallet,
 });
 
-const QUICK = [1000, 5000, 10000, 20000];
+/** Student-friendly ladder: small data packs → bigger airtime/bills */
+const QUICK = [500, 1000, 2000, 5000, 10000, 20000];
 
 type Stage = "form" | "redirecting" | "confirming" | "successful" | "pending" | "failed";
 
@@ -50,7 +50,7 @@ function FundWallet() {
   const initFunding = useServerFn(initializeWalletFunding);
   const verifyFunding = useServerFn(verifyWalletFunding);
 
-  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 5000);
+  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 1000);
   const [custom, setCustom] = useState("");
   const [stage, setStage] = useState<Stage>(reference ? "confirming" : "form");
   const [settled, setSettled] = useState<{ reference: string; amount: number } | null>(null);
@@ -66,7 +66,6 @@ function FundWallet() {
       try {
         const result = await verifyFunding({ data: { reference: ref } });
         setSettled({ reference: result.reference, amount: result.amount });
-        // Never show successful unless server verified + settled
         setStage(result.status);
         await refresh();
       } catch (err) {
@@ -203,29 +202,18 @@ function FundWallet() {
                   <Home className="mr-2 size-4" />
                   Go to Home
                 </Button>
-                <Button
-                  variant="outline"
-                  className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => navigate({ to: "/wallet" })}
-                >
+                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/wallet" })}>
                   <Wallet className="mr-2 size-4" />
                   View wallet
                 </Button>
               </>
             ) : stage === "pending" ? (
               <>
-                <Button
-                  className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => settled?.reference && void confirm(settled.reference)}
-                >
+                <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => settled?.reference && void confirm(settled.reference)}>
                   <RefreshCw className="mr-2 size-4" />
                   Refresh status
                 </Button>
-                <Button
-                  variant="outline"
-                  className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => navigate({ to: "/wallet" })}
-                >
+                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/wallet" })}>
                   Back to Wallet
                 </Button>
               </>
@@ -242,11 +230,7 @@ function FundWallet() {
                 >
                   Try again
                 </Button>
-                <Button
-                  variant="outline"
-                  className="h-13 w-full rounded-2xl font-bold"
-                  onClick={() => navigate({ to: "/home" })}
-                >
+                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
                   Go to Home
                 </Button>
               </>
@@ -261,9 +245,17 @@ function FundWallet() {
     <AppShell>
       <PageHeader title="Fund Wallet" subtitle={`Balance ${formatNaira(balance)}`} backTo="/wallet" />
       <div className="space-y-6 px-4 pt-2 pb-6">
+        <div className="rounded-2xl border border-primary/15 bg-primary-soft/30 p-3 text-[11px] text-muted-foreground">
+          <p className="font-bold text-foreground">Quick top-up</p>
+          <p className="mt-0.5">
+            Pick ₦500–₦2,000 for small data packs, or a larger amount for airtime and bills. Pay with card via
+            Paystack — balance updates only after confirmation.
+          </p>
+        </div>
+
         <div>
           <p className="mb-3 text-sm font-bold">Select or enter amount</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {QUICK.map((q) => (
               <button
                 key={q}
