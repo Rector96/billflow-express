@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-PLACEHOLDER_USE_PATCH
-=======
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
@@ -496,4 +493,3 @@ export async function requeryAirtimeCore(opts: {
     message: customerMessage(status, amount, pay.responseDescription),
   };
 }
->>>>>>> daadb04 (fix: OPay-style airtime face value; exam pins no phone, deliver to profile email)
