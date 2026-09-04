@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { PinPad } from "@/components/app/pin-pad";
+import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -933,6 +934,19 @@ function PayFlow() {
               <p className="py-6 text-center text-xs text-muted-foreground">
                 Service information is temporarily unavailable. Please try again.
               </p>
+            ) : isData ? (
+              <DataPlanPicker
+                plans={variations}
+                selectedCode={variation?.variationCode}
+                networkLabel={provider || serviceID}
+                phoneLabel={identifier}
+                onSelect={(v) => {
+                  setVariation(v);
+                  window.setTimeout(() => {
+                    payCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 80);
+                }}
+              />
             ) : (
               <div className="space-y-2">
                 {variations.map((v) => (
@@ -955,7 +969,7 @@ function PayFlow() {
                     <div className="min-w-0">
                       <p className="text-sm font-extrabold">{v.name}</p>
                       <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        {isData ? "Data plan" : "Package"}
+                        Package
                       </p>
                     </div>
                     <div className="text-right">
