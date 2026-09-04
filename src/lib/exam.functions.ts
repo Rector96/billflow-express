@@ -5,12 +5,22 @@ import { mapVtpassOutcome, type VtpassPayResult } from "./vtpass.server";
 
 const EXAM_IDS = new Set(["waec", "neco", "nabteb", "jamb"]);
 
+/** VTpass serviceID candidates per exam body (official: waec, waec-registration, jamb). */
+const EXAM_SERVICE_IDS: Record<string, string[]> = {
+  waec: ["waec", "waec-registration"],
+  jamb: ["jamb"],
+  neco: ["neco"],
+  nabteb: ["nabteb"],
+};
+
 export type ExamVariation = {
   variationCode: string;
   name: string;
   amount: number;
   fixedPrice: boolean;
 };
+
+export type ExamCatalogItem = ExamVariation & { serviceID: string };
 
 export type ExamPurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -44,8 +54,8 @@ function stringsFromCards(value: unknown): string[] {
     if (typeof card === "string" && card.trim()) return [card.trim()];
     if (!card || typeof card !== "object") return [];
     const row = card as Record<string, unknown>;
-    for (const key of ["purchased_code", "pin", "token", "code", "serial"]) {
-      if (typeof row[key] === "string" && row[key].trim()) return [row[key].trim()];
+    for (const key of ["purchased_code", "pin", "Pin", "token", "code", "serial", "Serial"]) {
+      if (typeof row[key] === "string" && String(row[key]).trim()) return [String(row[key]).trim()];
     }
     return [];
   });
@@ -76,6 +86,13 @@ function providerMessage(
     return `Your ${exam.toUpperCase()} PIN purchase of ₦${Math.round(amount).toLocaleString("en-NG")} was successful.`;
   }
   if (status === "failed") {
+    const upper = (detail || "").toUpperCase();
+    if (upper.includes("WHITELIST") || upper.includes("NOT WHITELISTED")) {
+      return (
+        `${exam.toUpperCase()} is not enabled on the VTpass account yet. ` +
+        "Enable it under VTpass → Product Settings, then try again. Your wallet was refunded."
+      );
+    }
     return detail
       ? `Your ${exam.toUpperCase()} PIN purchase failed (${detail}). Your wallet has been refunded.`
       : `Your ${exam.toUpperCase()} PIN purchase failed. Your wallet has been refunded.`;
@@ -86,11 +103,39 @@ function providerMessage(
 export const listExamCatalog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { examId: string }) => ({ examId: examId(input?.examId) }))
-  .handler(async ({ data }) => {
-    const { getVtpassConfig, vtpassListVariations } = await import("./vtpass.server");
+  .handler(async ({ data }): Promise<ExamCatalogItem[]> => {
+    const { getVtpassConfig, vtpassListVariationsOrEmpty } = await import("./vtpass.server");
     getVtpassConfig();
-    const variations = await vtpassListVariations(data.examId);
-    return variations.filter((variation) => variation.amount > 0);
+
+    const candidates = EXAM_SERVICE_IDS[data.examId] ?? [data.examId];
+    const out: ExamCatalogItem[] = [];
+    const seen = new Set<string>();
+
+    for (const serviceID of candidates) {
+      const variations = await vtpassListVariationsOrEmpty(serviceID);
+      for (const v of variations) {
+        if (v.amount <= 0) continue;
+        const key = `${serviceID}:${v.variationCode}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          variationCode: v.variationCode,
+          name: v.name,
+          amount: v.amount,
+          fixedPrice: v.fixedPrice,
+          serviceID,
+        });
+      }
+    }
+
+    if (!out.length) {
+      throw new Error(
+        data.examId === "waec" || data.examId === "jamb"
+          ? `${data.examId.toUpperCase()} pins are not enabled on this VTpass account yet. In VTpass → Product Settings, enable ${data.examId.toUpperCase()}, then try again.`
+          : `${data.examId.toUpperCase()} is not offered on VTpass for this account. Use WAEC or JAMB.`,
+      );
+    }
+    return out;
   });
 
 export const purchaseExamPins = createServerFn({ method: "POST" })
@@ -116,14 +161,24 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<ExamPurchaseResult> => {
-    const { getVtpassConfig, vtpassListVariations, vtpassPay, normalizeNgPhone } =
+    const { getVtpassConfig, vtpassListVariationsOrEmpty, vtpassPay, normalizeNgPhone } =
       await import("./vtpass.server");
     getVtpassConfig();
-    const variation = (await vtpassListVariations(data.exam)).find(
-      (item) => item.variationCode === data.variationCode,
-    );
-    if (!variation || variation.amount <= 0)
-      throw new Error("Selected exam PIN is no longer available.");
+
+    let serviceID = data.exam;
+    let variation: { variationCode: string; name: string; amount: number } | null = null;
+    for (const sid of EXAM_SERVICE_IDS[data.exam] ?? [data.exam]) {
+      const list = await vtpassListVariationsOrEmpty(sid);
+      const found = list.find((item) => item.variationCode === data.variationCode);
+      if (found && found.amount > 0) {
+        serviceID = sid;
+        variation = found;
+        break;
+      }
+    }
+    if (!variation)
+      throw new Error("Selected exam PIN is no longer available. Pick another product or try WAEC.");
+
     const unitAmount = Math.round(variation.amount * 100) / 100;
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;
     const { data: profile } = await context.supabase
@@ -144,7 +199,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "exam-pins",
       _service_label: "Exam PIN",
-      _provider: data.exam,
+      _provider: serviceID,
       _product: variation.name,
       _customer_identifier: identifier,
       _amount: totalAmount,
@@ -155,19 +210,24 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         variation_code: data.variationCode,
         quantity: data.quantity,
         unit_amount: unitAmount,
+        provider_service_id: serviceID,
       },
       _request_id: requestId,
     });
     if (error)
       throw new Error(
-        error.message.includes("insufficient_funds") ? "insufficient_funds" : error.message,
+        error.message.includes("insufficient_funds")
+          ? "insufficient_funds"
+          : error.message.includes("unsupported_service")
+            ? "Exam pins are not enabled in the database yet. Run the exam-pins migration in Supabase."
+            : error.message,
       );
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start exam PIN purchase.");
     const pay = await vtpassPay({
       request_id: row.request_id,
-      serviceID: data.exam,
+      serviceID,
       variation_code: data.variationCode,
       amount: unitAmount,
       quantity: data.quantity,
