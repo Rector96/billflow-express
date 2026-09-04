@@ -40,7 +40,7 @@ export function ExamPinsFlow() {
   const [error, setError] = useState("");
 
   const exam = useMemo(() => EXAMS.find((e) => e.id === examId) ?? null, [examId]);
-  const deliveryEmail = (profile?.email ?? "").trim();
+  const deliveryMessage = `PINs appear on your receipt. A copy is sent to ${profile?.email || "your registered email"}.`;
 
   const setQty = (n: number) => {
     const v = Math.min(MAX_Q, Math.max(MIN_Q, Math.round(n)));
@@ -143,7 +143,7 @@ export function ExamPinsFlow() {
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">How many PINs?</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Type the number you need (1–{MAX_Q}). PINs will show on your receipt.
+                Type any number from {MIN_Q}–{MAX_Q}. PINs will show on your receipt.
               </p>
             </div>
             <div className="rounded-[26px] border border-border/70 bg-card p-5 shadow-soft">
@@ -178,16 +178,10 @@ export function ExamPinsFlow() {
                   <Plus className="size-4" />
                 </button>
               </div>
-              {error ? (
-                <p className="mt-3 text-center text-xs font-medium text-destructive">{error}</p>
-              ) : null}
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-              After payment, PINs appear on your receipt. A copy is also sent to{" "}
-              <span className="font-semibold text-foreground">
-                {deliveryEmail || "your registered email"}
-              </span>
-              .
+              <p className="mt-3 text-center text-[11px] text-muted-foreground">
+                {deliveryMessage}
+              </p>
+              {error ? <p className="mt-2 text-center text-xs font-semibold text-destructive">{error}</p> : null}
             </div>
             <div className="flex gap-2">
               <Button
@@ -229,18 +223,15 @@ export function ExamPinsFlow() {
                 <span className="font-extrabold tabular-nums">{quantity}</span>
               </div>
               <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="shrink-0 text-muted-foreground">Delivery</span>
+                <span className="shrink-0 text-muted-foreground">Delivery email</span>
                 <span className="truncate text-right text-xs font-bold">
-                  {deliveryEmail || "Registered email on your profile"}
+                  {profile?.email || "your registered email"}
                 </span>
               </div>
             </div>
             <div className="flex gap-3 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
-              <p>
-                PINs are shown on your receipt after a successful purchase. Details are also sent to
-                the email on your RockPay profile. No phone number is required.
-              </p>
+              <p>{deliveryMessage}</p>
             </div>
             <div className="rounded-2xl border border-dashed border-border/70 bg-card px-4 py-4 text-center">
               <p className="text-sm font-extrabold">Live purchase coming soon</p>
@@ -258,7 +249,7 @@ export function ExamPinsFlow() {
                 Back
               </Button>
               <Button className="h-11 flex-1 rounded-xl text-sm font-bold" disabled>
-                Pay (soon)
+                Coming soon — no charge
               </Button>
             </div>
             <Button variant="ghost" className="h-10 w-full text-xs font-semibold" asChild>
@@ -266,6 +257,14 @@ export function ExamPinsFlow() {
             </Button>
           </section>
         ) : null}
+
+        <div className="flex items-start gap-2 rounded-2xl bg-primary-soft/60 px-3 py-3 text-[11px] text-muted-foreground">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            Best practice: choose exam → enter how many PINs you need → confirm delivery email → pay later. Codes appear
+            on your receipt after a successful provider response.
+          </p>
+        </div>
       </div>
     </AppShell>
   );

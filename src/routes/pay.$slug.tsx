@@ -1033,7 +1033,7 @@ function PayFlow() {
               ) : null}
               <div className="rounded-[26px] border border-border/70 bg-card p-4 text-center shadow-soft">
                 <Label htmlFor="amount" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Amount to pay
+                  {isAirtime ? "Airtime amount" : "Amount to pay"}
                 </Label>
                 <div className="mt-3 flex items-center justify-center gap-1 rounded-2xl bg-background px-3 py-2">
                   <span className="text-xl font-extrabold">₦</span>
@@ -1046,6 +1046,9 @@ function PayFlow() {
                     className="h-12 border-0 bg-transparent text-center text-3xl font-extrabold shadow-none focus-visible:ring-0"
                   />
                 </div>
+                {isAirtime ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">Phone receives exactly this amount. No extra fee.</p>
+                ) : null}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {amountPresets.map((q) => (
