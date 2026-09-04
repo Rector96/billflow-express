@@ -241,7 +241,9 @@ function TransactionDetails() {
         {examToken ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-muted-foreground">{isExamPins ? "Exam PIN" : "Electricity Token"}</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                {isExamPins ? "Exam PIN" : "Electricity Token"}
+              </p>
               <Button
                 type="button"
                 size="sm"
@@ -252,7 +254,9 @@ function TransactionDetails() {
                 <Copy className="size-3.5" /> Copy
               </Button>
             </div>
-            <p className="mt-2 whitespace-pre-wrap break-words text-lg font-extrabold tracking-[0.15em]">{examToken}</p>
+            <p className="mt-2 whitespace-pre-wrap break-words text-lg font-extrabold tracking-[0.15em]">
+              {examToken}
+            </p>
           </div>
         ) : null}
         {tx?.token && !examToken ? (

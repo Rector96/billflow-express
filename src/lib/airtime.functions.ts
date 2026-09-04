@@ -79,26 +79,36 @@ function mapStartError(message: string): Error {
 
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    network: string;
-    phone: string;
-    amount: number;
-    pin: string;
-    requestId?: string;
-  }) => {
-    const amount = Math.round(Number(input?.amount));
-    if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
-      throw new Error("Enter an amount between ₦50 and ₦50,000.");
-    }
-    const pin = String(input?.pin ?? "");
-    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    const network = String(input?.network ?? "").trim().toLowerCase();
-    if (!network) throw new Error("Select a network.");
-    const phone = String(input?.phone ?? "").trim();
-    if (!phone) throw new Error("Enter a phone number.");
-    const requestId = String(input?.requestId ?? "").trim();
-    return { network, phone, amount, pin, requestId: requestId || `airtime-${crypto.randomUUID()}` };
-  })
+  .inputValidator(
+    (input: {
+      network: string;
+      phone: string;
+      amount: number;
+      pin: string;
+      requestId?: string;
+    }) => {
+      const amount = Math.round(Number(input?.amount));
+      if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
+        throw new Error("Enter an amount between ₦50 and ₦50,000.");
+      }
+      const pin = String(input?.pin ?? "");
+      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+      const network = String(input?.network ?? "")
+        .trim()
+        .toLowerCase();
+      if (!network) throw new Error("Select a network.");
+      const phone = String(input?.phone ?? "").trim();
+      if (!phone) throw new Error("Enter a phone number.");
+      const requestId = String(input?.requestId ?? "").trim();
+      return {
+        network,
+        phone,
+        amount,
+        pin,
+        requestId: requestId || `airtime-${crypto.randomUUID()}`,
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const {
       getVtpassConfig,
@@ -147,13 +157,16 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("This payment request has already been submitted. Refresh its status.");
     }
 
-    const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
-      _provider: serviceId,
-      _phone: phone,
-      _amount: customerAmount,
-      _pin: data.pin,
-      _request_id: data.requestId,
-    });
+    const { data: started, error: startError } = await context.supabase.rpc(
+      "start_airtime_purchase",
+      {
+        _provider: serviceId,
+        _phone: phone,
+        _amount: customerAmount,
+        _pin: data.pin,
+        _request_id: data.requestId,
+      },
+    );
     if (startError) {
       console.error("[airtime] start", startError.message);
       throw mapStartError(startError.message);
@@ -266,9 +279,9 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
 
     if (status === "successful") {
       try {
-          const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          await maybeRecordTransactionProfit(supabaseAdmin as any, {
+        const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await maybeRecordTransactionProfit(supabaseAdmin as any, {
           internalReference: String(fin?.internal_reference ?? row.internal_reference),
           customerAmount,
           providerAmount,
@@ -354,7 +367,7 @@ export async function requeryAirtimeCore(opts: {
   if (error) throw new Error(error.message);
   const bill = bills?.[0];
   if (!bill) throw new Error("Transaction not found.");
-  if (opts.userId && bill.user_id && bill.user_id !== opts.userId) {
+  if (opts.userId && !opts.audit && bill.user_id && bill.user_id !== opts.userId) {
     throw new Error("Transaction not found.");
   }
 
@@ -401,19 +414,22 @@ export async function requeryAirtimeCore(opts: {
   console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
-    _user_id: opts.userId,
-    _internal_reference: bill.internal_reference,
-    _outcome: outcome,
-    _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
-    _payload: {
-      vtpass_code: pay.code,
-      vtpass_status: pay.contentStatus,
-      response_description: pay.responseDescription,
-      requery: true,
-      vtpass_snapshot: safePayload(pay.raw),
+  const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
+    "trusted_complete_airtime_purchase",
+    {
+      _user_id: opts.audit ? bill.user_id : opts.userId,
+      _internal_reference: bill.internal_reference,
+      _outcome: outcome,
+      _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+      _payload: {
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        requery: true,
+        vtpass_snapshot: safePayload(pay.raw),
+      },
     },
-  });
+  );
   if (finError) throw new Error(finError.message);
 
   if (opts.audit) {
@@ -444,8 +460,7 @@ export async function requeryAirtimeCore(opts: {
       const providerAmount =
         typeof providerAmountRaw === "number" && Number.isFinite(providerAmountRaw)
           ? Number(providerAmountRaw)
-          : typeof providerAmountRaw === "string" &&
-              Number.isFinite(Number(providerAmountRaw))
+          : typeof providerAmountRaw === "string" && Number.isFinite(Number(providerAmountRaw))
             ? Number(providerAmountRaw)
             : null;
       if (providerAmount == null) {
