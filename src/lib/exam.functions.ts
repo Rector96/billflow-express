@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { mapVtpassOutcome, type VtpassPayResult } from "./vtpass.server";
+import { mapVtpassOutcome, type VtpassPayResult, type VtpassVariation } from "./vtpass.server";
 
 const EXAM_IDS = new Set(["waec", "neco", "nabteb", "jamb"]);
 
-/** VTpass serviceID candidates per exam body (official: waec, waec-registration, jamb). */
+/** VTpass serviceID candidates (official docs: waec, waec-registration, jamb). */
 const EXAM_SERVICE_IDS: Record<string, string[]> = {
   waec: ["waec", "waec-registration"],
   jamb: ["jamb"],
@@ -38,6 +38,17 @@ function examId(input: unknown): string {
     .toLowerCase();
   if (!EXAM_IDS.has(value)) throw new Error("Select a valid exam body.");
   return value;
+}
+
+async function loadVariationsSoft(serviceID: string): Promise<VtpassVariation[]> {
+  const { vtpassListVariations } = await import("./vtpass.server");
+  try {
+    return await vtpassListVariations(serviceID);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[exam] variations unavailable for", serviceID, msg);
+    return [];
+  }
 }
 
 function safePayload(raw: unknown): Record<string, unknown> {
@@ -104,7 +115,7 @@ export const listExamCatalog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { examId: string }) => ({ examId: examId(input?.examId) }))
   .handler(async ({ data }): Promise<ExamCatalogItem[]> => {
-    const { getVtpassConfig, vtpassListVariationsOrEmpty } = await import("./vtpass.server");
+    const { getVtpassConfig } = await import("./vtpass.server");
     getVtpassConfig();
 
     const candidates = EXAM_SERVICE_IDS[data.examId] ?? [data.examId];
@@ -112,7 +123,7 @@ export const listExamCatalog = createServerFn({ method: "POST" })
     const seen = new Set<string>();
 
     for (const serviceID of candidates) {
-      const variations = await vtpassListVariationsOrEmpty(serviceID);
+      const variations = await loadVariationsSoft(serviceID);
       for (const v of variations) {
         if (v.amount <= 0) continue;
         const key = `${serviceID}:${v.variationCode}`;
@@ -131,8 +142,8 @@ export const listExamCatalog = createServerFn({ method: "POST" })
     if (!out.length) {
       throw new Error(
         data.examId === "waec" || data.examId === "jamb"
-          ? `${data.examId.toUpperCase()} pins are not enabled on this VTpass account yet. In VTpass → Product Settings, enable ${data.examId.toUpperCase()}, then try again.`
-          : `${data.examId.toUpperCase()} is not offered on VTpass for this account. Use WAEC or JAMB.`,
+          ? `${data.examId.toUpperCase()} pins are not enabled on this VTpass account yet. Open VTpass → Product Settings, enable ${data.examId.toUpperCase()}, save, then retry.`
+          : `${data.examId.toUpperCase()} is not available on VTpass for this account. Use WAEC or JAMB.`,
       );
     }
     return out;
@@ -161,14 +172,13 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<ExamPurchaseResult> => {
-    const { getVtpassConfig, vtpassListVariationsOrEmpty, vtpassPay, normalizeNgPhone } =
-      await import("./vtpass.server");
+    const { getVtpassConfig, vtpassPay, normalizeNgPhone } = await import("./vtpass.server");
     getVtpassConfig();
 
     let serviceID = data.exam;
     let variation: { variationCode: string; name: string; amount: number } | null = null;
     for (const sid of EXAM_SERVICE_IDS[data.exam] ?? [data.exam]) {
-      const list = await vtpassListVariationsOrEmpty(sid);
+      const list = await loadVariationsSoft(sid);
       const found = list.find((item) => item.variationCode === data.variationCode);
       if (found && found.amount > 0) {
         serviceID = sid;
@@ -219,12 +229,13 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         error.message.includes("insufficient_funds")
           ? "insufficient_funds"
           : error.message.includes("unsupported_service")
-            ? "Exam pins are not enabled in the database yet. Run the exam-pins migration in Supabase."
+            ? "Exam pins are not enabled in the database yet. Run the exam-pins SQL migration in Supabase."
             : error.message,
       );
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start exam PIN purchase.");
+
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID,
