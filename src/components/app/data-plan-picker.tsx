@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +12,7 @@ export type DataPlanItem = {
 type TabId = "best" | "daily" | "weekly" | "monthly" | "all";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "best", label: "Best Offers" },
+  { id: "best", label: "Best" },
   { id: "daily", label: "Daily" },
   { id: "weekly", label: "Weekly" },
   { id: "monthly", label: "Monthly" },
@@ -25,14 +24,12 @@ function classifyPlan(name: string): TabId {
   if (/(daily|1\s*day|24\s*hours|24hrs|night)/.test(n)) return "daily";
   if (/(weekly|7\s*days|7days|14\s*days)/.test(n)) return "weekly";
   if (/(monthly|30\s*days|30days|1\s*month)/.test(n)) return "monthly";
-  // fallback: short validity often daily
   if (/\b[1-3]\s*days?\b/.test(n)) return "daily";
   if (/\b([4-9]|1[0-5])\s*days?\b/.test(n)) return "weekly";
   if (/\b([2-9][0-9]|1[6-9])\s*days?\b/.test(n)) return "monthly";
   return "all";
 }
 
-/** Extract a short data size label e.g. 1.5GB from plan name. */
 export function planSizeLabel(name: string): string | null {
   const m = name.match(/(\d+(?:\.\d+)?)\s*(GB|MB|TB)/i);
   if (!m) return null;
@@ -48,6 +45,17 @@ export function planDurationLabel(name: string): string | null {
   if (/weekly|7\s*day/.test(n)) return "7 DAYS";
   if (/monthly|30\s*day|1\s*month/.test(n)) return "30 DAYS";
   return null;
+}
+
+/** Short title that fits a 3-col card without overflow. */
+function cardTitle(name: string): string {
+  const size = planSizeLabel(name);
+  if (size) return size;
+  const cleaned = name
+    .replace(/\b(MTN|GLO|AIRTEL|9MOBILE|SMILE)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned.length > 14 ? `${cleaned.slice(0, 13)}…` : cleaned || "Data";
 }
 
 type Props = {
@@ -69,23 +77,20 @@ export function DataPlanPicker({
     const daily: DataPlanItem[] = [];
     const weekly: DataPlanItem[] = [];
     const monthly: DataPlanItem[] = [];
-    const other: DataPlanItem[] = [];
     for (const p of plans) {
       const c = classifyPlan(p.name);
       if (c === "daily") daily.push(p);
       else if (c === "weekly") weekly.push(p);
       else if (c === "monthly") monthly.push(p);
-      else other.push(p);
     }
-    // Best = cheapest per size-ish: take lowest 6 overall
     const best = [...plans].sort((a, b) => a.amount - b.amount).slice(0, 9);
-    return { daily, weekly, monthly, other, best, all: plans };
+    return { daily, weekly, monthly, best, all: plans };
   }, [plans]);
 
   const availableTabs = TABS.filter((t) => {
-    if (t.id === "all") return true;
+    if (t.id === "all") return plans.length > 0;
     if (t.id === "best") return buckets.best.length > 0;
-    return buckets[t.id].length > 0;
+    return buckets[t.id as "daily" | "weekly" | "monthly"].length > 0;
   });
 
   const defaultTab =
@@ -108,29 +113,27 @@ export function DataPlanPicker({
             : buckets.all;
 
   return (
-    <div className="space-y-4">
-      {/* Header: network + number */}
+    <div className="space-y-3">
+      {/* Compact network + phone strip */}
       {(networkLabel || phoneLabel) && (
-        <div className="rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-extrabold text-primary">
-              {(networkLabel || "D").slice(0, 3).toUpperCase()}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-extrabold tracking-tight text-foreground">
-                {phoneLabel || "—"}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {networkLabel ? `${networkLabel} data plans` : "Choose a plan"}
-              </p>
-            </div>
+        <div className="flex items-center gap-2.5 rounded-2xl bg-muted/40 px-3 py-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold tracking-wide text-primary-foreground">
+            {(networkLabel || "NET").slice(0, 3).toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+              {phoneLabel || "—"}
+            </p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {networkLabel ? `${networkLabel} · data` : "Choose a plan"}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="-mx-1 overflow-x-auto px-1">
-        <div className="flex min-w-max gap-1 border-b border-border/50">
+      {/* Underline tabs — compact */}
+      <div className="overflow-x-auto scrollbar-none">
+        <div className="flex min-w-max items-end gap-0 border-b border-border/40">
           {availableTabs.map((t) => {
             const active = tab === t.id;
             return (
@@ -139,15 +142,15 @@ export function DataPlanPicker({
                 type="button"
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "relative px-3 py-2.5 text-sm font-semibold transition-colors",
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  "relative px-3 pb-2 pt-1 text-[12px] font-medium transition-colors duration-200",
+                  active ? "text-foreground" : "text-muted-foreground/80",
                 )}
               >
                 {t.label}
                 <span
                   className={cn(
-                    "absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary transition-all duration-200",
-                    active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-50",
+                    "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-foreground transition-transform duration-300 ease-out",
+                    active ? "scale-x-100" : "scale-x-0",
                   )}
                 />
               </button>
@@ -156,60 +159,87 @@ export function DataPlanPicker({
         </div>
       </div>
 
-      {/* Plan grid */}
+      {/* 3-col plan grid */}
       <div
         key={tab}
-        className="grid grid-cols-3 gap-2.5 animate-in fade-in-0 slide-in-from-bottom-1 duration-200"
+        className="grid grid-cols-3 gap-2 [animation:fadeSlide_220ms_ease-out]"
+        style={
+          {
+            // lightweight keyframe without global CSS file dependency
+          } as React.CSSProperties
+        }
       >
+        <style>{`
+          @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+
         {list.length === 0 ? (
-          <p className="col-span-3 py-8 text-center text-xs text-muted-foreground">
-            No plans in this category.
+          <p className="col-span-3 py-10 text-center text-[11px] text-muted-foreground">
+            No plans in this category
           </p>
         ) : (
           list.map((p) => {
             const selected = selectedCode === p.variationCode;
-            const size = planSizeLabel(p.name);
             const duration = planDurationLabel(p.name);
+            const title = cardTitle(p.name);
+            const size = planSizeLabel(p.name);
+
             return (
               <button
                 key={p.variationCode}
                 type="button"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "press relative flex min-h-[6.5rem] flex-col items-stretch justify-between rounded-2xl border px-2.5 py-2.5 text-left transition-all duration-200",
+                  "group relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
+                  "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
+                  "active:scale-[0.97]",
                   selected
-                    ? "border-primary bg-primary-soft shadow-soft ring-2 ring-primary/15"
-                    : "border-border/60 bg-card/80 hover:border-primary/35 hover:bg-card",
+                    ? "border-primary/50 bg-primary/[0.07] shadow-[0_0_0_1px_rgba(109,40,217,0.12)]"
+                    : "border-transparent bg-[#F3F1F8] hover:border-primary/25 hover:bg-[#EFEAF8]",
                 )}
               >
-                {selected ? (
-                  <span className="absolute top-1.5 right-1.5 text-primary">
-                    <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
-                  </span>
-                ) : null}
-                <div>
-                  {duration ? (
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      {duration}
-                    </p>
-                  ) : (
-                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                      Plan
-                    </p>
+                {/* Selected accent bar */}
+                <span
+                  className={cn(
+                    "absolute inset-x-0 top-0 h-[2px] bg-primary transition-opacity duration-300",
+                    selected ? "opacity-100" : "opacity-0",
                   )}
-                  <p className="mt-1 text-[15px] font-extrabold leading-tight text-foreground">
-                    {size || p.name.split(/[-–|]/)[0]?.trim().slice(0, 12) || "Data"}
+                />
+
+                <div className="min-w-0 pr-0.5">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
+                    {duration ?? "PLAN"}
                   </p>
-                </div>
-                <div>
-                  <p className="text-sm font-extrabold tabular-nums text-foreground">
-                    {formatNaira(p.amount, false)}
+                  <p
+                    className={cn(
+                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight text-foreground",
+                      "transition-colors duration-300",
+                      selected && "text-primary",
+                    )}
+                  >
+                    {title}
                   </p>
                   {!size ? (
-                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-tight text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-muted-foreground/80">
                       {p.name}
                     </p>
                   ) : null}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-bold tabular-nums leading-none text-foreground">
+                    {formatNaira(p.amount, false)}
+                  </p>
+                  {selected ? (
+                    <p className="mt-1 text-[9px] font-semibold text-primary transition-opacity duration-300">
+                      Selected
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[9px] text-transparent">Selected</p>
+                  )}
                 </div>
               </button>
             );
@@ -217,7 +247,7 @@ export function DataPlanPicker({
         )}
       </div>
 
-      <p className="text-center text-[10px] text-muted-foreground">— End —</p>
+      <p className="pt-0.5 text-center text-[10px] text-muted-foreground/70">— End —</p>
     </div>
   );
 }
