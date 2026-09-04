@@ -13,6 +13,7 @@ import { BRAND } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { requeryAirtime } from "@/lib/airtime.functions";
+import { requeryBill } from "@/lib/bills.functions";
 
 export const Route = createFileRoute("/history/$txId")({
   head: ({ params }) => ({
@@ -45,6 +46,7 @@ function TransactionDetails() {
   const { transactions, refresh } = useApp();
   const tx = transactions.find((t) => t.id === txId);
   const checkAirtime = useServerFn(requeryAirtime);
+  const checkBill = useServerFn(requeryBill);
   const [bill, setBill] = useState<BillExtra | null>(null);
   const [loadingBill, setLoadingBill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,11 +80,10 @@ function TransactionDetails() {
     (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
 
   const status = bill?.status ?? tx?.status ?? "pending";
-  const amount = bill?.amount != null ? Number(bill.amount) : tx?.amount ?? 0;
+  const amount = bill?.amount != null ? Number(bill.amount) : (tx?.amount ?? 0);
   const network = bill?.provider ?? tx?.service?.split(" ")[0] ?? "";
   const phone =
-    bill?.customer_identifier ??
-    (typeof tx?.reference === "string" ? tx.reference : "");
+    bill?.customer_identifier ?? (typeof tx?.reference === "string" ? tx.reference : "");
   const channel =
     bill?.provider_channel ||
     (typeof bill?.metadata?.["channel"] === "string" ? String(bill.metadata["channel"]) : null) ||
@@ -90,10 +91,14 @@ function TransactionDetails() {
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
   const onRefresh = async () => {
-    if (!isAirtime || status !== "pending") return;
+    if (status !== "pending" || (!isAirtime && !bill)) return;
     setRefreshing(true);
     try {
-      await checkAirtime({ data: { reference: txId } });
+      if (isAirtime) {
+        await checkAirtime({ data: { reference: txId } });
+      } else {
+        await checkBill({ data: { reference: txId } });
+      }
       await refresh();
       await loadBill();
       toast.success("Status updated");
@@ -135,7 +140,13 @@ function TransactionDetails() {
             alt={`${BRAND.name} logo`}
             className="h-[clamp(2.5rem,11vw,3.5rem)] w-auto object-contain"
           />
-          <StatusBadge status={status === "successful" || status === "pending" || status === "failed" ? status : "pending"} />
+          <StatusBadge
+            status={
+              status === "successful" || status === "pending" || status === "failed"
+                ? status
+                : "pending"
+            }
+          />
           <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
           <p className="text-3xl font-extrabold tabular-nums">
             {tx?.direction === "in" ? "+" : "-"}
@@ -145,17 +156,26 @@ function TransactionDetails() {
             <p className="max-w-xs text-center text-xs text-muted-foreground">
               {isAirtime
                 ? "Still confirming with the network. Tap Refresh Status to check VTpass again."
-                : "Your transaction is still being confirmed. If this stays pending, contact Care with your reference."}
+                : "Your transaction is still being confirmed. Tap Refresh Status to check the provider again."}
             </p>
           ) : null}
         </div>
 
         <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
-          {network ? <InfoRow label="Network / Service" value={`${network}${bill?.service ? ` · ${bill.service}` : ""}`} /> : null}
+          {network ? (
+            <InfoRow
+              label="Network / Service"
+              value={`${network}${bill?.service ? ` · ${bill.service}` : ""}`}
+            />
+          ) : null}
           {phone ? (
             <InfoRow
               label="Number"
-              value={phone.startsWith("0") || phone.length >= 10 ? maskTail(phone.replace(/\D/g, "")) : phone}
+              value={
+                phone.startsWith("0") || phone.length >= 10
+                  ? maskTail(phone.replace(/\D/g, ""))
+                  : phone
+              }
             />
           ) : null}
           <InfoRow label="Amount" value={formatNaira(amount)} />
@@ -164,18 +184,32 @@ function TransactionDetails() {
               <p className="text-[11px] text-muted-foreground">RockPay Reference</p>
               <p className="truncate font-mono text-xs font-semibold">{txId}</p>
             </div>
-            <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 rounded-lg text-xs font-bold" onClick={() => copy("Reference", txId)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 shrink-0 rounded-lg text-xs font-bold"
+              onClick={() => copy("Reference", txId)}
+            >
               <Copy className="size-3.5" /> Copy
             </Button>
           </div>
-          {channel ? <InfoRow label="Provider" value={channel === "vtpass" ? "VTpass" : channel} /> : null}
+          {channel ? (
+            <InfoRow label="Provider" value={channel === "vtpass" ? "VTpass" : channel} />
+          ) : null}
           {providerRef ? (
             <div className="flex items-center justify-between gap-2 py-2.5">
               <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground">Provider Reference</p>
                 <p className="truncate font-mono text-xs font-semibold">{providerRef}</p>
               </div>
-              <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 rounded-lg text-xs font-bold" onClick={() => copy("Provider ref", providerRef)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-lg text-xs font-bold"
+                onClick={() => copy("Provider ref", providerRef)}
+              >
                 <Copy className="size-3.5" /> Copy
               </Button>
             </div>
@@ -205,13 +239,17 @@ function TransactionDetails() {
         ) : null}
 
         <div className="space-y-2">
-          {status === "pending" && isAirtime ? (
+          {status === "pending" && (isAirtime || bill) ? (
             <Button
               className="h-12 w-full rounded-2xl font-bold"
               disabled={refreshing}
               onClick={() => void onRefresh()}
             >
-              {refreshing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              {refreshing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
               Refresh Status
             </Button>
           ) : null}
@@ -222,7 +260,14 @@ function TransactionDetails() {
               </Link>
             </Button>
           ) : null}
-          <CareContextLink reference={txId} status={status === "successful" || status === "pending" || status === "failed" ? status : "pending"} />
+          <CareContextLink
+            reference={txId}
+            status={
+              status === "successful" || status === "pending" || status === "failed"
+                ? status
+                : "pending"
+            }
+          />
         </div>
       </div>
     </AppShell>
