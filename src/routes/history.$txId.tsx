@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, FileWarning, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CareContextLink } from "@/components/app/care-entry";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { EmptyState, InfoRow, StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { friendlyError, useApp } from "@/lib/app-store";
 import { formatNaira, maskTail } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
+import type { ReceiptPayload } from "@/lib/receipt-share";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { requeryAirtime } from "@/lib/airtime.functions";
@@ -99,6 +101,57 @@ function TransactionDetails() {
     (isAirtime ? "vtpass" : null);
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
+  const dateLabel = bill?.created_at
+    ? new Date(bill.created_at).toLocaleString("en-NG", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim();
+
+  const amountLabel = `${tx?.direction === "in" ? "+" : "-"}${formatNaira(amount, false)}`;
+
+  const receiptPayload: ReceiptPayload = useMemo(
+    () => ({
+      reference: txId,
+      title: tx?.title ?? bill?.service ?? "Payment",
+      status,
+      amountLabel,
+      direction: tx?.direction,
+      service: bill?.service ?? tx?.service ?? null,
+      network: network || null,
+      recipient:
+        phone && (phone.startsWith("0") || phone.length >= 10)
+          ? maskTail(phone.replace(/\D/g, ""))
+          : phone || null,
+      providerRef: providerRef || null,
+      channel: channel === "vtpass" ? "VTpass" : channel,
+      dateLabel: dateLabel || null,
+      method: tx?.method ?? null,
+      tokenLabel: examToken ? (isExamPins ? "Exam PIN" : "Electricity Token") : null,
+      tokenValue: examToken,
+    }),
+    [
+      txId,
+      tx?.title,
+      tx?.service,
+      tx?.direction,
+      tx?.method,
+      bill?.service,
+      status,
+      amountLabel,
+      network,
+      phone,
+      providerRef,
+      channel,
+      dateLabel,
+      examToken,
+      isExamPins,
+    ],
+  );
+
   const onRefresh = async () => {
     if (status !== "pending" || (!isAirtime && !bill)) return;
     setRefreshing(true);
@@ -157,10 +210,7 @@ function TransactionDetails() {
             }
           />
           <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
-          <p className="text-3xl font-extrabold tabular-nums">
-            {tx?.direction === "in" ? "+" : "-"}
-            {formatNaira(amount, false)}
-          </p>
+          <p className="text-3xl font-extrabold tabular-nums">{amountLabel}</p>
           {status === "pending" ? (
             <p className="max-w-xs text-center text-xs text-muted-foreground">
               {isAirtime
@@ -223,20 +273,7 @@ function TransactionDetails() {
               </Button>
             </div>
           ) : null}
-          <InfoRow
-            label="Date"
-            value={
-              bill?.created_at
-                ? new Date(bill.created_at).toLocaleString("en-NG", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
-                : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim()
-            }
-          />
+          <InfoRow label="Date" value={dateLabel} />
           {tx?.method ? <InfoRow label="Payment Method" value={tx.method} /> : null}
         </div>
 
@@ -269,6 +306,7 @@ function TransactionDetails() {
         ) : null}
 
         <div className="space-y-2">
+          <ReceiptShareButton payload={receiptPayload} />
           {status === "pending" && (isAirtime || bill) ? (
             <Button
               className="h-12 w-full rounded-2xl font-bold"
