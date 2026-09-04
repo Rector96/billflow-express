@@ -78,6 +78,13 @@ function TransactionDetails() {
     tx?.serviceSlug === "airtime" ||
     bill?.service === "Airtime" ||
     (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
+  const billServiceSlug =
+    typeof bill?.metadata?.service_slug === "string" ? bill.metadata.service_slug : "";
+  const isExamPins = tx?.serviceSlug === "exam-pins" || billServiceSlug === "exam-pins";
+  const examToken =
+    tx?.token ||
+    (typeof bill?.metadata?.token === "string" ? bill.metadata.token : null) ||
+    (typeof bill?.metadata?.purchased_code === "string" ? bill.metadata.purchased_code : null);
 
   const status = bill?.status ?? tx?.status ?? "pending";
   const amount = bill?.amount != null ? Number(bill.amount) : (tx?.amount ?? 0);
@@ -231,7 +238,24 @@ function TransactionDetails() {
           {tx?.method ? <InfoRow label="Payment Method" value={tx.method} /> : null}
         </div>
 
-        {tx?.token ? (
+        {examToken ? (
+          <div className="rounded-2xl border border-dashed bg-primary-soft p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-muted-foreground">{isExamPins ? "Exam PIN" : "Electricity Token"}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-lg text-xs font-bold"
+                onClick={() => copy(isExamPins ? "Exam PIN" : "Token", examToken)}
+              >
+                <Copy className="size-3.5" /> Copy
+              </Button>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap break-words text-lg font-extrabold tracking-[0.15em]">{examToken}</p>
+          </div>
+        ) : null}
+        {tx?.token && !examToken ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
             <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
             <p className="mt-1 text-lg font-extrabold tracking-[0.15em]">{tx.token}</p>

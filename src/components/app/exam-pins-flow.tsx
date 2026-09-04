@@ -1,271 +1,96 @@
-import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Minus, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { AlertCircle, CheckCircle2, Loader2, Minus, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
+import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApp } from "@/lib/app-store";
+import { useServerFn } from "@tanstack/react-start";
+import { friendlyError, useApp } from "@/lib/app-store";
+import { listExamCatalog, purchaseExamPins, type ExamVariation } from "@/lib/exam.functions";
+import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-type ExamBody = {
-  id: string;
-  name: string;
-  unitLabel: string;
-};
-
-const EXAMS: ExamBody[] = [
-  { id: "waec", name: "WAEC", unitLabel: "Result checker PIN" },
-  { id: "neco", name: "NECO", unitLabel: "Result checker PIN" },
-  { id: "nabteb", name: "NABTEB", unitLabel: "Result checker PIN" },
-  { id: "jamb", name: "JAMB", unitLabel: "e-PIN / profile" },
-];
-
-const MIN_Q = 1;
+const EXAMS = [
+  { id: "waec", name: "WAEC", label: "Result checker PIN" },
+  { id: "neco", name: "NECO", label: "Result checker PIN" },
+  { id: "nabteb", name: "NABTEB", label: "Result checker PIN" },
+  { id: "jamb", name: "JAMB", label: "e-PIN / profile" },
+] as const;
 const MAX_Q = 10;
+type Step = "exam" | "product" | "quantity" | "confirm" | "pin";
 
-type Step = "exam" | "quantity" | "confirm";
-
-/**
- * Exam body → quantity (typed) → review.
- * No phone step: PINs show on the receipt; a copy goes to the registered email.
- */
 export function ExamPinsFlow() {
-  const { profile } = useApp();
+  const navigate = useNavigate();
+  const { refresh } = useApp();
+  const loadCatalog = useServerFn(listExamCatalog);
+  const purchase = useServerFn(purchaseExamPins);
   const [step, setStep] = useState<Step>("exam");
   const [examId, setExamId] = useState("");
+  const [variations, setVariations] = useState<ExamVariation[]>([]);
+  const [variationCode, setVariationCode] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [qtyText, setQtyText] = useState("1");
+  const [profileId, setProfileId] = useState("");
+  const [pin, setPin] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const exam = EXAMS.find((item) => item.id === examId);
+  const variation = variations.find((item) => item.variationCode === variationCode);
+  const total = variation ? variation.amount * quantity : 0;
+  const steps: Step[] = ["exam", "product", "quantity", "confirm", "pin"];
 
-  const exam = useMemo(() => EXAMS.find((e) => e.id === examId) ?? null, [examId]);
-  const deliveryMessage = `PINs appear on your receipt. A copy is sent to ${profile?.email || "your registered email"}.`;
-
-  const setQty = (n: number) => {
-    const v = Math.min(MAX_Q, Math.max(MIN_Q, Math.round(n)));
-    setQuantity(v);
-    setQtyText(String(v));
+  useEffect(() => {
+    if (!examId) return;
+    setLoading(true);
     setError("");
-  };
+    void loadCatalog({ data: { examId } }).then((items) => {
+      setVariations(items);
+      setVariationCode(items[0]?.variationCode ?? "");
+      setStep("product");
+    }).catch((err) => setError(friendlyError(err, "Could not load exam PINs."))).finally(() => setLoading(false));
+  }, [examId, loadCatalog]);
 
-  const onQtyInput = (raw: string) => {
-    if (raw === "") {
-      setQtyText("");
-      return;
+  const submit = async () => {
+    if (!variation) return;
+    setLoading(true);
+    setError("");
+    try {
+      const result = await purchase({ data: { examId, variationCode, quantity, pin, ...(examId === "jamb" ? { profileId } : {}) } });
+      await refresh();
+      if (result.status === "successful" || result.status === "pending") {
+        await navigate({ to: "/history/$txId", params: { txId: result.reference } });
+      } else {
+        toast.error(result.message);
+        setStep("confirm");
+      }
+    } catch (err) {
+      const message = friendlyError(err, "Could not complete this purchase.");
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-    if (!/^\d{1,2}$/.test(raw)) return;
-    setQtyText(raw);
-    const n = Number(raw);
-    if (Number.isFinite(n) && n >= MIN_Q && n <= MAX_Q) {
-      setQuantity(n);
-      setError("");
-    }
-  };
-
-  const commitQty = () => {
-    if (qtyText === "" || !Number.isFinite(Number(qtyText))) {
-      setQty(1);
-      return;
-    }
-    const n = Number(qtyText);
-    if (n < MIN_Q || n > MAX_Q) {
-      setError(`Enter a quantity between ${MIN_Q} and ${MAX_Q}`);
-      setQty(Math.min(MAX_Q, Math.max(MIN_Q, n || 1)));
-      return;
-    }
-    setQty(n);
   };
 
   return (
     <AppShell>
       <PageHeader title="Exam Pins" backTo="/services" />
       <div className="mx-auto max-w-md space-y-5 px-4 pb-10 pt-2">
-        <div className="flex items-center gap-1.5">
-          {(["exam", "quantity", "confirm"] as Step[]).map((s, i) => {
-            const order: Step[] = ["exam", "quantity", "confirm"];
-            const active = order.indexOf(step) >= i;
-            return (
-              <div
-                key={s}
-                className={cn(
-                  "h-1 flex-1 rounded-full transition-colors",
-                  active ? "bg-primary" : "bg-muted",
-                )}
-              />
-            );
-          })}
-        </div>
-
-        {step === "exam" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-tight">Choose exam body</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Select the exam you need result-checker or registration PINs for.
-              </p>
-            </div>
-            <div className="grid gap-2">
-              {EXAMS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => {
-                    setExamId(e.id);
-                    setError("");
-                    setStep("quantity");
-                  }}
-                  className={cn(
-                    "press flex items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-soft",
-                    examId === e.id
-                      ? "border-primary bg-primary-soft ring-2 ring-primary/10"
-                      : "border-border/70 bg-card",
-                  )}
-                >
-                  <div>
-                    <p className="text-sm font-extrabold">{e.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{e.unitLabel}</p>
-                  </div>
-                  <CheckCircle2
-                    className={cn(
-                      "size-5",
-                      examId === e.id ? "text-primary" : "text-muted-foreground/40",
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {step === "quantity" && exam ? (
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-tight">How many PINs?</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Type any number from {MIN_Q}–{MAX_Q}. PINs will show on your receipt.
-              </p>
-            </div>
-            <div className="rounded-[26px] border border-border/70 bg-card p-5 shadow-soft">
-              <p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {exam.name} · quantity
-              </p>
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  aria-label="Decrease quantity"
-                  disabled={quantity <= MIN_Q}
-                  onClick={() => setQty(quantity - 1)}
-                  className="press grid size-11 place-items-center rounded-xl border border-border/70 bg-background disabled:opacity-40"
-                >
-                  <Minus className="size-4" />
-                </button>
-                <Input
-                  inputMode="numeric"
-                  value={qtyText}
-                  onChange={(e) => onQtyInput(e.target.value)}
-                  onBlur={commitQty}
-                  className="h-14 w-20 border-0 bg-transparent text-center text-3xl font-extrabold shadow-none focus-visible:ring-0"
-                  aria-label="PIN quantity"
-                />
-                <button
-                  type="button"
-                  aria-label="Increase quantity"
-                  disabled={quantity >= MAX_Q}
-                  onClick={() => setQty(quantity + 1)}
-                  className="press grid size-11 place-items-center rounded-xl border border-border/70 bg-background disabled:opacity-40"
-                >
-                  <Plus className="size-4" />
-                </button>
-              </div>
-              <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                {deliveryMessage}
-              </p>
-              {error ? <p className="mt-2 text-center text-xs font-semibold text-destructive">{error}</p> : null}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="h-11 flex-1 rounded-xl text-sm font-bold"
-                onClick={() => setStep("exam")}
-              >
-                Back
-              </Button>
-              <Button
-                className="h-11 flex-1 rounded-xl text-sm font-bold"
-                onClick={() => {
-                  commitQty();
-                  if (quantity < MIN_Q || quantity > MAX_Q) return;
-                  setStep("confirm");
-                }}
-              >
-                Continue
-              </Button>
-            </div>
-          </section>
-        ) : null}
-
-        {step === "confirm" && exam ? (
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-lg font-extrabold tracking-tight">Review</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Confirm details before payment is enabled for exam pins.
-              </p>
-            </div>
-            <div className="space-y-2 rounded-[26px] border border-border/70 bg-card p-4 shadow-soft">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Exam</span>
-                <span className="font-extrabold">{exam.name}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Quantity</span>
-                <span className="font-extrabold tabular-nums">{quantity}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="shrink-0 text-muted-foreground">Delivery email</span>
-                <span className="truncate text-right text-xs font-bold">
-                  {profile?.email || "your registered email"}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-3 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
-              <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
-              <p>{deliveryMessage}</p>
-            </div>
-            <div className="rounded-2xl border border-dashed border-border/70 bg-card px-4 py-4 text-center">
-              <p className="text-sm font-extrabold">Live purchase coming soon</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                VTpass catalogue, unit pricing, and PIN delivery are being connected. Your wallet
-                will not be charged yet.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="h-11 flex-1 rounded-xl text-sm font-bold"
-                onClick={() => setStep("quantity")}
-              >
-                Back
-              </Button>
-              <Button className="h-11 flex-1 rounded-xl text-sm font-bold" disabled>
-                Coming soon — no charge
-              </Button>
-            </div>
-            <Button variant="ghost" className="h-10 w-full text-xs font-semibold" asChild>
-              <Link to="/services">Back to services</Link>
-            </Button>
-          </section>
-        ) : null}
-
-        <div className="flex items-start gap-2 rounded-2xl bg-primary-soft/60 px-3 py-3 text-[11px] text-muted-foreground">
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p>
-            Best practice: choose exam → enter how many PINs you need → confirm delivery email → pay later. Codes appear
-            on your receipt after a successful provider response.
-          </p>
-        </div>
+        <div className="flex items-center gap-1.5">{steps.map((item, index) => <div key={item} className={cn("h-1 flex-1 rounded-full", steps.indexOf(step) >= index ? "bg-primary" : "bg-muted")} />)}</div>
+        {step === "exam" ? <section className="space-y-3"><div><h2 className="text-lg font-extrabold tracking-tight">Choose exam body</h2><p className="mt-1 text-xs text-muted-foreground">Live products and prices come directly from VTpass.</p></div>{EXAMS.map((item) => <button key={item.id} type="button" disabled={loading} onClick={() => { setExamId(item.id); setVariations([]); setVariationCode(""); }} className="flex w-full items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3.5 text-left shadow-soft"><div><p className="text-sm font-extrabold">{item.name}</p><p className="text-[11px] text-muted-foreground">{item.label}</p></div>{loading && examId === item.id ? <Loader2 className="size-5 animate-spin" /> : <CheckCircle2 className="size-5 text-muted-foreground/40" />}</button>)}</section> : null}
+        {step === "product" && exam ? <section className="space-y-4"><div><h2 className="text-lg font-extrabold tracking-tight">Choose a product</h2><p className="mt-1 text-xs text-muted-foreground">Select the live {exam.name} PIN denomination.</p></div><div className="grid gap-2">{variations.map((item) => <button key={item.variationCode} type="button" onClick={() => { setVariationCode(item.variationCode); setStep("quantity"); }} className={cn("flex items-center justify-between rounded-2xl border px-4 py-3 text-left", item.variationCode === variationCode ? "border-primary bg-primary-soft" : "border-border/70 bg-card")}><span className="text-sm font-bold">{item.name}</span><span className="font-extrabold">{formatNaira(item.amount)}</span></button>)}</div></section> : null}
+        {step === "quantity" && variation && exam ? <section className="space-y-4"><div><h2 className="text-lg font-extrabold tracking-tight">How many PINs?</h2><p className="mt-1 text-xs text-muted-foreground">Choose between 1 and 10 PINs.</p></div><div className="rounded-[26px] border border-border/70 bg-card p-5 shadow-soft"><p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{exam.name} · {variation.name}</p><div className="mt-4 flex items-center justify-center gap-4"><Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity === 1}><Minus /></Button><span className="w-12 text-center text-3xl font-extrabold">{quantity}</span><Button variant="outline" size="icon" onClick={() => setQuantity(Math.min(MAX_Q, quantity + 1))} disabled={quantity === MAX_Q}><Plus /></Button></div><p className="mt-4 text-center font-extrabold">{formatNaira(total)}</p></div><Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>Continue</Button></section> : null}
+        {step === "confirm" && variation && exam ? <section className="space-y-4"><div><h2 className="text-lg font-extrabold tracking-tight">Confirm purchase</h2><p className="mt-1 text-xs text-muted-foreground">You pay the exact VTpass face value. No surcharge.</p></div><div className="space-y-2 rounded-2xl border bg-card p-4 shadow-soft"><Row label="Exam" value={exam.name} /><Row label="Product" value={variation.name} /><Row label="Quantity" value={String(quantity)} /><Row label="Total" value={formatNaira(total)} /></div>{examId === "jamb" ? <div className="space-y-2"><Label htmlFor="profile-id">JAMB Profile ID</Label><Input id="profile-id" value={profileId} onChange={(event) => setProfileId(event.target.value)} placeholder="Enter your Profile ID" /></div> : null}<div className="flex items-start gap-2 rounded-2xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground"><AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" /><p>PINs will appear on your receipt after a successful provider response.</p></div><Button className="h-11 w-full rounded-xl font-bold" disabled={examId === "jamb" && !profileId.trim()} onClick={() => setStep("pin")}>Continue to PIN</Button></section> : null}
+        {step === "pin" && variation && exam ? <section className="space-y-4"><div><h2 className="text-lg font-extrabold tracking-tight">Enter transaction PIN</h2><p className="mt-1 text-xs text-muted-foreground">Confirm {formatNaira(total)} for {quantity} {exam.name} PIN{quantity === 1 ? "" : "s"}.</p></div><PinPad value={pin} onChange={setPin} /><Button className="h-12 w-full rounded-xl font-bold" disabled={pin.length !== 4 || loading} onClick={() => void submit()}>{loading ? <Loader2 className="size-4 animate-spin" /> : "Pay and get PIN"}</Button></section> : null}
+        {error ? <p className="text-center text-xs font-semibold text-destructive">{error}</p> : null}
       </div>
     </AppShell>
   );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{label}</span><span className="text-right font-extrabold">{value}</span></div>;
 }
