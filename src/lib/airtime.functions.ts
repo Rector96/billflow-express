@@ -82,6 +82,24 @@ function mapStartError(message: string): Error {
  * Authorize (PIN + debit + pending) then call VTpass sandbox.
  * Outcome is decided only from the provider response — never from the client.
  */
+
+async function finalizeAirtimePurchase(
+  userId: string,
+  internalReference: string,
+  outcome: "successful" | "pending" | "failed",
+  providerTransactionId: string,
+  payload: Json,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin.rpc("trusted_complete_airtime_purchase", {
+    _user_id: userId,
+    _internal_reference: internalReference,
+    _outcome: outcome,
+    _provider_transaction_id: providerTransactionId || "",
+    _payload: payload,
+  });
+}
+
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { network: string; phone: string; amount: number; pin: string }) => {
@@ -157,18 +175,16 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       outcome,
     });
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_airtime_purchase",
+    const { data: finalized, error: finError } = await finalizeAirtimePurchase(
+      context.userId,
+      row.internal_reference as string,
+      outcome,
+      pay.transactionId ?? "",
       {
-        _internal_reference: row.internal_reference,
-        _outcome: outcome,
-        _provider_transaction_id: pay.transactionId ?? "",
-        _payload: {
-          vtpass_code: pay.code,
-          vtpass_status: pay.contentStatus,
-          response_description: pay.responseDescription,
-          vtpass_snapshot: safePayload(pay.raw),
-        },
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        vtpass_snapshot: safePayload(pay.raw),
       },
     );
     if (finError) {
@@ -187,7 +203,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     }
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
+    const status = (fin?.status ?? "pending") as AirtimePurchaseResult["status"];
 
     return {
       status,
@@ -305,18 +321,19 @@ export async function requeryAirtimeCore(opts: {
   const outcome = mapVtpassOutcome(pay);
   console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
 
-  const { data: finalized, error: finError } = await supabase.rpc("complete_airtime_purchase", {
-    _internal_reference: bill.internal_reference,
-    _outcome: outcome,
-    _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
-    _payload: {
+  const { data: finalized, error: finError } = await finalizeAirtimePurchase(
+    (bill.user_id as string | null) ?? opts.userId ?? "",
+    bill.internal_reference as string,
+    outcome,
+    pay.transactionId ?? bill.provider_transaction_id ?? "",
+    {
       vtpass_code: pay.code,
       vtpass_status: pay.contentStatus,
       response_description: pay.responseDescription,
       requery: true,
       vtpass_snapshot: safePayload(pay.raw),
     },
-  });
+  );
   if (finError) throw new Error(finError.message);
 
   if (opts.audit) {
@@ -336,7 +353,7 @@ export async function requeryAirtimeCore(opts: {
   }
 
   const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-  const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
+  const status = (fin?.status ?? "pending") as AirtimePurchaseResult["status"];
 
   return {
     status,

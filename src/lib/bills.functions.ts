@@ -89,6 +89,25 @@ function mapStartError(message: string): Error {
   return new Error(message);
 }
 
+
+/** Settlement must use service_role — authenticated lost EXECUTE on complete_bill_purchase. */
+async function finalizeBillPurchase(
+  userId: string,
+  internalReference: string,
+  outcome: "successful" | "pending" | "failed",
+  providerTransactionId: string,
+  payload: Json,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin.rpc("trusted_complete_bill_purchase", {
+    _user_id: userId,
+    _internal_reference: internalReference,
+    _outcome: outcome,
+    _provider_transaction_id: providerTransactionId || "",
+    _payload: payload,
+  });
+}
+
 export const listVtpassServices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { category: string }) => {
@@ -269,19 +288,17 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[cable] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_bill_purchase",
+    const { data: finalized, error: finError } = await finalizeBillPurchase(
+      context.userId,
+      row.internal_reference as string,
+      outcome,
+      pay.transactionId ?? "",
       {
-        _internal_reference: row.internal_reference,
-        _outcome: outcome,
-        _provider_transaction_id: pay.transactionId ?? "",
-        _payload: {
-          vtpass_code: pay.code,
-          vtpass_status: pay.contentStatus,
-          response_description: pay.responseDescription,
-          purchased_code: pay.purchasedCode,
-          vtpass_snapshot: safePayload(pay.raw),
-        },
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        purchased_code: pay.purchasedCode,
+        vtpass_snapshot: safePayload(pay.raw),
       },
     );
     if (finError) {
@@ -302,7 +319,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
       };
     }
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
+    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
     return {
       status,
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
@@ -434,20 +451,17 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[electricity] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_bill_purchase",
+    const { data: finalized, error: finError } = await finalizeBillPurchase(
+      context.userId,
+      row.internal_reference as string,
+      outcome,
+      pay.transactionId ?? "",
       {
-        _internal_reference: row.internal_reference,
-        _outcome: outcome,
-        _provider_transaction_id: pay.transactionId ?? "",
-        _payload: {
-          vtpass_code: pay.code,
-          vtpass_status: pay.contentStatus,
-          response_description: pay.responseDescription,
-          purchased_code: pay.purchasedCode,
-          token: pay.purchasedCode,
-          vtpass_snapshot: safePayload(pay.raw),
-        },
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        purchased_code: pay.purchasedCode,
+        vtpass_snapshot: safePayload(pay.raw),
       },
     );
     if (finError) {
@@ -468,7 +482,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
       };
     }
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
+    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
     return {
       status,
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
@@ -596,19 +610,17 @@ export const purchaseData = createServerFn({ method: "POST" })
       outcome,
     });
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_bill_purchase",
+    const { data: finalized, error: finError } = await finalizeBillPurchase(
+      context.userId,
+      row.internal_reference as string,
+      outcome,
+      pay.transactionId ?? "",
       {
-        _internal_reference: row.internal_reference,
-        _outcome: outcome,
-        _provider_transaction_id: pay.transactionId ?? "",
-        _payload: {
-          vtpass_code: pay.code,
-          vtpass_status: pay.contentStatus,
-          response_description: pay.responseDescription,
-          purchased_code: pay.purchasedCode,
-          vtpass_snapshot: safePayload(pay.raw),
-        },
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        purchased_code: pay.purchasedCode,
+        vtpass_snapshot: safePayload(pay.raw),
       },
     );
     if (finError) {
@@ -629,7 +641,7 @@ export const purchaseData = createServerFn({ method: "POST" })
       };
     }
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
+    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
     return {
       status,
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
@@ -709,27 +721,24 @@ export const requeryBill = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[bill] requery", data.reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc(
-      "complete_bill_purchase",
+    const { data: finalized, error: finError } = await finalizeBillPurchase(
+      context.userId,
+      bill.internal_reference as string,
+      outcome,
+      pay.transactionId ?? bill.provider_transaction_id ?? "",
       {
-        _internal_reference: bill.internal_reference,
-        _outcome: outcome,
-        _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
-        _payload: {
-          vtpass_code: pay.code,
-          vtpass_status: pay.contentStatus,
-          response_description: pay.responseDescription,
-          purchased_code: pay.purchasedCode,
-          token: pay.purchasedCode,
-          requery: true,
-          vtpass_snapshot: safePayload(pay.raw),
-        },
+        vtpass_code: pay.code,
+        vtpass_status: pay.contentStatus,
+        response_description: pay.responseDescription,
+        purchased_code: pay.purchasedCode,
+        vtpass_snapshot: safePayload(pay.raw),
+        requery: true,
       },
     );
     if (finError) throw new Error(finError.message);
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
+    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
     return {
       status,
       reference: bill.internal_reference,
