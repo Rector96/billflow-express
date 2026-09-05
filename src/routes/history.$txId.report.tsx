@@ -73,8 +73,8 @@ function ReportPage() {
           </span>
           <h1 className="text-2xl font-extrabold">Report Submitted</h1>
           <p className="text-sm text-muted-foreground">
-            We've received your report. Ticket ID <span className="font-bold">{ticket}</span>. Our team
-            will get back to you within 24 hours.
+            We've received your report. Ticket ID <span className="font-bold">{ticket}</span>. Our
+            team will get back to you within 24 hours.
           </p>
           <Button
             className="mt-4 h-13 w-full max-w-sm rounded-2xl font-bold"

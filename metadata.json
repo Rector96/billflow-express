@@ -1,0 +1,6 @@
+{
+  "name": "RockPay",
+  "description": "Bill payments, airtime, and utility purchase platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

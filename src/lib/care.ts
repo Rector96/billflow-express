@@ -1,18 +1,9 @@
 /** RockPay Care shared helpers — UI only, no money logic. */
 
-export type TicketStatus =
-  | "open"
-  | "in_progress"
-  | "waiting_for_customer"
-  | "resolved"
-  | "closed";
+export type TicketStatus = "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
 
 export type TicketCategory =
-  | "payment_not_received"
-  | "wrong_amount"
-  | "pending_transaction"
-  | "token_not_received"
-  | "other";
+  "payment_not_received" | "wrong_amount" | "pending_transaction" | "token_not_received" | "other";
 
 export const STATUS_LABEL: Record<TicketStatus, { label: string; hint: string }> = {
   open: { label: "Open", hint: "We've received your request." },
@@ -31,14 +22,23 @@ export const CATEGORY_OPTIONS: Array<{ key: TicketCategory; label: string }> = [
 ];
 
 /** Issue chips when a transaction is attached */
-export const TX_ISSUE_OPTIONS: Array<{ reason: string; category: TicketCategory; label: string }> = [
-  { reason: "not_received", category: "payment_not_received", label: "I didn't receive the service" },
-  { reason: "wallet_debited", category: "wrong_amount", label: "My wallet was debited" },
-  { reason: "taking_too_long", category: "pending_transaction", label: "Payment is taking too long" },
-  { reason: "wrong_details", category: "other", label: "Wrong details" },
-  { reason: "token_missing", category: "token_not_received", label: "I need a token / receipt" },
-  { reason: "something_else", category: "other", label: "Something else" },
-];
+export const TX_ISSUE_OPTIONS: Array<{ reason: string; category: TicketCategory; label: string }> =
+  [
+    {
+      reason: "not_received",
+      category: "payment_not_received",
+      label: "I didn't receive the service",
+    },
+    { reason: "wallet_debited", category: "wrong_amount", label: "My wallet was debited" },
+    {
+      reason: "taking_too_long",
+      category: "pending_transaction",
+      label: "Payment is taking too long",
+    },
+    { reason: "wrong_details", category: "other", label: "Wrong details" },
+    { reason: "token_missing", category: "token_not_received", label: "I need a token / receipt" },
+    { reason: "something_else", category: "other", label: "Something else" },
+  ];
 
 export function statusBadgeClass(status: string): string {
   switch (status) {

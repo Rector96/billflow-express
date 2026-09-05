@@ -63,7 +63,10 @@ function Onboarding() {
         ) : null}
       </div>
 
-      <div key={index} className="animate-in fade-in slide-in-from-right-4 flex flex-1 flex-col items-center justify-center gap-6 text-center duration-300">
+      <div
+        key={index}
+        className="animate-in fade-in slide-in-from-right-4 flex flex-1 flex-col items-center justify-center gap-6 text-center duration-300"
+      >
         <span className="brand-gradient grid size-28 place-items-center rounded-[2rem] text-primary-foreground shadow-float">
           <slide.icon className="size-12" />
         </span>

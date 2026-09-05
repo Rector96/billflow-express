@@ -69,13 +69,17 @@ function AdminAuditLogs() {
       </p>
       {error ? (
         <p className="mb-3 text-sm text-destructive">
-          {error}. Apply migration <code>20260814140000_admin_ops_platform.sql</code> if the table is missing.
+          {error}. Apply migration <code>20260814140000_admin_ops_platform.sql</code> if the table
+          is missing.
         </p>
       ) : null}
       {loading ? (
         <AdminLoading />
       ) : rows.length === 0 ? (
-        <AdminEmpty title="No audit events yet" body="Suspend/reactivate and other staff actions will appear here." />
+        <AdminEmpty
+          title="No audit events yet"
+          body="Suspend/reactivate and other staff actions will appear here."
+        />
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
@@ -88,7 +92,9 @@ function AdminAuditLogs() {
                   {r.target_type}:{r.target_id}
                 </p>
               ) : null}
-              <p className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString("en-NG")}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {new Date(r.created_at).toLocaleString("en-NG")}
+              </p>
             </div>
           ))}
         </div>

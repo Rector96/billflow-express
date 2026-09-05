@@ -81,8 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       {
         name: "viewport",
-        content:
-          "width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover",
+        content: "width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover",
       },
       { title: `${BRAND.name} — Pay. Fund. Connect.` },
       {
@@ -97,7 +96,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: BRAND.name },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "theme-color", content: "#4b1fbf" },
+      { name: "theme-color", content: "#4f46e5" },
       { name: "application-name", content: BRAND.name },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: BRAND.name },

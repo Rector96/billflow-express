@@ -34,17 +34,18 @@ function AdminServices() {
 
   return (
     <AdminShell title="Services" subtitle="Bill payment performance by service">
-      {error ? (
-        <p className="mb-3 text-sm text-destructive">{error}</p>
-      ) : null}
+      {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
       <p className="mb-4 text-xs text-muted-foreground">
-        Prepared for VTpass monitoring. Counts come from <code>bill_transactions</code> only — no fabricated
-        providers.
+        Prepared for VTpass monitoring. Counts come from <code>bill_transactions</code> only — no
+        fabricated providers.
       </p>
       {loading ? (
         <AdminLoading />
       ) : rows.length === 0 ? (
-        <AdminEmpty title="No service data yet" body="When customers pay bills, success rates appear here." />
+        <AdminEmpty
+          title="No service data yet"
+          body="When customers pay bills, success rates appear here."
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((s) => {

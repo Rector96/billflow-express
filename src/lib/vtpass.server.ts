@@ -381,7 +381,10 @@ export async function vtpassMerchantVerify(input: {
   };
 }
 
-function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: string): VtpassPayResult {
+function parsePayResponse(
+  raw: Record<string, unknown>,
+  fallbackRequestId: string,
+): VtpassPayResult {
   const code = String(raw["code"] ?? "");
   const content = (raw["content"] ?? {}) as Record<string, unknown>;
   const tx = (content["transactions"] ?? {}) as Record<string, unknown>;
@@ -396,9 +399,7 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
 
   const statusRaw = tx["status"] ?? content["status"] ?? raw["status"] ?? null;
   const contentStatus =
-    statusRaw != null && String(statusRaw).trim()
-      ? String(statusRaw).toLowerCase().trim()
-      : null;
+    statusRaw != null && String(statusRaw).trim() ? String(statusRaw).toLowerCase().trim() : null;
 
   const transactionId =
     tx["transactionId"] != null
@@ -547,9 +548,7 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
 }
 
 /** Map VTpass response → RockPay outcome (never trust the browser). */
-export function mapVtpassOutcome(
-  result: VtpassPayResult,
-): "successful" | "failed" | "pending" {
+export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "failed" | "pending" {
   // A network timeout/no response is ambiguous. Never refund based only on
   // the timeout; leave the ledger pending so the request can be requeried.
   if (result.code === "TIMEOUT" || result.code === "") return "pending";

@@ -43,10 +43,7 @@ export function BrandMark({ className }: { className?: string }) {
       height={96}
       loading="eager"
       decoding="async"
-      className={cn(
-        "size-9 shrink-0 rounded-2xl object-contain ring-1 ring-black/5",
-        className,
-      )}
+      className={cn("size-9 shrink-0 rounded-2xl object-contain ring-1 ring-black/5", className)}
     />
   );
 }
@@ -136,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <Link
           to="/services"
-          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-float"
+          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold text-primary-foreground shadow-sm"
         >
           <ScanLine className="size-4" /> Pay a bill
         </Link>
@@ -148,23 +145,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Bottom navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 shadow-[0_-8px_24px_-16px_oklch(0.2_0.05_285_/_12%)] backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-1.5 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-sm items-center justify-around rounded-2xl border border-border/80 bg-card/95 px-2 py-1.5 shadow-float backdrop-blur-md pointer-events-auto">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
           <Link
             to="/services"
             aria-label="Pay a bill"
-            className={cn(
-              "press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-extrabold tracking-wide",
-              isActive("/services") ? "text-primary" : "text-muted-foreground",
-            )}
+            className="press group relative flex flex-col items-center justify-center px-1"
           >
-            <span className="brand-gradient -mt-6 grid size-[3.25rem] place-items-center rounded-full text-primary-foreground shadow-float ring-4 ring-background">
-              <ScanLine className="size-5" />
+            <span className="brand-gradient grid size-11 place-items-center rounded-xl text-primary-foreground shadow-sm transition-transform group-active:scale-95">
+              <ScanLine className="size-5 stroke-[2]" />
             </span>
-            PAY
           </Link>
           <TabLink item={NAV_HISTORY} active={isActive("/history")} />
           <TabLink item={NAV_PROFILE} active={isActive("/profile")} />
@@ -179,19 +172,21 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "press flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[10px] font-semibold",
-        active ? "text-primary" : "text-muted-foreground",
+        "press relative flex min-w-11 flex-col items-center justify-center py-1 transition-all",
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
       <span
         className={cn(
-          "grid size-9 place-items-center rounded-xl transition-colors",
-          active && "bg-primary-soft",
+          "grid size-8.5 place-items-center rounded-xl transition-colors",
+          active ? "bg-primary-soft text-primary" : "bg-transparent",
         )}
       >
-        <item.icon className={cn("size-5", active && "stroke-[2.35]")} />
+        <item.icon className={cn("size-4.5", active ? "stroke-[2.2]" : "stroke-[1.8]")} />
       </span>
-      {item.label}
+      <span className="mt-0.5 text-[10px] font-medium leading-none tracking-tight">
+        {item.label}
+      </span>
     </Link>
   );
 }

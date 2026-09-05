@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json, Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AirtimePurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -83,19 +84,16 @@ function mapStartError(message: string): Error {
  */
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    network: string;
-    phone: string;
-    amount: number;
-    pin: string;
-  }) => {
+  .inputValidator((input: { network: string; phone: string; amount: number; pin: string }) => {
     const amount = Math.round(Number(input?.amount));
     if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
       throw new Error("Enter an amount between ₦50 and ₦50,000.");
     }
     const pin = String(input?.pin ?? "");
     if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    const network = String(input?.network ?? "").trim().toLowerCase();
+    const network = String(input?.network ?? "")
+      .trim()
+      .toLowerCase();
     if (!network) throw new Error("Select a network.");
     const phone = String(input?.phone ?? "").trim();
     if (!phone) throw new Error("Enter a phone number.");
@@ -125,12 +123,15 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("unsupported_network");
     }
 
-    const { data: started, error: startError } = await context.supabase.rpc("start_airtime_purchase", {
-      _provider: serviceId,
-      _phone: phone,
-      _amount: data.amount,
-      _pin: data.pin,
-    });
+    const { data: started, error: startError } = await context.supabase.rpc(
+      "start_airtime_purchase",
+      {
+        _provider: serviceId,
+        _phone: phone,
+        _amount: data.amount,
+        _pin: data.pin,
+      },
+    );
     if (startError) {
       console.error("[airtime] start", startError.message);
       throw mapStartError(startError.message);
@@ -239,7 +240,7 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
 
 /** Shared requery used by customer + admin paths. */
 export async function requeryAirtimeCore(opts: {
-  supabase: any;
+  supabase: SupabaseClient<Database>;
   userId?: string | null;
   reference: string;
   audit?: boolean;

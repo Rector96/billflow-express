@@ -10,7 +10,13 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { AppNotification, SavedPayment, ServiceSlug, Transaction, TxStatus } from "./mock-data";
+import type {
+  AppNotification,
+  SavedPayment,
+  ServiceSlug,
+  Transaction,
+  TxStatus,
+} from "./mock-data";
 import type { TicketCategory } from "./care";
 
 export type Profile = {
@@ -92,7 +98,9 @@ const VALID_TICKET_CATEGORIES: ReadonlySet<TicketCategory> = new Set([
 
 /** Map free-text / legacy labels → ticket_category enum */
 export function toTicketCategory(raw: string): TicketCategory {
-  const s = String(raw ?? "").trim().toLowerCase();
+  const s = String(raw ?? "")
+    .trim()
+    .toLowerCase();
   if (VALID_TICKET_CATEGORIES.has(s as TicketCategory)) return s as TicketCategory;
   if (s.includes("not received") || s === "transaction") return "payment_not_received";
   if (s.includes("wrong amount") || s.includes("debited")) return "wrong_amount";
@@ -102,7 +110,10 @@ export function toTicketCategory(raw: string): TicketCategory {
 }
 
 /** Prefer actionable messages; hide only raw stacks. */
-export function friendlyError(error: unknown, fallback = "Something went wrong. Please try again.") {
+export function friendlyError(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+) {
   let message = "";
   if (error instanceof Error) {
     message = error.message;
@@ -124,13 +135,12 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
     message = String(error ?? "");
   }
   console.error("[billpay]", message);
-  if (message.includes("insufficient_funds")) return "Your wallet balance is too low for this payment.";
+  if (message.includes("insufficient_funds"))
+    return "Your wallet balance is too low for this payment.";
   if (message.includes("pin_locked") || message.includes("temporarily locked"))
     return "PIN temporarily locked after too many failed attempts. Try again later.";
-  if (message.includes("pin_not_set"))
-    return "Set a transaction PIN in Security before paying.";
-  if (message.includes("invalid_pin") || message.includes("Incorrect PIN"))
-    return "Incorrect PIN.";
+  if (message.includes("pin_not_set")) return "Set a transaction PIN in Security before paying.";
+  if (message.includes("invalid_pin") || message.includes("Incorrect PIN")) return "Incorrect PIN.";
   if (message.includes("invalid_phone") || message.includes("valid Nigerian"))
     return "Enter a valid Nigerian mobile number.";
   if (message.includes("unsupported_network"))
@@ -195,7 +205,11 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
   }
   if (message.includes("create_wallet_funding_intent") || message.includes("funding intent"))
     return "Could not create funding intent. Check wallet setup and try again.";
-  if (message.includes("no email") || message.includes("email required") || message.includes("email on file"))
+  if (
+    message.includes("no email") ||
+    message.includes("email required") ||
+    message.includes("email on file")
+  )
     return "Your account needs an email. Update Profile, then try Fund Wallet again.";
   if (message.includes("Unauthorized") || message.includes("Invalid token"))
     return "Your session has expired. Please log in again.";
@@ -208,7 +222,11 @@ export function friendlyError(error: unknown, fallback = "Something went wrong. 
 const money = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" });
@@ -260,7 +278,11 @@ function toTransaction(row: LedgerRow): Transaction {
     status,
     date: fmtDate(row.created_at),
     time: fmtTime(row.created_at),
-    method: isIn ? (str(meta, "channel") === "paystack" ? "Paystack (test)" : "Wallet Funding") : "Wallet",
+    method: isIn
+      ? str(meta, "channel") === "paystack"
+        ? "Paystack (test)"
+        : "Wallet Funding"
+      : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
     ...(token ? { token } : {}),
@@ -526,14 +548,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createSupportTicket: async ({ reference, category, description, reason }) => {
         if (!userId) throw new Error("not authenticated");
         const cat = toTicketCategory(category);
-        const { data, error } = await supabase.rpc("create_care_ticket", {
+        const args: {
+          _category: TicketCategory;
+          _description: string;
+          _subject: string;
+          _reason?: string;
+          _transaction_id?: string;
+          _reference?: string;
+        } = {
           _category: cat,
           _description: description,
           _subject: description.slice(0, 80),
-          _reason: reason ?? null,
-          _transaction_id: null,
-          _reference: reference ?? null,
-        });
+        };
+        if (reason) args._reason = reason;
+        if (reference) args._reference = reference;
+
+        const { data, error } = await supabase.rpc("create_care_ticket", args);
         if (error) throw error;
         const row = data as { id: string; ticket_number?: string; duplicate?: boolean };
         if (!row?.id) throw new Error("Could not open RockPay Care request.");

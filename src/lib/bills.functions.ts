@@ -80,11 +80,9 @@ function mapStartError(message: string): Error {
   if (message.includes("pin_locked")) return new Error("pin_locked");
   if (message.includes("pin_not_set")) return new Error("pin_not_set");
   if (message.includes("invalid amount")) return new Error("Enter a valid amount.");
-  if (message.includes("unsupported_service")) return new Error("This service is not available yet.");
-  if (
-    message.includes("invalid_phone") ||
-    message.includes("Enter a valid Nigerian")
-  ) {
+  if (message.includes("unsupported_service"))
+    return new Error("This service is not available yet.");
+  if (message.includes("invalid_phone") || message.includes("Enter a valid Nigerian")) {
     return new Error("Enter a valid Nigerian mobile number.");
   }
 
@@ -95,11 +93,7 @@ export const listVtpassServices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { category: string }) => {
     const category = String(input?.category ?? "").trim();
-    if (
-      category !== "tv-subscription" &&
-      category !== "electricity-bill" &&
-      category !== "data"
-    ) {
+    if (category !== "tv-subscription" && category !== "electricity-bill" && category !== "data") {
       throw new Error("Unsupported catalogue category.");
     }
     return { category };
@@ -137,11 +131,7 @@ export const listVtpassVariations = createServerFn({ method: "POST" })
 
 export const verifyVtpassCustomer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    serviceID: string;
-    billersCode: string;
-    type?: string;
-  }) => {
+  .inputValidator((input: { serviceID: string; billersCode: string; type?: string }) => {
     const serviceID = String(input?.serviceID ?? "").trim();
     const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
     if (!serviceID) throw new Error("Select a provider.");
@@ -169,9 +159,7 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
             "Meter verification failed. Please check the meter number and try again.",
         );
       }
-      throw new Error(
-        result.message || "Could not verify this number. Check and try again.",
-      );
+      throw new Error(result.message || "Could not verify this number. Check and try again.");
     }
     return {
       customerName: result.customerName,
@@ -188,47 +176,44 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
 
 export const purchaseCable = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    serviceID: string;
-    billersCode: string;
-    variationCode: string;
-    amount: number;
-    pin: string;
-    phone?: string;
-    customerName?: string;
-    subscriptionType?: string;
-  }) => {
-    const serviceID = String(input?.serviceID ?? "").trim();
-    const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
-    const variationCode = String(input?.variationCode ?? "").trim();
-    const amount = Math.round(Number(input?.amount));
-    const pin = String(input?.pin ?? "");
-    if (!serviceID) throw new Error("Select a provider.");
-    if (!billersCode) throw new Error("Enter your smartcard number.");
-    if (!variationCode) throw new Error("Select a package.");
-    if (!Number.isFinite(amount) || amount < 50) {
-      throw new Error("Enter a valid amount.");
-    }
-    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    return {
-      serviceID,
-      billersCode,
-      variationCode,
-      amount,
-      pin,
-      phone: input?.phone ? String(input.phone) : undefined,
-      customerName: input?.customerName ? String(input.customerName) : undefined,
-      subscriptionType: input?.subscriptionType ? String(input.subscriptionType) : "change",
-    };
-  })
+  .inputValidator(
+    (input: {
+      serviceID: string;
+      billersCode: string;
+      variationCode: string;
+      amount: number;
+      pin: string;
+      phone?: string;
+      customerName?: string;
+      subscriptionType?: string;
+    }) => {
+      const serviceID = String(input?.serviceID ?? "").trim();
+      const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
+      const variationCode = String(input?.variationCode ?? "").trim();
+      const amount = Math.round(Number(input?.amount));
+      const pin = String(input?.pin ?? "");
+      if (!serviceID) throw new Error("Select a provider.");
+      if (!billersCode) throw new Error("Enter your smartcard number.");
+      if (!variationCode) throw new Error("Select a package.");
+      if (!Number.isFinite(amount) || amount < 50) {
+        throw new Error("Enter a valid amount.");
+      }
+      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+      return {
+        serviceID,
+        billersCode,
+        variationCode,
+        amount,
+        pin,
+        phone: input?.phone ? String(input.phone) : undefined,
+        customerName: input?.customerName ? String(input.customerName) : undefined,
+        subscriptionType: input?.subscriptionType ? String(input.subscriptionType) : "change",
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const {
-      getVtpassConfig,
-      vtpassListVariations,
-      vtpassPay,
-      mapVtpassOutcome,
-      normalizeNgPhone,
-    } = await import("./vtpass.server");
+    const { getVtpassConfig, vtpassListVariations, vtpassPay, mapVtpassOutcome, normalizeNgPhone } =
+      await import("./vtpass.server");
     getVtpassConfig();
     const variations = await vtpassListVariations(data.serviceID);
     const pack = variations.find((v) => v.variationCode === data.variationCode);
@@ -284,18 +269,21 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[cable] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc("complete_bill_purchase", {
-      _internal_reference: row.internal_reference,
-      _outcome: outcome,
-      _provider_transaction_id: pay.transactionId ?? "",
-      _payload: {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        purchased_code: pay.purchasedCode,
-        vtpass_snapshot: safePayload(pay.raw),
+    const { data: finalized, error: finError } = await context.supabase.rpc(
+      "complete_bill_purchase",
+      {
+        _internal_reference: row.internal_reference,
+        _outcome: outcome,
+        _provider_transaction_id: pay.transactionId ?? "",
+        _payload: {
+          vtpass_code: pay.code,
+          vtpass_status: pay.contentStatus,
+          response_description: pay.responseDescription,
+          purchased_code: pay.purchasedCode,
+          vtpass_snapshot: safePayload(pay.raw),
+        },
       },
-    });
+    );
     if (finError) {
       console.error("[cable] complete", finError.message);
       return {
@@ -333,53 +321,52 @@ export const purchaseCable = createServerFn({ method: "POST" })
 
 export const purchaseElectricity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    serviceID: string;
-    billersCode: string;
-    meterType: string;
-    amount: number;
-    pin: string;
-    phone?: string;
-    customerName?: string;
-    minAmount?: number;
-  }) => {
-    const serviceID = String(input?.serviceID ?? "").trim();
-    const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
-    const meterType = String(input?.meterType ?? "").trim().toLowerCase();
-    const amount = Math.round(Number(input?.amount));
-    const pin = String(input?.pin ?? "");
-    const minAmount = input?.minAmount != null ? Number(input.minAmount) : 0;
-    if (!serviceID) throw new Error("Select a provider.");
-    if (!billersCode) throw new Error("Enter your meter number.");
-    if (meterType !== "prepaid" && meterType !== "postpaid") {
-      throw new Error("Select prepaid or postpaid.");
-    }
-    if (!Number.isFinite(amount) || amount < 50) {
-      throw new Error("Enter a valid amount.");
-    }
-    if (minAmount > 0 && amount < minAmount) {
-      throw new Error(`Minimum amount is ₦${Math.round(minAmount).toLocaleString("en-NG")}.`);
-    }
-    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    return {
-      serviceID,
-      billersCode,
-      meterType,
-      amount,
-      pin,
-      phone: input?.phone ? String(input.phone) : undefined,
-      customerName: input?.customerName ? String(input.customerName) : undefined,
-      minAmount,
-    };
-  })
+  .inputValidator(
+    (input: {
+      serviceID: string;
+      billersCode: string;
+      meterType: string;
+      amount: number;
+      pin: string;
+      phone?: string;
+      customerName?: string;
+      minAmount?: number;
+    }) => {
+      const serviceID = String(input?.serviceID ?? "").trim();
+      const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
+      const meterType = String(input?.meterType ?? "")
+        .trim()
+        .toLowerCase();
+      const amount = Math.round(Number(input?.amount));
+      const pin = String(input?.pin ?? "");
+      const minAmount = input?.minAmount != null ? Number(input.minAmount) : 0;
+      if (!serviceID) throw new Error("Select a provider.");
+      if (!billersCode) throw new Error("Enter your meter number.");
+      if (meterType !== "prepaid" && meterType !== "postpaid") {
+        throw new Error("Select prepaid or postpaid.");
+      }
+      if (!Number.isFinite(amount) || amount < 50) {
+        throw new Error("Enter a valid amount.");
+      }
+      if (minAmount > 0 && amount < minAmount) {
+        throw new Error(`Minimum amount is ₦${Math.round(minAmount).toLocaleString("en-NG")}.`);
+      }
+      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+      return {
+        serviceID,
+        billersCode,
+        meterType,
+        amount,
+        pin,
+        phone: input?.phone ? String(input.phone) : undefined,
+        customerName: input?.customerName ? String(input.customerName) : undefined,
+        minAmount,
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const {
-      getVtpassConfig,
-      vtpassPay,
-      mapVtpassOutcome,
-      normalizeNgPhone,
-      vtpassMerchantVerify,
-    } = await import("./vtpass.server");
+    const { getVtpassConfig, vtpassPay, mapVtpassOutcome, normalizeNgPhone, vtpassMerchantVerify } =
+      await import("./vtpass.server");
     getVtpassConfig();
     const verified = await vtpassMerchantVerify({
       serviceID: data.serviceID,
@@ -396,7 +383,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const resolvedMin =
       verified.minPurchaseAmount != null && Number.isFinite(verified.minPurchaseAmount)
         ? Number(verified.minPurchaseAmount)
-        : data.minAmount ?? 0;
+        : (data.minAmount ?? 0);
     if (resolvedMin > 0 && data.amount < resolvedMin) {
       throw new Error(`Minimum amount is ₦${Math.round(resolvedMin).toLocaleString("en-NG")}.`);
     }
@@ -447,19 +434,22 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[electricity] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc("complete_bill_purchase", {
-      _internal_reference: row.internal_reference,
-      _outcome: outcome,
-      _provider_transaction_id: pay.transactionId ?? "",
-      _payload: {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        purchased_code: pay.purchasedCode,
-        token: pay.purchasedCode,
-        vtpass_snapshot: safePayload(pay.raw),
+    const { data: finalized, error: finError } = await context.supabase.rpc(
+      "complete_bill_purchase",
+      {
+        _internal_reference: row.internal_reference,
+        _outcome: outcome,
+        _provider_transaction_id: pay.transactionId ?? "",
+        _payload: {
+          vtpass_code: pay.code,
+          vtpass_status: pay.contentStatus,
+          response_description: pay.responseDescription,
+          purchased_code: pay.purchasedCode,
+          token: pay.purchasedCode,
+          vtpass_snapshot: safePayload(pay.raw),
+        },
       },
-    });
+    );
     if (finError) {
       console.error("[electricity] complete", finError.message);
       return {
@@ -497,29 +487,31 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
 
 export const purchaseData = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    serviceID: string;
-    phone: string;
-    variationCode: string;
-    amount?: number;
-    pin: string;
-  }) => {
-    const serviceID = String(input?.serviceID ?? "").trim();
-    const phone = String(input?.phone ?? "").trim();
-    const variationCode = String(input?.variationCode ?? "").trim();
-    const pin = String(input?.pin ?? "");
-    if (!serviceID) throw new Error("Select a network.");
-    if (!phone) throw new Error("Enter a phone number.");
-    if (!variationCode) throw new Error("Select a data plan.");
-    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    return {
-      serviceID,
-      phone,
-      variationCode,
-      pin,
-      amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
-    };
-  })
+  .inputValidator(
+    (input: {
+      serviceID: string;
+      phone: string;
+      variationCode: string;
+      amount?: number;
+      pin: string;
+    }) => {
+      const serviceID = String(input?.serviceID ?? "").trim();
+      const phone = String(input?.phone ?? "").trim();
+      const variationCode = String(input?.variationCode ?? "").trim();
+      const pin = String(input?.pin ?? "");
+      if (!serviceID) throw new Error("Select a network.");
+      if (!phone) throw new Error("Enter a phone number.");
+      if (!variationCode) throw new Error("Select a data plan.");
+      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+      return {
+        serviceID,
+        phone,
+        variationCode,
+        pin,
+        amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
     const {
       getVtpassConfig,
@@ -604,18 +596,21 @@ export const purchaseData = createServerFn({ method: "POST" })
       outcome,
     });
 
-    const { data: finalized, error: finError } = await context.supabase.rpc("complete_bill_purchase", {
-      _internal_reference: row.internal_reference,
-      _outcome: outcome,
-      _provider_transaction_id: pay.transactionId ?? "",
-      _payload: {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        purchased_code: pay.purchasedCode,
-        vtpass_snapshot: safePayload(pay.raw),
+    const { data: finalized, error: finError } = await context.supabase.rpc(
+      "complete_bill_purchase",
+      {
+        _internal_reference: row.internal_reference,
+        _outcome: outcome,
+        _provider_transaction_id: pay.transactionId ?? "",
+        _payload: {
+          vtpass_code: pay.code,
+          vtpass_status: pay.contentStatus,
+          response_description: pay.responseDescription,
+          purchased_code: pay.purchasedCode,
+          vtpass_snapshot: safePayload(pay.raw),
+        },
       },
-    });
+    );
     if (finError) {
       console.error("[data] complete", finError.message);
       return {
@@ -714,20 +709,23 @@ export const requeryBill = createServerFn({ method: "POST" })
     const outcome = mapVtpassOutcome(pay);
     console.info("[bill] requery", data.reference, pay.code, pay.contentStatus, outcome);
 
-    const { data: finalized, error: finError } = await context.supabase.rpc("complete_bill_purchase", {
-      _internal_reference: bill.internal_reference,
-      _outcome: outcome,
-      _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
-      _payload: {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        purchased_code: pay.purchasedCode,
-        token: pay.purchasedCode,
-        requery: true,
-        vtpass_snapshot: safePayload(pay.raw),
+    const { data: finalized, error: finError } = await context.supabase.rpc(
+      "complete_bill_purchase",
+      {
+        _internal_reference: bill.internal_reference,
+        _outcome: outcome,
+        _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+        _payload: {
+          vtpass_code: pay.code,
+          vtpass_status: pay.contentStatus,
+          response_description: pay.responseDescription,
+          purchased_code: pay.purchasedCode,
+          token: pay.purchasedCode,
+          requery: true,
+          vtpass_snapshot: safePayload(pay.raw),
+        },
       },
-    });
+    );
     if (finError) throw new Error(finError.message);
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;

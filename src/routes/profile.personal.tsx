@@ -42,17 +42,38 @@ function PersonalInfo() {
       >
         <div className="space-y-2">
           <Label htmlFor="name">Full Name</Label>
-          <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-13 rounded-xl bg-card" />
+          <Input
+            id="name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="h-13 rounded-xl bg-card"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
-          <Input id="phone" inputMode="numeric" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="h-13 rounded-xl bg-card" />
+          <Input
+            id="phone"
+            inputMode="numeric"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className="h-13 rounded-xl bg-card"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-13 rounded-xl bg-card" />
+          <Input
+            id="email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className="h-13 rounded-xl bg-card"
+          />
         </div>
-        <Button type="submit" disabled={saving} className="h-13 w-full rounded-2xl text-base font-bold">
+        <Button
+          type="submit"
+          disabled={saving}
+          className="h-13 w-full rounded-2xl text-base font-bold"
+        >
           {saving ? "Saving…" : "Save Changes"}
         </Button>
       </form>

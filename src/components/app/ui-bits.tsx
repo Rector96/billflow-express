@@ -23,15 +23,22 @@ export function SectionTitle({
   onAction?: () => void;
 }) {
   return (
-    <div className="mb-2.5 flex items-center justify-between gap-2">
-      <h2 className="text-[15px] font-extrabold tracking-tight text-foreground">{title}</h2>
+    <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
+      <h2 className="text-sm font-semibold tracking-tight text-foreground">{title}</h2>
       {action ? (
         to ? (
-          <Link to={to} className="text-xs font-semibold text-primary">
+          <Link
+            to={to}
+            className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
+          >
             {action}
           </Link>
         ) : (
-          <button type="button" onClick={onAction} className="text-xs font-semibold text-primary">
+          <button
+            type="button"
+            onClick={onAction}
+            className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
+          >
             {action}
           </button>
         )
@@ -45,37 +52,37 @@ export function StatusBadge({ status, compact }: { status: TxStatus; compact?: b
     successful: {
       label: "Successful",
       short: "Successful",
-      cls: "bg-success-soft text-success",
+      cls: "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40",
       Icon: CheckCircle2,
     },
     pending: {
       label: "Pending",
       short: "Pending",
-      cls: "bg-warning-soft text-warning-foreground",
+      cls: "bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40",
       Icon: Clock3,
     },
     failed: {
       label: "Failed",
       short: "Failed",
-      cls: "bg-destructive-soft text-destructive",
+      cls: "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40",
       Icon: XCircle,
     },
   }[status];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full font-semibold",
-        compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-[11px]",
+        "inline-flex items-center gap-1 rounded-full font-medium",
+        compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-xs",
         map.cls,
       )}
     >
-      {!compact ? <map.Icon className="size-3" strokeWidth={2.5} /> : null}
+      {!compact ? <map.Icon className="size-3" strokeWidth={2} /> : null}
       {map.short}
     </span>
   );
 }
 
-/** Soft circular icons — matches reference mock Pay Bills grid */
+/** Modern clean squircle chips */
 export function ServiceTile({
   label,
   Icon,
@@ -97,20 +104,20 @@ export function ServiceTile({
     <>
       <span
         className={cn(
-          "grid place-items-center rounded-full",
+          "grid place-items-center rounded-2xl transition-all duration-150 group-hover:scale-105 group-active:scale-95 shadow-sm",
           compact ? "size-11" : "size-12",
           tint,
         )}
       >
-        <Icon className={compact ? "size-4.5" : "size-5"} strokeWidth={1.75} />
+        <Icon className={compact ? "size-5" : "size-5"} strokeWidth={1.8} />
       </span>
-      <span className="text-center text-[11px] leading-tight font-semibold text-foreground">
+      <span className="text-center text-[12px] leading-tight font-medium text-foreground">
         {label}
       </span>
     </>
   );
   const cls = cn(
-    "press flex flex-col items-center justify-center gap-1.5 bg-transparent p-1",
+    "group press flex flex-col items-center justify-center gap-1.5 rounded-xl p-2 transition-all hover:bg-card/70",
     compact ? "min-h-[4.25rem]" : "min-h-[4.75rem]",
   );
   if (to) {
@@ -134,20 +141,26 @@ export function TransactionRow({ tx, compact }: { tx: Transaction; compact?: boo
       to="/history/$txId"
       params={{ txId: tx.id }}
       className={cn(
-        "press flex items-center gap-3 rounded-2xl bg-card",
-        compact ? "px-3 py-2.5 shadow-soft" : "border border-border/40 px-3.5 py-3 shadow-soft",
+        "press flex items-center gap-3 rounded-xl border border-border/70 bg-card transition-colors hover:border-border",
+        compact ? "px-3 py-2.5 shadow-soft" : "px-3.5 py-3 shadow-soft",
       )}
     >
       <span
         className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-full",
-          inbound ? "bg-success-soft text-success" : "bg-primary-soft text-primary",
+          "grid size-9 shrink-0 place-items-center rounded-full",
+          inbound
+            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50"
+            : "bg-primary-soft text-primary",
         )}
       >
-        {inbound ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
+        {inbound ? (
+          <ArrowDownLeft className="size-4" strokeWidth={2} />
+        ) : (
+          <ArrowUpRight className="size-4" strokeWidth={2} />
+        )}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-foreground">{tx.title}</p>
+        <p className="truncate text-sm font-semibold text-foreground">{tx.title}</p>
         <p className="truncate text-xs text-muted-foreground">
           {tx.service} · {tx.date}
           {compact ? "" : `, ${tx.time}`}
@@ -156,8 +169,8 @@ export function TransactionRow({ tx, compact }: { tx: Transaction; compact?: boo
       <div className="shrink-0 text-right">
         <p
           className={cn(
-            "text-sm font-extrabold tabular-nums",
-            inbound ? "text-success" : "text-foreground",
+            "text-sm font-semibold tabular-nums",
+            inbound ? "text-emerald-600 dark:text-emerald-400" : "text-foreground",
           )}
         >
           {inbound ? "+" : "-"}

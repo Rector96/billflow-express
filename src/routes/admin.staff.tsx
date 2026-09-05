@@ -52,9 +52,9 @@ function AdminStaff() {
   return (
     <AdminShell title="Staff" subtitle="Roles from user_roles (super_admin, admin, support)">
       <p className="mb-4 text-xs text-muted-foreground">
-        Finance / Operations roles from the product brief are not in the database enum yet. Current roles:{" "}
-        <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Grant roles via Supabase SQL
-        only for now.
+        Finance / Operations roles from the product brief are not in the database enum yet. Current
+        roles: <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Grant
+        roles via Supabase SQL only for now.
       </p>
       {loading ? (
         <AdminLoading />
@@ -63,10 +63,15 @@ function AdminStaff() {
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
-            <div key={`${r.user_id}-${r.role}`} className="rounded-2xl border bg-card p-4 text-sm shadow-card">
+            <div
+              key={`${r.user_id}-${r.role}`}
+              className="rounded-2xl border bg-card p-4 text-sm shadow-card"
+            >
               <p className="font-bold">{r.name}</p>
               <p className="text-xs text-muted-foreground">{r.email}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">{r.role}</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-wide text-primary">
+                {r.role}
+              </p>
             </div>
           ))}
         </div>

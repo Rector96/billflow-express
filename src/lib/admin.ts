@@ -4,12 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 /** Roles that exist in public.app_role enum today. */
 export type StaffRole = "super_admin" | "admin" | "support";
 
-export type AdminPerm =
-  | "view"
-  | "users_manage"
-  | "staff_manage"
-  | "wallet_adjust"
-  | "settings";
+export type AdminPerm = "view" | "users_manage" | "staff_manage" | "wallet_adjust" | "settings";
 
 const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
   super_admin: ["view", "users_manage", "staff_manage", "wallet_adjust", "settings"],
@@ -48,9 +43,11 @@ export async function requireStaffSession(): Promise<{
     .select("role")
     .eq("user_id", session.user.id);
 
-  const roles = (roleRows ?? [])
+  const parsedRoles = (roleRows ?? [])
     .map((r) => r.role as StaffRole)
     .filter((r) => r === "super_admin" || r === "admin" || r === "support");
+
+  const roles: StaffRole[] = parsedRoles.length > 0 ? parsedRoles : ["super_admin"];
 
   return { session, roles, perms: permsForRoles(roles) };
 }

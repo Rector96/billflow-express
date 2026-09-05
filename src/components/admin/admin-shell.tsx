@@ -105,7 +105,9 @@ export function AdminShell({
         <BrandMark className="size-9" />
         <div>
           <p className="text-sm font-extrabold tracking-tight">{BRAND.name}</p>
-          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">Operations</p>
+          <p className="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Operations
+          </p>
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5" aria-label="Admin">
@@ -152,38 +154,50 @@ export function AdminShell({
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">{Sidebar}</div>
+          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">
+            {Sidebar}
+          </div>
         </div>
       ) : null}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur-md lg:px-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              className="press grid size-10 place-items-center rounded-xl border border-border/80 bg-card shadow-soft lg:hidden"
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-            >
-              {open ? <X className="size-5" /> : <Menu className="size-5" />}
-            </button>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-lg font-extrabold tracking-tight">{title}</h1>
-              {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
+        <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 px-3.5 py-2.5 backdrop-blur-md sm:px-6 sm:py-3 lg:px-8">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                className="press grid size-9 sm:size-10 shrink-0 place-items-center rounded-xl border border-border/80 bg-card shadow-soft lg:hidden"
+                onClick={() => setOpen(true)}
+                aria-label="Open menu"
+              >
+                {open ? <X className="size-5" /> : <Menu className="size-5" />}
+              </button>
+              <div className="min-w-0">
+                <h1 className="truncate text-base sm:text-lg font-extrabold tracking-tight">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="truncate text-xs text-muted-foreground hidden sm:block">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
             </div>
-            <form onSubmit={searchSubmit} className="relative w-full sm:w-64 lg:w-72">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search users, Care, refs…"
-                className="h-10 w-full rounded-xl border border-border/80 bg-card pr-3 pl-9 text-sm shadow-soft outline-none focus:ring-2 focus:ring-primary/25"
-              />
-            </form>
-            {actions}
+            <div className="flex items-center gap-2 shrink-0">
+              <form onSubmit={searchSubmit} className="relative hidden md:block w-52 lg:w-72">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search users, refs…"
+                  className="h-9 lg:h-10 w-full rounded-xl border border-border/80 bg-card pr-3 pl-9 text-xs sm:text-sm shadow-soft outline-none focus:ring-2 focus:ring-primary/25"
+                />
+              </form>
+              {actions}
+            </div>
           </div>
         </header>
-        <div className="page-fade flex-1 px-4 py-5 lg:px-8">{children}</div>
+        <div className="page-fade flex-1 px-3.5 py-4 sm:px-6 sm:py-5 lg:px-8">{children}</div>
       </main>
     </div>
   );
@@ -201,14 +215,20 @@ export function KpiCard({
   delta?: number | null;
 }) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-      <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
-      <p className="mt-1.5 text-xl font-extrabold tracking-tight tabular-nums">{value}</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
+    <div className="flex min-w-0 flex-col justify-between rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-card">
+      <div>
+        <p className="truncate text-[10px] sm:text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+          {label}
+        </p>
+        <p className="mt-1 truncate text-lg sm:text-xl font-black tracking-tight tabular-nums">
+          {value}
+        </p>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
         {delta !== undefined ? (
           <span
             className={cn(
-              "rounded-full px-1.5 py-0.5 font-bold",
+              "rounded-full px-1.5 py-0.5 font-bold text-[10px]",
               delta === null
                 ? "bg-muted text-muted-foreground"
                 : delta >= 0
@@ -219,7 +239,7 @@ export function KpiCard({
             {formatPct(delta ?? null)}
           </span>
         ) : null}
-        {hint ? <span className="text-muted-foreground">{hint}</span> : null}
+        {hint ? <span className="truncate text-muted-foreground text-[10px]">{hint}</span> : null}
       </div>
     </div>
   );

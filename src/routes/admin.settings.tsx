@@ -14,22 +14,24 @@ function AdminSettings() {
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Paystack</p>
           <p className="mt-1 text-muted-foreground">
-            Test mode is enforced in server code (<code>sk_test_</code> only). Secret keys are set on Netlify, never
-            in the browser. Do not paste keys here.
+            Test mode is enforced in server code (<code>sk_test_</code> only). Secret keys are set
+            on Netlify, never in the browser. Do not paste keys here.
           </p>
         </div>
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Staff access</p>
           <p className="mt-1 text-muted-foreground">
-            Roles live in <code>user_roles</code> (<code>super_admin</code>, <code>admin</code>, <code>support</code>
-            ). Assign via Supabase SQL. Support is view-oriented; admin/super_admin can suspend users.
+            Roles live in <code>user_roles</code> (<code>super_admin</code>, <code>admin</code>,{" "}
+            <code>support</code>
+            ). Assign via Supabase SQL. Support is view-oriented; admin/super_admin can suspend
+            users.
           </p>
         </div>
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Fees / revenue</p>
           <p className="mt-1 text-muted-foreground">
-            No fee ledger table exists yet, so Revenue KPI is 0. Add a fees table + migration before enabling revenue
-            reporting.
+            No fee ledger table exists yet, so Revenue KPI is 0. Add a fees table + migration before
+            enabling revenue reporting.
           </p>
         </div>
       </div>

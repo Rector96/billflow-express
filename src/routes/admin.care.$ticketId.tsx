@@ -38,7 +38,11 @@ function StaffTicket() {
   const { ticketId } = Route.useParams();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [customer, setCustomer] = useState<{ full_name: string | null; email: string | null; phone: string | null } | null>(null);
+  const [customer, setCustomer] = useState<{
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null>(null);
   const [body, setBody] = useState("");
   const [internal, setInternal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,7 +53,9 @@ function StaffTicket() {
     try {
       const { data: t, error } = await supabase
         .from("support_tickets")
-        .select("id, ticket_number, subject, status, category, description, user_id, transaction_id, created_at")
+        .select(
+          "id, ticket_number, subject, status, category, description, user_id, transaction_id, created_at",
+        )
         .eq("id", ticketId)
         .maybeSingle();
       if (error) throw error;
@@ -133,7 +139,10 @@ function StaffTicket() {
     return (
       <AdminShell title="Care ticket">
         <p className="text-sm text-muted-foreground">
-          Ticket not found. <Link to="/admin/care" className="font-bold text-primary">Back to queue</Link>
+          Ticket not found.{" "}
+          <Link to="/admin/care" className="font-bold text-primary">
+            Back to queue
+          </Link>
         </p>
       </AdminShell>
     );
@@ -197,7 +206,11 @@ function StaffTicket() {
                 disabled={sending || !body.trim()}
                 onClick={() => void reply()}
               >
-                {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-3.5" />}
+                {sending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-3.5" />
+                )}
                 {internal ? "Save note" : "Send reply"}
               </Button>
             </div>
@@ -206,7 +219,9 @@ function StaffTicket() {
 
         <aside className="space-y-3">
           <div className="rounded-xl border border-border/70 bg-card p-3">
-            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">Status</p>
+            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+              Status
+            </p>
             <span
               className={cn(
                 "mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold",
@@ -216,28 +231,34 @@ function StaffTicket() {
               {formatTicketStatus(ticket.status)}
             </span>
             <div className="mt-2 flex flex-wrap gap-1">
-              {(["open", "in_progress", "waiting_for_customer", "resolved", "closed"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => void setStatus(s)}
-                  className="h-7 rounded-lg border border-border/70 px-2 text-[10px] font-bold"
-                >
-                  {formatTicketStatus(s)}
-                </button>
-              ))}
+              {(["open", "in_progress", "waiting_for_customer", "resolved", "closed"] as const).map(
+                (s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => void setStatus(s)}
+                    className="h-7 rounded-lg border border-border/70 px-2 text-[10px] font-bold"
+                  >
+                    {formatTicketStatus(s)}
+                  </button>
+                ),
+              )}
             </div>
           </div>
 
           <div className="rounded-xl border border-border/70 bg-card p-3">
-            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">Customer</p>
+            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+              Customer
+            </p>
             <p className="mt-1 text-sm font-bold">{customer?.full_name || "—"}</p>
             <p className="text-xs text-muted-foreground">{customer?.email || "—"}</p>
             <p className="text-xs text-muted-foreground">{customer?.phone || "—"}</p>
           </div>
 
           <div className="rounded-xl border border-border/70 bg-card p-3">
-            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">Ticket</p>
+            <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+              Ticket
+            </p>
             <p className="mt-1 text-xs font-mono">{ticket.ticket_number}</p>
             <p className="text-xs text-muted-foreground">{ticket.category}</p>
             {ticket.transaction_id ? (

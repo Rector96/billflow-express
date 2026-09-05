@@ -33,7 +33,9 @@ function AdminActivity() {
       const [tx, profiles] = await Promise.all([
         supabase
           .from("wallet_transactions")
-          .select("id, reference, amount, status, type, description, created_at, user_id, provider_reference, metadata")
+          .select(
+            "id, reference, amount, status, type, description, created_at, user_id, provider_reference, metadata",
+          )
           .order("created_at", { ascending: false })
           .limit(80),
         supabase
@@ -49,10 +51,17 @@ function AdminActivity() {
       for (const t of tx.data ?? []) {
         const p = pmap.get(t.user_id);
         const st: TxStatus =
-          t.status === "successful" || t.status === "pending" || t.status === "failed" ? t.status : "pending";
+          t.status === "successful" || t.status === "pending" || t.status === "failed"
+            ? t.status
+            : "pending";
         out.push({
           id: t.id,
-          kind: t.type === "deposit" ? "Wallet funded" : t.type === "bill_payment" ? "Wallet debit" : t.type,
+          kind:
+            t.type === "deposit"
+              ? "Wallet funded"
+              : t.type === "bill_payment"
+                ? "Wallet debit"
+                : t.type,
           user: p?.full_name || p?.email || t.user_id.slice(0, 8),
           detail: t.description || String((t.metadata as Record<string, unknown>)?.["title"] ?? ""),
           amount: n(t.amount),
@@ -86,8 +95,8 @@ function AdminActivity() {
   return (
     <AdminShell title="Activity" subtitle="Recent platform events from the database">
       <p className="mb-4 text-xs text-muted-foreground">
-        Login events are not stored in-app yet (Supabase Auth only). Shown: registrations and wallet ledger
-        activity.
+        Login events are not stored in-app yet (Supabase Auth only). Shown: registrations and wallet
+        ledger activity.
       </p>
       {loading ? (
         <AdminLoading />
@@ -102,11 +111,17 @@ function AdminActivity() {
                   <p className="font-bold">{i.kind}</p>
                   <p className="text-xs text-muted-foreground">{i.user}</p>
                   {i.detail ? <p className="text-xs">{i.detail}</p> : null}
-                  {i.reference ? <p className="font-mono text-[11px] text-muted-foreground">{i.reference}</p> : null}
-                  <p className="text-[11px] text-muted-foreground">{new Date(i.at).toLocaleString("en-NG")}</p>
+                  {i.reference ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">{i.reference}</p>
+                  ) : null}
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(i.at).toLocaleString("en-NG")}
+                  </p>
                 </div>
                 <div className="text-right">
-                  {i.amount != null ? <p className="font-extrabold">{formatNaira(i.amount, false)}</p> : null}
+                  {i.amount != null ? (
+                    <p className="font-extrabold">{formatNaira(i.amount, false)}</p>
+                  ) : null}
                   {i.status ? <StatusBadge status={i.status} /> : null}
                 </div>
               </div>

@@ -51,7 +51,10 @@ function SavedPaymentsPage() {
         {saved.map((item) => {
           const svc = getService(item.serviceSlug)!;
           return (
-            <div key={item.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-card">
+            <div
+              key={item.id}
+              className="flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-card"
+            >
               <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", svc.tint)}>
                 <svc.icon className="size-5" />
               </span>
@@ -67,7 +70,9 @@ function SavedPaymentsPage() {
                 onClick={() => {
                   void removeSaved(item.id)
                     .then(() => toast.success("Saved payment removed"))
-                    .catch((err) => toast.error(friendlyError(err, "Couldn't remove that payment.")));
+                    .catch((err) =>
+                      toast.error(friendlyError(err, "Couldn't remove that payment.")),
+                    );
                 }}
                 className="press grid size-9 place-items-center rounded-lg text-muted-foreground"
               >
@@ -102,7 +107,13 @@ function SavedPaymentsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="label">Nickname</Label>
-                <Input id="label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Home Electricity" className="h-12 rounded-xl" />
+                <Input
+                  id="label"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="e.g. Home Electricity"
+                  className="h-12 rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Service</Label>
@@ -145,7 +156,13 @@ function SavedPaymentsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ident">{service.identifierLabel}</Label>
-                <Input id="ident" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder={service.identifierPlaceholder} className="h-12 rounded-xl" />
+                <Input
+                  id="ident"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={service.identifierPlaceholder}
+                  className="h-12 rounded-xl"
+                />
               </div>
             </div>
             <DialogFooter>

@@ -106,7 +106,9 @@ function AdminUsers() {
             onClick={() => setStatus(s)}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-bold capitalize",
-              status === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              status === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {s}

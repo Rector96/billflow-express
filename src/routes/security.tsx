@@ -28,17 +28,16 @@ import {
 } from "@/components/ui/dialog";
 import { friendlyError, useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
-import {
-  changeTransactionPin,
-  hasTransactionPin,
-  setTransactionPin,
-} from "@/lib/pin.functions";
+import { changeTransactionPin, hasTransactionPin, setTransactionPin } from "@/lib/pin.functions";
 
 export const Route = createFileRoute("/security")({
   head: () => ({
     meta: [
       { title: `Security — ${BRAND.name}` },
-      { name: "description", content: "Passwords, transaction PIN, biometrics and login sessions." },
+      {
+        name: "description",
+        content: "Passwords, transaction PIN, biometrics and login sessions.",
+      },
       { property: "og:title", content: `Security — ${BRAND.name}` },
       { property: "og:description", content: "Keep your wallet locked down." },
     ],
@@ -129,14 +128,9 @@ function SecurityPage() {
     }
   };
 
-  const padValue =
-    step === "current" ? currentPin : step === "new" ? newPin : confirmPin;
+  const padValue = step === "current" ? currentPin : step === "new" ? newPin : confirmPin;
   const onPadChange =
-    step === "current"
-      ? setCurrentPin
-      : step === "new"
-        ? setNewPin
-        : setConfirmPin;
+    step === "current" ? setCurrentPin : step === "new" ? setNewPin : setConfirmPin;
   const padTitle =
     step === "current"
       ? "Enter current PIN"

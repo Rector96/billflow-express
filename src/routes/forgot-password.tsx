@@ -83,14 +83,32 @@ function ForgotPassword() {
         >
           <div className="space-y-2">
             <Label htmlFor="pw">New Password</Label>
-            <Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} className="h-13 rounded-xl bg-card" placeholder="Enter new password" />
+            <Input
+              id="pw"
+              type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              className="h-13 rounded-xl bg-card"
+              placeholder="Enter new password"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="cpw">Confirm Password</Label>
-            <Input id="cpw" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="h-13 rounded-xl bg-card" placeholder="Repeat new password" />
+            <Input
+              id="cpw"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="h-13 rounded-xl bg-card"
+              placeholder="Repeat new password"
+            />
           </div>
           {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-          <Button type="submit" disabled={loading} className="h-13 w-full rounded-2xl text-base font-bold">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-13 w-full rounded-2xl text-base font-bold"
+          >
             {loading ? "Saving…" : "Reset Password"}
           </Button>
         </form>
@@ -134,7 +152,11 @@ function ForgotPassword() {
           />
         </div>
         {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-        <Button type="submit" disabled={loading} className="h-13 w-full rounded-2xl text-base font-bold">
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-13 w-full rounded-2xl text-base font-bold"
+        >
           {loading ? "Sending…" : "Send Reset Link"}
         </Button>
       </form>

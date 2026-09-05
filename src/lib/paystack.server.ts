@@ -17,12 +17,12 @@ export function getPaystackSecret(): string {
     );
   }
   if (key.startsWith("sk_live_")) {
-    throw new Error("Live Paystack keys are not allowed — this build is test mode only. Use sk_test_...");
+    throw new Error(
+      "Live Paystack keys are not allowed — this build is test mode only. Use sk_test_...",
+    );
   }
   if (!key.startsWith("sk_test_")) {
-    throw new Error(
-      "Invalid Paystack secret key. Expected a test key starting with sk_test_...",
-    );
+    throw new Error("Invalid Paystack secret key. Expected a test key starting with sk_test_...");
   }
   return key;
 }
@@ -42,9 +42,11 @@ export async function paystackVerify(reference: string): Promise<PaystackVerifyD
   const res = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${getPaystackSecret()}` },
   });
-  const json = (await res.json().catch(() => null)) as
-    | { status?: boolean; data?: PaystackVerifyData; message?: string }
-    | null;
+  const json = (await res.json().catch(() => null)) as {
+    status?: boolean;
+    data?: PaystackVerifyData;
+    message?: string;
+  } | null;
   if (!res.ok || !json?.status || !json.data) {
     console.error("[paystack] verify failed", reference, res.status, json?.message ?? json);
     return null;
@@ -96,7 +98,11 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   const gatewayStatus = String(data.status ?? "").toLowerCase();
 
   if (gatewayStatus === "success") {
-    if (data.currency !== "NGN" || Number(data.amount) !== expectedSubunits || data.reference !== reference) {
+    if (
+      data.currency !== "NGN" ||
+      Number(data.amount) !== expectedSubunits ||
+      data.reference !== reference
+    ) {
       const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
         _reference: reference,
         _status: "failed",
@@ -126,7 +132,8 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     };
   }
 
-  const nextStatus = gatewayStatus === "failed" || gatewayStatus === "abandoned" ? "failed" : "pending";
+  const nextStatus =
+    gatewayStatus === "failed" || gatewayStatus === "abandoned" ? "failed" : "pending";
   const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
     _reference: reference,
     _status: nextStatus,

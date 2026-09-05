@@ -42,7 +42,12 @@ export function CareContextLink({
         : { title: "Need help with this?", cta: "Get help" };
 
   return (
-    <div className={cn("flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5",
+        className,
+      )}
+    >
       <p className="text-xs font-bold">{copy.title}</p>
       <Button asChild size="sm" variant="outline" className="h-8 rounded-lg text-xs font-bold">
         <Link to="/support" search={reference ? { reference } : {}}>

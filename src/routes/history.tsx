@@ -82,7 +82,8 @@ function inDateRange(tx: Transaction, key: DateKey): boolean {
   if (key === "today") return ts >= today0;
   if (key === "yesterday") return ts >= today0 - 86_400_000 && ts < today0;
   if (key === "7d") return ts >= today0 - 6 * 86_400_000;
-  if (key === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  if (key === "month")
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   if (key === "last_month") {
     const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear();
@@ -104,10 +105,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "press h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold transition-colors",
+        "press h-7.5 shrink-0 rounded-full px-3 text-xs font-medium transition-colors",
         active
-          ? "bg-primary text-primary-foreground shadow-soft"
-          : "bg-card text-muted-foreground ring-1 ring-border/70 hover:bg-muted/60",
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-card text-muted-foreground border border-border/80 hover:bg-secondary",
       )}
     >
       {children}
@@ -130,7 +131,8 @@ function HistoryPage() {
       if (category !== "all" && categoryOf(t) !== category) return false;
       if (!inDateRange(t, dateKey)) return false;
       if (needle) {
-        const hay = `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""}`.toLowerCase();
+        const hay =
+          `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
@@ -141,20 +143,20 @@ function HistoryPage() {
 
   return (
     <AppShell>
-      <PageHeader title="History" backTo="/home" />
+      <PageHeader title="Transaction History" backTo="/home" />
       <div className="space-y-3 px-4 pt-1 pb-6">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search transactions"
+            placeholder="Search by name, reference or amount..."
             aria-label="Search transactions"
-            className="h-10 rounded-2xl border-border/50 bg-card pl-10 text-sm shadow-soft"
+            className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
-        {/* All | Successful | Pending | Failed — primary, always visible */}
+        {/* All | Successful | Pending | Failed */}
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS.map((t) => (
@@ -169,10 +171,10 @@ function HistoryPage() {
             aria-expanded={moreOpen}
             aria-label="More filters"
             className={cn(
-              "press grid size-8 shrink-0 place-items-center rounded-full border",
+              "press grid size-7.5 shrink-0 place-items-center rounded-full border transition-colors",
               moreOpen || extraActive
                 ? "border-primary bg-primary-soft text-primary"
-                : "border-border/70 bg-card text-muted-foreground",
+                : "border-border/80 bg-card text-muted-foreground hover:bg-secondary",
             )}
           >
             <SlidersHorizontal className="size-3.5" />
@@ -180,9 +182,9 @@ function HistoryPage() {
         </div>
 
         {moreOpen ? (
-          <div className="space-y-2.5 rounded-2xl border border-border/50 bg-card p-3 shadow-soft">
+          <div className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
             <div>
-              <p className="mb-1.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+              <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Service
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -194,7 +196,7 @@ function HistoryPage() {
               </div>
             </div>
             <div>
-              <p className="mb-1.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+              <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Date
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -208,13 +210,13 @@ function HistoryPage() {
             {extraActive ? (
               <button
                 type="button"
-                className="text-xs font-bold text-primary"
+                className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
                 onClick={() => {
                   setCategory("all");
                   setDateKey("all");
                 }}
               >
-                Clear service & date filters
+                Reset filters
               </button>
             ) : null}
           </div>
@@ -230,7 +232,7 @@ function HistoryPage() {
           <EmptyState
             Icon={ReceiptText}
             title="No matching transactions"
-            body="Try another status or open filters for service and date."
+            body="Try another search term or filter status."
           />
         )}
       </div>

@@ -82,7 +82,9 @@ function AdminTransactions() {
     balance_after: number;
     amount: number;
   } | null>(null);
-  const [careTicket, setCareTicket] = useState<{ id: string; ticket_number: string | null } | null>(null);
+  const [careTicket, setCareTicket] = useState<{ id: string; ticket_number: string | null } | null>(
+    null,
+  );
   const [requerying, setRequerying] = useState(false);
 
   const dateFrom = (): string | null => {
@@ -117,8 +119,10 @@ function AdminTransactions() {
       if (service === "airtime") query = query.eq("service", "Airtime");
       if (service === "data") query = query.ilike("service", "%data%");
       if (service === "electricity") query = query.ilike("service", "%electric%");
-      if (service === "cable") query = query.or("service.ilike.%cable%,service.ilike.%dstv%,service.ilike.%gotv%");
-      if (channel === "vtpass") query = query.or("provider_channel.eq.vtpass,metadata->>channel.eq.vtpass,product.eq.VTU");
+      if (service === "cable")
+        query = query.or("service.ilike.%cable%,service.ilike.%dstv%,service.ilike.%gotv%");
+      if (channel === "vtpass")
+        query = query.or("provider_channel.eq.vtpass,metadata->>channel.eq.vtpass,product.eq.VTU");
       if (channel === "paystack") query = query.eq("provider_channel", "paystack");
 
       const from = dateFrom();
@@ -151,8 +155,18 @@ function AdminTransactions() {
 
       const ids = [...new Set((data ?? []).map((t) => t.user_id))];
       const { data: profiles } = ids.length
-        ? await supabase.from("profiles").select("user_id, full_name, email, phone").in("user_id", ids)
-        : { data: [] as { user_id: string; full_name: string | null; email: string | null; phone: string | null }[] };
+        ? await supabase
+            .from("profiles")
+            .select("user_id, full_name, email, phone")
+            .in("user_id", ids)
+        : {
+            data: [] as {
+              user_id: string;
+              full_name: string | null;
+              email: string | null;
+              phone: string | null;
+            }[],
+          };
       const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
 
       // Client-side name/email filter when term looks like a person search
@@ -300,7 +314,9 @@ function AdminTransactions() {
             }}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-bold capitalize",
-              status === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              status === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {s}
@@ -316,7 +332,9 @@ function AdminTransactions() {
             }}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-bold capitalize",
-              channel === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              channel === p
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {p}
@@ -332,7 +350,9 @@ function AdminTransactions() {
             }}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-bold capitalize",
-              service === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              service === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {s}
@@ -348,13 +368,18 @@ function AdminTransactions() {
             }}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-bold capitalize",
-              dateKey === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+              dateKey === d
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
             {d === "7d" ? "7 days" : d}
           </button>
         ))}
-        <Link to="/admin/reconciliation" className="rounded-full border px-3 py-1 text-xs font-bold">
+        <Link
+          to="/admin/reconciliation"
+          className="rounded-full border px-3 py-1 text-xs font-bold"
+        >
           Reconciliation queue
         </Link>
       </div>
@@ -378,7 +403,9 @@ function AdminTransactions() {
                     {t.service} · {t.provider}
                   </p>
                   <p className="text-xs text-muted-foreground">{t.user_label}</p>
-                  <p className="font-mono text-[11px] text-muted-foreground">{t.internal_reference}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">
+                    {t.internal_reference}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     {t.provider_channel || "—"} · {new Date(t.created_at).toLocaleString("en-NG")}
                     {t.status === "pending" ? ` · ${formatPendingDuration(t.created_at)}` : ""}
@@ -418,14 +445,25 @@ function AdminTransactions() {
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/40" role="dialog">
-          <button type="button" className="absolute inset-0" aria-label="Close" onClick={() => setSelected(null)} />
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="Close"
+            onClick={() => setSelected(null)}
+          />
           <div className="relative z-10 flex h-full w-full max-w-md flex-col overflow-y-auto border-l bg-background shadow-float">
             <div className="sticky top-0 flex items-center justify-between border-b bg-background px-4 py-3">
               <div>
                 <p className="text-sm font-extrabold">Investigation</p>
-                <p className="font-mono text-[10px] text-muted-foreground">{selected.internal_reference}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  {selected.internal_reference}
+                </p>
               </div>
-              <button type="button" className="grid size-9 place-items-center rounded-xl border" onClick={() => setSelected(null)}>
+              <button
+                type="button"
+                className="grid size-9 place-items-center rounded-xl border"
+                onClick={() => setSelected(null)}
+              >
                 <X className="size-4" />
               </button>
             </div>
@@ -435,7 +473,11 @@ function AdminTransactions() {
                 <StatusBadge status={st(selected.status)} />
                 <span className="text-xs font-bold">
                   {reconcileLabel(
-                    reconcileVerdict(selected.status, selected.provider_status, selected.provider_response_code),
+                    reconcileVerdict(
+                      selected.status,
+                      selected.provider_status,
+                      selected.provider_response_code,
+                    ),
                   )}
                 </span>
               </div>
@@ -443,8 +485,12 @@ function AdminTransactions() {
               <section className="space-y-1 rounded-xl border p-3">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Customer</p>
                 <p className="font-bold">{selected.user_label}</p>
-                {selected.user_email ? <p className="text-xs text-muted-foreground">{selected.user_email}</p> : null}
-                {selected.user_phone ? <p className="text-xs text-muted-foreground">{selected.user_phone}</p> : null}
+                {selected.user_email ? (
+                  <p className="text-xs text-muted-foreground">{selected.user_email}</p>
+                ) : null}
+                {selected.user_phone ? (
+                  <p className="text-xs text-muted-foreground">{selected.user_phone}</p>
+                ) : null}
                 <Link
                   to="/admin/users/$userId"
                   params={{ userId: selected.user_id }}
@@ -462,9 +508,24 @@ function AdminTransactions() {
                 <Row k="Amount" v={formatNaira(selected.amount, false)} />
                 <Row k="Customer id" v={selected.customer_identifier} />
                 <CopyRow k="RockPay ref" v={selected.internal_reference} onCopy={copy} />
-                <Row k="Provider" v={selected.provider_channel === "vtpass" ? "VTpass" : selected.provider_channel || "—"} />
-                <CopyRow k="VTpass request ID" v={selected.provider_request_id || "—"} onCopy={copy} />
-                <CopyRow k="VTpass transaction ID" v={selected.provider_transaction_id || "—"} onCopy={copy} />
+                <Row
+                  k="Provider"
+                  v={
+                    selected.provider_channel === "vtpass"
+                      ? "VTpass"
+                      : selected.provider_channel || "—"
+                  }
+                />
+                <CopyRow
+                  k="VTpass request ID"
+                  v={selected.provider_request_id || "—"}
+                  onCopy={copy}
+                />
+                <CopyRow
+                  k="VTpass transaction ID"
+                  v={selected.provider_transaction_id || "—"}
+                  onCopy={copy}
+                />
                 <Row k="Created" v={new Date(selected.created_at).toLocaleString("en-NG")} />
                 <Row k="Updated" v={new Date(selected.updated_at).toLocaleString("en-NG")} />
               </section>
@@ -479,7 +540,9 @@ function AdminTransactions() {
               ) : null}
 
               <section className="space-y-1 rounded-xl border p-3">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Provider status</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Provider status
+                </p>
                 <Row k="Status" v={selected.provider_status || "—"} />
                 <Row k="Code" v={selected.provider_response_code || "—"} />
                 <Row k="Message" v={selected.provider_response_message || "—"} />
@@ -495,7 +558,12 @@ function AdminTransactions() {
                   providerStatus: selected.provider_status,
                 }).map((step) => (
                   <div key={step.key} className="flex gap-2 text-xs">
-                    <span className={cn("mt-1 size-2 shrink-0 rounded-full", step.done ? "bg-primary" : "bg-muted")} />
+                    <span
+                      className={cn(
+                        "mt-1 size-2 shrink-0 rounded-full",
+                        step.done ? "bg-primary" : "bg-muted",
+                      )}
+                    />
                     <div>
                       <p className="font-semibold">{step.label}</p>
                       {step.at ? (
@@ -512,9 +580,18 @@ function AdminTransactions() {
               </section>
 
               <div className="space-y-2">
-                {(selected.product === "VTU" || selected.service === "Airtime") && selected.provider_request_id ? (
-                  <Button className="h-11 w-full rounded-xl font-bold" disabled={requerying} onClick={() => void runRequery()}>
-                    {requerying ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                {(selected.product === "VTU" || selected.service === "Airtime") &&
+                selected.provider_request_id ? (
+                  <Button
+                    className="h-11 w-full rounded-xl font-bold"
+                    disabled={requerying}
+                    onClick={() => void runRequery()}
+                  >
+                    {requerying ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-4" />
+                    )}
                     Requery Provider
                   </Button>
                 ) : null}
