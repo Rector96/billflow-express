@@ -382,17 +382,28 @@ export function PayFlow() {
       <AppShell>
         <div className="mx-auto max-w-md space-y-4 px-4 py-10 text-center">
           <h1 className="text-xl font-extrabold">
-            {outcome === "successful" ? "Successful" : outcome === "failed" ? "Failed" : "Pending"}
+            {outcome === "successful" ? "Payment successful" : outcome === "failed" ? "Payment failed" : "Payment processing"}
           </h1>
           <p className="text-sm text-muted-foreground">{resultMessage}</p>
           {token ? <p className="break-all font-mono text-lg font-bold">{token}</p> : null}
           {txId ? <p className="font-mono text-xs">{txId}</p> : null}
-          <Button
-            className="h-11 w-full rounded-xl font-bold"
-            onClick={() => navigate({ to: "/home" })}
-          >
-            Home
-          </Button>
+          <div className="space-y-2 pt-2">
+            {txId ? (
+              <Button
+                className="h-12 w-full rounded-xl font-bold"
+                onClick={() => navigate({ to: "/history/$txId", params: { txId } })}
+              >
+                View receipt
+              </Button>
+            ) : null}
+            <Button
+              variant={txId ? "outline" : "default"}
+              className="h-12 w-full rounded-xl font-bold"
+              onClick={() => navigate({ to: "/home" })}
+            >
+              Home
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
@@ -490,7 +501,10 @@ export function PayFlow() {
                 selectedCode={variation?.variationCode}
                 networkLabel={provider || serviceID}
                 phoneLabel={identifier}
-                onSelect={(v) => setVariation(v)}
+                onSelect={(v) => {
+                  setVariation(v);
+                  scrollIntoAction("pay-action");
+                }
               />
             ) : (
               <div className="space-y-2">

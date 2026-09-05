@@ -428,20 +428,25 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
 
 /** Map VTpass response → RockPay outcome (never trust the browser). */
 export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "failed" | "pending" {
-  if (result.code === "TIMEOUT" || result.code === "") return "pending";
-  if (result.code === "099") return "pending";
-  if (FAIL_CODES.has(result.code)) return "failed";
-
+  const code = String(result.code ?? "").trim();
   const s = (result.contentStatus ?? "").toLowerCase().trim();
   const desc = (result.responseDescription ?? "").toLowerCase().trim();
   const blob = `${s} ${desc}`;
+
+  if (code === "TIMEOUT" || code === "" || code === "099") return "pending";
+  if (FAIL_CODES.has(code)) return "failed";
 
   if (
     s === "failed" ||
     s === "reversed" ||
     s === "refunded" ||
+    s === "cancelled" ||
+    s === "canceled" ||
     blob.includes("transaction failed") ||
-    blob.includes("purchase failed")
+    blob.includes("purchase failed") ||
+    blob.includes("insufficient") ||
+    blob.includes("invalid") ||
+    blob.includes("not successful")
   ) {
     return "failed";
   }
@@ -451,14 +456,16 @@ export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "faile
     s === "successful" ||
     s === "success" ||
     s === "completed" ||
+    s === "complete" ||
     s.includes("deliver") ||
     (blob.includes("success") && !blob.includes("unsuccess"));
 
-  if (result.code === "000") {
+  if (code === "000" || code === "00" || code === "0") {
     if (successHint) return "successful";
     if (result.purchasedCode && String(result.purchasedCode).trim()) return "successful";
     return "pending";
   }
 
-  return "pending";
+  // Unknown non-success codes are failures (do not stay pending forever)
+  return "failed";
 }
