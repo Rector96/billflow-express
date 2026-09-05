@@ -7,6 +7,7 @@ import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { SERVICES } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
+import { isServiceVisible } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -14,8 +15,7 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${BRAND.name}` },
       {
         name: "description",
-        content:
-          "Electricity, cable TV, education, airtime, data, internet, water, insurance and exam pins.",
+        content: "Electricity, cable TV, education and everyday utility payments.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
       { property: "og:description", content: "All your everyday payments in one place." },
@@ -26,7 +26,9 @@ export const Route = createFileRoute("/services")({
 
 function ServicesPage() {
   const [query, setQuery] = useState("");
-  const list = SERVICES.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const list = SERVICES.filter(
+    (s) => isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   return (
     <AppShell>
@@ -68,7 +70,7 @@ function ServicesPage() {
           <EmptyState
             Icon={SearchX}
             title="No service found"
-            body="Try a different keyword, like electricity, data or DSTV."
+            body="Try a different keyword, like electricity or DSTV."
           />
         )}
 
