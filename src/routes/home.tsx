@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Bell, ChevronRight, HeartHandshake } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
+import { HomePromos } from "@/components/app/home-promos";
 import { BuyAgainRail } from "@/components/app/buy-again-rail";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,8 @@ function HomePage() {
 
       <div className="space-y-4 px-4 pt-1 pb-6">
         <WalletCard />
+
+          <HomePromos className="mt-3" />
 
         {/* Services in modern rounded surface */}
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
