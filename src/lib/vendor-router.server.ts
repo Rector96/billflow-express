@@ -1,6 +1,6 @@
 /**
  * Multi-vendor bill routing: VTpass primary → VTUAfrica fallback.
- * Use when VTpass is down, product not whitelisted, or definitive provider failure.
+ * Never throws if at least one vendor returns a structured result.
  */
 import {
   mapVtpassOutcome,
@@ -17,41 +17,53 @@ import {
 export type RoutedPayResult = {
   vendor: "vtpass" | "vtuafrica";
   status: "successful" | "pending" | "failed";
-  /** Unified fields for settlement */
   code: string;
   responseDescription: string;
   requestId: string;
   transactionId: string | null;
   purchasedCode: string | null;
+  contentStatus: string | null;
   totalAmount: number | null;
   commission: number | null;
   raw: unknown;
   fallbackUsed: boolean;
 };
 
-/** VTpass outcomes that are worth trying the secondary vendor */
+/** Shape expected by settleBillPurchase / existing callers */
+export function toVtpassShape(r: RoutedPayResult): VtpassPayResult {
+  return {
+    code: r.code,
+    responseDescription: r.responseDescription,
+    requestId: r.requestId,
+    transactionId: r.transactionId,
+    contentStatus: r.contentStatus ?? r.status,
+    purchasedCode: r.purchasedCode,
+    totalAmount: r.totalAmount,
+    commission: r.commission,
+    raw: r.raw,
+  };
+}
+
 const FAILOVER_CODES = new Set([
-  "016",
-  "018", // low wallet at primary
-  "030", // biller unreachable
-  "034", // service suspended
-  "035", // inactive
-  "083",
-  "087",
-  "091",
-  "010",
-  "012", // product missing / not enabled
+  "016", "018", "030", "034", "035", "083", "087", "091", "010", "012", "011", "099",
 ]);
 
 function shouldFailoverVtpass(result: VtpassPayResult): boolean {
   const code = String(result.code ?? "").trim();
   if (FAILOVER_CODES.has(code)) return true;
   const msg = (result.responseDescription ?? "").toUpperCase();
-  if (msg.includes("WHITELIST") || msg.includes("NOT ENABLED") || msg.includes("UNAVAILABLE")) {
+  if (
+    msg.includes("WHITELIST") ||
+    msg.includes("NOT ENABLED") ||
+    msg.includes("UNAVAILABLE") ||
+    msg.includes("TIMEOUT") ||
+    msg.includes("UNREACHABLE") ||
+    msg.includes("SUSPENDED") ||
+    msg.includes("INACTIVE")
+  ) {
     return true;
   }
-  if (msg.includes("TIMEOUT") || msg.includes("UNREACHABLE")) return true;
-  return mapVtpassOutcome(result) === "failed" && FAILOVER_CODES.has(code);
+  return mapVtpassOutcome(result) === "failed";
 }
 
 function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayResult {
@@ -63,6 +75,7 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
     requestId: result.requestId,
     transactionId: result.transactionId,
     purchasedCode: result.purchasedCode,
+    contentStatus: result.contentStatus,
     totalAmount: result.totalAmount,
     commission: result.commission,
     raw: result.raw,
@@ -74,16 +87,28 @@ function fromVtuafrica(result: VtuafricaPayResult, requestId: string): RoutedPay
   return {
     vendor: "vtuafrica",
     status: result.ok ? "successful" : "failed",
-    code: result.code,
+    code: result.code || (result.ok ? "000" : "016"),
     responseDescription: result.message,
     requestId,
     transactionId: result.transactionId,
     purchasedCode: result.token,
+    contentStatus: result.ok ? "delivered" : "failed",
     totalAmount: null,
     commission: null,
     raw: result.raw,
     fallbackUsed: true,
   };
+}
+
+async function tryVtpass(body: Record<string, unknown>): Promise<VtpassPayResult | null> {
+  try {
+    const { getVtpassConfig } = await import("./vtpass.server");
+    getVtpassConfig();
+    return await vtpassPay(body);
+  } catch (e) {
+    console.error("[vendor-router] VTpass call failed", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 export async function routeElectricityPay(input: {
@@ -94,17 +119,17 @@ export async function routeElectricityPay(input: {
   amount: number;
   phone: string;
 }): Promise<RoutedPayResult> {
-  let primary: VtpassPayResult | null = null;
-  try {
-    primary = await vtpassPay({
-      request_id: input.request_id,
-      serviceID: input.serviceID,
-      billersCode: input.billersCode,
-      variation_code: input.meterType,
-      type: input.meterType,
-      amount: input.amount,
-      phone: input.phone,
-    });
+  const primary = await tryVtpass({
+    request_id: input.request_id,
+    serviceID: input.serviceID,
+    billersCode: input.billersCode,
+    variation_code: input.meterType,
+    type: input.meterType,
+    amount: input.amount,
+    phone: input.phone,
+  });
+
+  if (primary) {
     const outcome = mapVtpassOutcome(primary);
     if (outcome === "successful" || outcome === "pending") {
       return fromVtpass(primary, false);
@@ -112,13 +137,13 @@ export async function routeElectricityPay(input: {
     if (!shouldFailoverVtpass(primary) || !isVtuafricaConfigured()) {
       return fromVtpass(primary, false);
     }
-  } catch (e) {
-    console.error("[vendor-router] VTpass electricity error", e);
-    if (!isVtuafricaConfigured()) throw e;
+  } else if (!isVtuafricaConfigured()) {
+    throw new Error(
+      "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
+    );
   }
 
-  // Fallback VTUAfrica (new ref suffix so vendor sees unique id)
-  const ref = `${input.request_id}-va`.slice(0, 40);
+  const ref = `${input.request_id}-va`.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
   try {
     const secondary = await vtuafricaPayElectricity({
       serviceID: input.serviceID,
@@ -131,7 +156,9 @@ export async function routeElectricityPay(input: {
   } catch (e) {
     console.error("[vendor-router] VTUAfrica electricity error", e);
     if (primary) return fromVtpass(primary, true);
-    throw e;
+    throw new Error(
+      "Both bill providers failed. Please try again later or open Care with your details.",
+    );
   }
 }
 
@@ -144,17 +171,17 @@ export async function routeCablePay(input: {
   phone: string;
   subscription_type?: string;
 }): Promise<RoutedPayResult> {
-  let primary: VtpassPayResult | null = null;
-  try {
-    primary = await vtpassPay({
-      request_id: input.request_id,
-      serviceID: input.serviceID,
-      billersCode: input.billersCode,
-      variation_code: input.variation_code,
-      amount: input.amount,
-      phone: input.phone,
-      subscription_type: input.subscription_type,
-    });
+  const primary = await tryVtpass({
+    request_id: input.request_id,
+    serviceID: input.serviceID,
+    billersCode: input.billersCode,
+    variation_code: input.variation_code,
+    amount: input.amount,
+    phone: input.phone,
+    subscription_type: input.subscription_type,
+  });
+
+  if (primary) {
     const outcome = mapVtpassOutcome(primary);
     if (outcome === "successful" || outcome === "pending") {
       return fromVtpass(primary, false);
@@ -162,12 +189,13 @@ export async function routeCablePay(input: {
     if (!shouldFailoverVtpass(primary) || !isVtuafricaConfigured()) {
       return fromVtpass(primary, false);
     }
-  } catch (e) {
-    console.error("[vendor-router] VTpass cable error", e);
-    if (!isVtuafricaConfigured()) throw e;
+  } else if (!isVtuafricaConfigured()) {
+    throw new Error(
+      "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
+    );
   }
 
-  const ref = `${input.request_id}-va`.slice(0, 40);
+  const ref = `${input.request_id}-va`.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
   try {
     const secondary = await vtuafricaPayCable({
       serviceID: input.serviceID,
@@ -180,6 +208,8 @@ export async function routeCablePay(input: {
   } catch (e) {
     console.error("[vendor-router] VTUAfrica cable error", e);
     if (primary) return fromVtpass(primary, true);
-    throw e;
+    throw new Error(
+      "Both bill providers failed. Please try again later or open Care with your details.",
+    );
   }
 }
