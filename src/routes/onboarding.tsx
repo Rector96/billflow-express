@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Receipt, Wallet, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
+import { ONBOARDING_SLIDES } from "@/lib/marketing";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/app/app-shell";
 
@@ -19,29 +19,12 @@ export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
 });
 
-const SLIDES = [
-  {
-    icon: Receipt,
-    title: "Pay Your Bills Easily",
-    body: "Electricity, cable TV, education and more — all in one place.",
-  },
-  {
-    icon: Wallet,
-    title: "One Wallet. Everything You Need.",
-    body: "Fund your wallet once and use it whenever you need to pay.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Fast & Secure",
-    body: "Your payments and transactions are safely recorded.",
-  },
-];
-
 function Onboarding() {
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
   const { completeOnboarding } = useApp();
-  const slide = SLIDES[index]!;
+  const slides = ONBOARDING_SLIDES;
+  const slide = slides[index]!;
 
   const finish = () => {
     completeOnboarding();
@@ -49,10 +32,10 @@ function Onboarding() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-background px-5 pb-8 pt-6">
       <div className="flex items-center justify-between gap-3">
-        <BrandLogo className="h-[clamp(2.75rem,12vw,4rem)]" />
-        {index < SLIDES.length - 1 ? (
+        <BrandLogo className="h-[clamp(2.5rem,11vw,3.75rem)]" />
+        {index < slides.length - 1 ? (
           <button
             type="button"
             onClick={finish}
@@ -63,26 +46,34 @@ function Onboarding() {
         ) : null}
       </div>
 
-      <div
-        key={index}
-        className="animate-in fade-in slide-in-from-right-4 flex flex-1 flex-col items-center justify-center gap-6 text-center duration-300"
-      >
-        <span className="brand-gradient grid size-28 place-items-center rounded-[2rem] text-primary-foreground shadow-float">
-          <slide.icon className="size-12" />
-        </span>
-        <div className="space-y-3">
-          <h1 className="text-2xl font-extrabold tracking-tight">{slide.title}</h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">{slide.body}</p>
+      <div key={slide.title} className="page-fade flex flex-1 flex-col justify-center gap-6 py-6">
+        <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card">
+          <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+            <img
+              src={slide.image}
+              alt={slide.imageAlt}
+              className="size-full object-cover"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+          <div className="space-y-2 px-5 py-5 text-center">
+            <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{slide.title}</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">{slide.body}</p>
+          </div>
         </div>
       </div>
 
-      <div className="mb-6 flex justify-center gap-2">
-        {SLIDES.map((s, i) => (
-          <span
+      <div className="mb-5 flex justify-center gap-2">
+        {slides.map((s, i) => (
+          <button
             key={s.title}
+            type="button"
+            aria-label={`Go to slide ${i + 1}`}
+            onClick={() => setIndex(i)}
             className={cn(
               "h-1.5 rounded-full transition-all",
-              i === index ? "w-6 bg-primary" : "w-1.5 bg-border",
+              i === index ? "w-7 bg-primary" : "w-1.5 bg-border",
             )}
           />
         ))}
@@ -91,9 +82,9 @@ function Onboarding() {
       <Button
         size="lg"
         className="h-13 w-full rounded-2xl text-base font-bold"
-        onClick={() => (index === SLIDES.length - 1 ? finish() : setIndex(index + 1))}
+        onClick={() => (index === slides.length - 1 ? finish() : setIndex(index + 1))}
       >
-        {index === SLIDES.length - 1 ? "Get Started" : "Next"}
+        {index === slides.length - 1 ? "Get Started" : "Next"}
       </Button>
       <button
         type="button"
