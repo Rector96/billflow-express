@@ -17,8 +17,6 @@ export const Route = createFileRoute("/signup")({
         name: "description",
         content: `Open a free ${BRAND.name} account and pay Nigerian bills from one wallet.`,
       },
-      { property: "og:title", content: `Create your account — ${BRAND.name}` },
-      { property: "og:description", content: "It takes less than a minute to get started." },
     ],
   }),
   component: SignupPage,
@@ -36,7 +34,7 @@ function SignupPage() {
     confirm: "",
   });
   const [agree, setAgree] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "agree", string>>>({{}});
+  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "agree", string>>>({});
   const [loading, setLoading] = useState(false);
 
   const set = (k: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -91,8 +89,14 @@ function SignupPage() {
           <Checkbox id="agree" checked={agree} onCheckedChange={(v) => setAgree(v === true)} className="mt-0.5" />
           <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-muted-foreground">
             I agree to the{" "}
-            <Link to="/terms" className="font-bold text-primary">Terms</Link> and{" "}
-            <Link to="/privacy" className="font-bold text-primary">Privacy Policy</Link>.
+            <Link to="/terms" className="font-bold text-primary">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="font-bold text-primary">
+              Privacy Policy
+            </Link>
+            .
           </Label>
         </div>
         {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
@@ -101,7 +105,9 @@ function SignupPage() {
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="font-bold text-primary">Login</Link>
+          <Link to="/login" className="font-bold text-primary">
+            Login
+          </Link>
         </p>
       </form>
     </main>
