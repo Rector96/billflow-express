@@ -1,12 +1,13 @@
 /**
  * Product mode — ONE place to reverse.
  *
- * BILLS_FOCUS = true  → utility + education bills; airtime/data and non-bills hidden
- * DIRECT_PAY  = true  → electricity/cable: Paystack checkout (no wallet PIN debit)
+ * BILLS_FOCUS = false → full product (airtime, data, utility, education).
+ * BILLS_FOCUS = true  → utility + education only; airtime/data hidden.
+ * DIRECT_PAY  = true  → electricity/cable can use Paystack checkout path.
  *
  * Education & exam pins share the same student-friendly PIN purchase flow (VTpass).
  */
-export const BILLS_FOCUS = true;
+export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
 
 /** Home grid when bills-focused */
@@ -25,7 +26,14 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
 ]);
 
 /** Live bill services (not "coming soon") */
-export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "education", "exam-pins"]);
+export const LIVE_BILL_SLUGS = new Set([
+  "electricity",
+  "cable",
+  "education",
+  "exam-pins",
+  "airtime",
+  "data",
+]);
 
 export function homeServiceSlugs(): readonly string[] {
   return BILLS_FOCUS ? HOME_BILL_SLUGS : HOME_CLASSIC_SLUGS;
