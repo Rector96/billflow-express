@@ -13,7 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useApp } from "@/lib/app-store";
+import { hasTransactionPin } from "@/lib/pin.functions";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
@@ -69,6 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { authed, hydrated } = useApp();
   const navigate = useNavigate();
+  const checkPin = useServerFn(hasTransactionPin);
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
@@ -85,6 +88,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated && !authed) void navigate({ to: "/login", replace: true });
   }, [hydrated, authed, navigate]);
+
+  // Force 4-digit transaction PIN before using the app (except setup-pin itself)
+  useEffect(() => {
+    if (!hydrated || !authed) return;
+    if (pathname === "/setup-pin" || pathname.startsWith("/setup-pin")) return;
+    let cancelled = false;
+    void checkPin({})
+      .then((res) => {
+        if (cancelled) return;
+        if (!res?.hasPin) {
+          void navigate({ to: "/setup-pin", replace: true });
+        }
+      })
+      .catch(() => {
+        /* RPC missing in some envs — don't soft-lock the whole app */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, authed, pathname, checkPin, navigate]);
 
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
