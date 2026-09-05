@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { SERVICES } from "@/lib/mock-data";
+import { isBillLive, isServiceVisible } from "@/lib/product-mode";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/services")({
@@ -26,7 +27,9 @@ export const Route = createFileRoute("/services")({
 
 function ServicesPage() {
   const [query, setQuery] = useState("");
-  const list = SERVICES.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const list = SERVICES.filter(
+    (s) => isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   return (
     <AppShell>
@@ -46,16 +49,19 @@ function ServicesPage() {
         {list.length ? (
           <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
             <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
-              {list.map((s) => (
-                <ServiceTile
-                  key={s.slug}
-                  label={s.short}
-                  Icon={s.icon}
-                  tint={s.tint}
-                  to="/pay/$slug"
-                  params={{ slug: s.slug }}
-                />
-              ))}
+              {list.map((s) => {
+                const live = isBillLive(s.slug);
+                return (
+                  <ServiceTile
+                    key={s.slug}
+                    label={live ? s.short : `${s.short} · Soon`}
+                    Icon={s.icon}
+                    tint={s.tint}
+                    to="/pay/$slug"
+                    params={{ slug: s.slug }}
+                  />
+                );
+              })}
             </div>
           </div>
         ) : (
