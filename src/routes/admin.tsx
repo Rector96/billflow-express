@@ -6,21 +6,13 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: `Admin — ${BRAND.name}` },
-      { name: "description", content: "Operations and administration for WeblinesPay." },
+      { name: "description", content: `Operations and administration for ${BRAND.name}.` },
       { name: "robots", content: "noindex" },
     ],
   }),
   beforeLoad: async () => {
     const { data: sessionData } = await supabase.auth.getSession();
-    let session = sessionData.session;
-    if (!session?.user) {
-      // Auto-fallback to demo session if in preview/dev environment
-      const { data: demoAuth } = await supabase.auth.signInWithPassword({
-        email: "pablo@rockpay.ng",
-        password: "demopassword",
-      });
-      session = demoAuth?.session ?? null;
-    }
+    const session = sessionData.session;
     if (!session?.user) {
       throw redirect({ to: "/login" });
     }
