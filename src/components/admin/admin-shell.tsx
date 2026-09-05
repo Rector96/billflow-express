@@ -14,6 +14,7 @@ import {
   Users,
   Wallet,
   Boxes,
+  Percent,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ export type AdminNavId =
   | "activity"
   | "audit"
   | "staff"
+  | "pricing"
   | "settings";
 
 const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
@@ -49,6 +51,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "activity", label: "Activity", to: "/admin/activity", icon: Activity },
   { id: "audit", label: "Audit Logs", to: "/admin/audit-logs", icon: ClipboardList },
   { id: "staff", label: "Staff", to: "/admin/staff", icon: Shield },
+  { id: "pricing", label: "Pricing", to: "/admin/pricing", icon: Percent },
   { id: "settings", label: "Settings", to: "/admin/settings", icon: Settings },
 ];
 
@@ -63,6 +66,7 @@ function activeId(pathname: string): AdminNavId {
   if (pathname.startsWith("/admin/activity")) return "activity";
   if (pathname.startsWith("/admin/audit-logs")) return "audit";
   if (pathname.startsWith("/admin/staff")) return "staff";
+  if (pathname.startsWith("/admin/pricing")) return "pricing";
   if (pathname.startsWith("/admin/settings")) return "settings";
   return "dashboard";
 }
