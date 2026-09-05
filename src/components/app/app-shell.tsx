@@ -13,7 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useApp } from "@/lib/app-store";
+import { hasTransactionPin } from "@/lib/pin.functions";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
@@ -43,10 +45,7 @@ export function BrandMark({ className }: { className?: string }) {
       height={96}
       loading="eager"
       decoding="async"
-      className={cn(
-        "size-9 shrink-0 rounded-2xl object-contain ring-1 ring-black/5",
-        className,
-      )}
+      className={cn("size-9 shrink-0 rounded-2xl object-contain ring-1 ring-black/5", className)}
     />
   );
 }
@@ -73,6 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { authed, hydrated } = useApp();
   const navigate = useNavigate();
   const [offline, setOffline] = useState(false);
+  const checkPin = useServerFn(hasTransactionPin);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -89,6 +89,34 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (hydrated && !authed) void navigate({ to: "/login", replace: true });
   }, [hydrated, authed, navigate]);
 
+  // Force transaction PIN setup (real platforms require this before the app is usable)
+  useEffect(() => {
+    if (!hydrated || !authed) return;
+    const allowWithoutPin =
+      pathname === "/setup-pin" ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/signup") ||
+      pathname.startsWith("/otp") ||
+      pathname.startsWith("/onboarding") ||
+      pathname.startsWith("/forgot-password") ||
+      pathname.startsWith("/terms") ||
+      pathname.startsWith("/privacy");
+    if (allowWithoutPin) return;
+    let cancelled = false;
+    void checkPin()
+      .then((r) => {
+        if (!cancelled && !r.hasPin) {
+          void navigate({ to: "/setup-pin", replace: true });
+        }
+      })
+      .catch(() => {
+        /* network blip — don't trap the user */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, authed, pathname, checkPin, navigate]);
+
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
   return (
@@ -98,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           role="status"
           className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-xs font-bold text-warning-foreground shadow-soft"
         >
-          You're offline — payments and top-ups can't be completed right now.
+          You&apos;re offline — payments and top-ups can&apos;t be completed right now.
         </div>
       ) : null}
 
@@ -156,15 +184,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             to="/services"
             aria-label="Pay a bill"
-            className={cn(
-              "press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-extrabold tracking-wide",
-              isActive("/services") ? "text-primary" : "text-muted-foreground",
-            )}
+            className="press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-extrabold tracking-wide text-primary"
           >
-            <span className="brand-gradient -mt-6 grid size-[3.25rem] place-items-center rounded-full text-primary-foreground shadow-float ring-4 ring-background">
+            <span className="brand-gradient mb-0.5 grid size-11 place-items-center rounded-full text-primary-foreground shadow-float">
               <ScanLine className="size-5" />
             </span>
-            PAY
+            Pay
           </Link>
           <TabLink item={NAV_HISTORY} active={isActive("/history")} />
           <TabLink item={NAV_PROFILE} active={isActive("/profile")} />
@@ -179,18 +204,11 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "press flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[10px] font-semibold",
+        "press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-bold tracking-wide",
         active ? "text-primary" : "text-muted-foreground",
       )}
     >
-      <span
-        className={cn(
-          "grid size-9 place-items-center rounded-xl transition-colors",
-          active && "bg-primary-soft",
-        )}
-      >
-        <item.icon className={cn("size-5", active && "stroke-[2.35]")} />
-      </span>
+      <item.icon className={cn("size-5", active && "text-primary")} />
       {item.label}
     </Link>
   );
