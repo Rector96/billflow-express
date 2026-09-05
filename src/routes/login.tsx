@@ -75,6 +75,7 @@ function LoginPage() {
             className="h-13 rounded-xl bg-card"
             placeholder="you@email.com"
             aria-invalid={Boolean(errors.id)}
+            autoComplete="email"
           />
           {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}
         </div>
@@ -90,6 +91,7 @@ function LoginPage() {
               className="h-13 rounded-xl bg-card pr-12"
               placeholder="Enter your password"
               aria-invalid={Boolean(errors.password)}
+              autoComplete="current-password"
             />
             <button
               type="button"
@@ -121,41 +123,6 @@ function LoginPage() {
           className="h-13 w-full rounded-2xl text-base font-bold"
         >
           {loading ? "Logging in…" : "Login"}
-        </Button>
-
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/80" />
-          </div>
-          <span className="relative bg-background px-3 text-xs uppercase tracking-wider text-muted-foreground">
-            or explore
-          </span>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          disabled={loading}
-          onClick={async () => {
-            setLoading(true);
-            setId("pablo@rockpay.ng");
-            setPassword("password123");
-            const { error } = await supabase.auth.signInWithPassword({
-              email: "pablo@rockpay.ng",
-              password: "password123",
-            });
-            if (error) {
-              setLoading(false);
-              toast.error(error.message);
-              return;
-            }
-            await refresh();
-            toast.success("Welcome, Pablo! (Demo Account)");
-            navigate({ to: "/home" });
-          }}
-          className="h-13 w-full rounded-2xl border-primary/30 bg-primary-soft/50 text-base font-bold text-primary hover:bg-primary-soft"
-        >
-          ⚡ Quick Demo Login (Pablo Emmanuel)
         </Button>
       </form>
 
