@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Delete } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -5,11 +6,27 @@ export function PinPad({
   value,
   onChange,
   length = 4,
+  onFilled,
 }: {
   value: string;
   onChange: (v: string) => void;
   length?: number;
+  /** Called once when the PIN reaches `length` digits */
+  onFilled?: (pin: string) => void;
 }) {
+  const filledRef = useRef(false);
+
+  useEffect(() => {
+    if (value.length >= length) {
+      if (!filledRef.current) {
+        filledRef.current = true;
+        onFilled?.(value.slice(0, length));
+      }
+    } else {
+      filledRef.current = false;
+    }
+  }, [value, length, onFilled]);
+
   const press = (d: string) => {
     if (value.length >= length) return;
     onChange(value + d);
