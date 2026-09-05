@@ -7,7 +7,7 @@ import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { SERVICES } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
-import { isServiceVisible } from "@/lib/product-mode";
+import { isBillLive, isServiceVisible } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -15,10 +15,10 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${BRAND.name}` },
       {
         name: "description",
-        content: "Electricity, cable TV, education and everyday utility payments.",
+        content: "Electricity, cable TV, education PINs and everyday utility payments.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
-      { property: "og:description", content: "All your everyday payments in one place." },
+      { property: "og:description", content: "Pay bills and get exam PINs in a few taps." },
     ],
   }),
   component: ServicesPage,
@@ -39,7 +39,7 @@ function ServicesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search services"
+            placeholder="Search electricity, cable, WAEC…"
             aria-label="Search services"
             className="h-11 rounded-2xl border-border/50 bg-card pl-10 text-sm shadow-soft"
           />
@@ -48,16 +48,11 @@ function ServicesPage() {
         {list.length ? (
           <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
             {list.map((s) => {
-              const soon =
-                s.slug === "education" ||
-                s.slug === "exam-pins" ||
-                s.slug === "internet" ||
-                s.slug === "water" ||
-                s.slug === "insurance";
+              const live = isBillLive(s.slug);
               return (
                 <ServiceTile
                   key={s.slug}
-                  label={soon ? `${s.short} · Soon` : s.short}
+                  label={live ? s.short : `${s.short} · Soon`}
                   Icon={s.icon}
                   tint={s.tint}
                   to="/pay/$slug"
@@ -70,7 +65,7 @@ function ServicesPage() {
           <EmptyState
             Icon={SearchX}
             title="No service found"
-            body="Try a different keyword, like electricity or DSTV."
+            body="Try electricity, cable, education or exam pins."
           />
         )}
 
