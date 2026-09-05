@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { PinPad } from "@/components/app/pin-pad";
+import { PayActionBar } from "@/components/app/pay-action-bar";
+import { scrollForNewStep, scrollIntoAction } from "@/lib/scroll-into-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +37,10 @@ export function ExamPinsFlow({
   const loadCatalog = useServerFn(listExamCatalog);
   const purchase = useServerFn(purchaseExamPins);
   const [step, setStep] = useState<Step>("exam");
+
+  useEffect(() => {
+    scrollForNewStep("pay-action");
+  }, [step]);
   const [examId, setExamId] = useState("");
   const [variations, setVariations] = useState<ExamVariation[]>([]);
   const [variationCode, setVariationCode] = useState("");
@@ -333,9 +339,11 @@ export function ExamPinsFlow({
                 {formatNaira(total, false)}
               </p>
             </div>
-            <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
-              Continue
-            </Button>
+            <PayActionBar>
+              <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
+                Continue
+              </Button>
+            </PayActionBar>
             <Button
               variant="ghost"
               className="w-full text-xs font-bold"
@@ -382,13 +390,15 @@ export function ExamPinsFlow({
             {error ? (
               <p className="text-center text-xs font-semibold text-destructive">{error}</p>
             ) : null}
-            <Button
-              className="h-11 w-full rounded-xl font-bold"
-              disabled={examId === "jamb" && !profileId.trim()}
-              onClick={() => setStep("pin")}
-            >
-              Continue to PIN
-            </Button>
+            <PayActionBar>
+              <Button
+                className="h-12 w-full rounded-xl font-bold"
+                disabled={examId === "jamb" && !profileId.trim()}
+                onClick={() => setStep("pin")}
+              >
+                Continue to PIN
+              </Button>
+            </PayActionBar>
             <Button
               variant="ghost"
               className="w-full text-xs font-bold"
@@ -408,14 +418,26 @@ export function ExamPinsFlow({
                 {quantity === 1 ? "" : "s"}.
               </p>
             </div>
-            <PinPad value={pin} onChange={setPin} />
-            <Button
-              className="h-12 w-full rounded-xl font-bold"
-              disabled={pin.length !== 4 || loading}
-              onClick={() => void submit()}
-            >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : "Pay and get PIN"}
-            </Button>
+            <PinPad
+              value={pin}
+              onChange={setPin}
+              onFilled={() => {
+                scrollIntoAction("pay-action");
+                window.setTimeout(() => {
+                  (document.getElementById("exam-pin-submit") as HTMLButtonElement | null)?.click();
+                }, 80);
+              }}
+            />
+            <PayActionBar>
+              <Button
+                id="exam-pin-submit"
+                className="h-12 w-full rounded-xl font-bold"
+                disabled={pin.length !== 4 || loading}
+                onClick={() => void submit()}
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : "Pay and get PIN"}
+              </Button>
+            </PayActionBar>
             <Button
               variant="ghost"
               className="w-full text-xs font-bold"

@@ -10,6 +10,8 @@ import { ExamPinsFlow } from "@/components/app/exam-pins-flow";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PinPad } from "@/components/app/pin-pad";
+import { PayActionBar } from "@/components/app/pay-action-bar";
+import { scrollForNewStep, scrollIntoAction } from "@/lib/scroll-into-action";
 import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +95,10 @@ export function PayFlow() {
 
   const payingLock = useRef(false);
   const [step, setStep] = useState<Step>("provider");
+
+  useEffect(() => {
+    scrollForNewStep("pay-action");
+  }, [step]);
   const [provider, setProvider] = useState(savedItem?.provider ?? search.provider ?? "");
   const [serviceID, setServiceID] = useState(savedItem?.provider ?? search.provider ?? "");
   const [identifier, setIdentifier] = useState(savedItem?.identifier ?? search.identifier ?? "");
@@ -397,18 +403,34 @@ export function PayFlow() {
       <AppShell>
         <PageHeader title="Enter PIN" onBack={() => setStep("confirm")} />
         <div className="mx-auto max-w-md space-y-4 px-4 py-6">
-          <PinPad value={pin} onChange={setPin} />
-          <Button
-            className="h-11 w-full rounded-xl font-bold"
-            disabled={pin.length < 4}
-            onClick={() => {
-              const p = pin;
-              setPin("");
-              void runPayment(p);
+          <p className="text-center text-sm text-muted-foreground">
+            Enter your 4-digit transaction PIN to authorize this payment.
+          </p>
+          <PinPad
+            value={pin}
+            onChange={setPin}
+            onFilled={(p) => {
+              scrollIntoAction("pay-action");
+              window.setTimeout(() => {
+                setPin("");
+                void runPayment(p);
+              }, 80);
             }}
-          >
-            Confirm payment
-          </Button>
+          />
+          <PayActionBar>
+            <Button
+              id="pay-pin-submit"
+              className="h-12 w-full rounded-xl font-bold"
+              disabled={pin.length < 4}
+              onClick={() => {
+                const p = pin;
+                setPin("");
+                void runPayment(p);
+              }}
+            >
+              Confirm payment
+            </Button>
+          </PayActionBar>
         </div>
       </AppShell>
     );
@@ -440,9 +462,11 @@ export function PayFlow() {
               </Link>
             </Button>
           ) : (
-            <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("pin")}>
-              Confirm & Pay {formatNaira(total, false)}
-            </Button>
+            <PayActionBar>
+              <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("pin")}>
+                Confirm & Pay {formatNaira(total, false)}
+              </Button>
+            </PayActionBar>
           )}
         </div>
       </AppShell>
@@ -506,13 +530,15 @@ export function PayFlow() {
               ) : null}
             </div>
           )}
-          <Button
-            className="h-11 w-full rounded-xl font-bold"
-            disabled={total < 50 || (isPackageLive && !variation)}
-            onClick={() => setStep("confirm")}
-          >
-            Continue
-          </Button>
+          <PayActionBar>
+            <Button
+              className="h-12 w-full rounded-xl font-bold"
+              disabled={total < 50 || (isPackageLive && !variation)}
+              onClick={() => setStep("confirm")}
+            >
+              Continue
+            </Button>
+          </PayActionBar>
         </div>
       </AppShell>
     );
@@ -567,12 +593,14 @@ export function PayFlow() {
                 className="h-12 rounded-xl"
               />
               {error ? <p className="text-xs text-destructive">{error}</p> : null}
-              <Button
-                className="h-11 w-full rounded-xl font-bold"
-                onClick={() => void startVerify()}
-              >
-                Continue
-              </Button>
+              <PayActionBar>
+                <Button
+                  className="h-12 w-full rounded-xl font-bold"
+                  onClick={() => void startVerify()}
+                >
+                  Continue
+                </Button>
+              </PayActionBar>
             </>
           )}
         </div>
