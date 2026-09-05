@@ -134,13 +134,13 @@ export function getVtpassConfig(): {
   publicKey: string;
 } {
   const mode = (process.env["VTPASS_MODE"] ?? "sandbox").trim().toLowerCase() as VtpassMode;
-  if (mode === "live") {
-    throw new Error("VTpass live mode is disabled. Set VTPASS_MODE=sandbox.");
-  }
+  const isLive = mode === "live";
 
-  const baseUrl = (process.env["VTPASS_BASE_URL"] ?? "https://sandbox.vtpass.com/api")
-    .trim()
-    .replace(/\/$/, "");
+  const defaultUrl = isLive
+    ? "https://api-service.vtpass.com/api"
+    : "https://sandbox.vtpass.com/api";
+
+  const baseUrl = (process.env["VTPASS_BASE_URL"] ?? defaultUrl).trim().replace(/\/$/, "");
 
   const apiKey = (process.env["VTPASS_API_KEY"] ?? "").trim();
   const secretKey = (process.env["VTPASS_SECRET_KEY"] ?? "").trim();
@@ -148,11 +148,11 @@ export function getVtpassConfig(): {
 
   if (!apiKey || !secretKey) {
     throw new Error(
-      "VTpass is not configured. Set VTPASS_API_KEY and VTPASS_SECRET_KEY (sandbox) on the host.",
+      `VTpass is not configured. Set VTPASS_API_KEY and VTPASS_SECRET_KEY (${isLive ? "live" : "sandbox"}) on the host.`,
     );
   }
 
-  return { mode: "sandbox", baseUrl, apiKey, secretKey, publicKey };
+  return { mode: isLive ? "live" : "sandbox", baseUrl, apiKey, secretKey, publicKey };
 }
 
 function headersForPost(): HeadersInit {

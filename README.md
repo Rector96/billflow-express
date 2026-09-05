@@ -1,4 +1,30 @@
-# BillFlow Express
+# BillFlow Express (RockPay)
+
+## Branch: `rockPay-pricing` — Latest Platform Updates
+
+This branch integrates the core **RockPay Pricing Engine** alongside a comprehensive **UI/UX Modernization** across the entire platform:
+
+### 1. UI/UX Modernization & Streamlined Design
+- **Refined Typography & Hierarchy**: Adopted `Plus Jakarta Sans` with balanced optical line heights and tabular figures for all monetary and transaction amounts. Reduced oversized fonts for a calm, comfortable reading experience.
+- **Minimalist, De-cluttered Interface**: Removed unnecessary marketing prose, redundant helper paragraphs, and visual clutter across Home, Services, Wallet, History, and Profile pages.
+- **Restyled Navigation**: Compact floating navigation dock on mobile and responsive side navigation on desktop with subtle borders and clear active states.
+- **Modern Components**: Restyled wallet cards, quick funding chips, service grid tiles, search bars, filter pills, and bottom drawers.
+
+### 2. Pricing & Margin Engine (`src/lib/pricing.server.ts`)
+- Configurable service markups (fixed fee or percentage margin) across airtime, mobile data, electricity, cable TV, and exam scratch cards.
+- Server-side calculation ensures pricing rules are applied securely and audited per transaction.
+- Real-time transaction profit tracking (`src/lib/transaction-profits.server.ts`) records gross customer payments, vendor fulfillment costs, and net margins.
+
+### 3. Payment Methods (Wallet & Direct Paystack)
+- **Dual Payment Rails**: Users can pay seamlessly using their funded wallet balance or via direct Paystack checkout (`src/lib/direct-bill.functions.ts`).
+- **Provider Routing & Automatic Failover**: Integrated routing between VTpass and VTUAfrica (`src/lib/vendor-router.server.ts`) with automated retry logic and fallback mechanisms.
+- **PIN Verification & Security**: 4-digit transaction PIN protection with fast pinpad interaction and session security.
+
+### 4. Admin & Backoffice Tools
+- **Pricing Manager**: Admin UI (`/admin/settings`) to manage active rules, markups, and minimum/maximum transaction thresholds.
+- **Transaction & Margin Monitoring**: Detailed transaction audit trails (`/admin/transactions`), vendor status reconciliation, and customer care ticket resolution.
+
+---
 
 Build V1 UI/UX — Mobile-First Nigerian Bill Payment App
 
