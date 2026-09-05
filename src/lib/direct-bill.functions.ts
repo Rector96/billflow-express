@@ -271,7 +271,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<DirectVerifyResult> => {
     const { paystackVerify } = await import("./paystack.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getVtpassConfig, vtpassPay, normalizeNgPhone, mapVtpassOutcome } = await import("./vtpass.server");
+    const { normalizeNgPhone } = await import("./vtpass.server");
+    const { routeElectricityPay, routeCablePay, toVtpassShape } = await import("./vendor-router.server");
 
     let q = supabaseAdmin.from("bill_transactions").select("*").eq("user_id", context.userId).limit(1);
     const ref = data.reference;
@@ -362,7 +363,6 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       };
     }
 
-    getVtpassConfig();
     let phone = "08011111111";
     if (meta.phone) {
       try {
@@ -377,21 +377,20 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const billersCode = bill.customer_identifier as string;
     const providerAmount = Number(meta.provider_amount ?? amount);
 
-    let pay;
+    let routed;
     if (slug === "electricity") {
       const meterType = String(meta.meter_type ?? bill.product ?? "prepaid");
-      pay = await vtpassPay({
+      routed = await routeElectricityPay({
         request_id: providerRequestId,
         serviceID,
         billersCode,
-        variation_code: meterType,
-        type: meterType,
+        meterType,
         amount: providerAmount,
         phone,
       });
     } else {
       const variationCode = String(meta.variation_code ?? "");
-      pay = await vtpassPay({
+      routed = await routeCablePay({
         request_id: providerRequestId,
         serviceID,
         billersCode,
@@ -402,7 +401,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       });
     }
 
-    const outcome = mapVtpassOutcome(pay);
+    const pay = toVtpassShape(routed);
+    const outcome = routed.status;
     const { data: finalized, error: finErr } = await (supabaseAdmin as any).rpc(
       "trusted_complete_direct_bill_purchase",
       {
@@ -417,6 +417,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
           purchased_code: pay.purchasedCode,
           vtpass_fulfilled: true,
           paystack_id: ps.id ? String(ps.id) : null,
+          vendor: routed.vendor,
+          fallback_used: routed.fallbackUsed,
           vtpass_snapshot: safePayload(pay.raw),
         },
       },
