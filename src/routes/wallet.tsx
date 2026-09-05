@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { SectionTitle, TransactionRow } from "@/components/app/ui-bits";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
+import { BILLS_FOCUS } from "@/lib/product-mode";
 
 const QUICK_AMOUNTS = [1000, 5000, 10000];
 
@@ -31,7 +32,6 @@ function WalletPage() {
 
   return (
     <AppShell>
-      {/* Purple hero — matches reference wallet screen */}
       <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-4 pb-8 text-primary-foreground">
         <div className="mb-5 flex items-center gap-3">
           <Link
@@ -60,43 +60,79 @@ function WalletPage() {
             {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
           </p>
 
-          <div className="mt-4 flex justify-center">
-            <Link
-              to="/wallet/fund"
-              search={{}}
-              className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-6 text-sm font-bold text-primary shadow-soft"
-            >
-              <Plus className="size-4" /> Fund Wallet
-            </Link>
+          <div className="mt-4 flex justify-center gap-2">
+            {BILLS_FOCUS ? (
+              <Link
+                to="/services"
+                className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-6 text-sm font-bold text-primary shadow-soft"
+              >
+                Pay a bill
+              </Link>
+            ) : (
+              <Link
+                to="/wallet/fund"
+                search={{}}
+                className="press inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-white px-6 text-sm font-bold text-primary shadow-soft"
+              >
+                <Plus className="size-4" /> Fund Wallet
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
       <div className="space-y-5 px-4 pt-5 pb-6">
         <section>
-          <SectionTitle title="Quick Fund" />
-          <div className="grid grid-cols-3 gap-2">
-            {QUICK_AMOUNTS.map((q) => (
+          {BILLS_FOCUS ? (
+            <>
+              <SectionTitle title="Quick bills" />
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  to="/pay/$slug"
+                  params={{ slug: "electricity" }}
+                  className="press flex h-12 items-center justify-center rounded-xl border border-border/60 bg-card text-xs font-bold shadow-soft"
+                >
+                  Electricity
+                </Link>
+                <Link
+                  to="/pay/$slug"
+                  params={{ slug: "cable" }}
+                  className="press flex h-12 items-center justify-center rounded-xl border border-border/60 bg-card text-xs font-bold shadow-soft"
+                >
+                  Cable TV
+                </Link>
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                Same secure pay flow — pick a bill and complete in a few taps. Wallet top-up stays available under Profile if you need it.
+              </p>
+            </>
+          ) : (
+            <>
+              <SectionTitle title="Quick Fund" />
+              <div className="grid grid-cols-3 gap-2">
+                {QUICK_AMOUNTS.map((q) => (
+                  <Link
+                    key={q}
+                    to="/wallet/fund"
+                    search={{ amount: q }}
+                    className="press flex h-10 items-center justify-center rounded-xl border border-border/60 bg-card text-xs font-bold shadow-soft"
+                  >
+                    {formatNaira(q, false)}
+                  </Link>
+                ))}
+              </div>
               <Link
-                key={q}
                 to="/wallet/fund"
-                search={{ amount: q }}
-                className="press flex h-10 items-center justify-center rounded-xl border border-border/60 bg-card text-xs font-bold shadow-soft"
+                search={{}}
+                className="press mt-2.5 flex h-10 items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/30 text-xs font-bold text-primary"
               >
-                {formatNaira(q, false)}
+                <Plus className="size-3.5" /> Custom amount
               </Link>
-            ))}
-          </div>
-          <Link
-            to="/wallet/fund"
-            search={{}}
-            className="press mt-2.5 flex h-10 items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/30 text-xs font-bold text-primary"
-          >
-            <Plus className="size-3.5" /> Custom amount
-          </Link>
-          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-            Paystack test mode — credited only after payment is verified.
-          </p>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                Paystack test mode — credited only after payment is verified.
+              </p>
+            </>
+          )}
         </section>
 
         <section>
