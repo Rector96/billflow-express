@@ -11,7 +11,9 @@ import {
   type PricingRuleRow,
 } from "./pricing.server";
 
-function rule(partial: Partial<PricingRuleRow> & Pick<PricingRuleRow, "id" | "markup_type" | "markup_value">): PricingRuleRow {
+function rule(
+  partial: Partial<PricingRuleRow> & Pick<PricingRuleRow, "id" | "markup_type" | "markup_value">,
+): PricingRuleRow {
   return {
     service: "airtime",
     provider: null,
@@ -34,10 +36,7 @@ describe("roundMoney", () => {
 
 describe("no rule → base amount (fallback)", () => {
   test("empty rules list returns base unchanged", () => {
-    const r = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 500 },
-      [],
-    );
+    const r = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 500 }, []);
     expect(r.usedFallback).toBe(true);
     expect(r.customerAmount).toBe(500);
     expect(r.rockpayFee).toBe(0);
@@ -131,10 +130,7 @@ describe("specificity: product > provider > service", () => {
         priority: 0,
       }),
     ];
-    const r = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 500 },
-      rules,
-    );
+    const r = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 500 }, rules);
     expect(r.pricingRuleId).toBe("prov");
     expect(r.customerAmount).toBe(510);
   });
@@ -144,7 +140,13 @@ describe("priority", () => {
   test("higher priority wins at same specificity", () => {
     const rules = [
       rule({ id: "low", service: "airtime", markup_type: "fixed", markup_value: 5, priority: 1 }),
-      rule({ id: "high", service: "airtime", markup_type: "fixed", markup_value: 15, priority: 10 }),
+      rule({
+        id: "high",
+        service: "airtime",
+        markup_type: "fixed",
+        markup_value: 15,
+        priority: 10,
+      }),
     ];
     const r = applyPricingRule({ service: "airtime", baseAmount: 100 }, rules);
     expect(r.pricingRuleId).toBe("high");
@@ -202,15 +204,11 @@ describe("min / max", () => {
 
 describe("invalid input rejected", () => {
   test("negative base amount throws", () => {
-    expect(() =>
-      applyPricingRule({ service: "airtime", baseAmount: -1 }, []),
-    ).toThrow();
+    expect(() => applyPricingRule({ service: "airtime", baseAmount: -1 }, [])).toThrow();
   });
 
   test("NaN base throws", () => {
-    expect(() =>
-      applyPricingRule({ service: "airtime", baseAmount: Number.NaN }, []),
-    ).toThrow();
+    expect(() => applyPricingRule({ service: "airtime", baseAmount: Number.NaN }, [])).toThrow();
   });
 
   test("computeFromRule rejects negative markup value", () => {
@@ -225,9 +223,7 @@ describe("invalid input rejected", () => {
 
 describe("selectMatchingRule", () => {
   test("returns null when nothing matches", () => {
-    const rules = [
-      rule({ id: "x", service: "cable", markup_type: "fixed", markup_value: 1 }),
-    ];
+    const rules = [rule({ id: "x", service: "cable", markup_type: "fixed", markup_value: 1 })];
     expect(selectMatchingRule(rules, "airtime", "mtn", null)).toBeNull();
   });
 });

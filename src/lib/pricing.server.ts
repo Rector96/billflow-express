@@ -246,6 +246,7 @@ export async function loadActivePricingRules(service: PricingService): Promise<P
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // Table not yet in generated Database types — query untyped.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabaseAdmin as any)
     .from("pricing_rules")
     .select(

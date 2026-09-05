@@ -188,7 +188,9 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       }
     }
     if (!variation)
-      throw new Error("Selected exam PIN is no longer available. Pick another product or try WAEC.");
+      throw new Error(
+        "Selected exam PIN is no longer available. Pick another product or try WAEC.",
+      );
 
     const unitAmount = Math.round(variation.amount * 100) / 100;
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;

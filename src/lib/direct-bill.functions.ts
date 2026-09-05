@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -28,7 +29,12 @@ function safePayload(raw: unknown): Json {
 }
 
 function resolveDirectCallbackUrl(): string | undefined {
-  const siteUrl = (process.env["URL"] ?? process.env["DEPLOY_PRIME_URL"] ?? process.env["SITE_URL"] ?? "")
+  const siteUrl = (
+    process.env["URL"] ??
+    process.env["DEPLOY_PRIME_URL"] ??
+    process.env["SITE_URL"] ??
+    ""
+  )
     .trim()
     .replace(/\/$/, "");
   if (siteUrl.startsWith("http")) return `${siteUrl}/pay/complete`;
@@ -62,7 +68,8 @@ type DirectOrderInput = {
 export const initializeDirectBillPay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: DirectOrderInput) => {
-    const slug = input?.slug === "cable" ? "cable" : input?.slug === "electricity" ? "electricity" : null;
+    const slug =
+      input?.slug === "cable" ? "cable" : input?.slug === "electricity" ? "electricity" : null;
     if (!slug) throw new Error("Unsupported bill type.");
     const serviceID = String(input?.serviceID ?? "").trim();
     const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
@@ -71,8 +78,11 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       throw new Error("Invalid payment details.");
     }
     if (slug === "electricity") {
-      const meterType = String(input?.meterType ?? "").trim().toLowerCase();
-      if (meterType !== "prepaid" && meterType !== "postpaid") throw new Error("Select prepaid or postpaid.");
+      const meterType = String(input?.meterType ?? "")
+        .trim()
+        .toLowerCase();
+      if (meterType !== "prepaid" && meterType !== "postpaid")
+        throw new Error("Select prepaid or postpaid.");
       return {
         slug,
         serviceID,
@@ -100,7 +110,8 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<DirectInitResult> => {
     const { getPaystackSecret } = await import("./paystack.server");
-    const { getVtpassConfig, vtpassListVariations, vtpassMerchantVerify } = await import("./vtpass.server");
+    const { getVtpassConfig, vtpassListVariations, vtpassMerchantVerify } =
+      await import("./vtpass.server");
     const { resolvePricing } = await import("./pricing.server");
     getPaystackSecret();
     getVtpassConfig();
@@ -227,7 +238,9 @@ async function initPaystackForOrder(opts: {
     .maybeSingle();
   const email = (profile?.email ?? "").trim();
   if (!email) {
-    throw new Error("Your account has no email on file. Update your profile email, then try again.");
+    throw new Error(
+      "Your account has no email on file. Update your profile email, then try again.",
+    );
   }
   const callbackUrl = resolveDirectCallbackUrl();
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
@@ -245,9 +258,11 @@ async function initPaystackForOrder(opts: {
       metadata: { ...opts.metadata, user_id: opts.context.userId, mode: "test" },
     }),
   });
-  const json = (await res.json().catch(() => null)) as
-    | { status?: boolean; message?: string; data?: { authorization_url?: string } }
-    | null;
+  const json = (await res.json().catch(() => null)) as {
+    status?: boolean;
+    message?: string;
+    data?: { authorization_url?: string };
+  } | null;
   if (!res.ok || !json?.status || !json.data?.authorization_url) {
     throw new Error(json?.message ?? `Paystack initialize failed (HTTP ${res.status})`);
   }
@@ -272,11 +287,18 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const { paystackVerify } = await import("./paystack.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { normalizeNgPhone } = await import("./vtpass.server");
-    const { routeElectricityPay, routeCablePay, toVtpassShape } = await import("./vendor-router.server");
+    const { routeElectricityPay, routeCablePay, toVtpassShape } =
+      await import("./vendor-router.server");
 
-    let q = supabaseAdmin.from("bill_transactions").select("*").eq("user_id", context.userId).limit(1);
+    let q = supabaseAdmin
+      .from("bill_transactions")
+      .select("*")
+      .eq("user_id", context.userId)
+      .limit(1);
     const ref = data.reference;
-    q = ref.toUpperCase().startsWith("DIR-") ? q.eq("external_reference", ref) : q.eq("internal_reference", ref);
+    q = ref.toUpperCase().startsWith("DIR-")
+      ? q.eq("external_reference", ref)
+      : q.eq("internal_reference", ref);
     const { data: rows, error: loadErr } = await q;
     if (loadErr) throw new Error(loadErr.message);
     const bill = rows?.[0];
@@ -286,7 +308,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     }
 
     const billRef = bill.internal_reference as string;
-    const paystackRef = (bill.external_reference || (bill.metadata as any)?.paystack_reference) as string;
+    const paystackRef = (bill.external_reference ||
+      (bill.metadata as any)?.paystack_reference) as string;
     const amount = Number(bill.amount);
     const meta = (bill.metadata ?? {}) as Record<string, unknown>;
     const slug = String(meta.service_slug ?? "").toLowerCase();
@@ -345,7 +368,11 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       };
     }
 
-    if (ps.currency !== "NGN" || Number(ps.amount) !== expectedKobo || String(ps.reference) !== paystackRef) {
+    if (
+      ps.currency !== "NGN" ||
+      Number(ps.amount) !== expectedKobo ||
+      String(ps.reference) !== paystackRef
+    ) {
       await (supabaseAdmin as any).rpc("trusted_complete_direct_bill_purchase", {
         _user_id: context.userId,
         _internal_reference: billRef,

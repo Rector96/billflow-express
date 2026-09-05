@@ -56,7 +56,9 @@ function AdminDashboard() {
         supabase.rpc("admin_service_breakdown"),
         supabase
           .from("wallet_transactions")
-          .select("id, reference, type, amount, status, description, provider, provider_reference, created_at, user_id, metadata")
+          .select(
+            "id, reference, type, amount, status, description, provider, provider_reference, created_at, user_id, metadata",
+          )
           .order("created_at", { ascending: false })
           .limit(25),
         supabase.from("profiles").select("user_id, full_name, email").limit(500),
@@ -90,7 +92,7 @@ function AdminDashboard() {
           const title =
             typeof meta["title"] === "string"
               ? meta["title"]
-              : t.description ?? (t.type === "deposit" ? "Wallet funded" : t.type);
+              : (t.description ?? (t.type === "deposit" ? "Wallet funded" : t.type));
           const status: TxStatus =
             t.status === "successful" || t.status === "pending" || t.status === "failed"
               ? t.status
@@ -187,7 +189,9 @@ function AdminDashboard() {
                 onClick={() => setDays(d)}
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-bold",
-                  days === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  days === d
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {d}d
@@ -199,7 +203,10 @@ function AdminDashboard() {
             <div className="rounded-2xl border bg-card p-4 shadow-card">
               <p className="mb-3 text-sm font-bold">Transaction volume (₦)</p>
               {series.length === 0 ? (
-                <AdminEmpty title="No data available yet" body="Volume appears as wallet transactions are recorded." />
+                <AdminEmpty
+                  title="No data available yet"
+                  body="Volume appears as wallet transactions are recorded."
+                />
               ) : (
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
@@ -208,7 +215,13 @@ function AdminDashboard() {
                       <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={10} />
                       <YAxis tickLine={false} axisLine={false} fontSize={10} />
                       <Tooltip />
-                      <Area type="monotone" dataKey="volume" stroke="var(--color-primary)" fill="var(--color-primary-soft)" strokeWidth={2} />
+                      <Area
+                        type="monotone"
+                        dataKey="volume"
+                        stroke="var(--color-primary)"
+                        fill="var(--color-primary-soft)"
+                        strokeWidth={2}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -218,7 +231,10 @@ function AdminDashboard() {
             <div className="rounded-2xl border bg-card p-4 shadow-card">
               <p className="mb-3 text-sm font-bold">Funding volume (₦)</p>
               {series.length === 0 ? (
-                <AdminEmpty title="No funding data yet" body="Paystack deposits will populate this chart." />
+                <AdminEmpty
+                  title="No funding data yet"
+                  body="Paystack deposits will populate this chart."
+                />
               ) : (
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
@@ -244,13 +260,19 @@ function AdminDashboard() {
                 </Link>
               </div>
               {services.length === 0 ? (
-                <AdminEmpty title="No bill transactions yet" body="Service analytics appear when bills are paid." />
+                <AdminEmpty
+                  title="No bill transactions yet"
+                  body="Service analytics appear when bills are paid."
+                />
               ) : (
                 <div className="space-y-2">
                   {services.slice(0, 8).map((s) => {
                     const rate = s.total ? Math.round((s.successful / s.total) * 100) : 0;
                     return (
-                      <div key={s.service} className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+                      <div
+                        key={s.service}
+                        className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm"
+                      >
                         <div className="min-w-0">
                           <p className="truncate font-semibold capitalize">{s.service}</p>
                           <p className="text-xs text-muted-foreground">
@@ -277,7 +299,10 @@ function AdminDashboard() {
               ) : (
                 <div className="space-y-2">
                   {feed.slice(0, 10).map((f) => (
-                    <div key={f.id} className="flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+                    <div
+                      key={f.id}
+                      className="flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm"
+                    >
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{f.title}</p>
                         <p className="truncate text-xs text-muted-foreground">
@@ -299,16 +324,32 @@ function AdminDashboard() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link to="/admin/transactions" search={{ q: "", status: "all" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link
+              to="/admin/transactions"
+              search={{ q: "", status: "all" }}
+              className="rounded-xl border bg-card px-4 py-2 text-xs font-bold"
+            >
               All transactions
             </Link>
-            <Link to="/admin/transactions" search={{ q: "", status: "failed" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link
+              to="/admin/transactions"
+              search={{ q: "", status: "failed" }}
+              className="rounded-xl border bg-card px-4 py-2 text-xs font-bold"
+            >
               Failed monitor
             </Link>
-            <Link to="/admin/transactions" search={{ q: "", status: "pending" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link
+              to="/admin/transactions"
+              search={{ q: "", status: "pending" }}
+              className="rounded-xl border bg-card px-4 py-2 text-xs font-bold"
+            >
               Pending queue
             </Link>
-            <Link to="/admin/users" search={{ q: "", status: "all" }} className="rounded-xl border bg-card px-4 py-2 text-xs font-bold">
+            <Link
+              to="/admin/users"
+              search={{ q: "", status: "all" }}
+              className="rounded-xl border bg-card px-4 py-2 text-xs font-bold"
+            >
               Users
             </Link>
           </div>

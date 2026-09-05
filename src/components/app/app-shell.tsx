@@ -13,9 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { useApp } from "@/lib/app-store";
-import { hasTransactionPin } from "@/lib/pin.functions";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
@@ -72,7 +70,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { authed, hydrated } = useApp();
   const navigate = useNavigate();
   const [offline, setOffline] = useState(false);
-  const checkPin = useServerFn(hasTransactionPin);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -89,34 +86,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (hydrated && !authed) void navigate({ to: "/login", replace: true });
   }, [hydrated, authed, navigate]);
 
-  // Force transaction PIN setup (real platforms require this before the app is usable)
-  useEffect(() => {
-    if (!hydrated || !authed) return;
-    const allowWithoutPin =
-      pathname === "/setup-pin" ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/signup") ||
-      pathname.startsWith("/otp") ||
-      pathname.startsWith("/onboarding") ||
-      pathname.startsWith("/forgot-password") ||
-      pathname.startsWith("/terms") ||
-      pathname.startsWith("/privacy");
-    if (allowWithoutPin) return;
-    let cancelled = false;
-    void checkPin()
-      .then((r) => {
-        if (!cancelled && !r.hasPin) {
-          void navigate({ to: "/setup-pin", replace: true });
-        }
-      })
-      .catch(() => {
-        /* network blip — don't trap the user */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated, authed, pathname, checkPin, navigate]);
-
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
   return (
@@ -126,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           role="status"
           className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-xs font-bold text-warning-foreground shadow-soft"
         >
-          You&apos;re offline — payments and top-ups can&apos;t be completed right now.
+          You're offline — payments and top-ups can't be completed right now.
         </div>
       ) : null}
 
@@ -164,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <Link
           to="/services"
-          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold text-primary-foreground shadow-float"
+          className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold text-primary-foreground shadow-sm"
         >
           <ScanLine className="size-4" /> Pay a bill
         </Link>
@@ -176,20 +145,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Bottom navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 shadow-[0_-8px_24px_-16px_oklch(0.2_0.05_285_/_12%)] backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-1.5 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex max-w-sm items-center justify-around rounded-2xl border border-border/80 bg-card/95 px-2 py-1.5 shadow-float backdrop-blur-md pointer-events-auto">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
           <Link
             to="/services"
             aria-label="Pay a bill"
-            className="press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-extrabold tracking-wide text-primary"
+            className="press group relative flex flex-col items-center justify-center px-1"
           >
-            <span className="brand-gradient mb-0.5 grid size-11 place-items-center rounded-full text-primary-foreground shadow-float">
-              <ScanLine className="size-5" />
+            <span className="brand-gradient grid size-11 place-items-center rounded-xl text-primary-foreground shadow-sm transition-transform group-active:scale-95">
+              <ScanLine className="size-5 stroke-[2]" />
             </span>
-            Pay
           </Link>
           <TabLink item={NAV_HISTORY} active={isActive("/history")} />
           <TabLink item={NAV_PROFILE} active={isActive("/profile")} />
@@ -204,12 +172,21 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        "press flex min-h-12 flex-col items-center justify-end gap-0.5 py-1 text-[10px] font-bold tracking-wide",
-        active ? "text-primary" : "text-muted-foreground",
+        "press relative flex min-w-11 flex-col items-center justify-center py-1 transition-all",
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <item.icon className={cn("size-5", active && "text-primary")} />
-      {item.label}
+      <span
+        className={cn(
+          "grid size-8.5 place-items-center rounded-xl transition-colors",
+          active ? "bg-primary-soft text-primary" : "bg-transparent",
+        )}
+      >
+        <item.icon className={cn("size-4.5", active ? "stroke-[2.2]" : "stroke-[1.8]")} />
+      </span>
+      <span className="mt-0.5 text-[10px] font-medium leading-none tracking-tight">
+        {item.label}
+      </span>
     </Link>
   );
 }

@@ -103,9 +103,7 @@ export function buildBuyAgain(
       provider: a.provider || match?.provider || "",
       amount: a.amount,
       label: match?.label || a.label,
-      ...(match
-        ? { savedId: match.id, identifier: match.identifier }
-        : {}),
+      ...(match ? { savedId: match.id, identifier: match.identifier } : {}),
       score,
     };
   });

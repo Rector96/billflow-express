@@ -23,6 +23,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SavedPaymentsRouteImport } from './routes/saved-payments'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as ServicesRouteImport } from './routes/services'
+import { Route as SetupPinRouteImport } from './routes/setup-pin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -41,6 +42,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminWalletRouteImport } from './routes/admin.wallet'
 import { Route as HistoryTxIdRouteImport } from './routes/history.$txId'
 import { Route as PaySlugRouteImport } from './routes/pay.$slug'
+import { Route as PayCompleteRouteImport } from './routes/pay.complete'
 import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
 import { Route as ProfilePrivacyRouteImport } from './routes/profile.privacy'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
@@ -118,6 +120,11 @@ const SecurityRoute = SecurityRouteImport.update({
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupPinRoute = SetupPinRouteImport.update({
+  id: '/setup-pin',
+  path: '/setup-pin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -210,6 +217,11 @@ const PaySlugRoute = PaySlugRouteImport.update({
   path: '/pay/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PayCompleteRoute = PayCompleteRouteImport.update({
+  id: '/pay/complete',
+  path: '/pay/complete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfilePersonalRoute = ProfilePersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
@@ -267,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
+  '/setup-pin': typeof SetupPinRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
@@ -284,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/admin/wallet': typeof AdminWalletRoute
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
+  '/pay/complete': typeof PayCompleteRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -308,6 +322,7 @@ export interface FileRoutesByTo {
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
+  '/setup-pin': typeof SetupPinRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
@@ -325,6 +340,7 @@ export interface FileRoutesByTo {
   '/admin/wallet': typeof AdminWalletRoute
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
+  '/pay/complete': typeof PayCompleteRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -351,6 +367,7 @@ export interface FileRoutesById {
   '/saved-payments': typeof SavedPaymentsRoute
   '/security': typeof SecurityRoute
   '/services': typeof ServicesRoute
+  '/setup-pin': typeof SetupPinRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
@@ -368,6 +385,7 @@ export interface FileRoutesById {
   '/admin/wallet': typeof AdminWalletRoute
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
+  '/pay/complete': typeof PayCompleteRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -395,6 +413,7 @@ export interface FileRouteTypes {
     | '/saved-payments'
     | '/security'
     | '/services'
+    | '/setup-pin'
     | '/signup'
     | '/support'
     | '/terms'
@@ -412,6 +431,7 @@ export interface FileRouteTypes {
     | '/admin/wallet'
     | '/history/$txId'
     | '/pay/$slug'
+    | '/pay/complete'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -436,6 +456,7 @@ export interface FileRouteTypes {
     | '/saved-payments'
     | '/security'
     | '/services'
+    | '/setup-pin'
     | '/signup'
     | '/support'
     | '/terms'
@@ -453,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/wallet'
     | '/history/$txId'
     | '/pay/$slug'
+    | '/pay/complete'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -478,6 +500,7 @@ export interface FileRouteTypes {
     | '/saved-payments'
     | '/security'
     | '/services'
+    | '/setup-pin'
     | '/signup'
     | '/support'
     | '/terms'
@@ -495,6 +518,7 @@ export interface FileRouteTypes {
     | '/admin/wallet'
     | '/history/$txId'
     | '/pay/$slug'
+    | '/pay/complete'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -521,11 +545,13 @@ export interface RootRouteChildren {
   SavedPaymentsRoute: typeof SavedPaymentsRoute
   SecurityRoute: typeof SecurityRoute
   ServicesRoute: typeof ServicesRoute
+  SetupPinRoute: typeof SetupPinRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRouteWithChildren
   TermsRoute: typeof TermsRoute
   WalletRoute: typeof WalletRouteWithChildren
   PaySlugRoute: typeof PaySlugRoute
+  PayCompleteRoute: typeof PayCompleteRoute
   ApiPublicWebhooksPaystackRoute: typeof ApiPublicWebhooksPaystackRoute
 }
 
@@ -627,6 +653,13 @@ declare module '@tanstack/react-router' {
       path: '/services'
       fullPath: '/services'
       preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup-pin': {
+      id: '/setup-pin'
+      path: '/setup-pin'
+      fullPath: '/setup-pin'
+      preLoaderRoute: typeof SetupPinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -753,6 +786,13 @@ declare module '@tanstack/react-router' {
       path: '/pay/$slug'
       fullPath: '/pay/$slug'
       preLoaderRoute: typeof PaySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/complete': {
+      id: '/pay/complete'
+      path: '/pay/complete'
+      fullPath: '/pay/complete'
+      preLoaderRoute: typeof PayCompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile/personal': {
@@ -943,11 +983,13 @@ const rootRouteChildren: RootRouteChildren = {
   SavedPaymentsRoute: SavedPaymentsRoute,
   SecurityRoute: SecurityRoute,
   ServicesRoute: ServicesRoute,
+  SetupPinRoute: SetupPinRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRouteWithChildren,
   TermsRoute: TermsRoute,
   WalletRoute: WalletRouteWithChildren,
   PaySlugRoute: PaySlugRoute,
+  PayCompleteRoute: PayCompleteRoute,
   ApiPublicWebhooksPaystackRoute: ApiPublicWebhooksPaystackRoute,
 }
 export const routeTree = rootRouteImport

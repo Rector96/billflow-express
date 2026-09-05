@@ -35,7 +35,9 @@ function CareQueue() {
   const search = Route.useSearch();
   const [stats, setStats] = useState<Stats | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, { full_name: string | null; email: string | null }>>({});
+  const [profiles, setProfiles] = useState<
+    Record<string, { full_name: string | null; email: string | null }>
+  >({});
   const [status, setStatus] = useState<string>("all");
   const [q, setQ] = useState(search.q ?? "");
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,8 @@ function CareQueue() {
       if (status !== "all" && t.status !== status) return false;
       if (!needle) return true;
       const p = profiles[t.user_id];
-      const hay = `${t.ticket_number} ${t.subject} ${t.description} ${p?.full_name ?? ""} ${p?.email ?? ""}`.toLowerCase();
+      const hay =
+        `${t.ticket_number} ${t.subject} ${t.description} ${p?.full_name ?? ""} ${p?.email ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
   }, [tickets, status, q, profiles]);
@@ -106,7 +109,9 @@ function CareQueue() {
               placeholder="Search ticket, name, email…"
               className="h-9 flex-1 rounded-xl border border-border/70 bg-card px-3 text-sm min-w-[12rem]"
             />
-            {(["all", "open", "in_progress", "waiting_for_customer", "resolved", "closed"] as const).map((s) => (
+            {(
+              ["all", "open", "in_progress", "waiting_for_customer", "resolved", "closed"] as const
+            ).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -124,7 +129,10 @@ function CareQueue() {
           </div>
 
           {filtered.length === 0 ? (
-            <AdminEmpty title="No tickets" body="When customers open RockPay Care, requests appear here." />
+            <AdminEmpty
+              title="No tickets"
+              body="When customers open RockPay Care, requests appear here."
+            />
           ) : (
             <div className="space-y-1.5">
               {filtered.map((t) => {

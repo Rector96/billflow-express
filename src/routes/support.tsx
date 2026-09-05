@@ -73,7 +73,9 @@ function CareHub() {
     try {
       const { data, error } = await supabase
         .from("support_tickets")
-        .select("id, ticket_number, subject, status, category, description, created_at, transaction_id")
+        .select(
+          "id, ticket_number, subject, status, category, description, created_at, transaction_id",
+        )
         .order("created_at", { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -117,17 +119,25 @@ function CareHub() {
       const desc =
         note.trim() ||
         (reason
-          ? TX_ISSUE_OPTIONS.find((o) => o.reason === reason)?.label ?? reason
-          : CATEGORY_OPTIONS.find((c) => c.key === category)?.label ?? "Support request");
+          ? (TX_ISSUE_OPTIONS.find((o) => o.reason === reason)?.label ?? reason)
+          : (CATEGORY_OPTIONS.find((c) => c.key === category)?.label ?? "Support request"));
 
-      const { data, error } = await supabase.rpc("create_care_ticket", {
+      const args: {
+        _category: TicketCategory;
+        _description: string;
+        _subject: string;
+        _reason?: string;
+        _transaction_id?: string;
+        _reference?: string;
+      } = {
         _category: category,
         _description: desc,
         _subject: desc.slice(0, 80),
-        _reason: reason ?? null,
-        _transaction_id: null,
-        _reference: reference ?? null,
-      });
+      };
+      if (reason) args._reason = reason;
+      if (reference) args._reference = reference;
+
+      const { data, error } = await supabase.rpc("create_care_ticket", args);
       if (error) throw error;
       const row = data as { id: string; ticket_number: string; duplicate?: boolean };
       if (row.duplicate) {

@@ -66,11 +66,7 @@ function roundRect(
   ctx.closePath();
 }
 
-function truncate(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string {
+function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
   if (ctx.measureText(text).width <= maxWidth) return text;
   let t = text;
   while (t.length > 1 && ctx.measureText(t + "…").width > maxWidth) t = t.slice(0, -1);
@@ -364,7 +360,11 @@ export async function shareOrDownload(opts: {
 }): Promise<"shared" | "downloaded"> {
   const file = new File([opts.blob], opts.filename, { type: opts.blob.type });
 
-  if (typeof navigator !== "undefined" && navigator.share && navigator.canShare?.({ files: [file] })) {
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.share &&
+    navigator.canShare?.({ files: [file] })
+  ) {
     try {
       await navigator.share({
         files: [file],

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json, Database } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AirtimePurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -77,38 +78,27 @@ function mapStartError(message: string): Error {
   return new Error(message);
 }
 
+/**
+ * Authorize (PIN + debit + pending) then call VTpass sandbox.
+ * Outcome is decided only from the provider response — never from the client.
+ */
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: {
-      network: string;
-      phone: string;
-      amount: number;
-      pin: string;
-      requestId?: string;
-    }) => {
-      const amount = Math.round(Number(input?.amount));
-      if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
-        throw new Error("Enter an amount between ₦50 and ₦50,000.");
-      }
-      const pin = String(input?.pin ?? "");
-      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-      const network = String(input?.network ?? "")
-        .trim()
-        .toLowerCase();
-      if (!network) throw new Error("Select a network.");
-      const phone = String(input?.phone ?? "").trim();
-      if (!phone) throw new Error("Enter a phone number.");
-      const requestId = String(input?.requestId ?? "").trim();
-      return {
-        network,
-        phone,
-        amount,
-        pin,
-        requestId: requestId || `airtime-${crypto.randomUUID()}`,
-      };
-    },
-  )
+  .inputValidator((input: { network: string; phone: string; amount: number; pin: string }) => {
+    const amount = Math.round(Number(input?.amount));
+    if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
+      throw new Error("Enter an amount between ₦50 and ₦50,000.");
+    }
+    const pin = String(input?.pin ?? "");
+    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+    const network = String(input?.network ?? "")
+      .trim()
+      .toLowerCase();
+    if (!network) throw new Error("Select a network.");
+    const phone = String(input?.phone ?? "").trim();
+    if (!phone) throw new Error("Enter a phone number.");
+    return { network, phone, amount, pin };
+  })
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const {
       getVtpassConfig,
@@ -117,7 +107,6 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       vtpassPayAirtime,
       mapVtpassOutcome,
     } = await import("./vtpass.server");
-    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
 
     let phone: string;
@@ -134,37 +123,13 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("unsupported_network");
     }
 
-    // OPay-style: customer types face value and pays exactly that.
-    // RockPay profit comes from VTpass commission/discount, not a customer surcharge.
-    const providerAmount = data.amount;
-    const pricing = await resolvePricing({
-      service: "airtime",
-      provider: serviceId,
-      productCode: null,
-      baseAmount: providerAmount,
-    });
-    // Always debit face value for airtime (ignore customer-facing markup rules).
-    const customerAmount = providerAmount;
-    void pricing.rockpayFee;
-
-    const { data: duplicate } = await context.supabase
-      .from("bill_transactions")
-      .select("internal_reference, status")
-      .eq("provider_request_id", data.requestId)
-      .eq("user_id", context.userId)
-      .limit(1);
-    if (duplicate?.[0]) {
-      throw new Error("This payment request has already been submitted. Refresh its status.");
-    }
-
     const { data: started, error: startError } = await context.supabase.rpc(
       "start_airtime_purchase",
       {
         _provider: serviceId,
         _phone: phone,
-        _amount: customerAmount,
+        _amount: data.amount,
         _pin: data.pin,
-        _request_id: data.requestId,
       },
     );
     if (startError) {
@@ -176,45 +141,11 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("Could not start airtime purchase.");
     }
 
-    try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: existingRows } = await (supabaseAdmin as any)
-        .from("bill_transactions")
-        .select("metadata")
-        .eq("internal_reference", row.internal_reference)
-        .limit(1);
-      const prev = (existingRows?.[0]?.metadata ?? {}) as Record<string, unknown>;
-      const { error: metadataError } = await (supabaseAdmin as any)
-        .from("bill_transactions")
-        .update({
-          metadata: {
-            ...prev,
-            provider_amount: providerAmount,
-            pricing_rule_id: pricing.pricingRuleId,
-            rockpay_fee: pricing.rockpayFee,
-            pricing_fallback: pricing.usedFallback,
-            service_slug: "airtime",
-          },
-        })
-        .eq("internal_reference", row.internal_reference);
-      if (metadataError) throw metadataError;
-    } catch (e) {
-      console.warn("[airtime] could not persist provider_amount metadata before pay", e);
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
-        _user_id: context.userId,
-        _internal_reference: row.internal_reference,
-        _outcome: "failed",
-        _provider_transaction_id: "",
-        _payload: { metadata_error: true },
-      });
-      throw new Error("Could not prepare this payment safely. Your wallet was not charged.");
-    }
-
+    // Airtime VTU: request_id, serviceID, amount, phone only (VTpass docs)
     const pay = await vtpassPayAirtime({
       requestId: String(row.request_id),
       serviceId,
-      amount: providerAmount,
+      amount: data.amount,
       phone,
     });
     const outcome = mapVtpassOutcome(pay);
@@ -223,17 +154,12 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       status: pay.contentStatus,
       desc: pay.responseDescription,
       txId: pay.transactionId,
-      providerAmount,
-      customerAmount,
-      pricingRuleId: pricing.pricingRuleId,
       outcome,
     });
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
-      "trusted_complete_airtime_purchase",
+    const { data: finalized, error: finError } = await context.supabase.rpc(
+      "complete_airtime_purchase",
       {
-        _user_id: context.userId,
         _internal_reference: row.internal_reference,
         _outcome: outcome,
         _provider_transaction_id: pay.transactionId ?? "",
@@ -242,72 +168,37 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
           vtpass_status: pay.contentStatus,
           response_description: pay.responseDescription,
           vtpass_snapshot: safePayload(pay.raw),
-          provider_amount: providerAmount,
-          pricing_rule_id: pricing.pricingRuleId,
-          rockpay_fee: pricing.rockpayFee,
-          pricing_fallback: pricing.usedFallback,
         },
       },
     );
     if (finError) {
       console.error("[airtime] complete", finError.message);
-      await (supabaseAdmin as any)
-        .from("bill_transactions")
-        .update({
-          ...(pay.transactionId ? { provider_transaction_id: pay.transactionId } : {}),
-          provider_response_code: pay.code,
-          provider_status: pay.contentStatus,
-          provider_response_message: pay.responseDescription,
-          provider_channel: "vtpass",
-        })
-        .eq("internal_reference", row.internal_reference);
       return {
-        status: outcome,
+        status: "pending",
         reference: row.internal_reference as string,
         requestId: row.request_id as string,
         providerTransactionId: pay.transactionId,
-        amount: customerAmount,
+        amount: data.amount,
         phoneMasked: maskPhone(phone),
         network: serviceId,
         balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage(outcome, customerAmount, pay.responseDescription),
+        message: customerMessage("pending", data.amount),
       };
     }
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
     const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
 
-    if (status === "successful") {
-      try {
-        const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await maybeRecordTransactionProfit(supabaseAdmin as any, {
-          internalReference: String(fin?.internal_reference ?? row.internal_reference),
-          customerAmount,
-          providerAmount,
-          rockpayFee: pricing.rockpayFee,
-          pricingRuleId: pricing.pricingRuleId,
-          service: "airtime",
-          provider: serviceId,
-          productCode: null,
-          providerCost: pay.totalAmount,
-          providerCommission: pay.commission,
-        });
-      } catch (e) {
-        console.error("[airtime] profit record", e);
-      }
-    }
-
     return {
       status,
       reference: (fin?.internal_reference ?? row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount: customerAmount,
+      amount: data.amount,
       phoneMasked: maskPhone(phone),
       network: serviceId,
       balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, customerAmount, pay.responseDescription),
+      message: customerMessage(status, data.amount, pay.responseDescription),
     };
   });
 
@@ -326,6 +217,7 @@ export const requeryAirtime = createServerFn({ method: "POST" })
     });
   });
 
+/** Staff requery — audited; no customer ownership restriction. */
 export const adminRequeryAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { reference: string }) => {
@@ -341,14 +233,14 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
 
     return requeryAirtimeCore({
       supabase: context.supabase,
-      userId: context.userId,
       reference: data.reference,
       audit: true,
     });
   });
 
+/** Shared requery used by customer + admin paths. */
 export async function requeryAirtimeCore(opts: {
-  supabase: any;
+  supabase: SupabaseClient<Database>;
   userId?: string | null;
   reference: string;
   audit?: boolean;
@@ -359,7 +251,7 @@ export async function requeryAirtimeCore(opts: {
   const { data: bills, error } = await supabase
     .from("bill_transactions")
     .select(
-      "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id, user_id, metadata",
+      "id, internal_reference, status, amount, provider, customer_identifier, provider_request_id, provider_transaction_id, user_id",
     )
     .eq("internal_reference", reference)
     .limit(1);
@@ -367,7 +259,7 @@ export async function requeryAirtimeCore(opts: {
   if (error) throw new Error(error.message);
   const bill = bills?.[0];
   if (!bill) throw new Error("Transaction not found.");
-  if (opts.userId && !opts.audit && bill.user_id && bill.user_id !== opts.userId) {
+  if (opts.userId && bill.user_id && bill.user_id !== opts.userId) {
     throw new Error("Transaction not found.");
   }
 
@@ -413,23 +305,18 @@ export async function requeryAirtimeCore(opts: {
   const outcome = mapVtpassOutcome(pay);
   console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
-    "trusted_complete_airtime_purchase",
-    {
-      _user_id: opts.audit ? bill.user_id : opts.userId,
-      _internal_reference: bill.internal_reference,
-      _outcome: outcome,
-      _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
-      _payload: {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        requery: true,
-        vtpass_snapshot: safePayload(pay.raw),
-      },
+  const { data: finalized, error: finError } = await supabase.rpc("complete_airtime_purchase", {
+    _internal_reference: bill.internal_reference,
+    _outcome: outcome,
+    _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+    _payload: {
+      vtpass_code: pay.code,
+      vtpass_status: pay.contentStatus,
+      response_description: pay.responseDescription,
+      requery: true,
+      vtpass_snapshot: safePayload(pay.raw),
     },
-  );
+  });
   if (finError) throw new Error(finError.message);
 
   if (opts.audit) {
@@ -450,51 +337,6 @@ export async function requeryAirtimeCore(opts: {
 
   const fin = Array.isArray(finalized) ? finalized[0] : finalized;
   const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
-
-  if (status === "successful") {
-    try {
-      const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const meta = (bill.metadata ?? {}) as Record<string, unknown>;
-      const providerAmountRaw = meta["provider_amount"];
-      const providerAmount =
-        typeof providerAmountRaw === "number" && Number.isFinite(providerAmountRaw)
-          ? Number(providerAmountRaw)
-          : typeof providerAmountRaw === "string" && Number.isFinite(Number(providerAmountRaw))
-            ? Number(providerAmountRaw)
-            : null;
-      if (providerAmount == null) {
-        console.warn(
-          "[airtime-requery] profit skipped: provider_amount missing from metadata; will not substitute customer amount",
-          bill.internal_reference,
-        );
-      } else {
-        const rockpayFee =
-          typeof meta["rockpay_fee"] === "number"
-            ? Number(meta["rockpay_fee"])
-            : typeof meta["rockpay_fee"] === "string" &&
-                Number.isFinite(Number(meta["rockpay_fee"]))
-              ? Number(meta["rockpay_fee"])
-              : null;
-        const pricingRuleId =
-          typeof meta["pricing_rule_id"] === "string" ? meta["pricing_rule_id"] : null;
-        await maybeRecordTransactionProfit(supabaseAdmin as any, {
-          internalReference: bill.internal_reference,
-          customerAmount: amount,
-          providerAmount,
-          rockpayFee,
-          pricingRuleId,
-          service: "airtime",
-          provider: String(bill.provider ?? network ?? ""),
-          productCode: null,
-          providerCost: pay.totalAmount,
-          providerCommission: pay.commission,
-        });
-      }
-    } catch (e) {
-      console.error("[airtime-requery] profit record", e);
-    }
-  }
 
   return {
     status,

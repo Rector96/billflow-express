@@ -41,7 +41,12 @@ type Step =
   | "processing"
   | "result";
 type CatalogService = { serviceID: string; name: string; minimumAmount: number | null };
-type CatalogVariation = { variationCode: string; name: string; amount: number; fixedPrice: boolean };
+type CatalogVariation = {
+  variationCode: string;
+  name: string;
+  amount: number;
+  fixedPrice: boolean;
+};
 
 function isValidNgMobile(input: string): boolean {
   let d = input.replace(/\D/g, "");
@@ -177,7 +182,9 @@ export function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Service unavailable" backTo="/services" />
-        <div className="px-4 py-10 text-center text-sm text-muted-foreground">We could not find that service.</div>
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+          We could not find that service.
+        </div>
       </AppShell>
     );
   }
@@ -374,7 +381,10 @@ export function PayFlow() {
           <p className="text-sm text-muted-foreground">{resultMessage}</p>
           {token ? <p className="break-all font-mono text-lg font-bold">{token}</p> : null}
           {txId ? <p className="font-mono text-xs">{txId}</p> : null}
-          <Button className="h-11 w-full rounded-xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-11 w-full rounded-xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             Home
           </Button>
         </div>
@@ -416,7 +426,11 @@ export function PayFlow() {
             <InfoRow label="Amount" value={formatNaira(total, false)} />
           </div>
           {DIRECT_PAY && (isElectricity || isCable) ? (
-            <Button className="h-11 w-full rounded-xl font-bold" disabled={total < 50} onClick={() => void runDirectPay()}>
+            <Button
+              className="h-11 w-full rounded-xl font-bold"
+              disabled={total < 50}
+              onClick={() => void runDirectPay()}
+            >
               Pay {formatNaira(total, false)} securely
             </Button>
           ) : insufficient ? (
@@ -463,11 +477,14 @@ export function PayFlow() {
                     onClick={() => setVariation(v)}
                     className={cn(
                       "press flex w-full items-center justify-between rounded-xl border bg-card px-3 py-3 text-left text-sm",
-                      variation?.variationCode === v.variationCode && "border-primary bg-primary-soft",
+                      variation?.variationCode === v.variationCode &&
+                        "border-primary bg-primary-soft",
                     )}
                   >
                     <span className="font-bold">{v.name}</span>
-                    <span className="font-extrabold tabular-nums">{formatNaira(v.amount, false)}</span>
+                    <span className="font-extrabold tabular-nums">
+                      {formatNaira(v.amount, false)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -483,7 +500,9 @@ export function PayFlow() {
                 placeholder="0"
               />
               {minPurchase > 0 ? (
-                <p className="text-[11px] text-muted-foreground">Minimum {formatNaira(minPurchase, false)}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Minimum {formatNaira(minPurchase, false)}
+                </p>
               ) : null}
             </div>
           )}
@@ -515,7 +534,9 @@ export function PayFlow() {
       <AppShell>
         <PageHeader
           title={isElectricity && step === "meterType" ? "Meter type" : service.identifierLabel}
-          onBack={() => setStep(step === "meterType" ? "provider" : isElectricity ? "meterType" : "provider")}
+          onBack={() =>
+            setStep(step === "meterType" ? "provider" : isElectricity ? "meterType" : "provider")
+          }
         />
         <div className="mx-auto max-w-md space-y-4 px-4 py-6">
           {isElectricity && step === "meterType" ? (
@@ -546,7 +567,10 @@ export function PayFlow() {
                 className="h-12 rounded-xl"
               />
               {error ? <p className="text-xs text-destructive">{error}</p> : null}
-              <Button className="h-11 w-full rounded-xl font-bold" onClick={() => void startVerify()}>
+              <Button
+                className="h-11 w-full rounded-xl font-bold"
+                onClick={() => void startVerify()}
+              >
                 Continue
               </Button>
             </>
@@ -563,22 +587,23 @@ export function PayFlow() {
         {catalogLoading ? (
           <p className="text-center text-xs text-muted-foreground">Loading providers…</p>
         ) : (
-          (isLiveCatalog ? catalogServices : service.providers.map((p) => ({ serviceID: p, name: p }))).map(
-            (s: { serviceID: string; name: string }) => (
-              <button
-                key={s.serviceID}
-                type="button"
-                onClick={() => {
-                  setProvider(s.name);
-                  setServiceID(s.serviceID);
-                  setStep(isElectricity ? "meterType" : "identifier");
-                }}
-                className="press flex w-full items-center rounded-xl border bg-card px-4 py-3 text-left text-sm font-bold shadow-soft"
-              >
-                {s.name}
-              </button>
-            ),
-          )
+          (isLiveCatalog
+            ? catalogServices
+            : service.providers.map((p) => ({ serviceID: p, name: p }))
+          ).map((s: { serviceID: string; name: string }) => (
+            <button
+              key={s.serviceID}
+              type="button"
+              onClick={() => {
+                setProvider(s.name);
+                setServiceID(s.serviceID);
+                setStep(isElectricity ? "meterType" : "identifier");
+              }}
+              className="press flex w-full items-center rounded-xl border bg-card px-4 py-3 text-left text-sm font-bold shadow-soft"
+            >
+              {s.name}
+            </button>
+          ))
         )}
       </div>
     </AppShell>

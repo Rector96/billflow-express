@@ -10,7 +10,12 @@ export type InitFundingResult = {
 
 function resolveCallbackUrl(): string | undefined {
   // Prefer explicit site URL (set on Netlify), then Origin, then Referer.
-  const siteUrl = (process.env["URL"] ?? process.env["DEPLOY_PRIME_URL"] ?? process.env["SITE_URL"] ?? "")
+  const siteUrl = (
+    process.env["URL"] ??
+    process.env["DEPLOY_PRIME_URL"] ??
+    process.env["SITE_URL"] ??
+    ""
+  )
     .trim()
     .replace(/\/$/, "");
   if (siteUrl.startsWith("http")) return `${siteUrl}/wallet/fund`;
@@ -93,9 +98,11 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
         },
       }),
     });
-    const json = (await res.json().catch(() => null)) as
-      | { status?: boolean; message?: string; data?: { authorization_url?: string } }
-      | null;
+    const json = (await res.json().catch(() => null)) as {
+      status?: boolean;
+      message?: string;
+      data?: { authorization_url?: string };
+    } | null;
 
     if (!res.ok || !json?.status || !json.data?.authorization_url) {
       const msg = json?.message ?? `Paystack initialize failed (HTTP ${res.status})`;

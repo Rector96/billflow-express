@@ -171,10 +171,7 @@ function TicketThread() {
           {messages.map((m) => {
             const mine = m.sender_id === myIdRef.current;
             return (
-              <div
-                key={m.id}
-                className={cn("flex", mine ? "justify-end" : "justify-start")}
-              >
+              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
                     "max-w-[85%] rounded-2xl px-3 py-2 text-xs",
@@ -222,7 +219,9 @@ function TicketThread() {
             </Button>
           </div>
         ) : (
-          <p className="py-2 text-center text-[11px] text-muted-foreground">This request is closed.</p>
+          <p className="py-2 text-center text-[11px] text-muted-foreground">
+            This request is closed.
+          </p>
         )}
       </div>
     </AppShell>

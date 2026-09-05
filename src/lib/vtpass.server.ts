@@ -10,25 +10,8 @@ export type VtpassPayResult = {
   transactionId: string | null;
   contentStatus: string | null;
   purchasedCode: string | null;
-  /** VTpass content.transactions.total_amount when present (what provider charged). */
-  totalAmount: number | null;
-  /** VTpass content.transactions.commission when present. */
-  commission: number | null;
   raw: unknown;
 };
-
-/** Parse a numeric money field from VTpass payloads (null if absent/invalid). */
-export function parseVtpassMoney(value: unknown): number | null {
-  if (value == null || value === "") return null;
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.round(value * 100) / 100;
-  }
-  if (typeof value === "string") {
-    const n = Number(value.replace(/,/g, "").trim());
-    if (Number.isFinite(n)) return Math.round(n * 100) / 100;
-  }
-  return null;
-}
 
 export type VtpassService = {
   serviceID: string;
@@ -398,7 +381,10 @@ export async function vtpassMerchantVerify(input: {
   };
 }
 
-function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: string): VtpassPayResult {
+function parsePayResponse(
+  raw: Record<string, unknown>,
+  fallbackRequestId: string,
+): VtpassPayResult {
   const code = String(raw["code"] ?? "");
   const content = (raw["content"] ?? {}) as Record<string, unknown>;
   const tx = (content["transactions"] ?? {}) as Record<string, unknown>;
@@ -413,9 +399,7 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
 
   const statusRaw = tx["status"] ?? content["status"] ?? raw["status"] ?? null;
   const contentStatus =
-    statusRaw != null && String(statusRaw).trim()
-      ? String(statusRaw).toLowerCase().trim()
-      : null;
+    statusRaw != null && String(statusRaw).trim() ? String(statusRaw).toLowerCase().trim() : null;
 
   const transactionId =
     tx["transactionId"] != null
@@ -426,23 +410,6 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
           ? String(raw["transactionId"])
           : null;
 
-  const commissionDetails =
-    tx["commission_details"] != null && typeof tx["commission_details"] === "object"
-      ? (tx["commission_details"] as Record<string, unknown>)
-      : content["commission_details"] != null && typeof content["commission_details"] === "object"
-        ? (content["commission_details"] as Record<string, unknown>)
-        : {};
-
-  const totalAmount = parseVtpassMoney(
-    tx["total_amount"] ?? content["total_amount"] ?? raw["total_amount"],
-  );
-  const commission = parseVtpassMoney(
-    tx["commission"] ??
-      content["commission"] ??
-      raw["commission"] ??
-      commissionDetails["amount"],
-  );
-
   return {
     code,
     responseDescription: String(
@@ -452,8 +419,6 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
     transactionId,
     contentStatus,
     purchasedCode: purchased,
-    totalAmount,
-    commission,
     raw,
   };
 }
@@ -488,8 +453,6 @@ export async function vtpassPayAirtime(input: {
         transactionId: null,
         contentStatus: null,
         purchasedCode: null,
-        totalAmount: null,
-        commission: null,
         raw,
       };
     }
@@ -503,8 +466,6 @@ export async function vtpassPayAirtime(input: {
       transactionId: null,
       contentStatus: null,
       purchasedCode: null,
-      totalAmount: null,
-      commission: null,
       raw: { error: String(err) },
     };
   }
@@ -531,8 +492,6 @@ export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPa
         transactionId: null,
         contentStatus: null,
         purchasedCode: null,
-        totalAmount: null,
-        commission: null,
         raw,
       };
     }
@@ -546,8 +505,6 @@ export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPa
       transactionId: null,
       contentStatus: null,
       purchasedCode: null,
-      totalAmount: null,
-      commission: null,
       raw: { error: String(err) },
     };
   }
@@ -572,8 +529,6 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
         transactionId: null,
         contentStatus: null,
         purchasedCode: null,
-        totalAmount: null,
-        commission: null,
         raw,
       };
     }
@@ -587,38 +542,25 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
       transactionId: null,
       contentStatus: null,
       purchasedCode: null,
-      totalAmount: null,
-      commission: null,
       raw: { error: String(err) },
     };
   }
 }
 
 /** Map VTpass response → RockPay outcome (never trust the browser). */
-export function mapVtpassOutcome(
-  result: VtpassPayResult,
-): "successful" | "failed" | "pending" {
-  const code = result.code.trim();
-  const normalizedCode = code === "0" || code === "00" || code === "000" ? "000" : code;
-  const status = (result.contentStatus ?? "").toLowerCase().trim().replace(/[_-]+/g, " ");
-
-  if (status === "failed" || status === "reversed" || status === "refunded") return "failed";
-  if (status === "pending" || status === "processing" || status === "in progress" || status === "queued") {
-    return "pending";
-  }
-
+export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "failed" | "pending" {
   // A network timeout/no response is ambiguous. Never refund based only on
   // the timeout; leave the ledger pending so the request can be requeried.
-  if (code.toUpperCase() === "TIMEOUT" || code === "") return "pending";
-  if (normalizedCode === "099") return "pending";
-  if (FAIL_CODES.has(normalizedCode)) return "failed";
+  if (result.code === "TIMEOUT" || result.code === "") return "pending";
+  if (result.code === "099") return "pending";
+  if (FAIL_CODES.has(result.code)) return "failed";
 
   // VTpass documents 000 as "processed". The transaction status inside the
   // response determines whether the provider actually delivered the service.
-  if (normalizedCode === "000") {
-    if (status === "delivered" || status === "successful" || status === "success" || status === "") {
-      return "successful";
-    }
+  if (result.code === "000") {
+    const s = (result.contentStatus ?? "").toLowerCase().trim();
+    if (s === "delivered" || s === "successful" || s === "success") return "successful";
+    if (s === "failed" || s === "reversed" || s === "refunded") return "failed";
     return "pending";
   }
 

@@ -11,7 +11,6 @@ import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
 import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
-import { BILLS_FOCUS, homeServiceSlugs } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -19,19 +18,21 @@ export const Route = createFileRoute("/home")({
       { title: `Home — ${BRAND.name}` },
       {
         name: "description",
-        content: "Pay electricity, cable TV and everyday bills in a few taps.",
+        content: "Your wallet balance, quick bill payments and recent transactions at a glance.",
       },
       { property: "og:title", content: `Home — ${BRAND.name}` },
-      { property: "og:description", content: "Pay a bill in a few taps." },
+      { property: "og:description", content: "See your balance and pay a bill in two taps." },
     ],
   }),
   component: HomePage,
 });
 
+const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
+
 function HomePage() {
   const navigate = useNavigate();
   const { profile, transactions, saved, unreadCount } = useApp();
-  const firstName = ((profile?.name ?? "").split(" ")[0] || "there").trim();
+  const firstName = (profile.name.split(" ")[0] || "there").trim();
 
   const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
 
@@ -49,49 +50,52 @@ function HomePage() {
   }, [saved]);
 
   const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
-  const serviceTiles = homeServiceSlugs().map((slug) => getService(slug)).filter(Boolean);
+  const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
 
   return (
     <AppShell>
-      <header className="brand-gradient rounded-b-[1.75rem] px-4 pt-5 pb-14 text-primary-foreground">
+      <header className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium opacity-90">{greeting()},</p>
-            <h1 className="truncate text-xl font-extrabold tracking-tight">{firstName} 👋</h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/notifications"
-              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-              className="press relative grid size-10 place-items-center rounded-full bg-white/15 ring-1 ring-white/20"
-            >
-              <Bell className="size-4" />
-              {unreadCount > 0 ? (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[9px] font-extrabold text-warning-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              ) : null}
-            </Link>
+          <div className="flex items-center gap-3">
             <Link
               to="/profile"
               aria-label="Your profile"
-              className="press grid size-10 place-items-center rounded-full border-2 border-white/40 bg-white/20 text-xs font-bold"
+              className="press grid size-10 place-items-center rounded-full border border-border/80 bg-primary-soft text-xs font-bold text-primary shadow-sm"
             >
-              {initialsOf(profile?.name || "U")}
+              {initialsOf(profile.name || "U")}
+            </Link>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">
+                {firstName}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/notifications"
+              aria-label={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
+              className="press relative grid size-9 place-items-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
+            >
+              <Bell className="size-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" />
+              ) : null}
             </Link>
           </div>
         </div>
       </header>
 
-      <div className="-mt-10 space-y-5 px-4 pb-5">
-        <WalletCard
-          label={BILLS_FOCUS ? "Ready to pay" : "Wallet Balance"}
-          billsFocus={BILLS_FOCUS}
-        />
+      <div className="space-y-4 px-4 pt-1 pb-6">
+        <WalletCard />
 
-        <section>
-          <SectionTitle title="Pay Bills" action="See all" to="/services" />
-          <div className="grid grid-cols-3 gap-2">
+        {/* Services in modern rounded surface */}
+        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+          <SectionTitle title="Quick Services" action="View all" to="/services" />
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {serviceTiles.map((s) =>
               s ? (
                 <ServiceTile
@@ -101,23 +105,21 @@ function HomePage() {
                   tint={s.tint}
                   to="/pay/$slug"
                   params={{ slug: s.slug }}
-                  card
                 />
               ) : null,
             )}
             <ServiceTile
               label="More"
               Icon={MoreIcon}
-              tint="bg-muted text-muted-foreground"
+              tint="bg-secondary text-muted-foreground border border-border/70"
               to="/services"
-              card
             />
           </div>
         </section>
 
         {(buyAgain.length > 0 || savedHome.length > 0) && (
           <section>
-            <SectionTitle title="Quick Pay" action="See All" to="/saved-payments" />
+            <SectionTitle title="Quick Pay" action="See all" to="/saved-payments" />
             <div className="space-y-2">
               <BuyAgainRail items={buyAgain} compact />
               {savedHome.map((item) => {
@@ -125,25 +127,25 @@ function HomePage() {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 rounded-2xl bg-card px-3 py-2.5 shadow-soft"
+                    className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-2.5 shadow-soft"
                   >
                     <span
                       className={cn(
-                        "grid size-10 shrink-0 place-items-center rounded-full",
+                        "grid size-9 shrink-0 place-items-center rounded-full",
                         svc?.tint ?? "bg-muted text-muted-foreground",
                       )}
                     >
-                      {svc ? <svc.icon className="size-4" /> : null}
+                      {svc ? <svc.icon className="size-4" strokeWidth={1.8} /> : null}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold">{item.label}</p>
+                      <p className="truncate text-sm font-semibold">{item.label}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {item.provider} · {item.masked}
                       </p>
                     </div>
                     <Button
                       size="sm"
-                      className="h-8 shrink-0 rounded-full px-4 text-xs font-bold"
+                      className="h-7.5 shrink-0 rounded-lg px-3 text-xs font-semibold"
                       onClick={() =>
                         navigate({
                           to: "/pay/$slug",
@@ -162,9 +164,11 @@ function HomePage() {
         )}
 
         <section>
-          <SectionTitle title="Recent" action="See All" to="/history" />
+          <SectionTitle title="Recent Activity" action="See all" to="/history" />
           {recent.length === 0 ? (
-            <p className="py-3 text-center text-xs text-muted-foreground">Your payments will show up here.</p>
+            <p className="rounded-xl border border-dashed border-border/80 bg-card py-6 text-center text-xs text-muted-foreground">
+              Your recent payments will appear here.
+            </p>
           ) : (
             <div className="space-y-2">
               {recent.map((tx) => (
@@ -176,17 +180,16 @@ function HomePage() {
 
         <Link
           to="/support"
-          className="press flex items-center gap-3 rounded-2xl bg-card px-3 py-3 shadow-soft"
+          className="press flex items-center gap-3 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card transition-colors hover:border-primary/40"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-            <HeartHandshake className="size-5" />
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+            <HeartHandshake className="size-4.5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold">RockPay Care</p>
-            <p className="text-xs text-muted-foreground">Need help with a payment?</p>
+            <p className="text-xs font-semibold text-foreground">Need help with a payment?</p>
+            <p className="text-[11px] text-muted-foreground">RockPay Support is available 24/7</p>
           </div>
-          <span className="text-xs font-bold text-primary">Get help</span>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-primary">Get help →</span>
         </Link>
       </div>
     </AppShell>

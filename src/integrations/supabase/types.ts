@@ -1,974 +1,822 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
+    PostgrestVersion: "14.5";
+  };
   public: {
     Tables: {
       admin_audit_logs: {
         Row: {
-          action: string
-          actor_user_id: string
-          created_at: string
-          description: string
-          id: string
-          metadata: Json
-          target_id: string | null
-          target_type: string | null
-        }
+          action: string;
+          actor_user_id: string;
+          created_at: string;
+          description: string;
+          id: string;
+          metadata: Json;
+          target_id: string | null;
+          target_type: string | null;
+        };
         Insert: {
-          action: string
-          actor_user_id: string
-          created_at?: string
-          description?: string
-          id?: string
-          metadata?: Json
-          target_id?: string | null
-          target_type?: string | null
-        }
+          action: string;
+          actor_user_id: string;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          metadata?: Json;
+          target_id?: string | null;
+          target_type?: string | null;
+        };
         Update: {
-          action?: string
-          actor_user_id?: string
-          created_at?: string
-          description?: string
-          id?: string
-          metadata?: Json
-          target_id?: string | null
-          target_type?: string | null
-        }
-        Relationships: []
-      }
+          action?: string;
+          actor_user_id?: string;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          metadata?: Json;
+          target_id?: string | null;
+          target_type?: string | null;
+        };
+        Relationships: [];
+      };
       bill_transactions: {
         Row: {
-          amount: number
-          created_at: string
-          customer_identifier: string
-          external_reference: string | null
-          id: string
-          internal_reference: string
-          metadata: Json
-          product: string | null
-          provider: string
-          provider_channel: string | null
-          provider_request_id: string | null
-          provider_response_code: string | null
-          provider_response_message: string | null
-          provider_status: string | null
-          provider_transaction_id: string | null
-          service: string
-          status: Database["public"]["Enums"]["tx_status"]
-          updated_at: string
-          user_id: string
-          wallet_id: string | null
-        }
+          amount: number;
+          created_at: string;
+          customer_identifier: string;
+          external_reference: string | null;
+          id: string;
+          internal_reference: string;
+          metadata: Json;
+          product: string | null;
+          provider: string;
+          provider_channel: string | null;
+          provider_request_id: string | null;
+          provider_response_code: string | null;
+          provider_response_message: string | null;
+          provider_status: string | null;
+          provider_transaction_id: string | null;
+          service: string;
+          status: Database["public"]["Enums"]["tx_status"];
+          updated_at: string;
+          user_id: string;
+          wallet_id: string | null;
+        };
         Insert: {
-          amount: number
-          created_at?: string
-          customer_identifier: string
-          external_reference?: string | null
-          id?: string
-          internal_reference: string
-          metadata?: Json
-          product?: string | null
-          provider: string
-          provider_channel?: string | null
-          provider_request_id?: string | null
-          provider_response_code?: string | null
-          provider_response_message?: string | null
-          provider_status?: string | null
-          provider_transaction_id?: string | null
-          service: string
-          status?: Database["public"]["Enums"]["tx_status"]
-          updated_at?: string
-          user_id: string
-          wallet_id?: string | null
-        }
+          amount: number;
+          created_at?: string;
+          customer_identifier: string;
+          external_reference?: string | null;
+          id?: string;
+          internal_reference: string;
+          metadata?: Json;
+          product?: string | null;
+          provider: string;
+          provider_channel?: string | null;
+          provider_request_id?: string | null;
+          provider_response_code?: string | null;
+          provider_response_message?: string | null;
+          provider_status?: string | null;
+          provider_transaction_id?: string | null;
+          service: string;
+          status?: Database["public"]["Enums"]["tx_status"];
+          updated_at?: string;
+          user_id: string;
+          wallet_id?: string | null;
+        };
         Update: {
-          amount?: number
-          created_at?: string
-          customer_identifier?: string
-          external_reference?: string | null
-          id?: string
-          internal_reference?: string
-          metadata?: Json
-          product?: string | null
-          provider?: string
-          provider_channel?: string | null
-          provider_request_id?: string | null
-          provider_response_code?: string | null
-          provider_response_message?: string | null
-          provider_status?: string | null
-          provider_transaction_id?: string | null
-          service?: string
-          status?: Database["public"]["Enums"]["tx_status"]
-          updated_at?: string
-          user_id?: string
-          wallet_id?: string | null
-        }
+          amount?: number;
+          created_at?: string;
+          customer_identifier?: string;
+          external_reference?: string | null;
+          id?: string;
+          internal_reference?: string;
+          metadata?: Json;
+          product?: string | null;
+          provider?: string;
+          provider_channel?: string | null;
+          provider_request_id?: string | null;
+          provider_response_code?: string | null;
+          provider_response_message?: string | null;
+          provider_status?: string | null;
+          provider_transaction_id?: string | null;
+          service?: string;
+          status?: Database["public"]["Enums"]["tx_status"];
+          updated_at?: string;
+          user_id?: string;
+          wallet_id?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "bill_transactions_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
+            foreignKeyName: "bill_transactions_wallet_id_fkey";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "wallets";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       notifications: {
         Row: {
-          created_at: string
-          id: string
-          message: string
-          metadata: Json
-          read: boolean
-          title: string
-          type: Database["public"]["Enums"]["notification_type"]
-          user_id: string
-        }
+          created_at: string;
+          id: string;
+          message: string;
+          metadata: Json;
+          read: boolean;
+          title: string;
+          type: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          message?: string
-          metadata?: Json
-          read?: boolean
-          title: string
-          type?: Database["public"]["Enums"]["notification_type"]
-          user_id: string
-        }
+          created_at?: string;
+          id?: string;
+          message?: string;
+          metadata?: Json;
+          read?: boolean;
+          title: string;
+          type?: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          metadata?: Json
-          read?: boolean
-          title?: string
-          type?: Database["public"]["Enums"]["notification_type"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          message?: string;
+          metadata?: Json;
+          read?: boolean;
+          title?: string;
+          type?: Database["public"]["Enums"]["notification_type"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
-          account_status: string
-          avatar_url: string | null
-          billpay_id: string
-          created_at: string
-          email: string | null
-          full_name: string
-          id: string
-          phone: string | null
-          updated_at: string
-          user_id: string
-        }
+          account_status: string;
+          avatar_url: string | null;
+          billpay_id: string;
+          created_at: string;
+          email: string | null;
+          full_name: string;
+          id: string;
+          phone: string | null;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          account_status?: string
-          avatar_url?: string | null
-          billpay_id: string
-          created_at?: string
-          email?: string | null
-          full_name?: string
-          id?: string
-          phone?: string | null
-          updated_at?: string
-          user_id: string
-        }
+          account_status?: string;
+          avatar_url?: string | null;
+          billpay_id: string;
+          created_at?: string;
+          email?: string | null;
+          full_name?: string;
+          id?: string;
+          phone?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          account_status?: string
-          avatar_url?: string | null
-          billpay_id?: string
-          created_at?: string
-          email?: string | null
-          full_name?: string
-          id?: string
-          phone?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          account_status?: string;
+          avatar_url?: string | null;
+          billpay_id?: string;
+          created_at?: string;
+          email?: string | null;
+          full_name?: string;
+          id?: string;
+          phone?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       saved_payments: {
         Row: {
-          created_at: string
-          customer_identifier: string
-          id: string
-          metadata: Json
-          nickname: string
-          provider: string
-          service: string
-          updated_at: string
-          user_id: string
-        }
+          created_at: string;
+          customer_identifier: string;
+          id: string;
+          metadata: Json;
+          nickname: string;
+          provider: string;
+          service: string;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          customer_identifier: string
-          id?: string
-          metadata?: Json
-          nickname: string
-          provider: string
-          service: string
-          updated_at?: string
-          user_id: string
-        }
+          created_at?: string;
+          customer_identifier: string;
+          id?: string;
+          metadata?: Json;
+          nickname: string;
+          provider: string;
+          service: string;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          customer_identifier?: string
-          id?: string
-          metadata?: Json
-          nickname?: string
-          provider?: string
-          service?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          customer_identifier?: string;
+          id?: string;
+          metadata?: Json;
+          nickname?: string;
+          provider?: string;
+          service?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       support_messages: {
         Row: {
-          body: string
-          created_at: string
-          id: string
-          is_internal: boolean
-          sender_id: string
-          ticket_id: string
-        }
+          body: string;
+          created_at: string;
+          id: string;
+          is_internal: boolean;
+          sender_id: string;
+          ticket_id: string;
+        };
         Insert: {
-          body: string
-          created_at?: string
-          id?: string
-          is_internal?: boolean
-          sender_id: string
-          ticket_id: string
-        }
+          body: string;
+          created_at?: string;
+          id?: string;
+          is_internal?: boolean;
+          sender_id: string;
+          ticket_id: string;
+        };
         Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          is_internal?: boolean
-          sender_id?: string
-          ticket_id?: string
-        }
+          body?: string;
+          created_at?: string;
+          id?: string;
+          is_internal?: boolean;
+          sender_id?: string;
+          ticket_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "support_messages_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "support_tickets"
-            referencedColumns: ["id"]
+            foreignKeyName: "support_messages_ticket_id_fkey";
+            columns: ["ticket_id"];
+            isOneToOne: false;
+            referencedRelation: "support_tickets";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       support_tickets: {
         Row: {
-          assigned_to: string | null
-          category: Database["public"]["Enums"]["ticket_category"]
-          created_at: string
-          description: string
-          id: string
-          reason: string | null
-          status: Database["public"]["Enums"]["ticket_status"]
-          subject: string | null
-          ticket_number: string | null
-          transaction_id: string | null
-          updated_at: string
-          user_id: string
-        }
+          assigned_to: string | null;
+          category: Database["public"]["Enums"]["ticket_category"];
+          created_at: string;
+          description: string;
+          id: string;
+          reason: string | null;
+          status: Database["public"]["Enums"]["ticket_status"];
+          subject: string | null;
+          ticket_number: string | null;
+          transaction_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          assigned_to?: string | null
-          category?: Database["public"]["Enums"]["ticket_category"]
-          created_at?: string
-          description: string
-          id?: string
-          reason?: string | null
-          status?: Database["public"]["Enums"]["ticket_status"]
-          subject?: string | null
-          ticket_number?: string | null
-          transaction_id?: string | null
-          updated_at?: string
-          user_id: string
-        }
+          assigned_to?: string | null;
+          category?: Database["public"]["Enums"]["ticket_category"];
+          created_at?: string;
+          description: string;
+          id?: string;
+          reason?: string | null;
+          status?: Database["public"]["Enums"]["ticket_status"];
+          subject?: string | null;
+          ticket_number?: string | null;
+          transaction_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          assigned_to?: string | null
-          category?: Database["public"]["Enums"]["ticket_category"]
-          created_at?: string
-          description?: string
-          id?: string
-          reason?: string | null
-          status?: Database["public"]["Enums"]["ticket_status"]
-          subject?: string | null
-          ticket_number?: string | null
-          transaction_id?: string | null
-          updated_at?: string
-          user_id?: string
-        }
+          assigned_to?: string | null;
+          category?: Database["public"]["Enums"]["ticket_category"];
+          created_at?: string;
+          description?: string;
+          id?: string;
+          reason?: string | null;
+          status?: Database["public"]["Enums"]["ticket_status"];
+          subject?: string | null;
+          ticket_number?: string | null;
+          transaction_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "support_tickets_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "bill_transactions"
-            referencedColumns: ["id"]
+            foreignKeyName: "support_tickets_transaction_id_fkey";
+            columns: ["transaction_id"];
+            isOneToOne: false;
+            referencedRelation: "bill_transactions";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       transaction_pins: {
         Row: {
-          created_at: string
-          failed_attempts: number
-          locked_until: string | null
-          pin_hash: string
-          updated_at: string
-          user_id: string
-        }
+          created_at: string;
+          failed_attempts: number;
+          locked_until: string | null;
+          pin_hash: string;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          failed_attempts?: number
-          locked_until?: string | null
-          pin_hash: string
-          updated_at?: string
-          user_id: string
-        }
+          created_at?: string;
+          failed_attempts?: number;
+          locked_until?: string | null;
+          pin_hash: string;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          failed_attempts?: number
-          locked_until?: string | null
-          pin_hash?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          failed_attempts?: number;
+          locked_until?: string | null;
+          pin_hash?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
+          created_at?: string;
+          id?: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       wallet_transactions: {
         Row: {
-          amount: number
-          balance_after: number
-          balance_before: number
-          completed_at: string | null
-          created_at: string
-          description: string | null
-          id: string
-          metadata: Json
-          provider: string | null
-          provider_reference: string | null
-          provider_transaction_id: string | null
-          reference: string
-          status: Database["public"]["Enums"]["tx_status"]
-          type: Database["public"]["Enums"]["wallet_tx_type"]
-          updated_at: string
-          user_id: string
-          wallet_id: string
-        }
+          amount: number;
+          balance_after: number;
+          balance_before: number;
+          completed_at: string | null;
+          created_at: string;
+          description: string | null;
+          id: string;
+          metadata: Json;
+          provider: string | null;
+          provider_reference: string | null;
+          provider_transaction_id: string | null;
+          reference: string;
+          status: Database["public"]["Enums"]["tx_status"];
+          type: Database["public"]["Enums"]["wallet_tx_type"];
+          updated_at: string;
+          user_id: string;
+          wallet_id: string;
+        };
         Insert: {
-          amount: number
-          balance_after: number
-          balance_before: number
-          completed_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          metadata?: Json
-          provider?: string | null
-          provider_reference?: string | null
-          provider_transaction_id?: string | null
-          reference: string
-          status?: Database["public"]["Enums"]["tx_status"]
-          type: Database["public"]["Enums"]["wallet_tx_type"]
-          updated_at?: string
-          user_id: string
-          wallet_id: string
-        }
+          amount: number;
+          balance_after: number;
+          balance_before: number;
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          metadata?: Json;
+          provider?: string | null;
+          provider_reference?: string | null;
+          provider_transaction_id?: string | null;
+          reference: string;
+          status?: Database["public"]["Enums"]["tx_status"];
+          type: Database["public"]["Enums"]["wallet_tx_type"];
+          updated_at?: string;
+          user_id: string;
+          wallet_id: string;
+        };
         Update: {
-          amount?: number
-          balance_after?: number
-          balance_before?: number
-          completed_at?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          metadata?: Json
-          provider?: string | null
-          provider_reference?: string | null
-          provider_transaction_id?: string | null
-          reference?: string
-          status?: Database["public"]["Enums"]["tx_status"]
-          type?: Database["public"]["Enums"]["wallet_tx_type"]
-          updated_at?: string
-          user_id?: string
-          wallet_id?: string
-        }
+          amount?: number;
+          balance_after?: number;
+          balance_before?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          metadata?: Json;
+          provider?: string | null;
+          provider_reference?: string | null;
+          provider_transaction_id?: string | null;
+          reference?: string;
+          status?: Database["public"]["Enums"]["tx_status"];
+          type?: Database["public"]["Enums"]["wallet_tx_type"];
+          updated_at?: string;
+          user_id?: string;
+          wallet_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "wallet_transactions_wallet_id_fkey"
-            columns: ["wallet_id"]
-            isOneToOne: false
-            referencedRelation: "wallets"
-            referencedColumns: ["id"]
+            foreignKeyName: "wallet_transactions_wallet_id_fkey";
+            columns: ["wallet_id"];
+            isOneToOne: false;
+            referencedRelation: "wallets";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       wallets: {
         Row: {
-          balance: number
-          created_at: string
-          currency: string
-          id: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
+          balance: number;
+          created_at: string;
+          currency: string;
+          id: string;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
         Insert: {
-          balance?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
+          balance?: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
         Update: {
-          balance?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
+          balance?: number;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
-      __apply_migration: { Args: { sql: string }; Returns: undefined }
-      _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean }
-      admin_care_stats: { Args: never; Returns: Json }
-      admin_dashboard_stats: { Args: never; Returns: Json }
-      admin_ops_stats: { Args: never; Returns: Json }
-      admin_reconciliation_queue: { Args: { _limit?: number }; Returns: Json }
-      admin_service_breakdown: { Args: never; Returns: Json }
+      __apply_migration: { Args: { sql: string }; Returns: undefined };
+      _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean };
+      admin_care_stats: { Args: never; Returns: Json };
+      admin_dashboard_stats: { Args: never; Returns: Json };
+      admin_ops_stats: { Args: never; Returns: Json };
+      admin_reconciliation_queue: { Args: { _limit?: number }; Returns: Json };
+      admin_service_breakdown: { Args: never; Returns: Json };
       admin_set_account_status: {
-        Args: { _reason?: string; _status: string; _user_id: string }
-        Returns: boolean
-      }
-      admin_tx_volume_series: { Args: { _days?: number }; Returns: Json }
+        Args: { _reason?: string; _status: string; _user_id: string };
+        Returns: boolean;
+      };
+      admin_tx_volume_series: { Args: { _days?: number }; Returns: Json };
       admin_write_audit: {
         Args: {
-          _action: string
-          _description: string
-          _metadata?: Json
-          _target_id?: string
-          _target_type?: string
-        }
-        Returns: string
-      }
+          _action: string;
+          _description: string;
+          _metadata?: Json;
+          _target_id?: string;
+          _target_type?: string;
+        };
+        Returns: string;
+      };
       bootstrap_current_user: {
-        Args: { _full_name?: string; _phone?: string }
+        Args: { _full_name?: string; _phone?: string };
         Returns: {
-          account_status: string
-          avatar_url: string
-          balance: number
-          billpay_id: string
-          currency: string
-          email: string
-          full_name: string
-          phone: string
-          profile_id: string
-          wallet_id: string
-          wallet_status: string
-        }[]
-      }
+          account_status: string;
+          avatar_url: string;
+          balance: number;
+          billpay_id: string;
+          currency: string;
+          email: string;
+          full_name: string;
+          phone: string;
+          profile_id: string;
+          wallet_id: string;
+          wallet_status: string;
+        }[];
+      };
       change_transaction_pin: {
-        Args: { _current_pin: string; _new_pin: string }
-        Returns: boolean
-      }
+        Args: { _current_pin: string; _new_pin: string };
+        Returns: boolean;
+      };
       complete_airtime_purchase: {
         Args: {
-          _internal_reference: string
-          _outcome: Database["public"]["Enums"]["tx_status"]
-          _payload?: Json
-          _provider_transaction_id?: string
-        }
+          _internal_reference: string;
+          _outcome: Database["public"]["Enums"]["tx_status"];
+          _payload?: Json;
+          _provider_transaction_id?: string;
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-          refunded: boolean
-          status: Database["public"]["Enums"]["tx_status"]
-        }[]
-      }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+          refunded: boolean;
+          status: Database["public"]["Enums"]["tx_status"];
+        }[];
+      };
       complete_bill_purchase: {
         Args: {
-          _internal_reference: string
-          _outcome: Database["public"]["Enums"]["tx_status"]
-          _payload?: Json
-          _provider_transaction_id?: string
-        }
+          _internal_reference: string;
+          _outcome: Database["public"]["Enums"]["tx_status"];
+          _payload?: Json;
+          _provider_transaction_id?: string;
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-          refunded: boolean
-          status: Database["public"]["Enums"]["tx_status"]
-        }[]
-      }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+          refunded: boolean;
+          status: Database["public"]["Enums"]["tx_status"];
+        }[];
+      };
       complete_paystack_funding: {
         Args: {
-          _paid_amount: number
-          _payload?: Json
-          _provider_transaction_id: string
-          _reference: string
-        }
+          _paid_amount: number;
+          _payload?: Json;
+          _provider_transaction_id: string;
+          _reference: string;
+        };
         Returns: {
-          amount: number
-          balance_after: number
-          credited: boolean
-          status: Database["public"]["Enums"]["tx_status"]
-        }[]
-      }
+          amount: number;
+          balance_after: number;
+          credited: boolean;
+          status: Database["public"]["Enums"]["tx_status"];
+        }[];
+      };
       create_care_ticket: {
         Args: {
-          _category: Database["public"]["Enums"]["ticket_category"]
-          _description: string
-          _reason?: string
-          _reference?: string
-          _subject?: string
-          _transaction_id?: string
-        }
-        Returns: Json
-      }
+          _category: Database["public"]["Enums"]["ticket_category"];
+          _description: string;
+          _reason?: string;
+          _reference?: string;
+          _subject?: string;
+          _transaction_id?: string;
+        };
+        Returns: Json;
+      };
       create_wallet_funding_intent: {
-        Args: { _amount: number }
+        Args: { _amount: number };
         Returns: {
-          amount: number
-          email: string
-          reference: string
-        }[]
-      }
+          amount: number;
+          email: string;
+          reference: string;
+        }[];
+      };
       demo_bill_payment: {
         Args: {
-          _amount: number
-          _customer_identifier: string
-          _metadata?: Json
-          _product: string
-          _provider: string
-          _service: string
-          _status: Database["public"]["Enums"]["tx_status"]
-        }
+          _amount: number;
+          _customer_identifier: string;
+          _metadata?: Json;
+          _product: string;
+          _provider: string;
+          _service: string;
+          _status: Database["public"]["Enums"]["tx_status"];
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-        }[]
-      }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+        }[];
+      };
       demo_fund_wallet: {
-        Args: { _amount: number; _description?: string }
+        Args: { _amount: number; _description?: string };
         Returns: {
-          balance_after: number
-          reference: string
-        }[]
-      }
-      generate_billpay_id: { Args: never; Returns: string }
+          balance_after: number;
+          reference: string;
+        }[];
+      };
+      generate_billpay_id: { Args: never; Returns: string };
       has_role: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      has_transaction_pin: { Args: never; Returns: boolean }
-      is_staff: { Args: { _user_id: string }; Returns: boolean }
-      new_reference: { Args: { prefix: string }; Returns: string }
-      next_ticket_number: { Args: never; Returns: string }
+          _role: Database["public"]["Enums"]["app_role"];
+          _user_id: string;
+        };
+        Returns: boolean;
+      };
+      has_transaction_pin: { Args: never; Returns: boolean };
+      is_staff: { Args: { _user_id: string }; Returns: boolean };
+      new_reference: { Args: { prefix: string }; Returns: string };
+      next_ticket_number: { Args: never; Returns: string };
       secure_bill_payment: {
         Args: {
-          _amount: number
-          _customer_identifier: string
-          _metadata?: Json
-          _pin?: string
-          _product: string
-          _provider: string
-          _service: string
-          _status: Database["public"]["Enums"]["tx_status"]
-        }
+          _amount: number;
+          _customer_identifier: string;
+          _metadata?: Json;
+          _pin?: string;
+          _product: string;
+          _provider: string;
+          _service: string;
+          _status: Database["public"]["Enums"]["tx_status"];
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-        }[]
-      }
-      set_transaction_pin: { Args: { _pin: string }; Returns: boolean }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+        }[];
+      };
+      set_transaction_pin: { Args: { _pin: string }; Returns: boolean };
       settle_paystack_funding: {
         Args: {
-          _payload?: Json
-          _reference: string
-          _status: Database["public"]["Enums"]["tx_status"]
-        }
+          _payload?: Json;
+          _reference: string;
+          _status: Database["public"]["Enums"]["tx_status"];
+        };
         Returns: {
-          amount: number
-          status: Database["public"]["Enums"]["tx_status"]
-        }[]
-      }
-<<<<<<< HEAD
-      verify_transaction_pin: { Args: { _pin: string }; Returns: boolean }
-      start_airtime_purchase: {
-        Args: {
-          _provider: string
-          _phone: string
-          _amount: number
-          _pin: string
-          _request_id?: string | null
-        }
-        Returns: {
-          bill_id: string
-          internal_reference: string
-          request_id: string
-          balance_after: number
-        }[]
-      }
-      complete_airtime_purchase: {
-        Args: {
-          _internal_reference: string
-          _outcome: Database["public"]["Enums"]["tx_status"]
-          _provider_transaction_id?: string | null
-          _payload?: Json
-        }
-        Returns: {
-          bill_id: string
-          internal_reference: string
-          status: Database["public"]["Enums"]["tx_status"]
-          balance_after: number
-          refunded: boolean
-        }[]
-      }
-      start_bill_purchase: {
-        Args: {
-          _service_slug: string
-          _service_label: string
-          _provider: string
-          _product: string
-          _customer_identifier: string
-          _amount: number
-          _pin: string
-          _metadata?: Json
-          _request_id?: string | null
-        }
-        Returns: {
-          bill_id: string
-          internal_reference: string
-          request_id: string
-          balance_after: number
-        }[]
-      }
-      complete_bill_purchase: {
-        Args: {
-          _internal_reference: string
-          _outcome: Database["public"]["Enums"]["tx_status"]
-          _provider_transaction_id?: string | null
-          _payload?: Json
-        }
-        Returns: {
-          bill_id: string
-          internal_reference: string
-          status: Database["public"]["Enums"]["tx_status"]
-          balance_after: number
-          refunded: boolean
-        }[]
-      }
-      trusted_complete_bill_purchase: {
-        Args: {
-          _user_id: string
-          _internal_reference: string
-          _outcome: Database["public"]["Enums"]["tx_status"]
-          _provider_transaction_id?: string | null
-          _payload?: Json
-        }
-        Returns: {
-          bill_id: string
-          internal_reference: string
-          status: Database["public"]["Enums"]["tx_status"]
-          balance_after: number
-          refunded: boolean
-        }[]
-      }
-      create_care_ticket: {
-        Args: {
-          _category: Database["public"]["Enums"]["ticket_category"]
-          _description: string
-          _subject?: string | null
-          _reason?: string | null
-          _transaction_id?: string | null
-          _reference?: string | null
-        }
-        Returns: Json
-      }
-      admin_ops_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      admin_tx_volume_series: {
-        Args: { _days?: number | null }
-        Returns: Json
-      }
-      admin_care_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      admin_service_breakdown: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      admin_reconciliation_queue: {
-        Args: { _limit?: number | null }
-        Returns: Json
-      }
-      admin_set_account_status: {
-        Args: { _user_id: string; _status: string; _reason?: string }
-        Returns: boolean
-      }
-=======
->>>>>>> origin/main
+          amount: number;
+          status: Database["public"]["Enums"]["tx_status"];
+        }[];
+      };
       staff_care_reply: {
-        Args: { _body: string; _internal?: boolean; _ticket_id: string }
-        Returns: string
-      }
+        Args: { _body: string; _internal?: boolean; _ticket_id: string };
+        Returns: string;
+      };
       staff_care_set_status: {
         Args: {
-          _status: Database["public"]["Enums"]["ticket_status"]
-          _ticket_id: string
-        }
-        Returns: undefined
-      }
+          _status: Database["public"]["Enums"]["ticket_status"];
+          _ticket_id: string;
+        };
+        Returns: undefined;
+      };
       start_airtime_purchase: {
         Args: {
-          _amount: number
-          _phone: string
-          _pin: string
-          _provider: string
-          _request_id?: string
-        }
+          _amount: number;
+          _phone: string;
+          _pin: string;
+          _provider: string;
+          _request_id?: string;
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-          request_id: string
-        }[]
-      }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+          request_id: string;
+        }[];
+      };
       start_bill_purchase: {
         Args: {
-          _amount: number
-          _customer_identifier: string
-          _metadata?: Json
-          _pin: string
-          _product: string
-          _provider: string
-          _request_id?: string
-          _service_label: string
-          _service_slug: string
-        }
+          _amount: number;
+          _customer_identifier: string;
+          _metadata?: Json;
+          _pin: string;
+          _product: string;
+          _provider: string;
+          _request_id?: string;
+          _service_label: string;
+          _service_slug: string;
+        };
         Returns: {
-          balance_after: number
-          bill_id: string
-          internal_reference: string
-          request_id: string
-        }[]
-      }
-      verify_transaction_pin: { Args: { _pin: string }; Returns: boolean }
-      vtpass_request_id: { Args: never; Returns: string }
-    }
+          balance_after: number;
+          bill_id: string;
+          internal_reference: string;
+          request_id: string;
+        }[];
+      };
+      verify_transaction_pin: { Args: { _pin: string }; Returns: boolean };
+      vtpass_request_id: { Args: never; Returns: string };
+    };
     Enums: {
-      app_role: "super_admin" | "admin" | "support"
-      notification_type:
-        | "success"
-        | "warning"
-        | "pending"
-        | "information"
-        | "security"
+      app_role: "super_admin" | "admin" | "support";
+      notification_type: "success" | "warning" | "pending" | "information" | "security";
       ticket_category:
         | "payment_not_received"
         | "wrong_amount"
         | "pending_transaction"
         | "token_not_received"
-        | "other"
-      ticket_status:
-        | "open"
-        | "in_progress"
-        | "resolved"
-        | "closed"
-        | "waiting_for_customer"
-      tx_status: "pending" | "successful" | "failed" | "reversed"
-      wallet_tx_type:
-        | "deposit"
-        | "bill_payment"
-        | "refund"
-        | "reversal"
-        | "adjustment"
-    }
+        | "other";
+      ticket_status: "open" | "in_progress" | "resolved" | "closed" | "waiting_for_customer";
+      tx_status: "pending" | "successful" | "failed" | "reversed";
+      wallet_tx_type: "deposit" | "bill_payment" | "refund" | "reversal" | "adjustment";
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+      [_ in never]: never;
+    };
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+      Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
       }
       ? R
       : never
-    : never
+    : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+      Insert: infer I;
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
+        Insert: infer I;
       }
       ? I
       : never
-    : never
+    : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+      Update: infer U;
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
+        Update: infer U;
       }
       ? U
       : never
-    : never
+    : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+    : never;
 
 export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "support"],
-      notification_type: [
-        "success",
-        "warning",
-        "pending",
-        "information",
-        "security",
-      ],
+      notification_type: ["success", "warning", "pending", "information", "security"],
       ticket_category: [
         "payment_not_received",
         "wrong_amount",
@@ -976,21 +824,9 @@ export const Constants = {
         "token_not_received",
         "other",
       ],
-      ticket_status: [
-        "open",
-        "in_progress",
-        "resolved",
-        "closed",
-        "waiting_for_customer",
-      ],
+      ticket_status: ["open", "in_progress", "resolved", "closed", "waiting_for_customer"],
       tx_status: ["pending", "successful", "failed", "reversed"],
-      wallet_tx_type: [
-        "deposit",
-        "bill_payment",
-        "refund",
-        "reversal",
-        "adjustment",
-      ],
+      wallet_tx_type: ["deposit", "bill_payment", "refund", "reversal", "adjustment"],
     },
   },
-} as const
+} as const;

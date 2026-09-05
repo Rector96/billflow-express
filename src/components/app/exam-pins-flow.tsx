@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Copy,
-  Home,
-  Loader2,
-  Minus,
-  Plus,
-  Ticket,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Home, Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -146,12 +137,21 @@ export function ExamPinsFlow({
               </p>
               <ul className="mt-2 space-y-2">
                 {resultPins.map((p) => (
-                  <li key={p} className="break-all font-mono text-base font-extrabold tracking-wide">
+                  <li
+                    key={p}
+                    className="break-all font-mono text-base font-extrabold tracking-wide"
+                  >
                     {p}
                   </li>
                 ))}
               </ul>
-              <Button type="button" variant="outline" size="sm" className="mt-3 rounded-xl" onClick={() => void copyPins()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 rounded-xl"
+                onClick={() => void copyPins()}
+              >
                 <Copy className="mr-1.5 size-3.5" /> Copy PIN{resultPins.length > 1 ? "s" : ""}
               </Button>
             </div>
@@ -166,7 +166,10 @@ export function ExamPinsFlow({
           ) : null}
 
           <div className="mt-2 w-full space-y-2">
-            <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+            <Button
+              className="h-12 w-full rounded-2xl font-bold"
+              onClick={() => navigate({ to: "/home" })}
+            >
               <Home className="mr-2 size-4" /> Home
             </Button>
             {resultRef ? (
@@ -209,7 +212,8 @@ export function ExamPinsFlow({
               <div>
                 <h2 className="text-lg font-extrabold tracking-tight">Choose exam body</h2>
                 <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  WAEC, NECO, NABTEB and JAMB — prices load live from the provider. Perfect for students.
+                  WAEC, NECO, NABTEB and JAMB — prices load live from the provider. Perfect for
+                  students.
                 </p>
               </div>
             </div>
@@ -254,7 +258,9 @@ export function ExamPinsFlow({
               </p>
             </div>
             {variations.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">No products available right now.</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                No products available right now.
+              </p>
             ) : (
               <div className="grid gap-2">
                 {variations.map((item) => (
@@ -273,12 +279,18 @@ export function ExamPinsFlow({
                     )}
                   >
                     <span className="text-sm font-bold">{item.name}</span>
-                    <span className="font-extrabold tabular-nums">{formatNaira(item.amount, false)}</span>
+                    <span className="font-extrabold tabular-nums">
+                      {formatNaira(item.amount, false)}
+                    </span>
                   </button>
                 ))}
               </div>
             )}
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("exam")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("exam")}
+            >
               Change exam body
             </Button>
           </section>
@@ -304,7 +316,9 @@ export function ExamPinsFlow({
                 >
                   <Minus className="size-4" />
                 </Button>
-                <span className="w-14 text-center text-3xl font-extrabold tabular-nums">{quantity}</span>
+                <span className="w-14 text-center text-3xl font-extrabold tabular-nums">
+                  {quantity}
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
@@ -315,12 +329,18 @@ export function ExamPinsFlow({
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <p className="mt-4 text-center text-xl font-extrabold tabular-nums">{formatNaira(total, false)}</p>
+              <p className="mt-4 text-center text-xl font-extrabold tabular-nums">
+                {formatNaira(total, false)}
+              </p>
             </div>
             <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
               Continue
             </Button>
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("product")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("product")}
+            >
               Back to products
             </Button>
           </section>
@@ -359,7 +379,9 @@ export function ExamPinsFlow({
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
               <p>After payment, your PIN(s) show on the next screen — copy them immediately.</p>
             </div>
-            {error ? <p className="text-center text-xs font-semibold text-destructive">{error}</p> : null}
+            {error ? (
+              <p className="text-center text-xs font-semibold text-destructive">{error}</p>
+            ) : null}
             <Button
               className="h-11 w-full rounded-xl font-bold"
               disabled={examId === "jamb" && !profileId.trim()}
@@ -367,7 +389,11 @@ export function ExamPinsFlow({
             >
               Continue to PIN
             </Button>
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("quantity")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("quantity")}
+            >
               Back
             </Button>
           </section>
@@ -390,7 +416,11 @@ export function ExamPinsFlow({
             >
               {loading ? <Loader2 className="size-4 animate-spin" /> : "Pay and get PIN"}
             </Button>
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("confirm")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("confirm")}
+            >
               Back
             </Button>
           </section>

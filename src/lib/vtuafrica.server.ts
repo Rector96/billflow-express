@@ -17,9 +17,7 @@ export type VtuafricaPayResult = {
 function getConfig() {
   const key = (process.env["VTUAFRICA_API_KEY"] ?? "").trim();
   if (!key) {
-    throw new Error(
-      "VTUAfrica is not configured. Set VTUAFRICA_API_KEY in environment variables.",
-    );
+    throw new Error("VTUAfrica is not configured. Set VTUAFRICA_API_KEY in environment variables.");
   }
   const mode = (process.env["VTUAFRICA_MODE"] ?? "sandbox").trim().toLowerCase();
   const base =
@@ -127,7 +125,10 @@ export async function vtuafricaPayCable(input: {
 }): Promise<VtuafricaPayResult> {
   const { key, base } = getConfig();
   // VTUAfrica cable products often use service codes like dstv, gotv, startimes
-  const service = input.serviceID.toLowerCase().replace(/_/g, "-").replace(/-subscription$/, "");
+  const service = input.serviceID
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/-subscription$/, "");
   const params = new URLSearchParams({
     apikey: key,
     service,

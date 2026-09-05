@@ -1,21 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Copy, FileWarning, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CareContextLink } from "@/components/app/care-entry";
-import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { EmptyState, InfoRow, StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { friendlyError, useApp } from "@/lib/app-store";
 import { formatNaira, maskTail } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
-import type { ReceiptPayload } from "@/lib/receipt-share";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { requeryAirtime } from "@/lib/airtime.functions";
-import { requeryBill } from "@/lib/bills.functions";
 
 export const Route = createFileRoute("/history/$txId")({
   head: ({ params }) => ({
@@ -48,7 +45,6 @@ function TransactionDetails() {
   const { transactions, refresh } = useApp();
   const tx = transactions.find((t) => t.id === txId);
   const checkAirtime = useServerFn(requeryAirtime);
-  const checkBill = useServerFn(requeryBill);
   const [bill, setBill] = useState<BillExtra | null>(null);
   const [loadingBill, setLoadingBill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,15 +76,6 @@ function TransactionDetails() {
     tx?.serviceSlug === "airtime" ||
     bill?.service === "Airtime" ||
     (bill?.metadata as { service_slug?: string } | null)?.service_slug === "airtime";
-  const billServiceSlug =
-    typeof bill?.metadata?.["service_slug"] === "string" ? bill.metadata["service_slug"] : "";
-  const isExamPins = tx?.serviceSlug === "exam-pins" || billServiceSlug === "exam-pins";
-  const examToken =
-    tx?.token ||
-    (typeof bill?.metadata?.["token"] === "string" ? bill.metadata["token"] : null) ||
-    (typeof bill?.metadata?.["purchased_code"] === "string"
-      ? bill.metadata["purchased_code"]
-      : null);
 
   const status = bill?.status ?? tx?.status ?? "pending";
   const amount = bill?.amount != null ? Number(bill.amount) : (tx?.amount ?? 0);
@@ -101,66 +88,11 @@ function TransactionDetails() {
     (isAirtime ? "vtpass" : null);
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
-  const dateLabel = bill?.created_at
-    ? new Date(bill.created_at).toLocaleString("en-NG", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim();
-
-  const amountLabel = `${tx?.direction === "in" ? "+" : "-"}${formatNaira(amount, false)}`;
-
-  const receiptPayload: ReceiptPayload = useMemo(
-    () => ({
-      reference: txId,
-      title: tx?.title ?? bill?.service ?? "Payment",
-      status,
-      amountLabel,
-      direction: tx?.direction,
-      service: bill?.service ?? tx?.service ?? null,
-      network: network || null,
-      recipient:
-        phone && (phone.startsWith("0") || phone.length >= 10)
-          ? maskTail(phone.replace(/\D/g, ""))
-          : phone || null,
-      providerRef: providerRef || null,
-      channel: channel === "vtpass" ? "VTpass" : channel,
-      dateLabel: dateLabel || null,
-      method: tx?.method ?? null,
-      tokenLabel: examToken ? (isExamPins ? "Exam PIN" : "Electricity Token") : null,
-      tokenValue: examToken,
-    }),
-    [
-      txId,
-      tx?.title,
-      tx?.service,
-      tx?.direction,
-      tx?.method,
-      bill?.service,
-      status,
-      amountLabel,
-      network,
-      phone,
-      providerRef,
-      channel,
-      dateLabel,
-      examToken,
-      isExamPins,
-    ],
-  );
-
   const onRefresh = async () => {
-    if (status !== "pending" || (!isAirtime && !bill)) return;
+    if (!isAirtime || status !== "pending") return;
     setRefreshing(true);
     try {
-      if (isAirtime) {
-        await checkAirtime({ data: { reference: txId } });
-      } else {
-        await checkBill({ data: { reference: txId } });
-      }
+      await checkAirtime({ data: { reference: txId } });
       await refresh();
       await loadBill();
       toast.success("Status updated");
@@ -210,12 +142,13 @@ function TransactionDetails() {
             }
           />
           <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
-          <p className="text-3xl font-extrabold tabular-nums">{amountLabel}</p>
+          <p className="text-3xl font-extrabold tabular-nums">
+            {tx?.direction === "in" ? "+" : "-"}
+            {formatNaira(amount, false)}
+          </p>
           {status === "pending" ? (
             <p className="max-w-xs text-center text-xs text-muted-foreground">
-              {isAirtime
-                ? "Still confirming with the network. Tap Refresh Status to check VTpass again."
-                : "Your transaction is still being confirmed. Tap Refresh Status to check the provider again."}
+              Your transaction is still being confirmed.
             </p>
           ) : null}
         </div>
@@ -273,32 +206,24 @@ function TransactionDetails() {
               </Button>
             </div>
           ) : null}
-          <InfoRow label="Date" value={dateLabel} />
+          <InfoRow
+            label="Date"
+            value={
+              bill?.created_at
+                ? new Date(bill.created_at).toLocaleString("en-NG", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim()
+            }
+          />
           {tx?.method ? <InfoRow label="Payment Method" value={tx.method} /> : null}
         </div>
 
-        {examToken ? (
-          <div className="rounded-2xl border border-dashed bg-primary-soft p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-muted-foreground">
-                {isExamPins ? "Exam PIN" : "Electricity Token"}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 shrink-0 rounded-lg text-xs font-bold"
-                onClick={() => copy(isExamPins ? "Exam PIN" : "Token", examToken)}
-              >
-                <Copy className="size-3.5" /> Copy
-              </Button>
-            </div>
-            <p className="mt-2 whitespace-pre-wrap break-words text-lg font-extrabold tracking-[0.15em]">
-              {examToken}
-            </p>
-          </div>
-        ) : null}
-        {tx?.token && !examToken ? (
+        {tx?.token ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
             <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
             <p className="mt-1 text-lg font-extrabold tracking-[0.15em]">{tx.token}</p>
@@ -306,8 +231,7 @@ function TransactionDetails() {
         ) : null}
 
         <div className="space-y-2">
-          <ReceiptShareButton payload={receiptPayload} />
-          {status === "pending" && (isAirtime || bill) ? (
+          {status === "pending" && isAirtime ? (
             <Button
               className="h-12 w-full rounded-2xl font-bold"
               disabled={refreshing}

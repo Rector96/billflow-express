@@ -16,12 +16,12 @@ Use your **own Supabase project** instead of Lovable Cloud. This is the recommen
 
 In Supabase: **Project Settings → API**
 
-| What you need | Where it is | Env var(s) |
-|---------------|-------------|------------|
-| Project URL | Project URL | `SUPABASE_URL` and `VITE_SUPABASE_URL` |
-| Publishable / anon key | `anon` `public` **or** `sb_publishable_...` | `SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_PUBLISHABLE_KEY` |
-| Service role key | `service_role` **or** `sb_secret_...` — **secret** | `SUPABASE_SERVICE_ROLE_KEY` only (server) |
-| Project ref | From URL: `https://<ref>.supabase.co` | `VITE_SUPABASE_PROJECT_ID` / `SUPABASE_PROJECT_ID` (optional) |
+| What you need          | Where it is                                        | Env var(s)                                                     |
+| ---------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| Project URL            | Project URL                                        | `SUPABASE_URL` and `VITE_SUPABASE_URL`                         |
+| Publishable / anon key | `anon` `public` **or** `sb_publishable_...`        | `SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_PUBLISHABLE_KEY` |
+| Service role key       | `service_role` **or** `sb_secret_...` — **secret** | `SUPABASE_SERVICE_ROLE_KEY` only (server)                      |
+| Project ref            | From URL: `https://<ref>.supabase.co`              | `VITE_SUPABASE_PROJECT_ID` / `SUPABASE_PROJECT_ID` (optional)  |
 
 **Never** put the service role key in client code, Vite env, or public repos.
 
@@ -193,14 +193,14 @@ If Security PIN fails with missing env → set **server** `SUPABASE_URL` + `SUPA
 
 ## 9. What the schema provides
 
-| Feature | Mechanism |
-|---------|-----------|
-| Profile + wallet on first login | `bootstrap_current_user` |
-| Bill payment + PIN | `secure_bill_payment` |
-| Set / change / verify PIN | `set_transaction_pin`, `change_transaction_pin`, `verify_transaction_pin`, `has_transaction_pin` |
-| Demo fund/pay | Disabled for `authenticated` (raises exception); service_role only |
-| Paystack top-up | `create_wallet_funding_intent` + `complete_paystack_funding` / `settle_paystack_funding` |
-| Admin dashboard stats | `admin_dashboard_stats` (staff roles only) |
+| Feature                         | Mechanism                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Profile + wallet on first login | `bootstrap_current_user`                                                                         |
+| Bill payment + PIN              | `secure_bill_payment`                                                                            |
+| Set / change / verify PIN       | `set_transaction_pin`, `change_transaction_pin`, `verify_transaction_pin`, `has_transaction_pin` |
+| Demo fund/pay                   | Disabled for `authenticated` (raises exception); service_role only                               |
+| Paystack top-up                 | `create_wallet_funding_intent` + `complete_paystack_funding` / `settle_paystack_funding`         |
+| Admin dashboard stats           | `admin_dashboard_stats` (staff roles only)                                                       |
 
 Tables: `profiles`, `wallets`, `wallet_transactions`, `bill_transactions`, `saved_payments`, `notifications`, `support_tickets`, `transaction_pins`, `user_roles`.
 
@@ -210,14 +210,14 @@ All money-moving RPCs are `SECURITY DEFINER` with tight grants; RLS protects dir
 
 ## 10. Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| `Missing Supabase environment variable(s)` | Fill `.env` / host env; restart `npm run dev` |
-| `Could not find the function …` / `PGRST202` | Re-run migrations; in SQL: `NOTIFY pgrst, 'reload schema';` |
-| Auth redirect wrong host | Add URL under Authentication → URL Configuration |
-| PIN works in browser RPC but not Security page | Server missing `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` |
-| Paystack “not configured” | Set `PAYSTACK_SECRET_KEY=sk_test_...` on server |
-| CORS / blocked requests | Ensure URL is your real project URL; no trailing slash issues |
+| Symptom                                        | Fix                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| `Missing Supabase environment variable(s)`     | Fill `.env` / host env; restart `npm run dev`                 |
+| `Could not find the function …` / `PGRST202`   | Re-run migrations; in SQL: `NOTIFY pgrst, 'reload schema';`   |
+| Auth redirect wrong host                       | Add URL under Authentication → URL Configuration              |
+| PIN works in browser RPC but not Security page | Server missing `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`    |
+| Paystack “not configured”                      | Set `PAYSTACK_SECRET_KEY=sk_test_...` on server               |
+| CORS / blocked requests                        | Ensure URL is your real project URL; no trailing slash issues |
 
 ---
 

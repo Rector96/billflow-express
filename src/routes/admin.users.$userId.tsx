@@ -27,9 +27,24 @@ function AdminUserDetail() {
     billpay_id: string;
   } | null>(null);
   const [balance, setBalance] = useState(0);
-  const [summary, setSummary] = useState({ funded: 0, spent: 0, refunds: 0, tx: 0, ok: 0, fail: 0 });
+  const [summary, setSummary] = useState({
+    funded: 0,
+    spent: 0,
+    refunds: 0,
+    tx: 0,
+    ok: 0,
+    fail: 0,
+  });
   const [txs, setTxs] = useState<
-    { id: string; reference: string; amount: number; status: TxStatus; description: string; created_at: string; type: string }[]
+    {
+      id: string;
+      reference: string;
+      amount: number;
+      status: TxStatus;
+      description: string;
+      created_at: string;
+      type: string;
+    }[]
   >([]);
   const [busy, setBusy] = useState(false);
 
@@ -44,7 +59,9 @@ function AdminUserDetail() {
         supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
         supabase
           .from("wallet_transactions")
-          .select("id, reference, amount, status, description, created_at, type, provider_reference")
+          .select(
+            "id, reference, amount, status, description, created_at, type, provider_reference",
+          )
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(100),
@@ -78,7 +95,9 @@ function AdminUserDetail() {
           }
           if (t.status === "failed") fail++;
           const status: TxStatus =
-            t.status === "successful" || t.status === "pending" || t.status === "failed" ? t.status : "pending";
+            t.status === "successful" || t.status === "pending" || t.status === "failed"
+              ? t.status
+              : "pending";
           return {
             id: t.id,
             reference: t.provider_reference || t.reference,
@@ -168,7 +187,9 @@ function AdminUserDetail() {
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Registered</dt>
-              <dd className="font-semibold">{new Date(profile.created_at).toLocaleDateString("en-NG")}</dd>
+              <dd className="font-semibold">
+                {new Date(profile.created_at).toLocaleDateString("en-NG")}
+              </dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Wallet balance</dt>
@@ -178,12 +199,21 @@ function AdminUserDetail() {
 
           <div className="mt-4 space-y-2">
             {canManage && profile.account_status === "active" ? (
-              <Button disabled={busy} variant="outline" className="w-full rounded-xl" onClick={() => void setStatus("suspended")}>
+              <Button
+                disabled={busy}
+                variant="outline"
+                className="w-full rounded-xl"
+                onClick={() => void setStatus("suspended")}
+              >
                 Suspend account
               </Button>
             ) : null}
             {canManage && profile.account_status !== "active" ? (
-              <Button disabled={busy} className="w-full rounded-xl" onClick={() => void setStatus("active")}>
+              <Button
+                disabled={busy}
+                className="w-full rounded-xl"
+                onClick={() => void setStatus("active")}
+              >
                 Reactivate account
               </Button>
             ) : null}
@@ -221,7 +251,8 @@ function AdminUserDetail() {
 
           <p className="mt-6 text-sm font-bold">Security</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            PIN hashes and passwords are never exposed to staff. PIN presence is not listed here because
+            PIN hashes and passwords are never exposed to staff. PIN presence is not listed here
+            because
             <code> transaction_pins </code> is service-role only by design.
           </p>
         </div>
@@ -234,11 +265,16 @@ function AdminUserDetail() {
         ) : (
           <div className="space-y-2">
             {txs.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+              <div
+                key={t.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm"
+              >
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{t.description}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">{t.reference}</p>
-                  <p className="text-[11px] text-muted-foreground">{new Date(t.created_at).toLocaleString("en-NG")}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(t.created_at).toLocaleString("en-NG")}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold">{formatNaira(t.amount, false)}</p>

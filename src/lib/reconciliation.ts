@@ -2,11 +2,7 @@
 
 export type RockPayStatus = "successful" | "pending" | "failed" | string;
 
-export type ReconcileVerdict =
-  | "reconciled"
-  | "action_required"
-  | "pending"
-  | "unknown";
+export type ReconcileVerdict = "reconciled" | "action_required" | "pending" | "unknown";
 
 export function normalizeProviderStatus(raw: string | null | undefined): string {
   return String(raw ?? "")
@@ -25,7 +21,10 @@ export function reconcileVerdict(
   const code = String(providerCode ?? "").trim();
 
   const providerOk =
-    ps === "delivered" || ps === "success" || ps === "successful" || (code === "000" && ps === "delivered");
+    ps === "delivered" ||
+    ps === "success" ||
+    ps === "successful" ||
+    (code === "000" && ps === "delivered");
   const providerFail = ps === "failed" || ps === "fail";
 
   if (rp === "successful" && (providerOk || !ps)) return "reconciled";
@@ -118,7 +117,7 @@ export function buildBillTimeline(input: {
           : input.status === "failed"
             ? "Failed"
             : "Pending confirmation",
-      at: final ? updated ?? created : null,
+      at: final ? (updated ?? created) : null,
       done: final,
     },
   ];

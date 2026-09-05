@@ -36,10 +36,7 @@ if (air.includes("customerAmount = providerAmount")) {
 } else {
   air = air.replace(oldBlock, newBlock);
   air = air.replace(/rockpay_fee: pricing\.rockpayFee/g, "rockpay_fee: 0");
-  air = air.replace(
-    /rockpayFee: pricing\.rockpayFee/g,
-    "rockpayFee: 0",
-  );
+  air = air.replace(/rockpayFee: pricing\.rockpayFee/g, "rockpayFee: 0");
   writeFileSync(airPath, air);
   console.log("[patch] airtime face-value applied", airPath);
 }

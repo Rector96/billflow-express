@@ -65,13 +65,7 @@ type Props = {
   onSelect: (plan: DataPlanItem) => void;
 };
 
-export function DataPlanPicker({
-  plans,
-  selectedCode,
-  networkLabel,
-  phoneLabel,
-  onSelect,
-}: Props) {
+export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, onSelect }: Props) {
   const buckets = useMemo(() => {
     const daily: DataPlanItem[] = [];
     const weekly: DataPlanItem[] = [];

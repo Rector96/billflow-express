@@ -1,7 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, CheckCircle2, Clock, Copy, Home, Loader2, RefreshCw, Wallet } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Home,
+  Loader2,
+  RefreshCw,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -13,6 +22,7 @@ import { formatNaira } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { initializeWalletFunding, verifyWalletFunding } from "@/lib/paystack.functions";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/wallet/fund")({
   head: () => ({
@@ -24,6 +34,7 @@ export const Route = createFileRoute("/wallet/fund")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { amount?: number; reference?: string } => {
+    // Paystack may return reference or trxref on callback
     const ref =
       typeof search["reference"] === "string"
         ? (search["reference"] as string)
@@ -38,8 +49,7 @@ export const Route = createFileRoute("/wallet/fund")({
   component: FundWallet,
 });
 
-/** Student-friendly ladder: small data packs → bigger airtime/bills */
-const QUICK = [500, 1000, 2000, 5000, 10000, 20000];
+const QUICK = [1000, 5000, 10000, 20000];
 
 type Stage = "form" | "redirecting" | "confirming" | "successful" | "pending" | "failed";
 
@@ -50,7 +60,7 @@ function FundWallet() {
   const initFunding = useServerFn(initializeWalletFunding);
   const verifyFunding = useServerFn(verifyWalletFunding);
 
-  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 1000);
+  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 5000);
   const [custom, setCustom] = useState("");
   const [stage, setStage] = useState<Stage>(reference ? "confirming" : "form");
   const [settled, setSettled] = useState<{ reference: string; amount: number } | null>(null);
@@ -66,6 +76,7 @@ function FundWallet() {
       try {
         const result = await verifyFunding({ data: { reference: ref } });
         setSettled({ reference: result.reference, amount: result.amount });
+        // Never show successful unless server verified + settled
         setStage(result.status);
         await refresh();
       } catch (err) {
@@ -89,6 +100,47 @@ function FundWallet() {
       toast.error("Enter at least ₦100");
       return;
     }
+
+    if (!isSupabaseConfigured()) {
+      starting.current = true;
+      setBusy(true);
+      setStage("redirecting");
+      setTimeout(async () => {
+        const fakeRef = `RP-TOPUP-${Date.now().toString(36).toUpperCase()}`;
+        setSettled({ reference: fakeRef, amount: value });
+        setStage("successful");
+        setBusy(false);
+        starting.current = false;
+        try {
+          const store = JSON.parse(localStorage.getItem("rockpay_preview_store_v1") || "{}");
+          if (store.wallet) {
+            store.wallet.balance = (store.wallet.balance || 0) + value;
+            store.transactions = store.transactions || [];
+            store.transactions.unshift({
+              id: `tx-${Date.now()}`,
+              reference: fakeRef,
+              type: "deposit",
+              amount: value,
+              status: "successful",
+              description: "Wallet Top-up (Preview)",
+              metadata: {
+                title: "Wallet Top-up",
+                channel: "paystack",
+                service_slug: "wallet",
+              },
+              created_at: new Date().toISOString(),
+            });
+            localStorage.setItem("rockpay_preview_store_v1", JSON.stringify(store));
+          }
+          await refresh();
+          toast.success(`Successfully added ${formatNaira(value)} to your wallet!`);
+        } catch {
+          // ignore
+        }
+      }, 1000);
+      return;
+    }
+
     starting.current = true;
     setBusy(true);
     setStage("redirecting");
@@ -156,7 +208,12 @@ function FundWallet() {
     return (
       <AppShell>
         <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-4 px-4 py-8 text-center sm:px-6">
-          <span className={cn("animate-in zoom-in grid size-20 place-items-center rounded-full", meta.tone)}>
+          <span
+            className={cn(
+              "animate-in zoom-in grid size-20 place-items-center rounded-full",
+              meta.tone,
+            )}
+          >
             <meta.icon className="size-10" />
           </span>
           <h1 className="text-2xl font-extrabold tracking-tight">{meta.title}</h1>
@@ -187,7 +244,13 @@ function FundWallet() {
                   <p className="text-[11px] text-muted-foreground">Transaction reference</p>
                   <p className="truncate font-mono text-xs font-bold">{settled.reference}</p>
                 </div>
-                <Button type="button" variant="outline" size="sm" className="shrink-0 rounded-xl" onClick={() => void copyRef()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 rounded-xl"
+                  onClick={() => void copyRef()}
+                >
                   <Copy className="size-3.5" />
                   Copy
                 </Button>
@@ -198,22 +261,36 @@ function FundWallet() {
           <div className="mt-4 w-full max-w-sm space-y-3">
             {stage === "successful" ? (
               <>
-                <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+                <Button
+                  className="h-13 w-full rounded-2xl font-bold"
+                  onClick={() => navigate({ to: "/home" })}
+                >
                   <Home className="mr-2 size-4" />
                   Go to Home
                 </Button>
-                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/wallet" })}>
+                <Button
+                  variant="outline"
+                  className="h-13 w-full rounded-2xl font-bold"
+                  onClick={() => navigate({ to: "/wallet" })}
+                >
                   <Wallet className="mr-2 size-4" />
                   View wallet
                 </Button>
               </>
             ) : stage === "pending" ? (
               <>
-                <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => settled?.reference && void confirm(settled.reference)}>
+                <Button
+                  className="h-13 w-full rounded-2xl font-bold"
+                  onClick={() => settled?.reference && void confirm(settled.reference)}
+                >
                   <RefreshCw className="mr-2 size-4" />
                   Refresh status
                 </Button>
-                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/wallet" })}>
+                <Button
+                  variant="outline"
+                  className="h-13 w-full rounded-2xl font-bold"
+                  onClick={() => navigate({ to: "/wallet" })}
+                >
                   Back to Wallet
                 </Button>
               </>
@@ -230,7 +307,11 @@ function FundWallet() {
                 >
                   Try again
                 </Button>
-                <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+                <Button
+                  variant="outline"
+                  className="h-13 w-full rounded-2xl font-bold"
+                  onClick={() => navigate({ to: "/home" })}
+                >
                   Go to Home
                 </Button>
               </>
@@ -243,19 +324,15 @@ function FundWallet() {
 
   return (
     <AppShell>
-      <PageHeader title="Fund Wallet" subtitle={`Balance ${formatNaira(balance)}`} backTo="/wallet" />
+      <PageHeader
+        title="Fund Wallet"
+        subtitle={`Balance ${formatNaira(balance)}`}
+        backTo="/wallet"
+      />
       <div className="space-y-6 px-4 pt-2 pb-6">
-        <div className="rounded-2xl border border-primary/15 bg-primary-soft/30 p-3 text-[11px] text-muted-foreground">
-          <p className="font-bold text-foreground">Quick top-up</p>
-          <p className="mt-0.5">
-            Pick ₦500–₦2,000 for small data packs, or a larger amount for airtime and bills. Pay with card via
-            Paystack — balance updates only after confirmation.
-          </p>
-        </div>
-
         <div>
           <p className="mb-3 text-sm font-bold">Select or enter amount</p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {QUICK.map((q) => (
               <button
                 key={q}
@@ -319,7 +396,8 @@ function FundWallet() {
           )}
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">
-          Secured by Paystack. Your wallet is credited only after server-side verification — never from the browser alone.
+          Secured by Paystack. Your wallet is credited only after server-side verification — never
+          from the browser alone.
         </p>
       </div>
     </AppShell>

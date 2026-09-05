@@ -61,33 +61,6 @@ export const changeTransactionPin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Reset PIN after confirming account password (forgot current PIN). */
-export const resetTransactionPin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { password: string; newPin: string }) => {
-    const password = String(input?.password ?? "");
-    if (password.length < 6) throw new Error("Enter your account password.");
-    return { password, newPin: assertFourDigitPin(input?.newPin) };
-  })
-  .handler(async ({ data, context }): Promise<{ ok: true }> => {
-    const { data: userData, error: userErr } = await context.supabase.auth.getUser();
-    if (userErr || !userData.user?.email) {
-      throw new Error("Could not verify your account. Log in again.");
-    }
-    const { error: authErr } = await context.supabase.auth.signInWithPassword({
-      email: userData.user.email,
-      password: data.password,
-    });
-    if (authErr) {
-      throw new Error("Incorrect account password.");
-    }
-    const { error } = await context.supabase.rpc("reset_transaction_pin", {
-      _pin: data.newPin,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
 export const verifyTransactionPin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { pin: string }) => ({
@@ -102,7 +75,7 @@ export const verifyTransactionPin = createServerFn({ method: "POST" })
         throw new Error("PIN temporarily locked after too many failed attempts. Try again later.");
       }
       if (error.message.includes("pin_not_set")) {
-        throw new Error("Set a transaction PIN before paying.");
+        throw new Error("Set a transaction PIN in Security before paying.");
       }
       if (error.message.includes("invalid_pin")) {
         throw new Error("Incorrect PIN.");

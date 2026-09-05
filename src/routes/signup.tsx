@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
 import { BrandLogo } from "@/components/app/app-shell";
+
+import { PageHeader } from "@/components/app/page-header";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/signup")({
@@ -17,6 +19,8 @@ export const Route = createFileRoute("/signup")({
         name: "description",
         content: `Open a free ${BRAND.name} account and pay Nigerian bills from one wallet.`,
       },
+      { property: "og:title", content: `Create your account — ${BRAND.name}` },
+      { property: "og:description", content: "It takes less than a minute to get started." },
     ],
   }),
   component: SignupPage,
@@ -56,53 +60,110 @@ function SignupPage() {
       email: f.email.trim().toLowerCase(),
       password: f.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/setup-pin`,
+        emailRedirectTo: `${window.location.origin}/home`,
         data: { full_name: f.name.trim(), phone: f.phone.replace(/\s/g, "") },
       },
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      const msg = error.message.toLowerCase();
+      toast.error(
+        msg.includes("already")
+          ? "An account with that email already exists."
+          : msg.includes("pwned") || msg.includes("weak") || msg.includes("password")
+            ? "That password is too weak or has appeared in a data breach. Try a stronger one."
+            : "We couldn't create your account. Please try again.",
+      );
       return;
     }
     if (data.session) {
-      toast.success("Account created — set your payment PIN");
-      navigate({ to: "/setup-pin" });
+      toast.success("Account created 🎉");
+      navigate({ to: "/home" });
     } else {
-      toast.success("Check your email to confirm, then log in and set your PIN");
+      toast.success("Account created. Check your email to confirm it.");
       navigate({ to: "/login" });
     }
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 py-6">
-      <BrandLogo className="h-12" />
-      <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Create account</h1>
-      <p className="mt-1 text-sm text-muted-foreground">You will set a 4-digit payment PIN next.</p>
-      <form onSubmit={(e) => void submit(e)} className="mt-6 space-y-4">
-        <Field label="Full name" id="name" value={f.name} onChange={set("name")} error={errors.name} placeholder="Your full name" />
-        <Field label="Phone" id="phone" value={f.phone} onChange={set("phone")} error={errors.phone} placeholder="08012345678" inputMode="tel" />
-        <Field label="Email" id="email" value={f.email} onChange={set("email")} error={errors.email} placeholder="you@email.com" type="email" />
-        <Field label="Password" id="password" value={f.password} onChange={set("password")} error={errors.password} placeholder="Create a password" type="password" />
-        <Field label="Confirm password" id="confirm" value={f.confirm} onChange={set("confirm")} error={errors.confirm} placeholder="Repeat password" type="password" />
+    <main className="mx-auto min-h-dvh max-w-md pb-10">
+      <PageHeader title="Create your account" />
+      <div className="flex justify-center pt-1 pb-2">
+        <BrandLogo className="h-[clamp(3rem,14vw,4.5rem)]" />
+      </div>
+
+      <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
+        <Field
+          label="Full Name"
+          id="name"
+          value={f.name}
+          onChange={set("name")}
+          error={errors.name}
+          placeholder="Your full name"
+        />
+        <Field
+          label="Phone Number"
+          id="phone"
+          value={f.phone}
+          onChange={set("phone")}
+          error={errors.phone}
+          placeholder="080 0000 0000"
+          inputMode="numeric"
+        />
+        <Field
+          label="Email"
+          id="email"
+          value={f.email}
+          onChange={set("email")}
+          error={errors.email}
+          placeholder="you@email.com"
+          type="email"
+        />
+        <Field
+          label="Password"
+          id="password"
+          value={f.password}
+          onChange={set("password")}
+          error={errors.password}
+          placeholder="Create a password"
+          type="password"
+        />
+        <Field
+          label="Confirm Password"
+          id="confirm"
+          value={f.confirm}
+          onChange={set("confirm")}
+          error={errors.confirm}
+          placeholder="Repeat your password"
+          type="password"
+        />
+
         <div className="flex items-start gap-3 rounded-2xl border bg-card p-3">
-          <Checkbox id="agree" checked={agree} onCheckedChange={(v) => setAgree(v === true)} className="mt-0.5" />
-          <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-muted-foreground">
-            I agree to the{" "}
-            <Link to="/terms" className="font-bold text-primary">
-              Terms
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" className="font-bold text-primary">
-              Privacy Policy
-            </Link>
-            .
+          <Checkbox
+            id="agree"
+            checked={agree}
+            onCheckedChange={(v) => setAgree(v === true)}
+            className="mt-0.5"
+          />
+          <Label
+            htmlFor="agree"
+            className="text-xs leading-relaxed font-medium text-muted-foreground"
+          >
+            I agree to the Terms &amp; Conditions and Privacy Policy.
           </Label>
         </div>
-        {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
-        <Button type="submit" disabled={loading} className="h-13 w-full rounded-2xl text-base font-bold">
+        {errors.agree ? (
+          <p className="text-xs font-medium text-destructive">{errors.agree}</p>
+        ) : null}
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-13 w-full rounded-2xl text-base font-bold"
+        >
           {loading ? "Creating account…" : "Create Account"}
         </Button>
+
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link to="/login" className="font-bold text-primary">
@@ -119,7 +180,7 @@ function Field({
   id,
   error,
   ...props
-}: React.ComponentProps<typeof Input> & { label: string; id: string; error?: string }) {
+}: React.ComponentProps<typeof Input> & { label: string; id: string; error?: string | undefined }) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>

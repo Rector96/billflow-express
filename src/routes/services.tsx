@@ -7,7 +7,6 @@ import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { SERVICES } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
-import { isBillLive, isServiceVisible } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -15,10 +14,11 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${BRAND.name}` },
       {
         name: "description",
-        content: "Electricity, cable TV, education PINs and everyday utility payments.",
+        content:
+          "Electricity, cable TV, education, airtime, data, internet, water, insurance and exam pins.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
-      { property: "og:description", content: "Pay bills and get exam PINs in a few taps." },
+      { property: "og:description", content: "All your everyday payments in one place." },
     ],
   }),
   component: ServicesPage,
@@ -26,57 +26,51 @@ export const Route = createFileRoute("/services")({
 
 function ServicesPage() {
   const [query, setQuery] = useState("");
-  const list = SERVICES.filter(
-    (s) => isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
+  const list = SERVICES.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <AppShell>
-      <PageHeader title="Services" backTo="/home" />
-      <div className="space-y-5 px-4 pt-1 pb-6">
+      <PageHeader title="All Services" backTo="/home" />
+      <div className="space-y-4 px-4 pt-1 pb-6">
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search electricity, cable, WAEC…"
+            placeholder="Search airtime, electricity, cable..."
             aria-label="Search services"
-            className="h-11 rounded-2xl border-border/50 bg-card pl-10 text-sm shadow-soft"
+            className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
         {list.length ? (
-          <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
-            {list.map((s) => {
-              const live = isBillLive(s.slug);
-              return (
+          <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
+            <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
+              {list.map((s) => (
                 <ServiceTile
                   key={s.slug}
-                  label={live ? s.short : `${s.short} · Soon`}
+                  label={s.short}
                   Icon={s.icon}
                   tint={s.tint}
                   to="/pay/$slug"
                   params={{ slug: s.slug }}
                 />
-              );
-            })}
+              ))}
+            </div>
           </div>
         ) : (
           <EmptyState
             Icon={SearchX}
             title="No service found"
-            body="Try electricity, cable, education or exam pins."
+            body="Try a different keyword, like electricity, data or DSTV."
           />
         )}
 
-        <div className="flex items-center gap-3 rounded-2xl bg-primary-soft/80 px-3.5 py-3.5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <ShieldCheck className="size-5" />
-          </span>
-          <div>
-            <p className="text-sm font-bold">Easy. Reliable. Secure.</p>
-            <p className="text-xs text-muted-foreground">Your payments are safe with us.</p>
-          </div>
+        <div className="pt-2 text-center">
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            Protected by bank-grade encryption
+          </p>
         </div>
       </div>
     </AppShell>

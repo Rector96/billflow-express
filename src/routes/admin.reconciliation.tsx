@@ -54,7 +54,9 @@ function AdminReconciliation() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase.rpc("admin_reconciliation_queue", { _limit: 100 });
+      const { data, error: err } = await supabase.rpc("admin_reconciliation_queue", {
+        _limit: 100,
+      });
       if (err) throw err;
       setRows(Array.isArray(data) ? (data as QueueRow[]) : []);
     } catch (e) {
@@ -86,19 +88,26 @@ function AdminReconciliation() {
     >
       {error ? (
         <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
-          {error}. Apply migration <code className="text-xs">20260814190000_transaction_reconciliation.sql</code> if the RPC is missing.
+          {error}. Apply migration{" "}
+          <code className="text-xs">20260814190000_transaction_reconciliation.sql</code> if the RPC
+          is missing.
         </div>
       ) : null}
 
       {loading ? (
         <AdminLoading label="Loading queue…" />
       ) : rows.length === 0 ? (
-        <AdminEmpty title="Everything is reconciled." body="No mismatches or stale pending bills right now." />
+        <AdminEmpty
+          title="Everything is reconciled."
+          body="No mismatches or stale pending bills right now."
+        />
       ) : (
         <div className="space-y-2">
           {rows.map((r) => {
             const st =
-              r.rockpay_status === "successful" || r.rockpay_status === "pending" || r.rockpay_status === "failed"
+              r.rockpay_status === "successful" ||
+              r.rockpay_status === "pending" ||
+              r.rockpay_status === "failed"
                 ? r.rockpay_status
                 : "pending";
             return (
@@ -111,14 +120,17 @@ function AdminReconciliation() {
                     <p className="text-xs font-semibold text-warning-foreground">
                       {REASON_LABEL[r.reason] ?? r.reason}
                     </p>
-                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">{r.internal_reference}</p>
+                    <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                      {r.internal_reference}
+                    </p>
                     {r.provider_request_id ? (
                       <p className="font-mono text-[11px] text-muted-foreground">
                         VTpass req: {r.provider_request_id}
                       </p>
                     ) : null}
                     <p className="text-[11px] text-muted-foreground">
-                      {new Date(r.created_at).toLocaleString("en-NG")} · pending {formatPendingDuration(r.created_at)}
+                      {new Date(r.created_at).toLocaleString("en-NG")} · pending{" "}
+                      {formatPendingDuration(r.created_at)}
                     </p>
                   </div>
                   <div className="text-right">

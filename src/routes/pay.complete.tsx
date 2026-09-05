@@ -142,8 +142,16 @@ function PayCompletePage() {
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Electricity token
             </p>
-            <p className="mt-1 break-all font-mono text-lg font-extrabold tracking-wide">{result.token}</p>
-            <Button type="button" variant="outline" size="sm" className="mt-3 rounded-xl" onClick={() => void copyToken()}>
+            <p className="mt-1 break-all font-mono text-lg font-extrabold tracking-wide">
+              {result.token}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-xl"
+              onClick={() => void copyToken()}
+            >
               <Copy className="mr-1.5 size-3.5" /> Copy token
             </Button>
           </div>
@@ -157,18 +165,26 @@ function PayCompletePage() {
           {result?.billReference ? (
             <div className="flex justify-between gap-3 py-1.5">
               <span className="text-muted-foreground">Reference</span>
-              <span className="max-w-[60%] truncate font-mono text-xs font-bold">{result.billReference}</span>
+              <span className="max-w-[60%] truncate font-mono text-xs font-bold">
+                {result.billReference}
+              </span>
             </div>
           ) : null}
         </div>
 
         <div className="mt-2 w-full max-w-sm space-y-3">
           {stage === "pending" ? (
-            <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => reference && void run(reference)}>
+            <Button
+              className="h-13 w-full rounded-2xl font-bold"
+              onClick={() => reference && void run(reference)}
+            >
               <RefreshCw className="mr-2 size-4" /> Refresh status
             </Button>
           ) : null}
-          <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-13 w-full rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Go to Home
           </Button>
           {stage === "failed" ? (
@@ -176,7 +192,11 @@ function PayCompletePage() {
               <Link to="/support">Open Care</Link>
             </Button>
           ) : (
-            <Button variant="outline" className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/history" })}>
+            <Button
+              variant="outline"
+              className="h-13 w-full rounded-2xl font-bold"
+              onClick={() => navigate({ to: "/history" })}
+            >
               View History
             </Button>
           )}

@@ -77,12 +77,9 @@ export function planNullOnlyBackfill(args: {
   nextProfit: number | null;
   wouldUpdate: boolean;
 } {
-  const nextCost =
-    args.existingCost != null ? args.existingCost : args.suppliedCost;
+  const nextCost = args.existingCost != null ? args.existingCost : args.suppliedCost;
   const nextCommission =
-    args.existingCommission != null
-      ? args.existingCommission
-      : args.suppliedCommission;
+    args.existingCommission != null ? args.existingCommission : args.suppliedCommission;
 
   let nextProfit: number | null;
   if (args.existingProfit != null) {

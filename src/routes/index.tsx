@@ -51,6 +51,5 @@ function Splash() {
         Loading your experience
       </div>
     </main>
-
   );
 }

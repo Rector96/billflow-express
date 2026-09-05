@@ -2,11 +2,7 @@
  * Multi-vendor bill routing: VTpass primary → VTUAfrica fallback.
  * Never throws if at least one vendor returns a structured result.
  */
-import {
-  mapVtpassOutcome,
-  vtpassPay,
-  type VtpassPayResult,
-} from "./vtpass.server";
+import { mapVtpassOutcome, vtpassPay, type VtpassPayResult } from "./vtpass.server";
 import {
   isVtuafricaConfigured,
   vtuafricaPayCable,
@@ -45,7 +41,18 @@ export function toVtpassShape(r: RoutedPayResult): VtpassPayResult {
 }
 
 const FAILOVER_CODES = new Set([
-  "016", "018", "030", "034", "035", "083", "087", "091", "010", "012", "011", "099",
+  "016",
+  "018",
+  "030",
+  "034",
+  "035",
+  "083",
+  "087",
+  "091",
+  "010",
+  "012",
+  "011",
+  "099",
 ]);
 
 function shouldFailoverVtpass(result: VtpassPayResult): boolean {

@@ -446,7 +446,7 @@ Hidden:
 
 Primary button:
 
-+ Fund Wallet
+- Fund Wallet
 
 13. PAY BILLS SECTION
 
@@ -1016,7 +1016,7 @@ Available Balance
 
 Buttons:
 
-+ Fund Wallet
+- Fund Wallet
 
 Withdraw
 

@@ -24,12 +24,19 @@ export function PageHeader({
   const brand = variant === "brand";
 
   const backClass = cn(
-    "press grid size-10 shrink-0 place-items-center rounded-xl border shadow-soft",
-    brand ? "border-white/25 bg-white/12 text-primary-foreground" : "border-border/80 bg-card",
+    "press grid size-10 shrink-0 place-items-center rounded-full border shadow-sm transition-colors",
+    brand
+      ? "border-white/25 bg-white/15 text-primary-foreground hover:bg-white/25"
+      : "border-border/80 bg-card text-foreground hover:bg-secondary",
   );
 
   const back = (
-    <button type="button" aria-label="Go back" onClick={() => (onBack ? onBack() : router.history.back())} className={backClass}>
+    <button
+      type="button"
+      aria-label="Go back"
+      onClick={() => (onBack ? onBack() : router.history.back())}
+      className={backClass}
+    >
       <ChevronLeft className="size-5" />
     </button>
   );
@@ -38,7 +45,9 @@ export function PageHeader({
     <header
       className={cn(
         "sticky top-0 z-30 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3",
-        brand ? "brand-gradient text-primary-foreground" : "border-b border-border/60 bg-background/90 backdrop-blur-md",
+        brand
+          ? "brand-gradient text-primary-foreground"
+          : "border-b border-border/60 bg-background/90 backdrop-blur-md",
         className,
       )}
     >
@@ -51,7 +60,9 @@ export function PageHeader({
           back
         )}
         <div className="min-w-0 text-center">
-          <h1 className="truncate text-[15px] font-extrabold tracking-tight sm:text-base">{title}</h1>
+          <h1 className="truncate text-[15px] font-extrabold tracking-tight sm:text-base">
+            {title}
+          </h1>
           {subtitle ? (
             <p className={cn("truncate text-xs", brand ? "opacity-85" : "text-muted-foreground")}>
               {subtitle}

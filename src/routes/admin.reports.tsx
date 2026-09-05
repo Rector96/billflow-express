@@ -40,7 +40,9 @@ function AdminReports() {
     try {
       const { data, error } = await supabase
         .from("wallet_transactions")
-        .select("reference, provider_reference, type, amount, status, provider, description, created_at, user_id")
+        .select(
+          "reference, provider_reference, type, amount, status, provider, description, created_at, user_id",
+        )
         .order("created_at", { ascending: false })
         .limit(2000);
       if (error) throw error;
@@ -93,21 +95,33 @@ function AdminReports() {
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Transactions</p>
           <p className="mt-1 text-xs text-muted-foreground">Up to 2000 wallet ledger rows</p>
-          <Button disabled={busy} className="mt-4 w-full rounded-xl" onClick={() => void exportTx()}>
+          <Button
+            disabled={busy}
+            className="mt-4 w-full rounded-xl"
+            onClick={() => void exportTx()}
+          >
             Export CSV
           </Button>
         </div>
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Users</p>
           <p className="mt-1 text-xs text-muted-foreground">Profiles only — no passwords or PINs</p>
-          <Button disabled={busy} className="mt-4 w-full rounded-xl" onClick={() => void exportUsers()}>
+          <Button
+            disabled={busy}
+            className="mt-4 w-full rounded-xl"
+            onClick={() => void exportUsers()}
+          >
             Export CSV
           </Button>
         </div>
         <div className="rounded-2xl border bg-card p-4 shadow-card">
           <p className="font-bold">Wallet funding</p>
           <p className="mt-1 text-xs text-muted-foreground">Deposit rows (Paystack + other)</p>
-          <Button disabled={busy} className="mt-4 w-full rounded-xl" onClick={() => void exportFunding()}>
+          <Button
+            disabled={busy}
+            className="mt-4 w-full rounded-xl"
+            onClick={() => void exportFunding()}
+          >
             Export CSV
           </Button>
         </div>

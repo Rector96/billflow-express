@@ -86,9 +86,7 @@ export function recentPackagesForService(
     if (t.status !== "successful" || t.direction !== "out" || t.serviceSlug !== slug) continue;
     const hay = `${t.title} ${t.service}`.toLowerCase();
     const pack = packages.find(
-      (p) =>
-        hay.includes(p.name.toLowerCase()) ||
-        Math.round(t.amount) === Math.round(p.price),
+      (p) => hay.includes(p.name.toLowerCase()) || Math.round(t.amount) === Math.round(p.price),
     );
     if (pack && !seen.has(pack.id)) {
       seen.add(pack.id);
@@ -99,10 +97,7 @@ export function recentPackagesForService(
   return hits;
 }
 
-export function lastSuccessfulProvider(
-  slug: string,
-  transactions: Transaction[],
-): string | null {
+export function lastSuccessfulProvider(slug: string, transactions: Transaction[]): string | null {
   const svc = getService(slug);
   if (!svc) return null;
   for (const t of transactions) {
