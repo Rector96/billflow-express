@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const fs = require("fs");
+import fs from "fs";
 const path = "src/routes/home.tsx";
 let c = fs.readFileSync(path, "utf8");
 if (c.includes("HomePromos")) {

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-/** Wire ReceiptShareButton into history.$txId.tsx if missing. */
-const fs = require("fs");
+import fs from "fs";
 const path = "src/routes/history.$txId.tsx";
 let c = fs.readFileSync(path, "utf8");
 if (c.includes("ReceiptShareButton")) {
@@ -36,7 +35,7 @@ const block = `          <ReceiptShareButton
               channel: channel || null,
               dateLabel: bill?.created_at
                 ? new Date(bill.created_at).toLocaleString("en-NG")
-                : \`\${tx?.date ?? ""} \${tx?.time ?? ""}\`.trim() || null,
+                : \`${tx?.date ?? ""} ${tx?.time ?? ""}\`.trim() || null,
               method: tx?.method || null,
               tokenLabel: tx?.token ? "Token / PIN" : null,
               tokenValue: tx?.token || null,
