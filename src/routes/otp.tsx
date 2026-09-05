@@ -1,104 +1,73 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { PageHeader } from "@/components/app/page-header";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 
-type Search = { next?: string };
-
 export const Route = createFileRoute("/otp")({
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    next: typeof s["next"] === "string" ? (s["next"] as string) : "signup",
-  }),
   head: () => ({
     meta: [
-      { title: `Verify your account — ${BRAND.name}` },
-      { name: "description", content: "Enter the 6-digit code we sent to confirm it's you." },
-      { property: "og:title", content: `Verify your account — ${BRAND.name}` },
-      { property: "og:description", content: "One quick code and you're in." },
+      { title: `Verify — ${BRAND.name}` },
+      { name: "description", content: "Enter the verification code we sent you." },
     ],
   }),
   component: OtpPage,
 });
 
 function OtpPage() {
-  const { next } = Route.useSearch();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
-  const [seconds, setSeconds] = useState(45);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (seconds <= 0) return;
-    const t = setTimeout(() => setSeconds((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [seconds]);
-
-  const verify = () => {
-    if (code.length < 6) {
-      toast.error("Enter the complete 6-digit code");
-      return;
-    }
-    setLoading(true);
-    setTimeout(() => {
-      if (next === "reset") {
-        navigate({ to: "/forgot-password", search: { step: "password" } });
-      } else {
-        toast.success("Account verified 🎉");
-        navigate({ to: "/login" });
-      }
-    }, 900);
-  };
-
   return (
-    <main className="mx-auto min-h-dvh max-w-md pb-10">
-      <PageHeader title="Verify your account" />
-      <div className="px-6 pt-4">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 py-8">
+      <Link to="/login" className="mb-8 inline-flex w-fit" aria-label={BRAND.name}>
+        <BrandLogo className="h-12" />
+      </Link>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-extrabold tracking-tight">Verify your account</h1>
         <p className="text-sm text-muted-foreground">
-          We've sent a verification code to your phone/email. Demo tip: any 6 digits work.
+          We've sent a verification code to your email. Enter the 6-digit code to continue.
         </p>
-
-        <div className="mt-8 flex justify-center">
-          <InputOTP maxLength={6} value={code} onChange={setCode} aria-label="Verification code">
-            <InputOTPGroup className="gap-2">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <InputOTPSlot
-                  key={i}
-                  index={i}
-                  className="size-12 rounded-xl border bg-card text-lg font-bold"
-                />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-
-        <Button
-          onClick={verify}
-          disabled={loading}
-          className="mt-8 h-13 w-full rounded-2xl text-base font-bold"
-        >
-          {loading ? "Verifying…" : "Verify"}
-        </Button>
-
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          {seconds > 0 ? (
-            <span>Resend code in 0:{seconds.toString().padStart(2, "0")}</span>
-          ) : (
-            <button
-              type="button"
-              className="font-bold text-primary"
-              onClick={() => {
-                setSeconds(45);
-                toast.success("A new code has been sent");
-              }}
-            >
-              Resend Code
-            </button>
-          )}
-        </div>
       </div>
+      <form
+        className="mt-8 space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (code.replace(/\D/g, "").length < 6) {
+            toast.error("Enter the 6-digit code");
+            return;
+          }
+          setLoading(true);
+          toast.success("Verified");
+          navigate({ to: "/home" });
+        }}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="otp">Verification code</Label>
+          <Input
+            id="otp"
+            inputMode="numeric"
+            maxLength={6}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            className="h-12 tracking-[0.3em] text-center text-lg font-bold"
+            autoComplete="one-time-code"
+          />
+        </div>
+        <Button type="submit" className="h-12 w-full" disabled={loading}>
+          {loading ? "Verifying…" : "Continue"}
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        <Link to="/login" className="font-bold text-primary">
+          Back to login
+        </Link>
+      </p>
     </main>
   );
 }
