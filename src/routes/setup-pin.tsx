@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { PinPad } from "@/components/app/pin-pad";
+import { scrollIntoAction } from "@/lib/scroll-into-action";
 import { BrandLogo } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/app-store";
@@ -23,10 +24,6 @@ export const Route = createFileRoute("/setup-pin")({
   component: SetupPinPage,
 });
 
-/**
- * Mandatory post-signup / post-login step when no transaction PIN exists.
- * Real bill platforms never let you pay without a PIN.
- */
 function SetupPinPage() {
   const navigate = useNavigate();
   const setPinFn = useServerFn(setTransactionPin);
@@ -41,7 +38,6 @@ function SetupPinPage() {
   const continuePad = async () => {
     if (step === "new") {
       if (pin.length !== 4) return;
-      // Soft ban trivial PINs
       if (/^(\d)\1{3}$/.test(pin) || pin === "1234" || pin === "0000") {
         toast.error("Choose a stronger PIN — avoid 0000, 1234 or repeated digits.");
         setPin("");
@@ -92,11 +88,23 @@ function SetupPinPage() {
             : "Enter the same PIN again to confirm."}
         </p>
 
-        <div className="mt-8">
-          <PinPad value={value} onChange={onChange} />
+        <div id="setup-pin-action" className="mt-8">
+          <PinPad
+            value={value}
+            onChange={onChange}
+            onFilled={() => {
+              scrollIntoAction("setup-pin-action");
+              window.setTimeout(() => {
+                (
+                  document.getElementById("setup-pin-continue") as HTMLButtonElement | null
+                )?.click();
+              }, 120);
+            }}
+          />
         </div>
 
         <Button
+          id="setup-pin-continue"
           className="mt-8 h-13 w-full rounded-2xl text-base font-bold"
           disabled={value.length < 4 || busy}
           onClick={() => void continuePad()}
