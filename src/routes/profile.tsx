@@ -4,6 +4,7 @@ import {
   Bookmark,
   ChevronRight,
   KeyRound,
+  FileText,
   LifeBuoy,
   LogOut,
   ShieldCheck,
@@ -50,7 +51,6 @@ function ProfilePage() {
   const { profile, logout } = useApp();
   const navigate = useNavigate();
 
-  // Order matches reference mock: info → PIN → security → saved → support
   const items: Item[] = [
     { label: "Personal Information", icon: User, to: "/profile/personal" },
     { label: "Change PIN", icon: KeyRound, to: "/security" },
@@ -58,6 +58,8 @@ function ProfilePage() {
     { label: "Saved Payments", icon: Bookmark, to: "/saved-payments" },
     { label: "Notifications", icon: Bell, to: "/notifications" },
     { label: "Support", icon: LifeBuoy, to: "/support" },
+    { label: "Privacy Policy", icon: FileText, to: "/profile/privacy" },
+    { label: "Terms of Service", icon: FileText, to: "/terms" },
   ];
 
   return (
@@ -70,12 +72,8 @@ function ProfilePage() {
             </div>
             <span className="absolute right-0 bottom-0 size-4 rounded-full border-2 border-card bg-emerald-500" />
           </div>
-          <h1 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
-            {profile.name || "RockPay User"}
-          </h1>
-          {profile.phone ? (
-            <p className="text-xs text-muted-foreground">{profile.phone}</p>
-          ) : profile.email ? (
+          <p className="mt-3 text-base font-bold tracking-tight">{profile.name || "Your account"}</p>
+          {profile.email ? (
             <p className="text-xs text-muted-foreground">{profile.email}</p>
           ) : null}
         </div>
