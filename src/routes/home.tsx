@@ -11,6 +11,7 @@ import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
 import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { BILLS_FOCUS, homeServiceSlugs } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -18,16 +19,14 @@ export const Route = createFileRoute("/home")({
       { title: `Home — ${BRAND.name}` },
       {
         name: "description",
-        content: "Your wallet balance, quick bill payments and recent transactions at a glance.",
+        content: "Pay electricity, cable TV and everyday bills in a few taps.",
       },
       { property: "og:title", content: `Home — ${BRAND.name}` },
-      { property: "og:description", content: "See your balance and pay a bill in two taps." },
+      { property: "og:description", content: "Pay a bill in a few taps." },
     ],
   }),
   component: HomePage,
 });
-
-const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
 
 function HomePage() {
   const navigate = useNavigate();
@@ -50,7 +49,7 @@ function HomePage() {
   }, [saved]);
 
   const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
-  const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
+  const serviceTiles = homeServiceSlugs().map((slug) => getService(slug)).filter(Boolean);
 
   return (
     <AppShell>
@@ -85,7 +84,10 @@ function HomePage() {
       </header>
 
       <div className="-mt-10 space-y-5 px-4 pb-5">
-        <WalletCard />
+        <WalletCard
+          label={BILLS_FOCUS ? "Ready to pay" : "Wallet Balance"}
+          billsFocus={BILLS_FOCUS}
+        />
 
         <section>
           <SectionTitle title="Pay Bills" action="See all" to="/services" />
