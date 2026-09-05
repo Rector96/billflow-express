@@ -1,5 +1,5 @@
 /**
- * Pay flow — electricity/cable direct Paystack + wallet PIN for other services.
+ * Pay flow — electricity/cable direct Paystack + education/exam pins + wallet for other.
  */
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -152,20 +152,32 @@ export function PayFlow() {
     };
   }, [isPackageLive, serviceID, loadVariations]);
 
-  if (slug === "education") {
+  // Education + exam pins → same student-friendly VTpass PIN flow
+  if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
+  if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
+
+  if (slug === "internet" || slug === "water" || slug === "insurance") {
     return (
       <AppShell>
-        <PageHeader title="Education payments unavailable" backTo="/services" />
-        <div className="px-4 py-10 text-center text-sm text-muted-foreground">Currently unavailable</div>
+        <PageHeader title={service?.name ?? "Coming soon"} backTo="/services" />
+        <div className="mx-auto max-w-md px-4 py-10 text-center">
+          <p className="text-sm font-bold">Coming soon</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            We are focusing on electricity, cable and education first. Check back later.
+          </p>
+          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
+            <Link to="/services">Back to services</Link>
+          </Button>
+        </div>
       </AppShell>
     );
   }
-  if (slug === "exam-pins") return <ExamPinsFlow />;
+
   if (!service) {
     return (
       <AppShell>
         <PageHeader title="Service unavailable" backTo="/services" />
-        <div className="px-4 py-10 text-center text-sm text-muted-foreground">We couldn&apos;t find that service.</div>
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">We could not find that service.</div>
       </AppShell>
     );
   }
@@ -334,7 +346,7 @@ export function PayFlow() {
       }
       throw new Error("This service is not available yet.");
     } catch (err) {
-      toast.error(friendlyError(err, "We couldn&apos;t complete this payment."));
+      toast.error(friendlyError(err, "We could not complete this payment."));
       setStep("confirm");
     } finally {
       payingLock.current = false;
@@ -415,7 +427,7 @@ export function PayFlow() {
             </Button>
           ) : (
             <Button className="h-11 w-full rounded-xl font-bold" onClick={() => setStep("pin")}>
-              Confirm &amp; Pay {formatNaira(total, false)}
+              Confirm & Pay {formatNaira(total, false)}
             </Button>
           )}
         </div>
