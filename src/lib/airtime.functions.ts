@@ -91,13 +91,46 @@ async function finalizeAirtimePurchase(
   payload: Json,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin.rpc("trusted_complete_airtime_purchase", {
+  const { data, error } = await supabaseAdmin.rpc("trusted_complete_airtime_purchase", {
     _user_id: userId,
     _internal_reference: internalReference,
     _outcome: outcome,
     _provider_transaction_id: providerTransactionId || "",
     _payload: payload,
   });
+
+  if (error) {
+    console.error("[airtime settle]", internalReference, error.message, outcome);
+    if (outcome === "successful" || outcome === "failed") {
+      await supabaseAdmin
+        .from("bill_transactions")
+        .update({
+          status: outcome,
+          provider_transaction_id: providerTransactionId || null,
+          updated_at: new Date().toISOString(),
+          metadata: payload,
+        })
+        .eq("internal_reference", internalReference)
+        .eq("status", "pending");
+      await supabaseAdmin
+        .from("wallet_transactions")
+        .update({ status: outcome, updated_at: new Date().toISOString() })
+        .filter("metadata->>bill_reference", "eq", internalReference);
+      return {
+        data: [{ status: outcome, internal_reference: internalReference, balance_after: null }],
+        error: null,
+      };
+    }
+    return { data, error };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const finalStatus = (row?.status ?? outcome) as "successful" | "pending" | "failed";
+  await supabaseAdmin
+    .from("wallet_transactions")
+    .update({ status: finalStatus, updated_at: new Date().toISOString() })
+    .filter("metadata->>bill_reference", "eq", internalReference);
+  return { data, error: null };
 }
 
 export const purchaseAirtime = createServerFn({ method: "POST" })

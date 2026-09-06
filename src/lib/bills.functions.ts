@@ -91,6 +91,23 @@ function mapStartError(message: string): Error {
 
 
 /** Settlement must use service_role — authenticated lost EXECUTE on complete_bill_purchase. */
+async function syncWalletLedgerStatus(
+  internalReference: string,
+  status: "successful" | "pending" | "failed",
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin
+    .from("wallet_transactions")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .filter("metadata->>bill_reference", "eq", internalReference);
+  if (error) {
+    console.error("[settle] wallet_transactions sync", internalReference, error.message);
+  }
+}
+
 async function finalizeBillPurchase(
   userId: string,
   internalReference: string,
@@ -99,13 +116,53 @@ async function finalizeBillPurchase(
   payload: Json,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin.rpc("trusted_complete_bill_purchase", {
+  const { data, error } = await supabaseAdmin.rpc("trusted_complete_bill_purchase", {
     _user_id: userId,
     _internal_reference: internalReference,
     _outcome: outcome,
     _provider_transaction_id: providerTransactionId || "",
     _payload: payload,
   });
+
+  if (error) {
+    console.error("[settle] trusted_complete_bill_purchase", internalReference, error.message, outcome);
+    if (outcome === "successful" || outcome === "failed") {
+      const { error: bErr } = await supabaseAdmin
+        .from("bill_transactions")
+        .update({
+          status: outcome,
+          provider_transaction_id: providerTransactionId || null,
+          provider_response_code: String((payload as { vtpass_code?: string })?.vtpass_code ?? "") || null,
+          provider_status: String((payload as { vtpass_status?: string })?.vtpass_status ?? "") || null,
+          provider_response_message:
+            String((payload as { response_description?: string })?.response_description ?? "") || null,
+          updated_at: new Date().toISOString(),
+          metadata: payload,
+        })
+        .eq("internal_reference", internalReference)
+        .eq("status", "pending");
+      if (bErr) console.error("[settle] bill fallback", bErr.message);
+      await syncWalletLedgerStatus(internalReference, outcome);
+      return {
+        data: [
+          {
+            bill_id: null,
+            internal_reference: internalReference,
+            status: outcome,
+            balance_after: null,
+            refunded: outcome === "failed",
+          },
+        ],
+        error: null,
+      };
+    }
+    return { data, error };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const finalStatus = (row?.status ?? outcome) as "successful" | "pending" | "failed";
+  await syncWalletLedgerStatus(internalReference, finalStatus);
+  return { data, error: null };
 }
 
 export const listVtpassServices = createServerFn({ method: "POST" })

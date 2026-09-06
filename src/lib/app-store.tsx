@@ -406,7 +406,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
       if (w.data) setBalance(money(w.data.balance));
-      if (ledger.data) setTransactions(ledger.data.map((r) => toTransaction(r as LedgerRow)));
+      if (ledger.data) {
+        const rows = ledger.data as LedgerRow[];
+        // Prefer bill_transactions.status when a wallet row is a bill payment
+        // (fixes success page vs history pending drift).
+        const billRefs = rows
+          .map((r) => {
+            const m = r.metadata ?? {};
+            return typeof m["bill_reference"] === "string" ? (m["bill_reference"] as string) : null;
+          })
+          .filter((x): x is string => Boolean(x));
+        let billStatus = new Map<string, string>();
+        if (billRefs.length) {
+          const { data: bills } = await supabase
+            .from("bill_transactions")
+            .select("internal_reference, status")
+            .in("internal_reference", billRefs);
+          for (const b of bills ?? []) {
+            billStatus.set(String(b.internal_reference), String(b.status));
+          }
+        }
+        setTransactions(
+          rows.map((r) => {
+            const ref =
+              r.metadata && typeof r.metadata["bill_reference"] === "string"
+                ? (r.metadata["bill_reference"] as string)
+                : null;
+            const override = ref ? billStatus.get(ref) : undefined;
+            if (override && override !== r.status) {
+              return toTransaction({ ...r, status: override });
+            }
+            return toTransaction(r);
+          }),
+        );
+      }
       if (sp.data) {
         setSaved(
           sp.data.map((r) => ({
