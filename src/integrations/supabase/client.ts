@@ -3,7 +3,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
-import { createMockSupabaseClient } from "./mock-client";
 
 export function isSupabaseConfigured(): boolean {
   const url =
@@ -56,8 +55,9 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 function createSupabaseClient() {
   if (!isSupabaseConfigured()) {
-    // Return safe in-memory mock client for preview mode so app doesn't crash
-    return createMockSupabaseClient() as unknown as ReturnType<typeof createClient<Database>>;
+    throw new Error(
+      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.",
+    );
   }
 
   // Use import.meta.env for client-side (Vite build-time replacement)

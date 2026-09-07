@@ -44,6 +44,15 @@ export type VtpassVerifyResult = {
   message: string;
 };
 
+export function parseVtpassMoney(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value.replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const FAIL_CODES = new Set([
   "010", "011", "012", "013", "014", "016", "017", "018", "019",
   "021", "022", "023", "024", "027", "028", "030", "031", "032",
