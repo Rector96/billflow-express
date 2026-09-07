@@ -54,13 +54,37 @@ export function parseVtpassMoney(value: unknown): number | null {
 }
 
 const FAIL_CODES = new Set([
-  "010", "011", "012", "013", "014", "016", "017", "018", "019",
-  "021", "022", "023", "024", "027", "028", "030", "031", "032",
-  "034", "035", "040", "083", "087", "091",
+  "010",
+  "011",
+  "012",
+  "013",
+  "014",
+  "016",
+  "017",
+  "018",
+  "019",
+  "021",
+  "022",
+  "023",
+  "024",
+  "027",
+  "028",
+  "030",
+  "031",
+  "032",
+  "034",
+  "035",
+  "040",
+  "083",
+  "087",
+  "091",
 ]);
 
 export const MOBILE_DATA_SERVICE_IDS = new Set([
-  "mtn-data", "airtel-data", "glo-data", "etisalat-data",
+  "mtn-data",
+  "airtel-data",
+  "glo-data",
+  "etisalat-data",
 ]);
 
 const catalogueCache = new Map<string, { at: number; data: unknown }>();
@@ -261,18 +285,36 @@ export async function vtpassMerchantVerify(input: {
   } catch (err) {
     console.error("[VTpass] merchant verify network error", input.serviceID, err);
     return {
-      ok: false, code: "TIMEOUT", customerName: null, address: null, status: null,
-      dueDate: null, customerNumber: null, minPurchaseAmount: null, tariff: null,
-      meterNumber: null, raw: {}, message: "VTpass is temporarily unavailable. Please try again.",
+      ok: false,
+      code: "TIMEOUT",
+      customerName: null,
+      address: null,
+      status: null,
+      dueDate: null,
+      customerNumber: null,
+      minPurchaseAmount: null,
+      tariff: null,
+      meterNumber: null,
+      raw: {},
+      message: "VTpass is temporarily unavailable. Please try again.",
     };
   }
   const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
     console.error("[VTpass] merchant verify HTTP error", res.status, input.serviceID, raw);
     return {
-      ok: false, code: String(raw["code"] ?? res.status), customerName: null, address: null,
-      status: null, dueDate: null, customerNumber: null, minPurchaseAmount: null, tariff: null,
-      meterNumber: null, raw, message: "VTpass is temporarily unavailable. Please try again.",
+      ok: false,
+      code: String(raw["code"] ?? res.status),
+      customerName: null,
+      address: null,
+      status: null,
+      dueDate: null,
+      customerNumber: null,
+      minPurchaseAmount: null,
+      tariff: null,
+      meterNumber: null,
+      raw,
+      message: "VTpass is temporarily unavailable. Please try again.",
     };
   }
   const code = String(raw["code"] ?? "");
@@ -292,8 +334,16 @@ export async function vtpassMerchantVerify(input: {
   const minRaw =
     content["Min_Purchase_Amount"] ?? content["min_purchase_amount"] ?? content["Minimum_Amount"];
   return {
-    ok, code,
-    customerName: pickStr("Customer_Name", "customer_name", "CustomerName", "customerName", "Name", "name"),
+    ok,
+    code,
+    customerName: pickStr(
+      "Customer_Name",
+      "customer_name",
+      "CustomerName",
+      "customerName",
+      "Name",
+      "name",
+    ),
     address: pickStr("Address", "address", "Customer_Address", "customer_address"),
     status: pickStr("Status", "status"),
     dueDate: pickStr("Due_Date", "due_date", "DueDate"),
@@ -304,11 +354,18 @@ export async function vtpassMerchantVerify(input: {
     raw: content,
     message: ok
       ? "Verified"
-      : String(raw["response_description"] ?? content["error"] ?? "Could not verify this number. Check and try again."),
+      : String(
+          raw["response_description"] ??
+            content["error"] ??
+            "Could not verify this number. Check and try again.",
+        ),
   };
 }
 
-function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: string): VtpassPayResult {
+function parsePayResponse(
+  raw: Record<string, unknown>,
+  fallbackRequestId: string,
+): VtpassPayResult {
   const code = String(raw["code"] ?? "");
   const content = (raw["content"] ?? {}) as Record<string, unknown>;
   const tx = (content["transactions"] ?? {}) as Record<string, unknown>;
@@ -333,7 +390,9 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
           : null;
   return {
     code,
-    responseDescription: String(raw["response_description"] ?? content["response_description"] ?? ""),
+    responseDescription: String(
+      raw["response_description"] ?? content["response_description"] ?? "",
+    ),
     requestId: String(raw["requestId"] ?? raw["request_id"] ?? fallbackRequestId),
     transactionId,
     contentStatus,
@@ -343,7 +402,10 @@ function parsePayResponse(raw: Record<string, unknown>, fallbackRequestId: strin
 }
 
 export async function vtpassPayAirtime(input: {
-  serviceId: string; phone: string; amount: number; requestId: string;
+  serviceId: string;
+  phone: string;
+  amount: number;
+  requestId: string;
 }): Promise<VtpassPayResult> {
   const { baseUrl } = getVtpassConfig();
   const body = {
@@ -365,15 +427,24 @@ export async function vtpassPayAirtime(input: {
       return {
         code: String(raw["code"] ?? res.status),
         responseDescription: String(raw["response_description"] ?? "Provider request failed"),
-        requestId: input.requestId, transactionId: null, contentStatus: null, purchasedCode: null, raw,
+        requestId: input.requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
       };
     }
     return parsePayResponse(raw, input.requestId);
   } catch (err) {
     console.error("[VTpass] airtime network error", input.requestId, err);
     return {
-      code: "TIMEOUT", responseDescription: "Provider timeout", requestId: input.requestId,
-      transactionId: null, contentStatus: null, purchasedCode: null, raw: { error: String(err) },
+      code: "TIMEOUT",
+      responseDescription: "Provider timeout",
+      requestId: input.requestId,
+      transactionId: null,
+      contentStatus: null,
+      purchasedCode: null,
+      raw: { error: String(err) },
     };
   }
 }
@@ -394,15 +465,24 @@ export async function vtpassPay(body: Record<string, unknown>): Promise<VtpassPa
       return {
         code: String(raw["code"] ?? res.status),
         responseDescription: String(raw["response_description"] ?? "Provider request failed"),
-        requestId, transactionId: null, contentStatus: null, purchasedCode: null, raw,
+        requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
       };
     }
     return parsePayResponse(raw, requestId);
   } catch (err) {
     console.error("[VTpass] pay network error", requestId, err);
     return {
-      code: "TIMEOUT", responseDescription: "Provider timeout", requestId,
-      transactionId: null, contentStatus: null, purchasedCode: null, raw: { error: String(err) },
+      code: "TIMEOUT",
+      responseDescription: "Provider timeout",
+      requestId,
+      transactionId: null,
+      contentStatus: null,
+      purchasedCode: null,
+      raw: { error: String(err) },
     };
   }
 }
@@ -422,15 +502,24 @@ export async function vtpassRequery(requestId: string): Promise<VtpassPayResult>
       return {
         code: String(raw["code"] ?? res.status),
         responseDescription: String(raw["response_description"] ?? "Provider requery failed"),
-        requestId, transactionId: null, contentStatus: null, purchasedCode: null, raw,
+        requestId,
+        transactionId: null,
+        contentStatus: null,
+        purchasedCode: null,
+        raw,
       };
     }
     return parsePayResponse(raw, requestId);
   } catch (err) {
     console.error("[VTpass] requery network error", requestId, err);
     return {
-      code: "TIMEOUT", responseDescription: "Provider timeout", requestId,
-      transactionId: null, contentStatus: null, purchasedCode: null, raw: { error: String(err) },
+      code: "TIMEOUT",
+      responseDescription: "Provider timeout",
+      requestId,
+      transactionId: null,
+      contentStatus: null,
+      purchasedCode: null,
+      raw: { error: String(err) },
     };
   }
 }

@@ -382,7 +382,11 @@ export function PayFlow() {
       <AppShell>
         <div className="mx-auto max-w-md space-y-4 px-4 py-10 text-center">
           <h1 className="text-xl font-extrabold">
-            {outcome === "successful" ? "Payment successful" : outcome === "failed" ? "Payment failed" : "Payment processing"}
+            {outcome === "successful"
+              ? "Payment successful"
+              : outcome === "failed"
+                ? "Payment failed"
+                : "Payment processing"}
           </h1>
           <p className="text-sm text-muted-foreground">{resultMessage}</p>
           {token ? <p className="break-all font-mono text-lg font-bold">{token}</p> : null}

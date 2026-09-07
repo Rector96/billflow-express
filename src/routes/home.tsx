@@ -93,7 +93,7 @@ function HomePage() {
       <div className="space-y-4 px-4 pt-1 pb-6">
         <WalletCard />
 
-          <HomePromos className="mt-3" />
+        <HomePromos className="mt-3" />
 
         {/* Services in modern rounded surface */}
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">

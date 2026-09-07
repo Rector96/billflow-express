@@ -49,9 +49,7 @@ async function finalizeBillPurchase(
   c = c.replace(re, (full, body) => {
     n++;
     const isBill = body.includes("bill.internal_reference");
-    const ref = isBill
-      ? "bill.internal_reference as string"
-      : "row.internal_reference as string";
+    const ref = isBill ? "bill.internal_reference as string" : "row.internal_reference as string";
     const tx = isBill
       ? 'pay.transactionId ?? bill.provider_transaction_id ?? ""'
       : 'pay.transactionId ?? ""';

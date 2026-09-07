@@ -340,7 +340,10 @@ export function ExamPinsFlow({
               </p>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
+              <Button
+                className="h-12 w-full rounded-xl font-bold"
+                onClick={() => setStep("confirm")}
+              >
                 Continue
               </Button>
             </PayActionBar>

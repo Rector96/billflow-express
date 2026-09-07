@@ -72,10 +72,10 @@ function ProfilePage() {
             </div>
             <span className="absolute right-0 bottom-0 size-4 rounded-full border-2 border-card bg-emerald-500" />
           </div>
-          <p className="mt-3 text-base font-bold tracking-tight">{profile.name || "Your account"}</p>
-          {profile.email ? (
-            <p className="text-xs text-muted-foreground">{profile.email}</p>
-          ) : null}
+          <p className="mt-3 text-base font-bold tracking-tight">
+            {profile.name || "Your account"}
+          </p>
+          {profile.email ? <p className="text-xs text-muted-foreground">{profile.email}</p> : null}
         </div>
       </header>
 

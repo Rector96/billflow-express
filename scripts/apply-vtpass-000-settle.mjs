@@ -102,12 +102,19 @@ function patchVtpass() {
   const from = start >= 0 ? start : exportStart;
   if (from < 0) throw new Error("mapVtpassOutcome missing");
   const rest = c.slice(exportStart);
-  let brace = 0, started = false, end = 0;
+  let brace = 0,
+    started = false,
+    end = 0;
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === "{") { brace++; started = true; }
-    else if (rest[i] === "}") {
+    if (rest[i] === "{") {
+      brace++;
+      started = true;
+    } else if (rest[i] === "}") {
       brace--;
-      if (started && brace === 0) { end = i + 1; break; }
+      if (started && brace === 0) {
+        end = i + 1;
+        break;
+      }
     }
   }
   c = c.slice(0, from) + MAP_FN + c.slice(exportStart + end);
@@ -136,4 +143,6 @@ function patchBillsSync() {
 
 patchVtpass();
 patchBillsSync();
-console.log("OK \u2014 git add src/lib/vtpass.server.ts src/lib/bills.functions.ts && commit && push");
+console.log(
+  "OK \u2014 git add src/lib/vtpass.server.ts src/lib/bills.functions.ts && commit && push",
+);
