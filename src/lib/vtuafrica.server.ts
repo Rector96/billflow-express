@@ -6,6 +6,7 @@
 
 export type VtuafricaPayResult = {
   ok: boolean;
+  status: "successful" | "pending" | "failed";
   code: string;
   message: string;
   reference: string;
@@ -52,7 +53,7 @@ export function mapElectricServiceToVtuafrica(serviceID: string): string {
 }
 
 async function getJson(url: string): Promise<Record<string, unknown>> {
-  const res = await fetch(url, { method: "GET" });
+  const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(45_000) });
   const text = await res.text();
   try {
     return JSON.parse(text) as Record<string, unknown>;
@@ -61,7 +62,10 @@ async function getJson(url: string): Promise<Record<string, unknown>> {
   }
 }
 
-function parseResult(raw: Record<string, unknown>, ref: string): VtuafricaPayResult {
+export function parseVtuafricaResult(
+  raw: Record<string, unknown>,
+  ref: string,
+): VtuafricaPayResult {
   const code = String(raw["code"] ?? raw["Code"] ?? "");
   const desc = raw["description"];
   let message = "";
@@ -78,15 +82,28 @@ function parseResult(raw: Record<string, unknown>, ref: string): VtuafricaPayRes
   } else if (typeof desc === "string") {
     message = desc;
   }
-  const ok =
-    code === "101" ||
-    status.toLowerCase() === "completed" ||
-    status.toLowerCase() === "successful" ||
-    /success/i.test(message);
+  const normalized = `${status} ${message}`.toLowerCase();
+  const explicitlyUnsuccessful = /\b(not successful|unsuccessful|failed|declined|rejected)\b/i.test(
+    normalized,
+  );
+  const successful =
+    (!explicitlyUnsuccessful && code === "101") ||
+    (!explicitlyUnsuccessful &&
+      (["completed", "successful", "success", "delivered"].includes(status.toLowerCase()) ||
+        /\b(success|delivered|completed)\b/i.test(message)));
+  const pending =
+    !successful &&
+    (code === "" ||
+      ["pending", "processing", "queued", "in progress", "initiated", "unknown"].some((value) =>
+        normalized.includes(value),
+      ));
+  const resultStatus = successful ? "successful" : pending ? "pending" : "failed";
   return {
-    ok,
+    ok: resultStatus === "successful",
+    status: resultStatus,
     code,
-    message: message || (ok ? "Successful" : "Provider declined"),
+    message:
+      message || (successful ? "Successful" : pending ? "Still processing" : "Provider declined"),
     reference: ref,
     token,
     transactionId: typeof raw["transaction_id"] === "string" ? raw["transaction_id"] : ref,
@@ -113,7 +130,7 @@ export async function vtuafricaPayElectricity(input: {
   });
   const url = `${base}/electric/?${params.toString()}`;
   const raw = await getJson(url);
-  return parseResult(raw, input.ref);
+  return parseVtuafricaResult(raw, input.ref);
 }
 
 export async function vtuafricaPayCable(input: {
@@ -140,5 +157,5 @@ export async function vtuafricaPayCable(input: {
   // Primary path used by many VTUAfrica portals
   const url = `${base}/tv/?${params.toString()}`;
   const raw = await getJson(url);
-  return parseResult(raw, input.ref);
+  return parseVtuafricaResult(raw, input.ref);
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { friendlyError } from "@/lib/app-store";
 import { formatTicketStatus, statusBadgeClass, type TicketStatus } from "@/lib/care";
+import { getCareReplySuggestions } from "@/lib/care-suggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,14 @@ function StaffTicket() {
   const [internal, setInternal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+
+  const suggestions = ticket
+    ? getCareReplySuggestions({
+        category: ticket.category,
+        status: ticket.status,
+        description: ticket.description,
+      })
+    : [];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +194,29 @@ function StaffTicket() {
             ))}
           </div>
           <div className="border-t border-border/60 p-3 space-y-2">
+            {suggestions.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+                  Suggested replies
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      title={suggestion}
+                      className="max-w-full rounded-lg border border-primary/20 bg-primary-soft px-2 py-1 text-left text-[10px] font-semibold text-primary hover:bg-primary/15"
+                      onClick={() => {
+                        setBody(suggestion);
+                        setInternal(false);
+                      }}
+                    >
+                      <span className="block max-w-[28rem] truncate">{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}

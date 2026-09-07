@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { formatTicketStatus, statusBadgeClass } from "@/lib/care";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +42,7 @@ function CareQueue() {
   const [status, setStatus] = useState<string>("all");
   const [q, setQ] = useState(search.q ?? "");
   const [loading, setLoading] = useState(true);
+  const knownTicketIds = useRef<Set<string> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,6 +57,12 @@ function CareQueue() {
       ]);
       if (s.data) setStats(s.data as Stats);
       const rows = (t.data as Ticket[]) ?? [];
+      const previous = knownTicketIds.current;
+      if (previous) {
+        const newCount = rows.filter((row) => !previous.has(row.id)).length;
+        if (newCount > 0) toast.info(`${newCount} new Care request${newCount === 1 ? "" : "s"}`);
+      }
+      knownTicketIds.current = new Set(rows.map((row) => row.id));
       setTickets(rows);
       const ids = [...new Set(rows.map((r) => r.user_id))];
       if (ids.length) {
@@ -75,6 +83,8 @@ function CareQueue() {
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => void load(), 30_000);
+    return () => window.clearInterval(timer);
   }, [load]);
 
   const filtered = useMemo(() => {

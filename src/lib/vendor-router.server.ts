@@ -4,11 +4,17 @@
  */
 import { mapVtpassOutcome, vtpassPay, type VtpassPayResult } from "./vtpass.server";
 import {
-  isVtuafricaConfigured,
   vtuafricaPayCable,
   vtuafricaPayElectricity,
   type VtuafricaPayResult,
 } from "./vtuafrica.server";
+
+function isVtuafricaEnabled(): boolean {
+  return (
+    process.env["VTUAFRICA_ENABLED"]?.trim().toLowerCase() === "true" &&
+    Boolean((process.env["VTUAFRICA_API_KEY"] ?? "").trim())
+  );
+}
 
 export type RoutedPayResult = {
   vendor: "vtpass" | "vtuafrica";
@@ -52,10 +58,9 @@ const FAILOVER_CODES = new Set([
   "010",
   "012",
   "011",
-  "099",
 ]);
 
-function shouldFailoverVtpass(result: VtpassPayResult): boolean {
+export function shouldFailoverVtpass(result: VtpassPayResult): boolean {
   const code = String(result.code ?? "").trim();
   if (FAILOVER_CODES.has(code)) return true;
   const msg = (result.responseDescription ?? "").toUpperCase();
@@ -70,7 +75,7 @@ function shouldFailoverVtpass(result: VtpassPayResult): boolean {
   ) {
     return true;
   }
-  return mapVtpassOutcome(result) === "failed";
+  return false;
 }
 
 function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayResult {
@@ -93,13 +98,20 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
 function fromVtuafrica(result: VtuafricaPayResult, requestId: string): RoutedPayResult {
   return {
     vendor: "vtuafrica",
-    status: result.ok ? "successful" : "failed",
-    code: result.code || (result.ok ? "000" : "016"),
+    status: result.status,
+    code:
+      result.code ||
+      (result.status === "successful" ? "000" : result.status === "pending" ? "099" : "016"),
     responseDescription: result.message,
     requestId,
     transactionId: result.transactionId,
     purchasedCode: result.token,
-    contentStatus: result.ok ? "delivered" : "failed",
+    contentStatus:
+      result.status === "successful"
+        ? "delivered"
+        : result.status === "pending"
+          ? "pending"
+          : "failed",
     totalAmount: null,
     commission: null,
     raw: result.raw,
@@ -141,10 +153,10 @@ export async function routeElectricityPay(input: {
     if (outcome === "successful" || outcome === "pending") {
       return fromVtpass(primary, false);
     }
-    if (!shouldFailoverVtpass(primary) || !isVtuafricaConfigured()) {
+    if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
       return fromVtpass(primary, false);
     }
-  } else if (!isVtuafricaConfigured()) {
+  } else if (!isVtuafricaEnabled()) {
     throw new Error(
       "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
     );
@@ -193,10 +205,10 @@ export async function routeCablePay(input: {
     if (outcome === "successful" || outcome === "pending") {
       return fromVtpass(primary, false);
     }
-    if (!shouldFailoverVtpass(primary) || !isVtuafricaConfigured()) {
+    if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
       return fromVtpass(primary, false);
     }
-  } else if (!isVtuafricaConfigured()) {
+  } else if (!isVtuafricaEnabled()) {
     throw new Error(
       "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
     );

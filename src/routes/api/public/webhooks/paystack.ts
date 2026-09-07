@@ -48,8 +48,8 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
           await verifyAndSettle(reference);
         } catch (err) {
           console.error("paystack webhook settle failed", (err as Error).message);
-          // 200 keeps Paystack from hammering us; the callback verify path and
-          // the next event will settle it. Never credit on failure.
+          // A 5xx lets Paystack retry transient settlement failures.
+          return new Response("Retry settlement", { status: 503 });
         }
 
         return new Response("ok", { status: 200 });

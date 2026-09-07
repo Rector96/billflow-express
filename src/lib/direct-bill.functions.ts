@@ -450,7 +450,18 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
         },
       },
     );
-    if (finErr) console.error("[direct-bill] complete", finErr.message);
+    if (finErr) {
+      console.error("[direct-bill] complete", finErr.message);
+      return {
+        billReference: billRef,
+        status: "pending",
+        amount,
+        token: null,
+        message:
+          "Payment was received, but we are still confirming delivery. Please check again shortly.",
+        providerTransactionId: pay.transactionId,
+      };
+    }
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
     const status = (fin?.status ?? outcome) as DirectVerifyResult["status"];

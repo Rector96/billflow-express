@@ -504,7 +504,7 @@ export function PayFlow() {
                 onSelect={(v) => {
                   setVariation(v);
                   scrollIntoAction("pay-action");
-                }
+                }}
               />
             ) : (
               <div className="space-y-2">

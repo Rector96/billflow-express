@@ -89,7 +89,6 @@ function mapStartError(message: string): Error {
   return new Error(message);
 }
 
-
 /** Settlement must use service_role — authenticated lost EXECUTE on complete_bill_purchase. */
 async function syncWalletLedgerStatus(
   internalReference: string,
@@ -125,17 +124,25 @@ async function finalizeBillPurchase(
   });
 
   if (error) {
-    console.error("[settle] trusted_complete_bill_purchase", internalReference, error.message, outcome);
+    console.error(
+      "[settle] trusted_complete_bill_purchase",
+      internalReference,
+      error.message,
+      outcome,
+    );
     if (outcome === "successful" || outcome === "failed") {
       const { error: bErr } = await supabaseAdmin
         .from("bill_transactions")
         .update({
           status: outcome,
           provider_transaction_id: providerTransactionId || null,
-          provider_response_code: String((payload as { vtpass_code?: string })?.vtpass_code ?? "") || null,
-          provider_status: String((payload as { vtpass_status?: string })?.vtpass_status ?? "") || null,
+          provider_response_code:
+            String((payload as { vtpass_code?: string })?.vtpass_code ?? "") || null,
+          provider_status:
+            String((payload as { vtpass_status?: string })?.vtpass_status ?? "") || null,
           provider_response_message:
-            String((payload as { response_description?: string })?.response_description ?? "") || null,
+            String((payload as { response_description?: string })?.response_description ?? "") ||
+            null,
           updated_at: new Date().toISOString(),
           metadata: payload,
         })
@@ -262,6 +269,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
       phone?: string;
       customerName?: string;
       subscriptionType?: string;
+      requestId?: string;
     }) => {
       const serviceID = String(input?.serviceID ?? "").trim();
       const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
@@ -284,6 +292,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
         phone: input?.phone ? String(input.phone) : undefined,
         customerName: input?.customerName ? String(input.customerName) : undefined,
         subscriptionType: input?.subscriptionType ? String(input.subscriptionType) : "change",
+        requestId: String(input?.requestId ?? "").trim() || `cable-${crypto.randomUUID()}`,
       };
     },
   )
@@ -323,6 +332,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
         variation_code: data.variationCode,
         subscription_type: data.subscriptionType,
       },
+      _request_id: data.requestId,
     });
     if (startError) {
       console.error("[cable] start", startError.message);
@@ -405,6 +415,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
       phone?: string;
       customerName?: string;
       minAmount?: number;
+      requestId?: string;
     }) => {
       const serviceID = String(input?.serviceID ?? "").trim();
       const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
@@ -435,6 +446,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         phone: input?.phone ? String(input.phone) : undefined,
         customerName: input?.customerName ? String(input.customerName) : undefined,
         minAmount,
+        requestId: String(input?.requestId ?? "").trim() || `power-${crypto.randomUUID()}`,
       };
     },
   )
@@ -486,6 +498,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         meter_type: data.meterType,
         verified_at: new Date().toISOString(),
       },
+      _request_id: data.requestId,
     });
     if (startError) {
       console.error("[electricity] start", startError.message);
@@ -565,6 +578,7 @@ export const purchaseData = createServerFn({ method: "POST" })
       variationCode: string;
       amount?: number;
       pin: string;
+      requestId?: string;
     }) => {
       const serviceID = String(input?.serviceID ?? "").trim();
       const phone = String(input?.phone ?? "").trim();
@@ -580,6 +594,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         variationCode,
         pin,
         amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
+        requestId: String(input?.requestId ?? "").trim() || `data-${crypto.randomUUID()}`,
       };
     },
   )
@@ -637,6 +652,7 @@ export const purchaseData = createServerFn({ method: "POST" })
         variation_code: data.variationCode,
         network: networkLabel,
       },
+      _request_id: data.requestId,
     });
     if (startError) {
       console.error("[data] start", startError.message);

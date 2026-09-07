@@ -32,6 +32,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 import { Route as AdminAuditLogsRouteImport } from './routes/admin.audit-logs'
 import { Route as AdminCareRouteImport } from './routes/admin.care'
+import { Route as AdminPricingRouteImport } from './routes/admin.pricing'
 import { Route as AdminReconciliationRouteImport } from './routes/admin.reconciliation'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminServicesRouteImport } from './routes/admin.services'
@@ -167,6 +168,11 @@ const AdminCareRoute = AdminCareRouteImport.update({
   path: '/care',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPricingRoute = AdminPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReconciliationRoute = AdminReconciliationRouteImport.update({
   id: '/reconciliation',
   path: '/reconciliation',
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/services': typeof AdminServicesRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/services': typeof AdminServicesRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/services': typeof AdminServicesRoute
@@ -421,6 +430,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
     | '/admin/services'
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
     | '/admin/services'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
     | '/admin/services'
@@ -718,6 +730,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCareRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/pricing': {
+      id: '/admin/pricing'
+      path: '/pricing'
+      fullPath: '/admin/pricing'
+      preLoaderRoute: typeof AdminPricingRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/reconciliation': {
       id: '/admin/reconciliation'
       path: '/reconciliation'
@@ -882,6 +901,7 @@ interface AdminRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminCareRoute: typeof AdminCareRouteWithChildren
+  AdminPricingRoute: typeof AdminPricingRoute
   AdminReconciliationRoute: typeof AdminReconciliationRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminServicesRoute: typeof AdminServicesRoute
@@ -897,6 +917,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminCareRoute: AdminCareRouteWithChildren,
+  AdminPricingRoute: AdminPricingRoute,
   AdminReconciliationRoute: AdminReconciliationRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminServicesRoute: AdminServicesRoute,

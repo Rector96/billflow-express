@@ -159,7 +159,7 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   ctx.fillText(BRAND.name, width / 2, y + 4);
   y += 36;
 
-  // Success / status pill with check
+  // Status pill uses a distinct symbol so pending/failed exports cannot look successful.
   const st = statusLabel(payload.status);
   const stColor = statusColor(payload.status);
   ctx.font = "600 13px system-ui, sans-serif";
@@ -169,18 +169,16 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   ctx.fillStyle = `${stColor}18`;
   roundRect(ctx, stX, y, stW, 28, 14);
   ctx.fill();
-  // simple check circle
+  const statusSymbol =
+    payload.status === "successful" ? "✓" : payload.status === "pending" ? "…" : "!";
   ctx.beginPath();
   ctx.arc(stX + 14, y + 14, 8, 0, Math.PI * 2);
   ctx.fillStyle = stColor;
   ctx.fill();
-  ctx.strokeStyle = "#FFFFFF";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(stX + 10, y + 14);
-  ctx.lineTo(stX + 13, y + 17);
-  ctx.lineTo(stX + 19, y + 11);
-  ctx.stroke();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "800 12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(statusSymbol, stX + 14, y + 18);
   ctx.fillStyle = stColor;
   ctx.font = "700 13px system-ui, sans-serif";
   ctx.textAlign = "left";

@@ -135,21 +135,35 @@ async function finalizeAirtimePurchase(
 
 export const purchaseAirtime = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { network: string; phone: string; amount: number; pin: string }) => {
-    const amount = Math.round(Number(input?.amount));
-    if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
-      throw new Error("Enter an amount between ₦50 and ₦50,000.");
-    }
-    const pin = String(input?.pin ?? "");
-    if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
-    const network = String(input?.network ?? "")
-      .trim()
-      .toLowerCase();
-    if (!network) throw new Error("Select a network.");
-    const phone = String(input?.phone ?? "").trim();
-    if (!phone) throw new Error("Enter a phone number.");
-    return { network, phone, amount, pin };
-  })
+  .inputValidator(
+    (input: {
+      network: string;
+      phone: string;
+      amount: number;
+      pin: string;
+      requestId?: string;
+    }) => {
+      const amount = Math.round(Number(input?.amount));
+      if (!Number.isFinite(amount) || amount < 50 || amount > 50_000) {
+        throw new Error("Enter an amount between ₦50 and ₦50,000.");
+      }
+      const pin = String(input?.pin ?? "");
+      if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
+      const network = String(input?.network ?? "")
+        .trim()
+        .toLowerCase();
+      if (!network) throw new Error("Select a network.");
+      const phone = String(input?.phone ?? "").trim();
+      if (!phone) throw new Error("Enter a phone number.");
+      return {
+        network,
+        phone,
+        amount,
+        pin,
+        requestId: String(input?.requestId ?? "").trim() || `airtime-${crypto.randomUUID()}`,
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<AirtimePurchaseResult> => {
     const {
       getVtpassConfig,
@@ -181,6 +195,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
         _phone: phone,
         _amount: data.amount,
         _pin: data.pin,
+        _request_id: data.requestId,
       },
     );
     if (startError) {
