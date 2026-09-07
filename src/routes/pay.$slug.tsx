@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RockPayBillFlow } from "@/components/app/rockpay-bill-flow";
+import { RockPayBillEntry } from "@/components/app/rockpay-bill-entry";
 import { BRAND } from "@/lib/brand";
 import { getService } from "@/lib/mock-data";
 
@@ -33,5 +33,5 @@ export const Route = createFileRoute("/pay/$slug")({
       ],
     };
   },
-  component: RockPayBillFlow,
+  component: RockPayBillEntry,
 });
