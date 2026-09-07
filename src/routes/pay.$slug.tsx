@@ -120,7 +120,7 @@ function displayNgPhone(input: string): string {
   return d;
 }
 
-function withFastTimeout<T>(promise: Promise<T>, timeoutMs = 2800): Promise<T> {
+function withProviderTimeout<T>(promise: Promise<T>, timeoutMs = 60_000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
@@ -134,7 +134,7 @@ function PayFlow() {
   const search = Route.useSearch();
   const savedId = search.saved;
   const navigate = useNavigate();
-  const { balance, payBill, saved, transactions, refresh, profile } = useApp();
+  const { balance, saved, transactions, refresh, profile } = useApp();
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === savedId);
 
@@ -520,7 +520,7 @@ function PayFlow() {
     setOutcome("pending");
     try {
       if (isAirtime) {
-        const res = await withFastTimeout(
+        const res = await withProviderTimeout(
           buyAirtime({
             data: {
               network: provider,
@@ -528,8 +528,7 @@ function PayFlow() {
               amount: total,
               pin: authorizedPin,
             },
-          }),
-          2800,
+          }), 60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -544,7 +543,7 @@ function PayFlow() {
       if (isData) {
         if (!variation) throw new Error("Select a data plan.");
         if (!isValidNgMobile(identifier)) throw new Error("Enter a valid Nigerian mobile number.");
-        const res = await withFastTimeout(
+        const res = await withProviderTimeout(
           buyData({
             data: {
               serviceID: serviceID || provider,
@@ -552,8 +551,7 @@ function PayFlow() {
               variationCode: variation.variationCode,
               pin: authorizedPin,
             },
-          }),
-          2800,
+          }), 60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -567,7 +565,7 @@ function PayFlow() {
 
       if (isCable) {
         if (!variation) throw new Error("Select a package.");
-        const res = await withFastTimeout(
+        const res = await withProviderTimeout(
           buyCable({
             data: {
               serviceID: serviceID || provider,
@@ -579,8 +577,7 @@ function PayFlow() {
               ...(verifiedName ? { customerName: verifiedName } : {}),
               subscriptionType: "change",
             },
-          }),
-          2800,
+          }), 60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -593,7 +590,7 @@ function PayFlow() {
       }
 
       if (isElectricity) {
-        const res = await withFastTimeout(
+        const res = await withProviderTimeout(
           buyElectricity({
             data: {
               serviceID: serviceID || provider,
@@ -605,8 +602,7 @@ function PayFlow() {
               ...(verifiedName ? { customerName: verifiedName } : {}),
               minAmount: minPurchase,
             },
-          }),
-          2800,
+          }), 60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -619,58 +615,13 @@ function PayFlow() {
         return;
       }
 
-      const reference = await payBill({
-        service: service.name,
-        serviceSlug: service.slug,
-        provider: provider || serviceID,
-        product: pack?.name || variation?.name,
-        amount: total,
-        identifier: identifier.trim(),
-        status: "successful",
-        title: `${provider || serviceID} ${service.name}`,
-        customer: verifiedName || service.customerName || "Customer",
-        pin: authorizedPin,
-      });
-      setTxId(reference);
-      setOutcome("successful");
-      setStep("result");
+      throw new Error(
+        "This service is not available for live payment yet. Please choose Airtime, Data, Electricity, or Cable TV.",
+      );
     } catch (err) {
-      console.warn("Live provider call failed, processing via wallet ledger:", err);
-      try {
-        const generatedToken =
-          isElectricity && meterType === "prepaid"
-            ? `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`
-            : undefined;
-
-        const reference = await payBill({
-          service: service.name,
-          serviceSlug: service.slug,
-          provider: provider || serviceID,
-          product: variation?.name || pack?.name,
-          amount: total,
-          identifier: identifier.trim(),
-          status: "successful",
-          title: `${provider || serviceID} ${service.name}`,
-          customer: verifiedName || service.customerName || "Customer",
-          pin: authorizedPin,
-          token: generatedToken,
-        });
-
-        setTxId(reference);
-        if (generatedToken) setToken(generatedToken);
-        setOutcome("successful");
-        setResultMessage(
-          isElectricity && generatedToken
-            ? `Your ${provider || serviceID} electricity token is ready.`
-            : `Your ${service.name} payment was completed successfully.`,
-        );
-        await refresh();
-        setStep("result");
-        return;
-      } catch (innerErr) {
-        toast.error(friendlyError(innerErr, "We couldn't complete this payment."));
-        setStep("confirm");
-      }
+      console.error("[pay] provider payment failed", err);
+      toast.error(friendlyError(err, "We couldn't complete this payment."));
+      setStep("confirm");
     } finally {
       payingLock.current = false;
     }

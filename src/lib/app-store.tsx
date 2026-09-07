@@ -504,28 +504,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fundWallet: async (_amount) => {
         throw new Error("Demo wallet funding is disabled. Use Fund Wallet (Paystack) instead.");
       },
-      payBill: async (input) => {
-        const { data, error } = await supabase.rpc("secure_bill_payment", {
-          _service: input.service,
-          _provider: input.provider,
-          _product: input.product ?? "",
-          _amount: input.amount,
-          _customer_identifier: input.identifier,
-          _status: "pending",
-          _metadata: {
-            title: input.title,
-            service_slug: input.serviceSlug,
-            service_label: `${input.provider} ${input.service}`,
-            masked: `••••${input.identifier.slice(-4)}`,
-            ...(input.customer ? { customer: input.customer } : {}),
-            ...(input.token ? { token: input.token } : {}),
-          },
-          _pin: input.pin,
-        });
-        if (error) throw error;
-        const row = Array.isArray(data) ? data[0] : null;
-        await loadAll();
-        return row?.internal_reference ?? "";
+      payBill: async (_input) => {
+        throw new Error(
+          "Demo wallet payments are disabled. Use Airtime, Data, Electricity, or Cable with live provider settlement.",
+        );
       },
       transactions,
       saved,

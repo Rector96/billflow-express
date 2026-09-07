@@ -19,9 +19,7 @@ export type SecureBillResult = {
 };
 
 /**
- * Permanently disabled. Live payments must use VTpass server functions
- * (purchaseAirtime, purchaseData, purchaseCable, purchaseElectricity, exam pins).
- * The old secure_bill_payment RPC created demo ledger rows without provider settlement.
+ * Permanently disabled. Live payments must use VTpass server functions.
  */
 export const secureBillPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
