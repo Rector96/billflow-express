@@ -6,7 +6,6 @@ import { mapVtpassOutcome, type VtpassPayResult, type VtpassVariation } from "./
 
 const EXAM_IDS = new Set(["waec", "neco", "nabteb", "jamb"]);
 
-/** VTpass serviceID candidates (official docs: waec, waec-registration, jamb). */
 const EXAM_SERVICE_IDS: Record<string, string[]> = {
   waec: ["waec", "waec-registration"],
   jamb: ["jamb"],
@@ -88,6 +87,16 @@ function extractPins(result: VtpassPayResult): string[] {
   return result.purchasedCode ? [result.purchasedCode] : [];
 }
 
+function storedPins(metadata: unknown): string[] {
+  if (!metadata || typeof metadata !== "object") return [];
+  const row = metadata as Record<string, unknown>;
+  const pins = row["pins"];
+  if (Array.isArray(pins)) return pins.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  if (typeof row["token"] === "string" && row["token"].trim()) return row["token"].split("\n").map((value) => value.trim()).filter(Boolean);
+  if (typeof row["purchased_code"] === "string" && row["purchased_code"].trim()) return [row["purchased_code"].trim()];
+  return [];
+}
+
 function providerMessage(
   status: ExamPurchaseResult["status"],
   exam: string,
@@ -159,17 +168,19 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       quantity: number;
       pin: string;
       profileId?: string;
+      requestId?: string;
     }) => {
       const exam = examId(input?.examId);
       const variationCode = String(input?.variationCode ?? "").trim();
       const quantity = Math.round(Number(input?.quantity));
       const pin = String(input?.pin ?? "");
       const profileId = String(input?.profileId ?? "").trim();
+      const requestId = String(input?.requestId ?? "").trim() || `exam-${crypto.randomUUID()}`;
       if (!variationCode || !Number.isInteger(quantity) || quantity < 1 || quantity > 10)
         throw new Error("Select a valid PIN quantity.");
       if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
       if (exam === "jamb" && !profileId) throw new Error("Enter your JAMB Profile ID.");
-      return { exam, variationCode, quantity, pin, profileId };
+      return { exam, variationCode, quantity, pin, profileId, requestId };
     },
   )
   .handler(async ({ data, context }): Promise<ExamPurchaseResult> => {
@@ -187,13 +198,18 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         break;
       }
     }
-    if (!variation)
-      throw new Error(
-        "Selected exam PIN is no longer available. Pick another product or try WAEC.",
-      );
+    if (!variation) throw new Error("Selected exam PIN is no longer available. Pick another product or try WAEC.");
 
     const unitAmount = Math.round(variation.amount * 100) / 100;
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;
+    const { data: duplicate } = await context.supabase
+      .from("bill_transactions")
+      .select("internal_reference")
+      .eq("provider_request_id", data.requestId)
+      .eq("user_id", context.userId)
+      .limit(1);
+    if (duplicate?.[0]) throw new Error("This payment request has already been submitted. Refresh its status.");
+
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("phone")
@@ -207,7 +223,6 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         /* provider fallback */
       }
     }
-    const requestId = `exam-${crypto.randomUUID()}`;
     const identifier = data.exam === "jamb" ? data.profileId : data.exam;
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "exam-pins",
@@ -225,7 +240,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         unit_amount: unitAmount,
         provider_service_id: serviceID,
       },
-      _request_id: requestId,
+      _request_id: data.requestId,
     });
     if (error)
       throw new Error(
@@ -236,8 +251,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
             : error.message,
       );
     const row = Array.isArray(started) ? started[0] : started;
-    if (!row?.internal_reference || !row?.request_id)
-      throw new Error("Could not start exam PIN purchase.");
+    if (!row?.internal_reference || !row?.request_id) throw new Error("Could not start exam PIN purchase.");
 
     const pay = await vtpassPay({
       request_id: row.request_id,
@@ -281,5 +295,74 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       message: providerMessage(status, data.exam, totalAmount, pay.responseDescription),
       requestId: row.request_id,
       providerTransactionId: pay.transactionId,
+    };
+  });
+
+export const requeryExamPins = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { reference: string }) => {
+    const reference = String(input?.reference ?? "").trim();
+    if (!reference) throw new Error("Missing transaction reference.");
+    return { reference };
+  })
+  .handler(async ({ data, context }): Promise<ExamPurchaseResult> => {
+    const { vtpassRequery } = await import("./vtpass.server");
+    const { data: bills, error } = await context.supabase
+      .from("bill_transactions")
+      .select("id, internal_reference, status, amount, provider, product, customer_identifier, provider_request_id, provider_transaction_id, user_id, metadata")
+      .eq("internal_reference", data.reference)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const bill = bills?.[0];
+    if (!bill || bill.user_id !== context.userId) throw new Error("Transaction not found.");
+
+    const amount = Number(bill.amount);
+    const meta = (bill.metadata ?? {}) as Record<string, unknown>;
+    const exam = String(meta["exam_id"] ?? bill.provider ?? "exam");
+    const stored = storedPins(meta);
+    if (bill.status === "successful" || bill.status === "failed") {
+      return {
+        status: bill.status as "successful" | "failed",
+        reference: bill.internal_reference,
+        pins: bill.status === "successful" ? stored : [],
+        amount,
+        message: providerMessage(bill.status as "successful" | "failed", exam, amount, String(meta["response_description"] ?? "")),
+        requestId: bill.provider_request_id ?? "",
+        providerTransactionId: bill.provider_transaction_id,
+      };
+    }
+
+    if (!bill.provider_request_id) throw new Error("Your payment is still protected. Check again shortly.");
+    const pay = await vtpassRequery(bill.provider_request_id);
+    const outcome = mapVtpassOutcome(pay);
+    const pins = outcome === "successful" ? extractPins(pay) : [];
+    const payload = {
+      vtpass_code: pay.code,
+      vtpass_status: pay.contentStatus,
+      response_description: pay.responseDescription,
+      purchased_code: pay.purchasedCode,
+      token: pins.join("\n") || pay.purchasedCode,
+      pins,
+      requery: true,
+      vtpass_snapshot: safePayload(pay.raw),
+    };
+    const { data: finalized, error: settleError } = await supabaseAdmin.rpc("trusted_complete_bill_purchase", {
+      _user_id: context.userId,
+      _internal_reference: bill.internal_reference,
+      _outcome: outcome,
+      _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+      _payload: payload,
+    });
+    if (settleError) throw new Error(settleError.message);
+    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+    const status = (fin?.status ?? outcome) as ExamPurchaseResult["status"];
+    return {
+      status,
+      reference: bill.internal_reference,
+      pins: status === "successful" ? pins : [],
+      amount,
+      message: providerMessage(status, exam, amount, pay.responseDescription),
+      requestId: bill.provider_request_id,
+      providerTransactionId: pay.transactionId ?? bill.provider_transaction_id,
     };
   });
