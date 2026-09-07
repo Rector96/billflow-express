@@ -27,8 +27,6 @@ const EXAMS = [
 type Step = "exam" | "profile" | "product" | "quantity" | "confirm" | "pin" | "processing" | "result";
 const MAX_Q = 10;
 
-type ExamResult = Awaited<ReturnType<typeof purchaseExamPins>>;
-
 export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?: string }) {
   const navigate = useNavigate();
   const { refresh } = useApp();
@@ -138,7 +136,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
     setCheckingStatus(true);
     setError("");
     try {
-      const result: ExamResult = await requery({ data: { reference: resultRef } });
+      const result = await requery({ data: { reference: resultRef } });
       await refresh();
       setResultMsg(result.message);
       setResultPins(result.pins ?? []);
