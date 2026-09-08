@@ -190,7 +190,6 @@ export function PayFlow() {
     };
   }, [isPackageLive, serviceID, loadVariations]);
 
-  // Education + exam pins → same student-friendly VTpass PIN flow
   if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
   if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
 
@@ -284,13 +283,13 @@ export function PayFlow() {
     payingLock.current = true;
     setStep("processing");
     try {
-      const paymentTotal = await getQuote();
+      await getQuote();
       const payload = isElectricity
         ? {
             slug: "electricity" as const,
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
-            amount: paymentTotal,
+            amount: baseTotal,
             meterType,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -300,7 +299,7 @@ export function PayFlow() {
             slug: "cable" as const,
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
-            amount: paymentTotal,
+            amount: baseTotal,
             variationCode: variation!.variationCode,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -325,7 +324,7 @@ export function PayFlow() {
           data: {
             network: provider,
             phone: identifier.trim(),
-            amount: total,
+            amount: baseTotal,
             pin: authorizedPin,
             requestId: airtimeRequestId,
           },
