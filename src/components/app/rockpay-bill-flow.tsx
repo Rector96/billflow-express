@@ -437,15 +437,12 @@ export function RockPayBillFlow() {
   if (step === "processing")
     return (
       <AppShell>
-        <div className="flex min-h-[70dvh] items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-[28px] border bg-card p-7 text-center shadow-soft">
-            <Loader2 className="mx-auto size-12 animate-spin text-primary" />
-            <h1 className="mt-5 text-xl font-black">Processing payment</h1>
-            <p className="mt-2 text-xs text-muted-foreground">
-              RockPay is communicating with the provider. Please do not submit again.
-            </p>
-            <p className="mt-5 text-2xl font-black">{formatNaira(total, false)}</p>
-          </div>
+        <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-3 px-6 text-center">
+          <Loader2 className="size-10 animate-spin text-primary" />
+          <p className="text-base font-bold">Processing…</p>
+          <p className="text-xs text-muted-foreground">
+            Please wait while we communicate with the provider.
+          </p>
         </div>
       </AppShell>
     );
@@ -454,50 +451,56 @@ export function RockPayBillFlow() {
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
-          <div className="rounded-[28px] border bg-card p-6 text-center shadow-soft">
+          <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
             <span
               className={cn(
-                "mx-auto grid size-16 place-items-center rounded-full",
+                "mx-auto grid size-14 place-items-center rounded-full",
                 outcome === "successful"
-                  ? "bg-success-soft text-success"
+                  ? "bg-success/10 text-success"
                   : outcome === "failed"
-                    ? "bg-destructive-soft text-destructive"
-                    : "bg-warning-soft text-warning",
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-warning/10 text-warning",
               )}
             >
               {outcome === "successful" ? (
-                <CheckCircle2 className="size-8" />
+                <CheckCircle2 className="size-7" />
               ) : outcome === "failed" ? (
-                <AlertCircle className="size-8" />
+                <AlertCircle className="size-7" />
               ) : (
-                <Clock3 className="size-8 animate-pulse" />
+                <Clock3 className="size-7 animate-pulse" />
               )}
             </span>
-            <h1 className="mt-4 text-2xl font-black">
+            <h1 className="mt-4 text-xl font-bold tracking-tight">
               {outcome === "successful"
                 ? "Payment successful"
                 : outcome === "failed"
                   ? "Payment failed"
                   : "Payment processing"}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">{resultMessage}</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {resultMessage ||
+                (outcome === "pending"
+                  ? "Confirmation is still pending from the provider. You can check the status below."
+                  : "")}
+            </p>
             {token ? (
-              <div className="mt-5 rounded-2xl border border-primary/30 bg-primary-soft p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Electricity token
+              <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-center">
+                <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
+                <p className="mt-1 font-mono text-lg font-bold tracking-wider select-all">
+                  {token}
                 </p>
-                <p className="mt-2 break-all font-mono text-lg font-black select-all">{token}</p>
                 <Button
                   variant="outline"
-                  className="mt-3 rounded-xl"
+                  size="sm"
+                  className="mt-3 rounded-xl font-medium"
                   onClick={() => copy("Token", token)}
                 >
-                  <Copy className="mr-2 size-4" />
+                  <Copy className="mr-2 size-3.5" />
                   Copy token
                 </Button>
               </div>
             ) : null}
-            <div className="mt-5 divide-y rounded-2xl border bg-background px-3 text-left">
+            <div className="mt-5 divide-y rounded-xl border bg-background px-3 text-left">
               <InfoRow
                 label="Service"
                 value={`${provider || serviceID} ${variation?.name || service.name}`}
@@ -510,7 +513,7 @@ export function RockPayBillFlow() {
                 <div className="flex items-center justify-between gap-2 py-2.5">
                   <span className="text-[11px] text-muted-foreground">RockPay reference</span>
                   <button
-                    className="font-mono text-xs font-bold text-primary"
+                    className="font-mono text-xs font-bold text-primary hover:underline"
                     onClick={() => copy("Reference", txId)}
                   >
                     {txId}
@@ -521,31 +524,33 @@ export function RockPayBillFlow() {
           </div>
           {outcome === "pending" ? (
             <Button
-              className="h-12 w-full rounded-2xl font-bold"
+              className="h-12 w-full rounded-xl font-bold"
+              disabled={refreshLock.current}
               onClick={() => void refreshStatus()}
             >
-              <RefreshCw className="mr-2 size-4" />
+              <RefreshCw className={cn("mr-2 size-4", refreshLock.current && "animate-spin")} />
               Check status
             </Button>
           ) : null}
           {outcome === "failed" ? (
-            <Button
-              className="h-12 w-full rounded-2xl font-bold"
-              onClick={() => setStep("confirm")}
-            >
+            <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
               <RefreshCw className="mr-2 size-4" />
               Try again
             </Button>
           ) : null}
           {txId ? (
-            <Button variant="outline" className="h-11 w-full rounded-2xl font-bold" asChild>
+            <Button
+              variant={outcome === "successful" ? "default" : "outline"}
+              className="h-12 w-full rounded-xl font-bold"
+              asChild
+            >
               <Link to="/history/$txId" params={{ txId }}>
                 View receipt
               </Link>
             </Button>
           ) : null}
-          <Button variant="outline" className="h-11 w-full rounded-2xl font-bold" asChild>
-            <Link to="/home">Back to home</Link>
+          <Button variant="outline" className="h-12 w-full rounded-xl font-bold" asChild>
+            <Link to="/home">Home</Link>
           </Button>
         </div>
       </AppShell>
@@ -557,12 +562,12 @@ export function RockPayBillFlow() {
         <PageHeader title="Transaction PIN" onBack={() => setStep("confirm")} />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
           <PayStepper steps={stepsMeta} current={currentStep} />
-          <div className="rounded-[26px] border bg-card p-5 shadow-soft">
-            <div className="flex items-center justify-between rounded-2xl bg-primary-soft px-3 py-3">
-              <span className="text-xs font-bold text-muted-foreground">RockPay Wallet</span>
-              <span className="text-lg font-black">{formatNaira(total, false)}</span>
+          <div className="rounded-2xl border bg-card p-5 shadow-card">
+            <div className="flex items-center justify-between rounded-xl bg-primary-soft px-3.5 py-3">
+              <span className="text-xs font-semibold text-muted-foreground">RockPay Wallet</span>
+              <span className="text-lg font-bold">{formatNaira(total, false)}</span>
             </div>
-            <p className="mt-5 text-center text-xs text-muted-foreground">
+            <p className="mt-4 mb-6 text-center text-xs text-muted-foreground">
               Enter your 4-digit transaction PIN to authorize this bill payment.
             </p>
             <PinPad value={pin} onChange={setPin} />
@@ -591,18 +596,18 @@ export function RockPayBillFlow() {
         <PageHeader title="Review bill" onBack={() => setStep("amount")} />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
           <PayStepper steps={stepsMeta} current={currentStep} />
-          <div className="rounded-[26px] border bg-card p-4 shadow-soft">
+          <div className="rounded-2xl border bg-card p-4 shadow-card">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {provider || serviceID}
                 </p>
-                <p className="text-base font-black">{service.name}</p>
+                <p className="text-base font-bold">{service.name}</p>
               </div>
-              <p className="text-xl font-black">{formatNaira(total, false)}</p>
+              <p className="text-xl font-bold">{formatNaira(total, false)}</p>
             </div>
           </div>
-          <div className="rounded-[24px] border bg-card px-3 shadow-soft divide-y">
+          <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
             {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
             {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
@@ -615,7 +620,7 @@ export function RockPayBillFlow() {
             <InfoRow label="Wallet balance" value={formatNaira(balance)} />
           </div>
           {insufficient ? (
-            <div className="rounded-2xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
+            <div className="rounded-xl bg-destructive-soft p-3.5 text-xs font-semibold text-destructive">
               Insufficient wallet balance. Fund your wallet before continuing.
             </div>
           ) : (
@@ -632,7 +637,7 @@ export function RockPayBillFlow() {
             </PayActionBar>
           )}{" "}
           {insufficient ? (
-            <Button className="h-11 w-full rounded-xl font-bold" asChild>
+            <Button className="h-12 w-full rounded-xl font-bold" asChild>
               <Link to="/wallet/fund" search={{}}>
                 Fund Wallet
               </Link>
@@ -666,40 +671,40 @@ export function RockPayBillFlow() {
                   type="button"
                   onClick={() => setVariation(v)}
                   className={cn(
-                    "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-soft",
+                    "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-card transition-colors",
                     variation?.variationCode === v.variationCode
                       ? "border-primary bg-primary-soft"
-                      : "bg-card",
+                      : "bg-card hover:border-border",
                   )}
                 >
-                  <span className="text-sm font-extrabold">{v.name}</span>
-                  <span className="font-black">{formatNaira(v.amount, false)}</span>
+                  <span className="text-sm font-bold">{v.name}</span>
+                  <span className="font-bold">{formatNaira(v.amount, false)}</span>
                 </button>
               ))}
             </div>
           ) : (
             <>
-              <div className="rounded-[24px] border bg-card p-4 shadow-soft">
+              <div className="rounded-2xl border bg-card p-4 shadow-card">
                 <Label
                   htmlFor="bill-amount"
-                  className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
                 >
                   Amount to pay
                 </Label>
-                <div className="mt-2 flex items-center rounded-2xl bg-background px-3">
-                  <span className="text-2xl font-black">₦</span>
+                <div className="mt-2 flex items-center rounded-xl bg-background px-3">
+                  <span className="text-xl font-bold">₦</span>
                   <Input
                     id="bill-amount"
                     inputMode="numeric"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-                    className="h-14 border-0 bg-transparent text-3xl font-black shadow-none focus-visible:ring-0"
+                    className="h-12 border-0 bg-transparent text-2xl font-bold shadow-none focus-visible:ring-0"
                     placeholder="0"
                   />
                 </div>
               </div>
               {minPurchase > 0 ? (
-                <p className="text-xs font-semibold text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   Minimum: {formatNaira(minPurchase, false)}
                 </p>
               ) : null}
@@ -727,19 +732,17 @@ export function RockPayBillFlow() {
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
           <PayStepper steps={stepsMeta} current={currentStep} />
           {verifying ? (
-            <div className="rounded-2xl border bg-card py-12 text-center text-xs text-muted-foreground">
+            <div className="rounded-2xl border bg-card py-12 text-center text-xs text-muted-foreground shadow-card">
               <Loader2 className="mx-auto mb-3 size-7 animate-spin text-primary" />
               Verifying with provider…
             </div>
           ) : (
             <>
-              <div className="rounded-2xl border border-success/30 bg-success-soft p-4">
-                <div className="flex items-center gap-2 text-success">
-                  <CheckCircle2 className="size-5" />
-                  <span className="text-sm font-black">Customer verified</span>
-                </div>
+              <div className="flex items-center gap-2 rounded-2xl border border-success/30 bg-success-soft p-3.5 text-success">
+                <CheckCircle2 className="size-5 shrink-0" />
+                <span className="text-xs font-bold">Customer verified</span>
               </div>
-              <div className="rounded-2xl border bg-card px-3 shadow-soft divide-y">
+              <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
                 <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
                 <InfoRow label="Provider" value={provider || serviceID} />
                 {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
@@ -768,10 +771,10 @@ export function RockPayBillFlow() {
         />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
           <PayStepper steps={stepsMeta} current={currentStep} />
-          <div className="rounded-[26px] border bg-card p-4 shadow-soft">
+          <div className="rounded-2xl border bg-card p-4 shadow-card">
             <Label
               htmlFor="bill-identifier"
-              className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+              className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
             >
               {service.identifierLabel}
             </Label>
@@ -786,7 +789,7 @@ export function RockPayBillFlow() {
               }}
               placeholder={service.identifierPlaceholder}
               inputMode={service.numeric || isData || isAirtime ? "numeric" : "text"}
-              className="mt-2 h-12 rounded-2xl"
+              className="mt-2 h-12 rounded-xl"
             />
             {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
           </div>
@@ -816,19 +819,19 @@ export function RockPayBillFlow() {
                 setStep("identifier");
               }}
               className={cn(
-                "press flex w-full items-center justify-between rounded-2xl border bg-card p-4 text-left shadow-soft",
-                meterType === type && "border-primary bg-primary-soft",
+                "press flex w-full items-center justify-between rounded-2xl border bg-card p-4 text-left shadow-card transition-colors",
+                meterType === type ? "border-primary bg-primary-soft" : "hover:border-border",
               )}
             >
               <div>
-                <p className="text-sm font-black capitalize">{type}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="text-sm font-bold capitalize">{type}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   {type === "prepaid"
                     ? "Receive a token after successful payment."
                     : "Pay the electricity account using the meter/account number."}
                 </p>
               </div>
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-4 text-muted-foreground" />
             </button>
           ))}
         </div>
@@ -844,7 +847,7 @@ export function RockPayBillFlow() {
       <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
         <PayStepper steps={stepsMeta} current={currentStep} />
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {service.providerLabel}
           </p>
           {catalogLoading ? (
@@ -868,11 +871,13 @@ export function RockPayBillFlow() {
                     setStep(isElectricity ? "meterType" : "identifier");
                   }}
                   className={cn(
-                    "press flex min-h-20 items-center justify-between rounded-2xl border bg-card p-3 text-left shadow-soft",
-                    serviceID === item.id && "border-primary bg-primary-soft",
+                    "press flex min-h-20 items-center justify-between rounded-2xl border bg-card p-3.5 text-left shadow-card transition-colors",
+                    serviceID === item.id
+                      ? "border-primary bg-primary-soft"
+                      : "hover:border-border",
                   )}
                 >
-                  <span className="text-sm font-black">{item.label}</span>
+                  <span className="text-sm font-bold">{item.label}</span>
                   {serviceID === item.id ? (
                     <CheckCircle2 className="size-5 text-primary" />
                   ) : (

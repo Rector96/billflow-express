@@ -201,15 +201,12 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   if (step === "processing") {
     return (
       <AppShell>
-        <div className="flex min-h-[70dvh] items-center justify-center px-4">
-          <div className="w-full max-w-md rounded-[28px] border bg-card p-7 text-center shadow-soft">
-            <Loader2 className="mx-auto size-12 animate-spin text-primary" />
-            <h1 className="mt-5 text-xl font-black">Processing education payment</h1>
-            <p className="mt-2 text-xs text-muted-foreground">
-              RockPay is confirming the order with the provider.
-            </p>
-            <p className="mt-5 text-2xl font-black">{formatNaira(total, false)}</p>
-          </div>
+        <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-3 px-6 text-center">
+          <Loader2 className="size-10 animate-spin text-primary" />
+          <p className="text-base font-bold">Processing…</p>
+          <p className="text-xs text-muted-foreground">
+            Please wait while we confirm your order with the provider.
+          </p>
         </div>
       </AppShell>
     );
@@ -219,88 +216,101 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
     return (
       <AppShell>
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
-          <div className="rounded-[28px] border bg-card p-6 text-center shadow-soft">
+          <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
             <span
               className={cn(
-                "mx-auto grid size-16 place-items-center rounded-full",
+                "mx-auto grid size-14 place-items-center rounded-full",
                 resultStatus === "successful"
-                  ? "bg-success-soft text-success"
+                  ? "bg-success/10 text-success"
                   : resultStatus === "failed"
-                    ? "bg-destructive-soft text-destructive"
-                    : "bg-warning-soft text-warning",
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-warning/10 text-warning",
               )}
             >
               {resultStatus === "successful" ? (
-                <CheckCircle2 className="size-8" />
+                <CheckCircle2 className="size-7" />
               ) : resultStatus === "failed" ? (
-                <AlertCircle className="size-8" />
+                <AlertCircle className="size-7" />
               ) : (
-                <Loader2 className="size-8 animate-spin" />
+                <Clock3 className="size-7 animate-pulse" />
               )}
             </span>
-            <h1 className="mt-4 text-2xl font-black">
+            <h1 className="mt-4 text-xl font-bold tracking-tight">
               {resultStatus === "successful"
-                ? "PIN ready"
-                : resultStatus === "pending"
-                  ? "Payment processing"
-                  : "Payment failed"}
+                ? "Payment successful"
+                : resultStatus === "failed"
+                  ? "Payment failed"
+                  : "Payment processing"}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">{resultMsg}</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {resultMsg ||
+                (resultStatus === "pending"
+                  ? "Confirmation is still pending from the provider. You can check the status below."
+                  : "")}
+            </p>
             {candidateName ? (
-              <p className="mt-2 text-xs font-bold">JAMB candidate: {candidateName}</p>
+              <p className="mt-2 text-xs font-semibold text-foreground">
+                JAMB candidate: {candidateName}
+              </p>
             ) : null}
             {resultPins.length ? (
-              <div className="mt-5 rounded-2xl border border-primary/30 bg-primary-soft p-4 text-left">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Your PIN{resultPins.length > 1 ? "s" : ""}
+              <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-left">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Your e-PIN{resultPins.length > 1 ? "s" : ""}
                 </p>
-                <div className="mt-2 space-y-2">
+                <div className="mt-2 space-y-1.5">
                   {resultPins.map((item) => (
-                    <p key={item} className="break-all font-mono text-lg font-black">
+                    <p key={item} className="break-all font-mono text-base font-bold select-all">
                       {item}
                     </p>
                   ))}
                 </div>
                 <Button
                   variant="outline"
-                  className="mt-3 rounded-xl"
+                  size="sm"
+                  className="mt-3 rounded-xl font-medium"
                   onClick={() => void copyPins()}
                 >
-                  <Copy className="mr-2 size-4" />
-                  Copy PIN(s)
+                  <Copy className="mr-2 size-3.5" />
+                  Copy PIN{resultPins.length > 1 ? "s" : ""}
                 </Button>
               </div>
             ) : null}
             {resultRef ? (
-              <p className="mt-4 font-mono text-[11px] text-muted-foreground">{resultRef}</p>
+              <div className="mt-4 flex items-center justify-between text-left text-xs">
+                <span className="text-muted-foreground">RockPay reference</span>
+                <span className="font-mono font-semibold">{resultRef}</span>
+              </div>
             ) : null}
           </div>
 
           {resultStatus === "pending" ? (
             <Button
-              className="h-12 w-full rounded-2xl font-bold"
+              className="h-12 w-full rounded-xl font-bold"
               disabled={checkingStatus}
               onClick={() => void checkStatus()}
             >
-              {checkingStatus ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              {checkingStatus ? "Checking status…" : "Check status"}
+              <RefreshCw className={cn("mr-2 size-4", checkingStatus && "animate-spin")} />
+              Check status
             </Button>
           ) : null}
           {error ? (
-            <p className="rounded-2xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
+            <p className="rounded-xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
               {error}
             </p>
           ) : null}
           {resultStatus === "failed" ? (
-            <Button
-              className="h-12 w-full rounded-2xl font-bold"
-              onClick={() => setStep("confirm")}
-            >
+            <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
+              <RefreshCw className="mr-2 size-4" />
               Try again
             </Button>
           ) : null}
           {resultRef ? (
-            <Button variant="outline" className="h-11 w-full rounded-2xl font-bold" asChild>
+            <Button
+              variant={resultStatus === "successful" ? "default" : "outline"}
+              className="h-12 w-full rounded-xl font-bold"
+              asChild
+            >
               <Link to="/history/$txId" params={{ txId: resultRef }}>
                 View receipt
               </Link>
@@ -308,10 +318,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
           ) : null}
           <Button
             variant="outline"
-            className="h-11 w-full rounded-2xl font-bold"
+            className="h-12 w-full rounded-xl font-bold"
             onClick={() => navigate({ to: "/home" })}
           >
-            <Home className="mr-2 size-4" />
             Home
           </Button>
         </div>
@@ -345,12 +354,12 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "exam" ? (
           <section className="space-y-3">
             <div className="flex items-start gap-3">
-              <span className="grid size-11 place-items-center rounded-2xl bg-warning-soft text-warning">
+              <span className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning">
                 <Ticket className="size-5" />
               </span>
               <div>
-                <h2 className="text-lg font-black">Choose exam body</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <h2 className="text-base font-bold">Choose exam body</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Select the examination service you want to pay for.
                 </p>
               </div>
@@ -361,11 +370,11 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                 type="button"
                 disabled={loading}
                 onClick={() => selectExam(item.id)}
-                className="press flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3.5 text-left shadow-soft"
+                className="press flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3.5 text-left shadow-card transition-colors hover:border-border"
               >
                 <div>
-                  <p className="text-sm font-black">{item.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
+                  <p className="text-sm font-bold">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
                 </div>
                 {loading && examId === item.id ? (
                   <Loader2 className="size-5 animate-spin text-primary" />
@@ -375,7 +384,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
               </button>
             ))}
             {error ? (
-              <p className="rounded-2xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
+              <p className="rounded-xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
                 {error}
               </p>
             ) : null}
@@ -385,22 +394,27 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "profile" && examId === "jamb" ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-black">Verify JAMB candidate</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <h2 className="text-base font-bold">Verify JAMB candidate</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Enter the Profile ID before selecting the JAMB e-PIN product.
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="jamb-profile">JAMB Profile ID</Label>
+            <div className="rounded-2xl border bg-card p-4 shadow-card">
+              <Label
+                htmlFor="jamb-profile"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                JAMB Profile ID
+              </Label>
               <Input
                 id="jamb-profile"
                 value={profileId}
                 onChange={(e) => setProfileId(e.target.value)}
                 placeholder="Enter Profile ID"
-                className="h-12 rounded-xl"
+                className="mt-2 h-12 rounded-xl"
               />
+              {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
             </div>
-            {error ? <p className="text-xs text-destructive">{error}</p> : null}
             <Button
               className="h-12 w-full rounded-xl font-bold"
               disabled={loading}
@@ -414,7 +428,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "product" && exam ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-black">Choose {exam.name} product</h2>
+              <h2 className="text-base font-bold">Choose {exam.name} product</h2>
               {candidateName ? (
                 <p className="mt-1 text-xs font-semibold text-success">
                   Verified candidate: {candidateName}
@@ -432,14 +446,14 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                       setStep("quantity");
                     }}
                     className={cn(
-                      "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-soft",
+                      "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-card transition-colors",
                       variationCode === item.variationCode
                         ? "border-primary bg-primary-soft"
-                        : "bg-card",
+                        : "bg-card hover:border-border",
                     )}
                   >
-                    <span className="text-sm font-black">{item.name}</span>
-                    <span className="font-black">{formatNaira(item.amount, false)}</span>
+                    <span className="text-sm font-bold">{item.name}</span>
+                    <span className="font-bold">{formatNaira(item.amount, false)}</span>
                   </button>
                 ))}
               </div>
@@ -454,11 +468,11 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "quantity" && variation && exam ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-black">How many PINs?</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Choose between 1 and {MAX_Q}.</p>
+              <h2 className="text-base font-bold">How many PINs?</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Choose between 1 and {MAX_Q}.</p>
             </div>
-            <div className="rounded-[26px] border bg-card p-5 text-center shadow-soft">
-              <p className="text-xs font-bold text-muted-foreground">
+            <div className="rounded-2xl border bg-card p-5 text-center shadow-card">
+              <p className="text-xs font-semibold text-muted-foreground">
                 {exam.name} · {variation.name}
               </p>
               <div className="mt-4 flex items-center justify-center gap-4">
@@ -471,7 +485,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                 >
                   <Minus className="size-4" />
                 </Button>
-                <span className="w-12 text-3xl font-black">{quantity}</span>
+                <span className="w-12 text-2xl font-bold">{quantity}</span>
                 <Button
                   variant="outline"
                   size="icon"
@@ -482,7 +496,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <p className="mt-4 text-xl font-black">{formatNaira(total, false)}</p>
+              <p className="mt-4 text-xl font-bold">{formatNaira(total, false)}</p>
             </div>
             <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
               Continue
@@ -493,12 +507,12 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "confirm" && variation && exam ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-black">Review education payment</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <h2 className="text-base font-bold">Review education payment</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Confirm the product and quantity before entering your transaction PIN.
               </p>
             </div>
-            <div className="divide-y rounded-2xl border bg-card px-3 shadow-soft">
+            <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
               <Info label="Exam" value={exam.name} />
               <Info label="Product" value={variation.name} />
               <Info label="Quantity" value={String(quantity)} />
@@ -514,7 +528,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                   setStep("pin");
                 }}
               >
-                Confirm & Pay
+                Confirm & Pay {formatNaira(total, false)}
               </Button>
             </PayActionBar>
           </section>
@@ -522,27 +536,30 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
 
         {step === "pin" ? (
           <section className="space-y-4">
-            <div>
-              <h2 className="text-lg font-black">Enter transaction PIN</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Authorize {formatNaira(total, false)} from your RockPay Wallet.
+            <div className="rounded-2xl border bg-card p-5 shadow-card">
+              <div className="flex items-center justify-between rounded-xl bg-primary-soft px-3.5 py-3">
+                <span className="text-xs font-semibold text-muted-foreground">RockPay Wallet</span>
+                <span className="text-lg font-bold">{formatNaira(total, false)}</span>
+              </div>
+              <p className="mt-4 mb-6 text-center text-xs text-muted-foreground">
+                Enter your 4-digit transaction PIN to authorize this education payment.
               </p>
+              <PinPad value={pin} onChange={setPin} />
+              <PayActionBar>
+                <Button
+                  className="h-12 w-full rounded-xl font-bold"
+                  disabled={pin.length < 4 || loading}
+                  onClick={() => void submit()}
+                >
+                  Confirm payment
+                </Button>
+              </PayActionBar>
             </div>
-            <PinPad value={pin} onChange={setPin} />
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-bold"
-                disabled={pin.length < 4 || loading}
-                onClick={() => void submit()}
-              >
-                Confirm payment
-              </Button>
-            </PayActionBar>
           </section>
         ) : null}
 
         {error && step !== "exam" && step !== "profile" ? (
-          <p className="rounded-2xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
+          <p className="rounded-xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
             {error}
           </p>
         ) : null}
