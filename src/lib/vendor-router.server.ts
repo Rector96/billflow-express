@@ -31,6 +31,23 @@ export type RoutedPayResult = {
   fallbackUsed: boolean;
 };
 
+function parseMoney(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const n = Number(value.replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractEconomics(raw: unknown): { totalAmount: number | null; commission: number | null } {
+  const root = (raw ?? {}) as Record<string, unknown>;
+  const content = (root["content"] ?? {}) as Record<string, unknown>;
+  const tx = (content["transactions"] ?? {}) as Record<string, unknown>;
+  return {
+    totalAmount: parseMoney(tx["total_amount"]),
+    commission: parseMoney(tx["commission"]),
+  };
+}
+
 /** Shape expected by settleBillPurchase / existing callers */
 export function toVtpassShape(r: RoutedPayResult): VtpassPayResult {
   return {
@@ -79,6 +96,7 @@ export function shouldFailoverVtpass(result: VtpassPayResult): boolean {
 }
 
 function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayResult {
+  const economics = extractEconomics(result.raw);
   return {
     vendor: "vtpass",
     status: mapVtpassOutcome(result),
@@ -88,8 +106,8 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
     transactionId: result.transactionId,
     purchasedCode: result.purchasedCode,
     contentStatus: result.contentStatus,
-    totalAmount: result.totalAmount,
-    commission: result.commission,
+    totalAmount: result.totalAmount ?? economics.totalAmount,
+    commission: result.commission ?? economics.commission,
     raw: result.raw,
     fallbackUsed,
   };
