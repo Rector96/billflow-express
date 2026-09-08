@@ -115,24 +115,26 @@ function CareQueue() {
               placeholder="Search ticket, customer, transaction…"
               className="h-9 flex-1 rounded-xl border border-border/70 bg-card px-3 text-sm min-w-[12rem]"
             />
-            {["all", "open", "in_progress", "waiting_for_customer", "resolved", "closed"].map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  setStatus(s);
-                  setPage(0);
-                }}
-                className={cn(
-                  "h-8 rounded-full border px-2.5 text-[11px] font-bold",
-                  status === s
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border/70 bg-card text-muted-foreground",
-                )}
-              >
-                {s === "all" ? "All" : formatTicketStatus(s)}
-              </button>
-            ))}
+            {["all", "open", "in_progress", "waiting_for_customer", "resolved", "closed"].map(
+              (s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    setStatus(s);
+                    setPage(0);
+                  }}
+                  className={cn(
+                    "h-8 rounded-full border px-2.5 text-[11px] font-bold",
+                    status === s
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border/70 bg-card text-muted-foreground",
+                  )}
+                >
+                  {s === "all" ? "All" : formatTicketStatus(s)}
+                </button>
+              ),
+            )}
           </div>
 
           {tickets.length === 0 ? (
@@ -154,7 +156,8 @@ function CareQueue() {
                       {t.ticket_number ?? t.id.slice(0, 8)} · {t.subject ?? t.description}
                     </p>
                     <p className="truncate text-[11px] text-muted-foreground">
-                      {t.user_label || t.user_email || "Customer"} · {new Date(t.created_at).toLocaleString("en-NG", {
+                      {t.user_label || t.user_email || "Customer"} ·{" "}
+                      {new Date(t.created_at).toLocaleString("en-NG", {
                         day: "2-digit",
                         month: "short",
                         hour: "numeric",

@@ -6,11 +6,7 @@
  * real-provider requests.
  */
 import { describe, expect, test } from "bun:test";
-import {
-  applyPricingRule,
-  selectMatchingRule,
-  type PricingRuleRow,
-} from "./pricing.server";
+import { applyPricingRule, selectMatchingRule, type PricingRuleRow } from "./pricing.server";
 
 type RuleInput = Partial<PricingRuleRow> &
   Pick<PricingRuleRow, "id" | "markup_type" | "markup_value">;
@@ -30,10 +26,7 @@ function rule(partial: RuleInput): PricingRuleRow {
 
 describe("Phase 9 — pricing safety", () => {
   test("missing rule is safe fallback with zero RockPay fee", () => {
-    const result = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 500 },
-      [],
-    );
+    const result = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 500 }, []);
 
     expect(result.usedFallback).toBe(true);
     expect(result.baseAmount).toBe(500);
@@ -43,18 +36,15 @@ describe("Phase 9 — pricing safety", () => {
   });
 
   test("active rule can never reduce the customer price below provider base", () => {
-    const result = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 500 },
-      [
-        rule({
-          id: "floor",
-          service: "airtime",
-          provider: "mtn",
-          markup_type: "selling_price",
-          markup_value: 1,
-        }),
-      ],
-    );
+    const result = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 500 }, [
+      rule({
+        id: "floor",
+        service: "airtime",
+        provider: "mtn",
+        markup_type: "selling_price",
+        markup_value: 1,
+      }),
+    ]);
 
     expect(result.customerAmount).toBe(500);
     expect(result.rockpayFee).toBe(0);
@@ -122,7 +112,10 @@ describe("Phase 9 — amount validation", () => {
       applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: Number.NaN }, []),
     ).toThrow();
     expect(() =>
-      applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: Number.POSITIVE_INFINITY }, []),
+      applyPricingRule(
+        { service: "airtime", provider: "mtn", baseAmount: Number.POSITIVE_INFINITY },
+        [],
+      ),
     ).toThrow();
   });
 });

@@ -471,6 +471,14 @@ export type Database = {
       admin_dashboard_stats: { Args: never; Returns: Json };
       admin_ops_stats: { Args: never; Returns: Json };
       admin_reconciliation_queue: { Args: { _limit?: number }; Returns: Json };
+      admin_wallet_funding_queue: {
+        Args: { _limit?: number; _offset?: number; _query?: string; _status?: string };
+        Returns: Json;
+      };
+      admin_wallet_reconciliation: {
+        Args: { _limit?: number; _offset?: number };
+        Returns: Json;
+      };
       admin_service_breakdown: { Args: never; Returns: Json };
       admin_set_account_status: {
         Args: { _reason?: string; _status: string; _user_id: string };

@@ -77,7 +77,7 @@ function AdminReconciliation() {
     try {
       const [txResult, walletResult] = await Promise.all([
         supabase.rpc("admin_reconciliation_queue", { _limit: 100 }),
-        (supabase.rpc as any)("admin_wallet_reconciliation", {
+        supabase.rpc("admin_wallet_reconciliation", {
           _limit: 100,
           _offset: 0,
         }),
@@ -128,9 +128,18 @@ function AdminReconciliation() {
         <>
           {wallet ? (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <KpiCard label="Wallet liability" value={formatNaira(n(wallet.wallet_balance_total), false)} />
-              <KpiCard label="Successful deposits" value={formatNaira(n(wallet.ledger_deposit_total), false)} />
-              <KpiCard label="Successful debits" value={formatNaira(n(wallet.ledger_debit_total), false)} />
+              <KpiCard
+                label="Wallet liability"
+                value={formatNaira(n(wallet.wallet_balance_total), false)}
+              />
+              <KpiCard
+                label="Successful deposits"
+                value={formatNaira(n(wallet.ledger_deposit_total), false)}
+              />
+              <KpiCard
+                label="Successful debits"
+                value={formatNaira(n(wallet.ledger_debit_total), false)}
+              />
               <KpiCard
                 label="Pending funding"
                 value={`${n(wallet.pending_funding_count)} · ${formatNaira(n(wallet.pending_funding_total), false)}`}
@@ -142,11 +151,15 @@ function AdminReconciliation() {
             <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive-soft p-4">
               <p className="font-bold text-destructive">Wallet anomalies detected</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                These are read-only alerts. Do not manually alter balances; investigate the underlying ledger first.
+                These are read-only alerts. Do not manually alter balances; investigate the
+                underlying ledger first.
               </p>
               <div className="mt-3 space-y-2">
                 {wallet.anomalies.map((a, index) => (
-                  <div key={`${a.issue}-${a.wallet_id}-${a.created_at}-${index}`} className="rounded-xl border bg-card p-3 text-sm">
+                  <div
+                    key={`${a.issue}-${a.wallet_id}-${a.created_at}-${index}`}
+                    className="rounded-xl border bg-card p-3 text-sm"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold">{a.user_label || "Unknown customer"}</p>
@@ -155,7 +168,9 @@ function AdminReconciliation() {
                       </div>
                       <div className="text-right text-xs">
                         <span className="font-bold uppercase">{a.severity}</span>
-                        <p className="text-muted-foreground">{new Date(a.created_at).toLocaleString("en-NG")}</p>
+                        <p className="text-muted-foreground">
+                          {new Date(a.created_at).toLocaleString("en-NG")}
+                        </p>
                       </div>
                     </div>
                     <Link
@@ -198,16 +213,23 @@ function AdminReconciliation() {
                     <div key={r.id} className="rounded-2xl border bg-card p-4 text-sm shadow-card">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-bold">{r.service} · {r.provider}</p>
+                          <p className="font-bold">
+                            {r.service} · {r.provider}
+                          </p>
                           <p className="text-xs font-semibold text-warning-foreground">
                             {REASON_LABEL[r.reason] ?? r.reason}
                           </p>
-                          <p className="mt-1 font-mono text-[11px] text-muted-foreground">{r.internal_reference}</p>
+                          <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                            {r.internal_reference}
+                          </p>
                           {r.provider_request_id ? (
-                            <p className="font-mono text-[11px] text-muted-foreground">VTpass req: {r.provider_request_id}</p>
+                            <p className="font-mono text-[11px] text-muted-foreground">
+                              VTpass req: {r.provider_request_id}
+                            </p>
                           ) : null}
                           <p className="text-[11px] text-muted-foreground">
-                            {new Date(r.created_at).toLocaleString("en-NG")} · pending {formatPendingDuration(r.created_at)}
+                            {new Date(r.created_at).toLocaleString("en-NG")} · pending{" "}
+                            {formatPendingDuration(r.created_at)}
                           </p>
                         </div>
                         <div className="text-right">

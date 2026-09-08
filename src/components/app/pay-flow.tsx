@@ -135,7 +135,8 @@ export function PayFlow() {
     }
     setPricingLoading(true);
     try {
-      const productCode = isPackageLive && variation ? variation.variationCode : isElectricity ? meterType : null;
+      const productCode =
+        isPackageLive && variation ? variation.variationCode : isElectricity ? meterType : null;
       const res = await getPricingQuote({
         data: {
           service: service.slug,

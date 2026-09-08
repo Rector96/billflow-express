@@ -23,10 +23,7 @@ function rule(
 
 describe("production pricing guardrails", () => {
   test("fallback never adds an invented fee", () => {
-    const result = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 1000 },
-      [],
-    );
+    const result = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 1000 }, []);
 
     expect(result.usedFallback).toBe(true);
     expect(result.customerAmount).toBe(1000);
@@ -72,18 +69,15 @@ describe("production pricing guardrails", () => {
   });
 
   test("positive markup is isolated as RockPay fee", () => {
-    const result = applyPricingRule(
-      { service: "airtime", provider: "mtn", baseAmount: 1000 },
-      [
-        rule({
-          id: "verified-example",
-          service: "airtime",
-          provider: "mtn",
-          markup_type: "fixed",
-          markup_value: 10,
-        }),
-      ],
-    );
+    const result = applyPricingRule({ service: "airtime", provider: "mtn", baseAmount: 1000 }, [
+      rule({
+        id: "verified-example",
+        service: "airtime",
+        provider: "mtn",
+        markup_type: "fixed",
+        markup_value: 10,
+      }),
+    ]);
 
     expect(result.customerAmount).toBe(1010);
     expect(result.rockpayFee).toBe(10);

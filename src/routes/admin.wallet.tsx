@@ -42,9 +42,7 @@ function AdminWallet() {
     try {
       const [ops, funding] = await Promise.all([
         supabase.rpc("admin_ops_stats"),
-        // This RPC is introduced by the wallet hardening migration. Keep the
-        // generated Supabase client compatible until types are regenerated.
-        (supabase.rpc as any)("admin_wallet_funding_queue", {
+        supabase.rpc("admin_wallet_funding_queue", {
           _query: query.trim(),
           _status: status,
           _limit: 50,
@@ -172,7 +170,10 @@ function AdminWallet() {
 
             <div className="mt-4 space-y-2">
               {rows.length === 0 ? (
-                <AdminEmpty title="No funding records" body="Matching wallet deposits will appear here." />
+                <AdminEmpty
+                  title="No funding records"
+                  body="Matching wallet deposits will appear here."
+                />
               ) : (
                 rows.map((r) => (
                   <div key={r.id} className="rounded-xl border px-3 py-3 text-sm">
@@ -180,7 +181,8 @@ function AdminWallet() {
                       <div className="min-w-0">
                         <p className="font-semibold">{r.userLabel}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {[r.userEmail, r.userPhone].filter(Boolean).join(" · ") || "Customer details unavailable"}
+                          {[r.userEmail, r.userPhone].filter(Boolean).join(" · ") ||
+                            "Customer details unavailable"}
                         </p>
                         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                           {r.reference}
@@ -203,7 +205,9 @@ function AdminWallet() {
                       <span>Before: {formatNaira(r.balanceBefore, false)}</span>
                       <span>After: {formatNaira(r.balanceAfter, false)}</span>
                       <span>{new Date(r.createdAt).toLocaleString("en-NG")}</span>
-                      {r.completedAt ? <span>Completed {new Date(r.completedAt).toLocaleString("en-NG")}</span> : null}
+                      {r.completedAt ? (
+                        <span>Completed {new Date(r.completedAt).toLocaleString("en-NG")}</span>
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -212,7 +216,9 @@ function AdminWallet() {
 
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {totalCount === 0 ? "0 records" : `${page * 50 + 1}–${Math.min((page + 1) * 50, totalCount)} of ${totalCount}`}
+                {totalCount === 0
+                  ? "0 records"
+                  : `${page * 50 + 1}–${Math.min((page + 1) * 50, totalCount)} of ${totalCount}`}
               </span>
               <div className="flex gap-2">
                 <button
