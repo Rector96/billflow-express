@@ -1,1 +1,0 @@
-Admin transaction/Care UI wiring is the next hardening phase. This marker is non-production and does not authorize merge or deployment.
