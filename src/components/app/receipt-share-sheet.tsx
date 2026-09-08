@@ -66,7 +66,7 @@ export function ReceiptShareButton({ payload, className }: Props) {
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          className="fixed inset-0 z-[60] flex items-end justify-center px-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-4 sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Share receipt"
@@ -77,7 +77,7 @@ export function ReceiptShareButton({ payload, className }: Props) {
             aria-label="Close"
             onClick={() => !busy && setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-md rounded-t-3xl border bg-card p-5 shadow-xl sm:rounded-3xl">
+          <div className="relative z-10 w-full max-w-md max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-3xl border bg-card p-5 shadow-xl sm:max-h-none">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-extrabold tracking-tight">Share receipt</p>
@@ -101,9 +101,9 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 type="button"
                 disabled={!!busy}
                 onClick={() => void run("image")}
-                className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
+                className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
               >
-                <span className="grid size-11 place-items-center rounded-full bg-primary-soft text-primary">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
                   {busy === "image" ? (
                     <Loader2 className="size-5 animate-spin" />
                   ) : (
@@ -122,9 +122,9 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 type="button"
                 disabled={!!busy}
                 onClick={() => void run("pdf")}
-                className="flex items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
+                className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
               >
-                <span className="grid size-11 place-items-center rounded-full bg-primary-soft text-primary">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
                   {busy === "pdf" ? (
                     <Loader2 className="size-5 animate-spin" />
                   ) : (
