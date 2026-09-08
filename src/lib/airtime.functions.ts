@@ -2,6 +2,30 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 
+/** Narrow admin client shape for RPCs not in generated Database types (no `any`). */
+type AdminChain = {
+  select: (columns: string) => AdminChain;
+  update: (values: Record<string, unknown>) => AdminChain;
+  eq: (column: string, value: string | number) => AdminChain;
+  filter: (column: string, op: string, value: string) => AdminChain;
+  limit: (n: number) => Promise<{ data: unknown; error: { message: string } | null }>;
+  then: Promise<{ data: unknown; error: { message: string } | null }>["then"];
+};
+
+type AdminClient = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  from: (table: string) => AdminChain;
+};
+
+type AuthSupabase = AdminClient;
+
+function asAdmin(client: unknown): AdminClient {
+  return client as AdminClient;
+}
+
 export type AirtimePurchaseResult = {
   status: "successful" | "pending" | "failed";
   reference: string;
@@ -162,13 +186,13 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
 
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: existingRows } = await (supabaseAdmin as any)
+      const { data: existingRows } = await asAdmin(supabaseAdmin)
         .from("bill_transactions")
         .select("metadata")
         .eq("internal_reference", row.internal_reference)
         .limit(1);
       const prev = (existingRows?.[0]?.metadata ?? {}) as Record<string, unknown>;
-      const { error: metadataError } = await (supabaseAdmin as any)
+      const { error: metadataError } = await asAdmin(supabaseAdmin)
         .from("bill_transactions")
         .update({
           metadata: {
@@ -185,7 +209,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     } catch (e) {
       console.warn("[airtime] could not persist provider_amount metadata before pay", e);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
+      await asAdmin(supabaseAdmin).rpc("trusted_complete_airtime_purchase", {
         _user_id: context.userId,
         _internal_reference: row.internal_reference,
         _outcome: "failed",
@@ -214,7 +238,7 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
     });
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
+    const { data: finalized, error: finError } = await asAdmin(supabaseAdmin).rpc(
       "trusted_complete_airtime_purchase",
       {
         _user_id: context.userId,
@@ -248,12 +272,13 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       };
     }
 
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+    const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+      Record<string, unknown> | null | undefined;
     const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
     if (status === "successful") {
       try {
         const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-        await maybeRecordTransactionProfit(supabaseAdmin as any, {
+        await maybeRecordTransactionProfit(asAdmin(supabaseAdmin), {
           internalReference: String(fin?.internal_reference ?? row.internal_reference),
           customerAmount,
           providerAmount,
@@ -317,7 +342,7 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
   });
 
 export async function requeryAirtimeCore(opts: {
-  supabase: any;
+  supabase: AuthSupabase;
   userId?: string | null;
   reference: string;
   audit?: boolean;
@@ -369,7 +394,7 @@ export async function requeryAirtimeCore(opts: {
   const outcome = mapVtpassOutcome(pay);
   console.info("[airtime] requery", reference, pay.code, pay.contentStatus, outcome);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: finalized, error: finError } = await (supabaseAdmin as any).rpc(
+  const { data: finalized, error: finError } = await asAdmin(supabaseAdmin).rpc(
     "trusted_complete_airtime_purchase",
     {
       _user_id: opts.userId,
@@ -400,7 +425,8 @@ export async function requeryAirtimeCore(opts: {
         vtpass_status: pay.contentStatus,
       },
     });
-  const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+  const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+    Record<string, unknown> | null | undefined;
   const status = (fin?.status ?? outcome) as AirtimePurchaseResult["status"];
   if (status === "successful") {
     try {
@@ -423,7 +449,7 @@ export async function requeryAirtimeCore(opts: {
               : null;
         const pricingRuleId =
           typeof meta["pricing_rule_id"] === "string" ? meta["pricing_rule_id"] : null;
-        await maybeRecordTransactionProfit(supabaseAdmin as any, {
+        await maybeRecordTransactionProfit(asAdmin(supabaseAdmin), {
           internalReference: bill.internal_reference,
           customerAmount: amount,
           providerAmount,

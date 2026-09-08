@@ -2,6 +2,30 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Json } from "@/integrations/supabase/types";
 
+/** Narrow admin client shape for RPCs not in generated Database types (no `any`). */
+type AdminChain = {
+  select: (columns: string) => AdminChain;
+  update: (values: Record<string, unknown>) => AdminChain;
+  eq: (column: string, value: string | number) => AdminChain;
+  filter: (column: string, op: string, value: string) => AdminChain;
+  limit: (n: number) => Promise<{ data: unknown; error: { message: string } | null }>;
+  then: Promise<{ data: unknown; error: { message: string } | null }>["then"];
+};
+
+type AdminClient = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  from: (table: string) => AdminChain;
+};
+
+type AuthSupabase = AdminClient;
+
+function asAdmin(client: unknown): AdminClient {
+  return client as AdminClient;
+}
+
 export type BillPurchaseResult = {
   status: "successful" | "pending" | "failed";
   reference: string;
@@ -157,7 +181,7 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
   });
 
 async function settleBillPurchase(
-  context: { supabase: any; userId: string },
+  context: { supabase: AuthSupabase; userId: string },
   input: {
     slug: "data" | "cable" | "electricity";
     serviceID: string;
@@ -176,7 +200,7 @@ async function settleBillPurchase(
   const { mapVtpassOutcome } = await import("./vtpass.server");
   const outcome = mapVtpassOutcome(input.providerResult);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: finalized, error } = await (supabaseAdmin as any).rpc(
+  const { data: finalized, error } = await asAdmin(supabaseAdmin).rpc(
     "trusted_complete_bill_purchase",
     {
       _user_id: context.userId,
@@ -204,7 +228,8 @@ async function settleBillPurchase(
       customerName: input.customerName,
     };
   }
-  const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+  const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+    Record<string, unknown> | null | undefined;
   const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
   return {
     status,
@@ -238,7 +263,7 @@ async function recordBillProfit(
 ) {
   const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await maybeRecordTransactionProfit(supabaseAdmin as any, {
+  await maybeRecordTransactionProfit(asAdmin(supabaseAdmin), {
     internalReference: reference,
     customerAmount,
     providerAmount,
@@ -252,7 +277,7 @@ async function recordBillProfit(
 }
 
 async function rejectDuplicateRequest(
-  context: { supabase: any; userId: string },
+  context: { supabase: AuthSupabase; userId: string },
   requestId: string,
 ) {
   const { data } = await context.supabase
@@ -320,7 +345,9 @@ export const purchaseCable = createServerFn({ method: "POST" })
     if (data.phone) {
       try {
         phone = normalizeNgPhone(data.phone);
-      } catch {}
+      } catch {
+        // Keep the provider fallback phone when normalization fails.
+      }
     }
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "cable",
@@ -461,7 +488,9 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     if (data.phone) {
       try {
         phone = normalizeNgPhone(data.phone);
-      } catch {}
+      } catch {
+        // Keep the provider fallback phone when normalization fails.
+      }
     }
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "electricity",
@@ -694,7 +723,7 @@ export const requeryBill = createServerFn({ method: "POST" })
     const pay = await vtpassRequery(bill.provider_request_id);
     const outcome = mapVtpassOutcome(pay);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: finalized, error: settleError } = await (supabaseAdmin as any).rpc(
+    const { data: finalized, error: settleError } = await asAdmin(supabaseAdmin).rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,
@@ -713,7 +742,8 @@ export const requeryBill = createServerFn({ method: "POST" })
       },
     );
     if (settleError) throw new Error(settleError.message);
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
+    const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+      Record<string, unknown> | null | undefined;
     const status = (fin?.status ?? outcome) as BillPurchaseResult["status"];
     if (status === "successful" && ["data", "cable", "electricity"].includes(slug)) {
       const providerAmount = Number(meta["provider_amount"]);
