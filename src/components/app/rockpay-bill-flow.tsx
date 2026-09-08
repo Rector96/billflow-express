@@ -97,7 +97,6 @@ export function RockPayBillFlow() {
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === search.saved);
 
-
   const buyAirtime = useServerFn(purchaseAirtime);
   const checkAirtime = useServerFn(requeryAirtime);
   const loadServices = useServerFn(listVtpassServices);
@@ -228,7 +227,6 @@ export function RockPayBillFlow() {
       cancelled = true;
     };
   }, [isPackageLive, serviceID, loadVariations]);
-
 
   if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
   if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
