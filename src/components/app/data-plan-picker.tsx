@@ -54,7 +54,7 @@ function cardTitle(name: string): string {
     .replace(/\b(MTN|GLO|AIRTEL|9MOBILE|SMILE)\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  return cleaned.length > 14 ? `${cleaned.slice(0, 13)}…` : cleaned || "Data";
+  return cleaned.length > 16 ? `${cleaned.slice(0, 15)}…` : cleaned || "Data";
 }
 
 type Props = {
@@ -87,8 +87,8 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
   });
 
   const defaultTab =
-    availableTabs.find((t) => t.id === "weekly")?.id ??
     availableTabs.find((t) => t.id === "best")?.id ??
+    availableTabs.find((t) => t.id === "weekly")?.id ??
     availableTabs[0]?.id ??
     "all";
 
@@ -106,7 +106,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
             : buckets.all;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <style>{`
         @keyframes rpFadeSlide {
           from { opacity: 0; transform: translateY(6px); }
@@ -115,15 +115,15 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
       `}</style>
 
       {(networkLabel || phoneLabel) && (
-        <div className="flex items-center gap-2.5 rounded-2xl bg-muted/40 px-3 py-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold tracking-wide text-primary-foreground">
+        <div className="flex items-center gap-3 rounded-3xl bg-muted/35 px-4 py-3.5">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-sm font-extrabold tracking-wide text-primary-foreground">
             {(networkLabel || "NET").slice(0, 3).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+            <p className="truncate text-lg font-bold tracking-tight text-foreground">
               {phoneLabel || "—"}
             </p>
-            <p className="truncate text-[11px] text-muted-foreground">
+            <p className="truncate text-sm text-muted-foreground">
               {networkLabel ? `${networkLabel} · data` : "Choose a plan"}
             </p>
           </div>
@@ -131,7 +131,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
       )}
 
       <div className="overflow-x-auto">
-        <div className="flex min-w-max items-end border-b border-border/40">
+        <div className="flex min-w-max items-end border-b border-border/50">
           {availableTabs.map((t) => {
             const active = tab === t.id;
             return (
@@ -140,14 +140,14 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 type="button"
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "relative px-3 pb-2 pt-1 text-[12px] font-medium transition-colors duration-200",
+                  "relative px-4 pb-3 pt-2 text-base font-medium transition-colors duration-200",
                   active ? "text-foreground" : "text-muted-foreground/80",
                 )}
               >
                 {t.label}
                 <span
                   className={cn(
-                    "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-foreground transition-transform duration-300 ease-out",
+                    "pointer-events-none absolute inset-x-2 bottom-0 h-[3px] rounded-full bg-foreground transition-transform duration-300 ease-out",
                     active ? "scale-x-100" : "scale-x-0",
                   )}
                 />
@@ -159,11 +159,11 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
 
       <div
         key={tab}
-        className="grid grid-cols-3 gap-2"
+        className="grid grid-cols-3 gap-3"
         style={{ animation: "rpFadeSlide 220ms ease-out" }}
       >
         {list.length === 0 ? (
-          <p className="col-span-3 py-10 text-center text-[11px] text-muted-foreground">
+          <p className="col-span-3 py-10 text-center text-sm text-muted-foreground">
             No plans in this category
           </p>
         ) : (
@@ -179,7 +179,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 type="button"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
+                  "relative flex aspect-[0.94] min-h-[170px] flex-col justify-between overflow-hidden rounded-[22px] border px-4 py-4 text-left",
                   "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
                   "active:scale-[0.97]",
                   selected
@@ -189,18 +189,18 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
               >
                 <span
                   className={cn(
-                    "absolute inset-x-0 top-0 h-[2px] bg-primary transition-opacity duration-300",
+                    "absolute inset-x-0 top-0 h-[3px] bg-primary transition-opacity duration-300",
                     selected ? "opacity-100" : "opacity-0",
                   )}
                 />
 
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
+                  <p className="text-[14px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/90">
                     {duration ?? "PLAN"}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight",
+                      "mt-2 truncate text-[20px] font-extrabold leading-none tracking-tight",
                       "transition-colors duration-300",
                       selected ? "text-primary" : "text-foreground",
                     )}
@@ -208,19 +208,19 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                     {title}
                   </p>
                   {!size ? (
-                    <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-muted-foreground/80">
+                    <p className="mt-2 line-clamp-2 text-[12px] leading-snug text-muted-foreground/80">
                       {p.name}
                     </p>
                   ) : null}
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[12px] font-bold tabular-nums leading-none text-foreground">
+                  <p className="truncate text-[18px] font-extrabold tabular-nums leading-none text-foreground">
                     {formatNaira(p.amount, false)}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 text-[9px] font-semibold transition-opacity duration-300",
+                      "mt-2 text-[11px] font-semibold transition-opacity duration-300",
                       selected ? "text-primary opacity-100" : "opacity-0",
                     )}
                   >
@@ -233,7 +233,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         )}
       </div>
 
-      <p className="pt-0.5 text-center text-[10px] text-muted-foreground/70">— End —</p>
+      <p className="pt-1 text-center text-sm text-muted-foreground/70">— End —</p>
     </div>
   );
 }
