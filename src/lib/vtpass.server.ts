@@ -10,6 +10,12 @@ export type VtpassPayResult = {
   transactionId: string | null;
   contentStatus: string | null;
   purchasedCode: string | null;
+  /** Face/provider amount returned by VTpass. */
+  providerAmount?: number | null;
+  /** Actual amount charged by VTpass after commission/fees. */
+  totalAmount?: number | null;
+  /** VTpass commission/discount reported for the transaction. */
+  commission?: number | null;
   raw: unknown;
 };
 
@@ -138,22 +144,37 @@ export function getVtpassConfig(): {
   secretKey: string;
   publicKey: string;
 } {
-  const mode = (process.env["VTPASS_MODE"] ?? "sandbox").trim().toLowerCase() as VtpassMode;
-  if (mode === "live") {
-    throw new Error("VTpass live mode is disabled. Set VTPASS_MODE=sandbox.");
+  const requestedMode = (process.env["VTPASS_MODE"] ?? "sandbox").trim().toLowerCase();
+  if (requestedMode !== "sandbox" && requestedMode !== "live") {
+    throw new Error("VTPASS_MODE must be sandbox or live.");
   }
-  const baseUrl = (process.env["VTPASS_BASE_URL"] ?? "https://sandbox.vtpass.com/api")
-    .trim()
-    .replace(/\/$/, "");
+  const mode = requestedMode as VtpassMode;
+  const defaultBaseUrl =
+    mode === "live" ? "https://vtpass.com/api" : "https://sandbox.vtpass.com/api";
+  const baseUrl = (process.env["VTPASS_BASE_URL"] ?? defaultBaseUrl).trim().replace(/\/$/, "");
+
+  try {
+    const hostname = new URL(baseUrl).hostname.toLowerCase();
+    const expectedHost = mode === "live" ? "vtpass.com" : "sandbox.vtpass.com";
+    if (hostname !== expectedHost) {
+      throw new Error(
+        `VTPASS_BASE_URL does not match VTPASS_MODE=${mode}. Expected ${expectedHost}.`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("VTPASS_BASE_URL")) throw error;
+    throw new Error("VTPASS_BASE_URL is invalid.");
+  }
+
   const apiKey = (process.env["VTPASS_API_KEY"] ?? "").trim();
   const secretKey = (process.env["VTPASS_SECRET_KEY"] ?? "").trim();
   const publicKey = (process.env["VTPASS_PUBLIC_KEY"] ?? "").trim();
   if (!apiKey || !secretKey) {
     throw new Error(
-      "VTpass is not configured. Set VTPASS_API_KEY and VTPASS_SECRET_KEY (sandbox) on the host.",
+      `VTpass is not configured for ${mode}. Set VTPASS_API_KEY and VTPASS_SECRET_KEY on the host.`,
     );
   }
-  return { mode: "sandbox", baseUrl, apiKey, secretKey, publicKey };
+  return { mode, baseUrl, apiKey, secretKey, publicKey };
 }
 
 function headersForPost(): HeadersInit {
