@@ -1,5 +1,5 @@
 -- Read-only wallet reconciliation surface for staff.
--- This detects ledger-chain and wallet-balance inconsistencies without mutating money.
+-- Detects ledger-chain and wallet-balance inconsistencies without mutating money.
 
 CREATE OR REPLACE FUNCTION public.admin_wallet_reconciliation(
   _limit integer DEFAULT 100,
@@ -40,7 +40,7 @@ BEGIN
           p.email AS user_email,
           w.balance AS current_balance,
           wtx.created_at,
-          'Latest ledger balance_after does not equal wallet balance'::text AS detail
+          'Latest successful ledger balance_after does not equal wallet balance'::text AS detail
         FROM public.wallets w
         JOIN LATERAL (
           SELECT wt.balance_after, wt.created_at
@@ -66,12 +66,15 @@ BEGIN
           'A successful ledger entry balance_before does not match the preceding successful balance_after'::text
         FROM public.wallets w
         JOIN LATERAL (
-          SELECT wt.id, wt.balance_before, wt.created_at,
-                 lag(wt.balance_after) OVER (ORDER BY wt.created_at, wt.id) AS prior_after
-          FROM public.wallet_transactions wt
-          WHERE wt.wallet_id = w.id AND wt.status = 'successful'
-          ORDER BY wt.created_at DESC, wt.id DESC
-          LIMIT 250
+          SELECT id, balance_before, balance_after, created_at,
+                 lag(balance_after) OVER (ORDER BY created_at, id) AS prior_after
+          FROM (
+            SELECT wt.id, wt.balance_before, wt.balance_after, wt.created_at
+            FROM public.wallet_transactions wt
+            WHERE wt.wallet_id = w.id AND wt.status = 'successful'
+            ORDER BY wt.created_at DESC, wt.id DESC
+            LIMIT 250
+          ) recent
         ) x ON true
         LEFT JOIN public.profiles p ON p.user_id = w.user_id
         WHERE x.prior_after IS NOT NULL
