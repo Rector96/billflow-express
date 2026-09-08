@@ -1,5 +1,5 @@
 /**
- * Client-side receipt export — elegant RockPay branded card (image + PDF).
+ * Client-side receipt export — polished RockPay receipt (image + PDF).
  * Presentation only; no money logic.
  */
 
@@ -20,12 +20,11 @@ export type ReceiptPayload = {
   method?: string | null;
   tokenLabel?: string | null;
   tokenValue?: string | null;
-  /** Optional extra rows e.g. Data Plan */
   detailRows?: { label: string; value: string }[] | null;
 };
 
 export function statusLabel(status: string): string {
-  if (status === "successful") return "Success";
+  if (status === "successful") return "Successful";
   if (status === "pending") return "Pending";
   if (status === "failed") return "Failed";
   return status || "Unknown";
@@ -35,7 +34,7 @@ export function statusColor(status: string): string {
   if (status === "successful") return "#10B981";
   if (status === "pending") return "#F59E0B";
   if (status === "failed") return "#EF4444";
-  return "#6B7280";
+  return "#64748B";
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -66,46 +65,136 @@ function roundRect(
   ctx.closePath();
 }
 
-function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let t = text;
-  while (t.length > 1 && ctx.measureText(t + "…").width > maxWidth) t = t.slice(0, -1);
-  return t + "…";
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const value = String(text || "—");
+  const words = value.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      line = candidate;
+      continue;
+    }
+
+    if (line) lines.push(line);
+    if (ctx.measureText(word).width <= maxWidth) {
+      line = word;
+      continue;
+    }
+
+    let part = "";
+    for (const char of word) {
+      const candidatePart = part + char;
+      if (ctx.measureText(candidatePart).width > maxWidth && part) {
+        lines.push(part);
+        part = char;
+      } else {
+        part = candidatePart;
+      }
+    }
+    line = part;
+  }
+
+  if (line) lines.push(line);
+  return lines.length ? lines : ["—"];
 }
 
-/** Elegant receipt matching RockPay marketing mockups. */
+function drawCenteredText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+) {
+  ctx.textAlign = "center";
+  ctx.fillText(text, x, y);
+  ctx.textAlign = "left";
+}
+
+function drawPerforation(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
+  ctx.save();
+  ctx.fillStyle = "#F8FAFC";
+  const radius = 4;
+  const gap = 14;
+  for (let px = x + 10; px < x + w - 10; px += gap) {
+    ctx.beginPath();
+    ctx.arc(px, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawStatusIcon(ctx: CanvasRenderingContext2D, status: string, x: number, y: number) {
+  const color = statusColor(status);
+  ctx.beginPath();
+  ctx.arc(x, y, 24, 0, Math.PI * 2);
+  ctx.fillStyle = `${color}18`;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, 16, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "800 19px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(status === "successful" ? "✓" : status === "pending" ? "…" : "!", x, y + 7);
+  ctx.textAlign = "left";
+}
+
+/** Render a premium, spacious RockPay receipt suitable for WhatsApp and PDF. */
 export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
-  const width = 680;
-  const cardX = 24;
-  const cardW = width - 48;
-  const pad = 36;
+  const width = 720;
+  const cardX = 32;
+  const cardW = width - cardX * 2;
+  const pad = 46;
   const innerX = cardX + pad;
   const innerW = cardW - pad * 2;
+  const status = String(payload.status || "unknown");
 
   const rows: { label: string; value: string }[] = [];
-  rows.push({ label: "Transaction", value: payload.title || "Payment" });
   if (payload.network) rows.push({ label: "Provider", value: payload.network });
   if (payload.service && payload.service !== payload.title) {
     rows.push({ label: "Service", value: payload.service });
   }
   if (payload.recipient) rows.push({ label: "Recipient", value: payload.recipient });
-  if (payload.detailRows) {
-    for (const r of payload.detailRows) rows.push(r);
-  }
-  if (payload.dateLabel) rows.push({ label: "Date", value: payload.dateLabel });
+  if (payload.detailRows) rows.push(...payload.detailRows);
+  if (payload.dateLabel) rows.push({ label: "Date & time", value: payload.dateLabel });
   rows.push({ label: "Transaction ID", value: payload.reference });
-  if (payload.providerRef) rows.push({ label: "Provider ref", value: payload.providerRef });
+  if (payload.providerRef) rows.push({ label: "Provider reference", value: payload.providerRef });
   if (payload.channel) rows.push({ label: "Channel", value: payload.channel });
   if (payload.method) rows.push({ label: "Payment method", value: payload.method });
-  if (payload.tokenLabel && payload.tokenValue) {
-    rows.push({ label: payload.tokenLabel, value: payload.tokenValue });
+
+  const normalRows = rows.filter((row) => row.value.trim());
+  const rowGap = 22;
+  const rowLabelW = 170;
+  const rowValueW = innerW - rowLabelW - 22;
+  const rowHeights: number[] = [];
+
+  ctxMeasure: {
+    const temp = document.createElement("canvas");
+    const measure = temp.getContext("2d");
+    if (!measure) throw new Error("Canvas not supported");
+    measure.font = "600 16px system-ui, -apple-system, sans-serif";
+    for (const row of normalRows) {
+      rowHeights.push(Math.max(22, wrapText(measure, row.value, rowValueW).length * 22));
+    }
   }
 
-  const headerBlock = 210;
-  const heroH = 72;
-  const rowH = 44;
-  const footerH = 70;
-  const height = 40 + headerBlock + heroH + 24 + rows.length * rowH + footerH + 40;
+  const tokenLines = payload.tokenLabel && payload.tokenValue
+    ? Math.max(1, String(payload.tokenValue).split(/\s+/).length)
+    : 0;
+  const tokenH = tokenLines ? Math.max(116, 78 + Math.ceil(tokenLines / 3) * 24) : 0;
+  const headerH = 238;
+  const amountH = 112;
+  const detailsTopH = 62;
+  const footerH = 96;
+  const detailsH = normalRows.reduce((sum, h) => sum + h + rowGap, 0) + 34;
+  const height = 44 + headerH + amountH + detailsTopH + detailsH + tokenH + footerH + 44;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -113,135 +202,205 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not supported");
 
-  // Soft blue-lavender page (like mockup)
-  ctx.fillStyle = "#DCEBFA";
+  // Soft premium background.
+  const pageGrad = ctx.createLinearGradient(0, 0, width, height);
+  pageGrad.addColorStop(0, "#F5F3FF");
+  pageGrad.addColorStop(0.5, "#EEF2FF");
+  pageGrad.addColorStop(1, "#F8FAFC");
+  ctx.fillStyle = pageGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // White card + soft shadow
+  // Receipt card.
   ctx.save();
-  ctx.shadowColor = "rgba(30, 27, 75, 0.12)";
-  ctx.shadowBlur = 28;
-  ctx.shadowOffsetY = 12;
+  ctx.shadowColor = "rgba(15, 23, 42, 0.12)";
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 14;
   ctx.fillStyle = "#FFFFFF";
-  roundRect(ctx, cardX, 28, cardW, height - 56, 28);
+  roundRect(ctx, cardX, 24, cardW, height - 48, 30);
   ctx.fill();
   ctx.restore();
 
-  let y = 56;
+  // Branded top panel.
+  const topGrad = ctx.createLinearGradient(cardX, 24, cardX + cardW, 190);
+  topGrad.addColorStop(0, "#5B21B6");
+  topGrad.addColorStop(0.52, "#7C3AED");
+  topGrad.addColorStop(1, "#4F46E5");
+  ctx.save();
+  ctx.fillStyle = topGrad;
+  roundRect(ctx, cardX, 24, cardW, 184, 30);
+  ctx.fill();
+  ctx.restore();
 
-  // Brand mark + wordmark
+  // Subtle decorative circles.
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.arc(cardX + cardW - 70, 65, 80, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cardX + 42, 175, 52, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  let y = 54;
   let drewLogo = false;
   try {
     const logo = await loadImage(BRAND.markUrl || BRAND.logoUrl);
-    const markH = 40;
-    const markW = (logo.width / logo.height) * markH;
-    ctx.drawImage(logo, (width - markW) / 2, y, markW, markH);
-    y += markH + 8;
+    const logoH = 46;
+    const logoW = (logo.width / logo.height) * logoH;
+    ctx.drawImage(logo, (width - logoW) / 2, y, logoW, logoH);
+    y += logoH + 14;
     drewLogo = true;
   } catch {
-    /* fall through */
+    // fallback below
   }
   if (!drewLogo) {
-    // Drawn "R" mark
-    ctx.fillStyle = "#7C3AED";
-    roundRect(ctx, width / 2 - 22, y, 44, 44, 12);
-    ctx.fill();
     ctx.fillStyle = "#FFFFFF";
-    ctx.font = "800 22px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("R", width / 2, y + 30);
-    y += 52;
+    roundRect(ctx, width / 2 - 23, y, 46, 46, 13);
+    ctx.fill();
+    ctx.fillStyle = "#7C3AED";
+    ctx.font = "800 25px system-ui, -apple-system, sans-serif";
+    drawCenteredText(ctx, "R", width / 2, y + 32);
+    y += 60;
   }
 
-  ctx.fillStyle = "#5B21B6";
-  ctx.font = "700 18px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(BRAND.name, width / 2, y + 4);
-  y += 36;
-
-  // Status pill uses a distinct symbol so pending/failed exports cannot look successful.
-  const st = statusLabel(payload.status);
-  const stColor = statusColor(payload.status);
-  ctx.font = "600 13px system-ui, sans-serif";
-  const stTextW = ctx.measureText(st).width;
-  const stW = stTextW + 40;
-  const stX = (width - stW) / 2;
-  ctx.fillStyle = `${stColor}18`;
-  roundRect(ctx, stX, y, stW, 28, 14);
-  ctx.fill();
-  const statusSymbol =
-    payload.status === "successful" ? "✓" : payload.status === "pending" ? "…" : "!";
-  ctx.beginPath();
-  ctx.arc(stX + 14, y + 14, 8, 0, Math.PI * 2);
-  ctx.fillStyle = stColor;
-  ctx.fill();
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "800 12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(statusSymbol, stX + 14, y + 18);
-  ctx.fillStyle = stColor;
-  ctx.font = "700 13px system-ui, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText(st, stX + 28, y + 18);
-  y += 48;
+  ctx.font = "800 24px system-ui, -apple-system, sans-serif";
+  drawCenteredText(ctx, BRAND.name, width / 2, y + 4);
+  y += 38;
+  ctx.fillStyle = "rgba(255,255,255,0.78)";
+  ctx.font = "500 13px system-ui, -apple-system, sans-serif";
+  drawCenteredText(ctx, "TRANSACTION RECEIPT", width / 2, y);
 
-  // Large amount
+  // Status + amount section.
+  const statusY = 234;
+  drawStatusIcon(ctx, status, width / 2, statusY);
+  ctx.fillStyle = statusColor(status);
+  ctx.font = "800 16px system-ui, -apple-system, sans-serif";
+  drawCenteredText(ctx, statusLabel(status), width / 2, statusY + 49);
+
   ctx.fillStyle = "#0F172A";
-  ctx.font = "800 42px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
+  ctx.font = "900 48px system-ui, -apple-system, sans-serif";
   const amountText = payload.amountLabel.replace(/^\+/, "");
-  ctx.fillText(amountText, width / 2, y);
-  y += 28;
+  drawCenteredText(ctx, amountText, width / 2, statusY + 104);
 
-  // Gradient hero card for transaction type
-  const heroY = y;
-  const grad = ctx.createLinearGradient(innerX, heroY, innerX + innerW, heroY + heroH);
-  grad.addColorStop(0, "#EDE9FE");
-  grad.addColorStop(0.5, "#F5F3FF");
-  grad.addColorStop(1, "#DBEAFE");
-  ctx.fillStyle = grad;
-  roundRect(ctx, innerX, heroY, innerW, heroH, 18);
+  ctx.fillStyle = "#64748B";
+  ctx.font = "500 13px system-ui, -apple-system, sans-serif";
+  drawCenteredText(
+    ctx,
+    payload.direction === "in" ? "Money received" : "Amount paid",
+    width / 2,
+    statusY + 128,
+  );
+
+  // Transaction title.
+  const titleY = statusY + 168;
+  ctx.fillStyle = "#F8FAFC";
+  roundRect(ctx, innerX, titleY, innerW, 76, 18);
   ctx.fill();
-  ctx.fillStyle = "#6D28D9";
-  ctx.font = "600 12px system-ui, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("Transaction", innerX + 18, heroY + 28);
-  ctx.fillStyle = "#1E1B4B";
-  ctx.font = "800 17px system-ui, sans-serif";
-  ctx.fillText(truncate(ctx, payload.title || "Payment", innerW - 36), innerX + 18, heroY + 52);
-  y = heroY + heroH + 20;
+  ctx.fillStyle = "#94A3B8";
+  ctx.font = "600 11px system-ui, -apple-system, sans-serif";
+  ctx.fillText("TRANSACTION", innerX + 20, titleY + 27);
+  ctx.fillStyle = "#172033";
+  ctx.font = "800 18px system-ui, -apple-system, sans-serif";
+  const titleLines = wrapText(ctx, payload.title || "Payment", innerW - 40).slice(0, 2);
+  titleLines.forEach((line, index) => ctx.fillText(line, innerX + 20, titleY + 51 + index * 21));
 
-  // Detail rows
-  for (const row of rows) {
-    if (row.label === "Transaction") continue; // already in hero
-    ctx.fillStyle = "#94A3B8";
-    ctx.font = "500 12px system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(row.label, innerX, y + 8);
-    ctx.fillStyle = "#0F172A";
-    ctx.font = "700 13px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.textAlign = "right";
-    ctx.fillText(truncate(ctx, row.value, innerW * 0.55), innerX + innerW, y + 8);
-    // hairline
-    ctx.strokeStyle = "rgba(15, 23, 42, 0.06)";
+  // Details heading.
+  let detailsY = titleY + 102;
+  ctx.fillStyle = "#0F172A";
+  ctx.font = "800 17px system-ui, -apple-system, sans-serif";
+  ctx.fillText("Payment details", innerX, detailsY);
+  detailsY += 30;
+
+  // Clean two-column rows with wrapping values.
+  normalRows.forEach((row, index) => {
+    const rowH = rowHeights[index];
+    ctx.fillStyle = "#64748B";
+    ctx.font = "600 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText(row.label, innerX, detailsY + 16);
+
+    ctx.fillStyle = "#172033";
+    ctx.font = "600 14px system-ui, -apple-system, sans-serif";
+    const lines = wrapText(ctx, row.value, rowValueW).slice(0, 3);
+    lines.forEach((line, lineIndex) => {
+      ctx.fillText(line, innerX + rowLabelW + 22, detailsY + 16 + lineIndex * 22);
+    });
+
+    ctx.strokeStyle = "#E2E8F0";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(innerX, y + 22);
-    ctx.lineTo(innerX + innerW, y + 22);
+    ctx.moveTo(innerX, detailsY + rowH + 8);
+    ctx.lineTo(innerX + innerW, detailsY + rowH + 8);
     ctx.stroke();
-    y += rowH;
+    detailsY += rowH + rowGap;
+  });
+
+  // Special credential/token panel.
+  if (payload.tokenLabel && payload.tokenValue) {
+    detailsY += 4;
+    const panelY = detailsY;
+    const panelH = tokenH;
+    ctx.fillStyle = "#F5F3FF";
+    roundRect(ctx, innerX, panelY, innerW, panelH, 20);
+    ctx.fill();
+    ctx.strokeStyle = "#DDD6FE";
+    ctx.lineWidth = 1;
+    roundRect(ctx, innerX, panelY, innerW, panelH, 20);
+    ctx.stroke();
+
+    ctx.fillStyle = "#6D28D9";
+    ctx.font = "800 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText(payload.tokenLabel.toUpperCase(), innerX + 20, panelY + 25);
+    ctx.fillStyle = "#94A3B8";
+    ctx.font = "500 11px system-ui, -apple-system, sans-serif";
+    ctx.fillText("Keep this information safe", innerX + 20, panelY + 44);
+
+    ctx.fillStyle = "#FFFFFF";
+    roundRect(ctx, innerX + 18, panelY + 58, innerW - 36, panelH - 76, 14);
+    ctx.fill();
+    ctx.fillStyle = "#111827";
+    ctx.font = "800 20px ui-monospace, SFMono-Regular, Menlo, monospace";
+    const tokenText = String(payload.tokenValue);
+    const tokenParts = tokenText.split(/\s+/).filter(Boolean);
+    const tokenLinesArr: string[] = [];
+    let tokenLine = "";
+    for (const part of tokenParts.length ? tokenParts : [tokenText]) {
+      const candidate = tokenLine ? `${tokenLine}   ${part}` : part;
+      if (ctx.measureText(candidate).width > innerW - 72 && tokenLine) {
+        tokenLinesArr.push(tokenLine);
+        tokenLine = part;
+      } else {
+        tokenLine = candidate;
+      }
+    }
+    if (tokenLine) tokenLinesArr.push(tokenLine);
+    tokenLinesArr.slice(0, 4).forEach((line, index) => {
+      drawCenteredText(ctx, line, width / 2, panelY + 86 + index * 24);
+    });
   }
 
-  y += 8;
+  // Footer.
+  const footerY = height - footerH - 22;
+  ctx.strokeStyle = "#E2E8F0";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(innerX, footerY);
+  ctx.lineTo(innerX + innerW, footerY);
+  ctx.stroke();
+
+  ctx.fillStyle = "#64748B";
+  ctx.font = "500 12px system-ui, -apple-system, sans-serif";
+  drawCenteredText(ctx, BRAND.supportEmail, width / 2, footerY + 31);
   ctx.fillStyle = "#94A3B8";
-  ctx.font = "500 12px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(BRAND.supportEmail, width / 2, y);
-  y += 18;
+  ctx.font = "500 11px system-ui, -apple-system, sans-serif";
+  drawCenteredText(ctx, `Securely processed by ${BRAND.name}`, width / 2, footerY + 52);
   ctx.fillStyle = "#CBD5E1";
-  ctx.font = "500 11px system-ui, sans-serif";
-  ctx.fillText(`Powered by ${BRAND.name}`, width / 2, y);
-  ctx.textAlign = "left";
+  drawCenteredText(ctx, "PAY  •  FUND  •  CONNECT", width / 2, footerY + 73);
+
+  // Receipt-style perforated bottom edge.
+  drawPerforation(ctx, cardX + 12, height - 25, cardW - 24);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -257,7 +416,6 @@ async function blobToImage(blob: Blob): Promise<HTMLImageElement> {
   try {
     return await loadImage(url);
   } finally {
-    // revoke after paint in caller if needed — loadImage already resolved
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
