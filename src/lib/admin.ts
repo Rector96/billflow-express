@@ -38,18 +38,20 @@ export async function requireStaffSession(): Promise<{
   });
   if (error || !isStaff) throw new Error("forbidden");
 
-  const { data: roleRows } = await supabase
+  const { data: roleRows, error: roleError } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", session.user.id);
+
+  if (roleError) throw new Error("forbidden");
 
   const parsedRoles = (roleRows ?? [])
     .map((r) => r.role as StaffRole)
     .filter((r) => r === "super_admin" || r === "admin" || r === "support");
 
-  const roles: StaffRole[] = parsedRoles.length > 0 ? parsedRoles : ["super_admin"];
+  if (parsedRoles.length === 0) throw new Error("forbidden_role");
 
-  return { session, roles, perms: permsForRoles(roles) };
+  return { session, roles: parsedRoles, perms: permsForRoles(parsedRoles) };
 }
 
 export function pctChange(current: number, previous: number): number | null {

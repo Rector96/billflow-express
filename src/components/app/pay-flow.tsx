@@ -27,6 +27,7 @@ import {
   purchaseElectricity,
   verifyVtpassCustomer,
 } from "@/lib/bills.functions";
+import { quotePricing } from "@/lib/pricing.functions";
 import { formatNaira, getService, maskTail, type TxStatus } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { DIRECT_PAY } from "@/lib/product-mode";
@@ -84,6 +85,7 @@ export function PayFlow() {
   const buyData = useServerFn(purchaseData);
   const buyElectricity = useServerFn(purchaseElectricity);
   const initDirectPay = useServerFn(initializeDirectBillPay);
+  const getPricingQuote = useServerFn(quotePricing);
 
   const isAirtime = service?.slug === "airtime";
   const isCable = service?.slug === "cable";
@@ -107,6 +109,8 @@ export function PayFlow() {
     typeof search.amount === "number" && search.amount > 0 ? String(Math.round(search.amount)) : "",
   );
   const [variation, setVariation] = useState<CatalogVariation | null>(null);
+  const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
   const [pin, setPin] = useState("");
   const [catalogServices, setCatalogServices] = useState<CatalogService[]>([]);
   const [variations, setVariations] = useState<CatalogVariation[]>([]);
@@ -122,7 +126,30 @@ export function PayFlow() {
   const [txId, setTxId] = useState("");
   const [token, setToken] = useState("");
 
-  const total = isPackageLive && variation ? variation.amount : Number(amount || 0);
+  const baseTotal = isPackageLive && variation ? variation.amount : Number(amount || 0);
+  const total = quotedTotal ?? baseTotal;
+
+  const getQuote = async () => {
+    if (!service || !Number.isFinite(baseTotal) || baseTotal < 50) {
+      throw new Error("Enter a valid amount.");
+    }
+    setPricingLoading(true);
+    try {
+      const productCode = isPackageLive && variation ? variation.variationCode : isElectricity ? meterType : null;
+      const res = await getPricingQuote({
+        data: {
+          service: service.slug,
+          provider: serviceID || provider || null,
+          productCode,
+          baseAmount: baseTotal,
+        },
+      });
+      setQuotedTotal(res.customerAmount);
+      return res.customerAmount;
+    } finally {
+      setPricingLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLiveCatalog) return;
@@ -163,7 +190,6 @@ export function PayFlow() {
     };
   }, [isPackageLive, serviceID, loadVariations]);
 
-  // Education + exam pins → same student-friendly VTpass PIN flow
   if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
   if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
 
@@ -202,6 +228,7 @@ export function PayFlow() {
         return;
       }
       setIdentifier(displayNgPhone(identifier));
+      setQuotedTotal(null);
       setStep("amount");
       return;
     }
@@ -228,6 +255,7 @@ export function PayFlow() {
         }
         setVerifiedName(name);
         setMinPurchase(res.minPurchaseAmount ?? 0);
+        setQuotedTotal(null);
         setStep("amount");
       } catch (err) {
         setStep("identifier");
@@ -235,7 +263,19 @@ export function PayFlow() {
       }
       return;
     }
+    setQuotedTotal(null);
     setStep("amount");
+  };
+
+  const continueFromAmount = async () => {
+    if (baseTotal < 50 || (isPackageLive && !variation)) return;
+    setError("");
+    try {
+      await getQuote();
+      setStep("confirm");
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not calculate the payment total."));
+    }
   };
 
   const runDirectPay = async () => {
@@ -243,12 +283,13 @@ export function PayFlow() {
     payingLock.current = true;
     setStep("processing");
     try {
+      await getQuote();
       const payload = isElectricity
         ? {
             slug: "electricity" as const,
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
-            amount: total,
+            amount: baseTotal,
             meterType,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -258,7 +299,7 @@ export function PayFlow() {
             slug: "cable" as const,
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
-            amount: total,
+            amount: baseTotal,
             variationCode: variation!.variationCode,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -283,7 +324,7 @@ export function PayFlow() {
           data: {
             network: provider,
             phone: identifier.trim(),
-            amount: total,
+            amount: baseTotal,
             pin: authorizedPin,
             requestId: airtimeRequestId,
           },
@@ -320,7 +361,7 @@ export function PayFlow() {
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
             variationCode: variation.variationCode,
-            amount: Math.round(variation.amount),
+            amount: baseTotal,
             pin: authorizedPin,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -341,7 +382,7 @@ export function PayFlow() {
             serviceID: serviceID || provider,
             billersCode: identifier.trim(),
             meterType,
-            amount: total,
+            amount: baseTotal,
             pin: authorizedPin,
             ...(profile.phone ? { phone: profile.phone } : {}),
             ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -465,7 +506,7 @@ export function PayFlow() {
           {DIRECT_PAY && (isElectricity || isCable) ? (
             <Button
               className="h-11 w-full rounded-xl font-bold"
-              disabled={total < 50}
+              disabled={pricingLoading || total < 50}
               onClick={() => void runDirectPay()}
             >
               Pay {formatNaira(total, false)} securely
@@ -478,7 +519,11 @@ export function PayFlow() {
             </Button>
           ) : (
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("pin")}>
+              <Button
+                className="h-12 w-full rounded-xl font-bold"
+                disabled={pricingLoading}
+                onClick={() => setStep("pin")}
+              >
                 Confirm & Pay {formatNaira(total, false)}
               </Button>
             </PayActionBar>
@@ -507,6 +552,7 @@ export function PayFlow() {
                 phoneLabel={identifier}
                 onSelect={(v) => {
                   setVariation(v);
+                  setQuotedTotal(null);
                   scrollIntoAction("pay-action");
                 }}
               />
@@ -516,7 +562,10 @@ export function PayFlow() {
                   <button
                     key={v.variationCode}
                     type="button"
-                    onClick={() => setVariation(v)}
+                    onClick={() => {
+                      setVariation(v);
+                      setQuotedTotal(null);
+                    }}
                     className={cn(
                       "press flex w-full items-center justify-between rounded-xl border bg-card px-3 py-3 text-left text-sm",
                       variation?.variationCode === v.variationCode &&
@@ -537,7 +586,10 @@ export function PayFlow() {
               <Input
                 inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => {
+                  setAmount(e.target.value.replace(/\D/g, ""));
+                  setQuotedTotal(null);
+                }}
                 className="h-12 rounded-xl text-lg font-bold"
                 placeholder="0"
               />
@@ -551,10 +603,10 @@ export function PayFlow() {
           <PayActionBar>
             <Button
               className="h-12 w-full rounded-xl font-bold"
-              disabled={total < 50 || (isPackageLive && !variation)}
-              onClick={() => setStep("confirm")}
+              disabled={pricingLoading || baseTotal < 50 || (isPackageLive && !variation)}
+              onClick={() => void continueFromAmount()}
             >
-              Continue
+              {pricingLoading ? "Calculating…" : "Continue"}
             </Button>
           </PayActionBar>
         </div>
@@ -591,6 +643,7 @@ export function PayFlow() {
                   type="button"
                   onClick={() => {
                     setMeterType(t);
+                    setQuotedTotal(null);
                     setStep("identifier");
                   }}
                   className={cn(
@@ -643,6 +696,7 @@ export function PayFlow() {
               onClick={() => {
                 setProvider(s.name);
                 setServiceID(s.serviceID);
+                setQuotedTotal(null);
                 setStep(isElectricity ? "meterType" : "identifier");
               }}
               className="press flex w-full items-center rounded-xl border bg-card px-4 py-3 text-left text-sm font-bold shadow-soft"

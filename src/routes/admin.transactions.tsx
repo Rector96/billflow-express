@@ -106,97 +106,37 @@ function AdminTransactions() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("bill_transactions")
-        .select(
-          "id, internal_reference, service, provider, product, amount, status, customer_identifier, provider_request_id, provider_transaction_id, provider_status, provider_response_code, provider_response_message, provider_channel, metadata, created_at, updated_at, user_id, wallet_id",
-          { count: "exact" },
-        )
-        .order("created_at", { ascending: false })
-        .range(page * PAGE, page * PAGE + PAGE - 1);
-
-      if (status !== "all") query = query.eq("status", status);
-      if (service === "airtime") query = query.eq("service", "Airtime");
-      if (service === "data") query = query.ilike("service", "%data%");
-      if (service === "electricity") query = query.ilike("service", "%electric%");
-      if (service === "cable")
-        query = query.or("service.ilike.%cable%,service.ilike.%dstv%,service.ilike.%gotv%");
-      if (channel === "vtpass")
-        query = query.or("provider_channel.eq.vtpass,metadata->>channel.eq.vtpass,product.eq.VTU");
-      if (channel === "paystack") query = query.eq("provider_channel", "paystack");
-
       const from = dateFrom();
-      if (from) {
-        if (dateKey === "yesterday") {
-          const end = new Date(from);
-          end.setDate(end.getDate() + 1);
-          query = query.gte("created_at", from).lt("created_at", end.toISOString());
-        } else {
-          query = query.gte("created_at", from);
-        }
+      let to: string | null = null;
+      if (dateKey === "yesterday" && from) {
+        const end = new Date(from);
+        end.setDate(end.getDate() + 1);
+        to = end.toISOString();
       }
 
-      const term = q.trim();
-      if (term) {
-        query = query.or(
-          [
-            `internal_reference.ilike.%${term}%`,
-            `provider_request_id.ilike.%${term}%`,
-            `provider_transaction_id.ilike.%${term}%`,
-            `customer_identifier.ilike.%${term}%`,
-            `provider.ilike.%${term}%`,
-          ].join(","),
-        );
-      }
-
-      const { data, count, error } = await query;
-      if (error) throw error;
-      setTotal(count ?? 0);
-
-      const ids = [...new Set((data ?? []).map((t) => t.user_id))];
-      const { data: profiles } = ids.length
-        ? await supabase
-            .from("profiles")
-            .select("user_id, full_name, email, phone")
-            .in("user_id", ids)
-        : {
-            data: [] as {
-              user_id: string;
-              full_name: string | null;
-              email: string | null;
-              phone: string | null;
-            }[],
-          };
-      const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
-
-      // Client-side name/email filter when term looks like a person search
-      let mapped: BillRow[] = (data ?? []).map((t) => {
-        const p = pmap.get(t.user_id);
-        return {
-          ...(t as Omit<BillRow, "user_label" | "user_email" | "user_phone">),
-          amount: n(t.amount),
-          metadata: (t.metadata ?? {}) as Record<string, unknown>,
-          user_label: p?.full_name || p?.email || t.user_id.slice(0, 8),
-          user_email: p?.email || "",
-          user_phone: p?.phone || "",
-        };
+      const { data, error } = await supabase.rpc("admin_transaction_directory", {
+        _query: q.trim(),
+        _status: status,
+        _service: service,
+        _channel: channel,
+        _from: from,
+        _to: to,
+        _limit: PAGE,
+        _offset: page * PAGE,
       });
+      if (error) throw error;
 
-      if (term) {
-        const low = term.toLowerCase();
-        mapped = mapped.filter(
-          (r) =>
-            r.internal_reference.toLowerCase().includes(low) ||
-            (r.provider_request_id ?? "").toLowerCase().includes(low) ||
-            (r.provider_transaction_id ?? "").toLowerCase().includes(low) ||
-            r.user_label.toLowerCase().includes(low) ||
-            r.user_email.toLowerCase().includes(low) ||
-            r.user_phone.toLowerCase().includes(low) ||
-            r.customer_identifier.includes(term),
-        );
-      }
+      const mapped: BillRow[] = ((data ?? []) as BillRow[]).map((t) => ({
+        ...t,
+        amount: n(t.amount),
+        metadata: (t.metadata ?? {}) as Record<string, unknown>,
+        user_label: t.user_label || t.user_email || t.user_id.slice(0, 8),
+        user_email: t.user_email || "",
+        user_phone: t.user_phone || "",
+      }));
 
       setRows(mapped);
+      setTotal(Number(mapped[0]?.total_count ?? 0));
     } catch (e) {
       toast.error(friendlyError(e, "Could not load transactions"));
       setRows([]);
