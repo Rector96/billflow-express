@@ -531,7 +531,7 @@ export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "faile
   const desc = (result.responseDescription ?? "").toLowerCase().trim();
   const blob = `${s} ${desc}`;
 
-  if (code === "TIMEOUT" || code === "" || code === "099") return "pending";
+  if (code === "TIMEOUT" || code === "099") return "pending";
   if (FAIL_CODES.has(code)) return "failed";
 
   if (
@@ -542,28 +542,30 @@ export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "faile
     s === "canceled" ||
     blob.includes("transaction failed") ||
     blob.includes("purchase failed") ||
-    blob.includes("insufficient") ||
-    blob.includes("invalid") ||
     blob.includes("not successful")
   ) {
     return "failed";
   }
 
-  const successHint =
+  if (s === "pending" || s === "initiated" || s === "processing" || s === "in-progress") {
+    return "pending";
+  }
+
+  if (code === "000" || code === "00" || code === "0") return "successful";
+
+  if (
     s === "delivered" ||
     s === "successful" ||
     s === "success" ||
     s === "completed" ||
     s === "complete" ||
     s.includes("deliver") ||
-    (blob.includes("success") && !blob.includes("unsuccess"));
-
-  if (code === "000" || code === "00" || code === "0") {
-    if (successHint) return "successful";
-    if (result.purchasedCode && String(result.purchasedCode).trim()) return "successful";
-    return "pending";
+    (blob.includes("success") && !blob.includes("unsuccess"))
+  ) {
+    return "successful";
   }
 
-  // Unknown non-success codes are failures (do not stay pending forever)
+  if (result.purchasedCode && String(result.purchasedCode).trim()) return "successful";
+  if (code === "" && !s && !desc) return "pending";
   return "failed";
 }
