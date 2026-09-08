@@ -97,36 +97,6 @@ export function RockPayBillFlow() {
   const service = getService(slug);
   const savedItem = saved.find((s) => s.id === search.saved);
 
-  if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
-  if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
-
-  if (slug === "internet" || slug === "water" || slug === "insurance") {
-    return (
-      <AppShell>
-        <PageHeader title={service?.name ?? "Coming soon"} backTo="/services" />
-        <div className="mx-auto max-w-md px-4 py-10 text-center">
-          <p className="text-sm font-bold">Coming soon</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            This RockPay bill service is not enabled yet.
-          </p>
-          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
-            <Link to="/services">Back to services</Link>
-          </Button>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (!service) {
-    return (
-      <AppShell>
-        <PageHeader title="Service unavailable" backTo="/services" />
-        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-          We could not find that service.
-        </div>
-      </AppShell>
-    );
-  }
 
   const buyAirtime = useServerFn(purchaseAirtime);
   const checkAirtime = useServerFn(requeryAirtime);
@@ -138,10 +108,10 @@ export function RockPayBillFlow() {
   const buyElectricity = useServerFn(purchaseElectricity);
   const checkBill = useServerFn(requeryBill);
 
-  const isAirtime = service.slug === "airtime";
-  const isCable = service.slug === "cable";
-  const isElectricity = service.slug === "electricity";
-  const isData = service.slug === "data";
+  const isAirtime = service?.slug === "airtime";
+  const isCable = service?.slug === "cable";
+  const isElectricity = service?.slug === "electricity";
+  const isData = service?.slug === "data";
   const isProviderBill = isCable || isElectricity;
   const isLiveCatalog = isCable || isElectricity || isData;
   const isPackageLive = isCable || isData;
@@ -258,6 +228,38 @@ export function RockPayBillFlow() {
       cancelled = true;
     };
   }, [isPackageLive, serviceID, loadVariations]);
+
+
+  if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
+  if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
+
+  if (slug === "internet" || slug === "water" || slug === "insurance") {
+    return (
+      <AppShell>
+        <PageHeader title={service?.name ?? "Coming soon"} backTo="/services" />
+        <div className="mx-auto max-w-md px-4 py-10 text-center">
+          <p className="text-sm font-bold">Coming soon</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            This RockPay bill service is not enabled yet.
+          </p>
+          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
+            <Link to="/services">Back to services</Link>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!service) {
+    return (
+      <AppShell>
+        <PageHeader title="Service unavailable" backTo="/services" />
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+          We could not find that service.
+        </div>
+      </AppShell>
+    );
+  }
 
   const startVerify = async () => {
     setError("");
