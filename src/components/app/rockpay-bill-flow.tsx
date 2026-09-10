@@ -495,7 +495,7 @@ export function RockPayBillFlow() {
     if (step !== "result" || outcome !== "pending" || !txId) return;
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 12;
 
     const poll = async () => {
       if (cancelled || refreshLock.current || attempts >= maxAttempts) return;
@@ -527,8 +527,8 @@ export function RockPayBillFlow() {
       }
     };
 
-    const t0 = window.setTimeout(() => void poll(), 2500);
-    const interval = window.setInterval(() => void poll(), 4500);
+    const t0 = window.setTimeout(() => void poll(), 1500);
+    const interval = window.setInterval(() => void poll(), 3000);
     return () => {
       cancelled = true;
       window.clearTimeout(t0);

@@ -575,6 +575,15 @@ export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "faile
   if (code === "000" || code === "00" || code === "0") return "successful";
 
   if (
+    desc.includes("transaction successful") ||
+    desc.includes("purchase successful") ||
+    desc === "successful" ||
+    desc === "success"
+  ) {
+    return "successful";
+  }
+
+  if (
     s === "delivered" ||
     s === "successful" ||
     s === "success" ||
@@ -587,6 +596,10 @@ export function mapVtpassOutcome(result: VtpassPayResult): "successful" | "faile
   }
 
   if (result.purchasedCode && String(result.purchasedCode).trim()) return "successful";
+
   if (code === "" && !s && !desc) return "pending";
+  if (code && !FAIL_CODES.has(code) && (s === "" || s === "pending" || !s)) {
+    return "pending";
+  }
   return "failed";
 }
