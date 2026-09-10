@@ -13,6 +13,8 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
+import { motion } from "motion/react";
 import { AppShell } from "@/components/app/app-shell";
 import { ExamPinsFlow } from "@/components/app/exam-pins-flow";
 import { PageHeader } from "@/components/app/page-header";
@@ -427,6 +429,59 @@ export function RockPayBillFlow() {
     }
   };
 
+
+  // Auto-requery pending provider status (bounded) so success settles without manual taps.
+  useEffect(() => {
+    if (step !== "result" || outcome !== "pending" || !txId) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 8;
+
+    const poll = async () => {
+      if (cancelled || refreshLock.current || attempts >= maxAttempts) return;
+      attempts += 1;
+      refreshLock.current = true;
+      try {
+        if (isAirtime) {
+          const res = await checkAirtime({ data: { reference: txId } });
+          if (cancelled) return;
+          setOutcome(res.status);
+          setResultMessage(res.message);
+          if (res.requestId) setProviderRequestId(res.requestId);
+          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
+          if (res.status === "successful") await refresh();
+        } else {
+          const res = await checkBill({ data: { reference: txId } });
+          if (cancelled) return;
+          setOutcome(res.status);
+          setResultMessage(res.message);
+          if (res.requestId) setProviderRequestId(res.requestId);
+          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
+          if (res.token) setToken(res.token);
+          if (res.status === "successful") await refresh();
+        }
+      } catch {
+        // Keep pending UI; user can still tap Check status.
+      } finally {
+        refreshLock.current = false;
+      }
+    };
+
+    const t0 = window.setTimeout(() => void poll(), 2500);
+    const interval = window.setInterval(() => void poll(), 4500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t0);
+      window.clearInterval(interval);
+    };
+  }, [step, outcome, txId, isAirtime, checkAirtime, checkBill, refresh]);
+
+  useEffect(() => {
+    if (step === "result" && outcome === "successful") {
+      void confetti({ particleCount: 90, spread: 70, origin: { y: 0.65 } });
+    }
+  }, [step, outcome]);
+
   const copy = (label: string, value: string) => {
     if (value) {
       void navigator.clipboard?.writeText(value);
@@ -437,12 +492,61 @@ export function RockPayBillFlow() {
   if (step === "processing")
     return (
       <AppShell>
-        <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-3 px-6 text-center">
-          <Loader2 className="size-10 animate-spin text-primary" />
-          <p className="text-base font-bold">Processing…</p>
-          <p className="text-xs text-muted-foreground">
-            Please wait while we communicate with the provider.
-          </p>
+        <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full rounded-[30px] border border-border/70 bg-card p-6 text-center shadow-card"
+          >
+            <div className="relative mx-auto flex size-20 items-center justify-center">
+              <motion.div
+                animate={{ scale: [1, 1.25, 1], opacity: [0.35, 0.7, 0.35] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full bg-primary/15"
+              />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                className="relative grid size-16 place-items-center rounded-full border-[3px] border-primary border-t-transparent bg-primary-soft text-primary shadow-sm"
+              >
+                <Zap className="size-7 fill-primary" />
+              </motion.div>
+            </div>
+            <h1 className="mt-5 text-xl font-black tracking-tight text-foreground">
+              Processing your payment
+            </h1>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              Communicating securely with {provider || service?.name || "the provider"}…
+            </p>
+            <div className="mt-5 space-y-2 rounded-2xl border border-border/60 bg-secondary/40 p-3.5 text-left">
+              <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-600">
+                <span className="grid size-4 place-items-center rounded-full bg-emerald-500 text-[10px] font-black text-white">
+                  ✓
+                </span>
+                Wallet balance authorized
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-primary">
+                <span className="ml-1 size-2 animate-ping rounded-full bg-primary" />
+                Dispatching order to provider network
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
+                <span className="ml-1.5 size-1.5 rounded-full bg-muted-foreground/50" />
+                Waiting for delivery confirmation
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl bg-secondary/80 px-3.5 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Payment amount
+              </p>
+              <p className="mt-0.5 text-2xl font-black tabular-nums text-foreground">
+                {formatNaira(total, false)}
+              </p>
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary-soft/60 px-3 py-2 text-primary">
+              <ShieldCheck className="size-4 shrink-0" />
+              <p className="text-[11px] font-bold">Protected wallet debit · status confirmed by provider</p>
+            </div>
+          </motion.div>
         </div>
       </AppShell>
     );
@@ -470,12 +574,12 @@ export function RockPayBillFlow() {
                 <Clock3 className="size-7 animate-pulse" />
               )}
             </span>
-            <h1 className="mt-4 text-xl font-bold tracking-tight">
+            <h1 className="mt-4 text-xl font-black tracking-tight">
               {outcome === "successful"
                 ? "Payment successful"
                 : outcome === "failed"
                   ? "Payment failed"
-                  : "Payment processing"}
+                  : "Almost there…"}
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {resultMessage ||

@@ -8,12 +8,15 @@ import {
   Copy,
   Home,
   Loader2,
+  ShieldCheck,
+  Zap,
   Minus,
   Plus,
   RefreshCw,
   Ticket,
 } from "lucide-react";
 import { toast } from "sonner";
+import { motion } from "motion/react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
@@ -203,12 +206,35 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   if (step === "processing") {
     return (
       <AppShell>
-        <div className="flex min-h-[60dvh] flex-col items-center justify-center gap-3 px-6 text-center">
-          <Loader2 className="size-10 animate-spin text-primary" />
-          <p className="text-base font-bold">Processing…</p>
-          <p className="text-xs text-muted-foreground">
-            Please wait while we confirm your order with the provider.
-          </p>
+        <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full rounded-[30px] border border-border/70 bg-card p-6 text-center shadow-card"
+          >
+            <div className="relative mx-auto flex size-20 items-center justify-center">
+              <motion.div
+                animate={{ scale: [1, 1.25, 1], opacity: [0.35, 0.7, 0.35] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full bg-primary/15"
+              />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                className="relative grid size-16 place-items-center rounded-full border-[3px] border-primary border-t-transparent bg-primary-soft text-primary shadow-sm"
+              >
+                <Zap className="size-7 fill-primary" />
+              </motion.div>
+            </div>
+            <h1 className="mt-5 text-xl font-black tracking-tight">Processing your payment</h1>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Confirming your education / PIN order with the provider…
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary-soft/60 px-3 py-2 text-primary">
+              <ShieldCheck className="size-4 shrink-0" />
+              <p className="text-[11px] font-bold">Protected wallet debit · delivery status verified server-side</p>
+            </div>
+          </motion.div>
         </div>
       </AppShell>
     );
