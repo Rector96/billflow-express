@@ -21,40 +21,28 @@ export function PayStepper({
   const active = steps[Math.min(Math.max(current, 0), steps.length - 1)];
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-center gap-1.5">
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex items-center gap-1">
         {steps.map((s, i) => {
           const done = i < current;
           const isNow = i === current;
           return (
-            <div key={s.key} className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span
-                className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-extrabold transition-colors",
-                  done
-                    ? "bg-primary text-primary-foreground"
-                    : isNow
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary-soft"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
-              </span>
-              {i < steps.length - 1 ? (
-                <span
-                  className={cn(
-                    "h-1 min-w-0 flex-1 rounded-full transition-colors",
-                    done ? "bg-primary" : "bg-muted",
-                  )}
-                />
-              ) : null}
-            </div>
+            <div
+              key={s.key}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-all duration-200",
+                done || isNow ? "bg-primary" : "bg-muted",
+              )}
+            />
           );
         })}
       </div>
-      <p className="text-xs font-bold tracking-wide text-primary uppercase">
-        Step {Math.min(current + 1, steps.length)} of {steps.length} · {active?.label}
-      </p>
+      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span>
+          Step {Math.min(current + 1, steps.length)} of {steps.length}
+        </span>
+        <span className="font-semibold text-foreground">{active?.label}</span>
+      </div>
     </div>
   );
 }

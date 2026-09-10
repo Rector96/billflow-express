@@ -1,6 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { Json } from "@/integrations/supabase/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Json } from "@/integrations/supabase/types";
+
+/** Narrow admin client shape for RPCs not in generated Database types (no `any`). */
+type AdminChain = {
+  select: (columns: string) => AdminChain;
+  update: (values: Record<string, unknown>) => AdminChain;
+  eq: (column: string, value: string | number) => AdminChain;
+  filter: (column: string, op: string, value: string) => AdminChain;
+  limit: (n: number) => Promise<{ data: unknown; error: { message: string } | null }>;
+  then: Promise<{ data: unknown; error: { message: string } | null }>["then"];
+};
+
+type AdminClient = {
+  rpc: (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  from: (table: string) => AdminChain;
+};
+
+type AuthSupabase = SupabaseClient<Database>;
+
+function asAdmin(client: unknown): AdminClient {
+  return client as AdminClient;
+}
 
 export type BillPurchaseResult = {
   status: "successful" | "pending" | "failed";
@@ -49,28 +74,18 @@ function customerMessage(
         : slug === "data"
           ? "Data"
           : "Bill";
-
-  if (status === "successful") {
+  if (status === "successful")
     return amount != null
       ? `Your ${label} purchase of ₦${Math.round(amount).toLocaleString("en-NG")} was successful.`
       : `Your ${label} purchase was successful.`;
-  }
-
   if (status === "failed") {
     const hint = (providerHint ?? "").trim();
     const upper = hint.toUpperCase();
-    if (upper.includes("WHITELIST") || upper.includes("NOT WHITELISTED")) {
-      return (
-        `This ${label.toLowerCase()} product is not enabled on VTpass yet. ` +
-        "Enable it under Sandbox → Product Settings, then try again. Wallet refunded."
-      );
-    }
-    if (hint) {
-      return `Your ${label} purchase failed (${hint}). Your wallet has been refunded.`;
-    }
+    if (upper.includes("WHITELIST") || upper.includes("NOT WHITELISTED"))
+      return `This ${label.toLowerCase()} product is not enabled on VTpass yet. Enable it under Sandbox → Product Settings, then try again. Wallet refunded.`;
+    if (hint) return `Your ${label} purchase failed (${hint}). Your wallet has been refunded.`;
     return `Your ${label} purchase failed. Your wallet has been refunded.`;
   }
-
   return `Your ${label} purchase is still being confirmed. Your money is protected.`;
 }
 
@@ -82,103 +97,17 @@ function mapStartError(message: string): Error {
   if (message.includes("invalid amount")) return new Error("Enter a valid amount.");
   if (message.includes("unsupported_service"))
     return new Error("This service is not available yet.");
-  if (message.includes("invalid_phone") || message.includes("Enter a valid Nigerian")) {
+  if (message.includes("invalid_phone") || message.includes("Enter a valid Nigerian"))
     return new Error("Enter a valid Nigerian mobile number.");
-  }
-
   return new Error(message);
-}
-
-/** Settlement must use service_role — authenticated lost EXECUTE on complete_bill_purchase. */
-async function syncWalletLedgerStatus(
-  internalReference: string,
-  status: "successful" | "pending" | "failed",
-) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin
-    .from("wallet_transactions")
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    .filter("metadata->>bill_reference", "eq", internalReference);
-  if (error) {
-    console.error("[settle] wallet_transactions sync", internalReference, error.message);
-  }
-}
-
-async function finalizeBillPurchase(
-  userId: string,
-  internalReference: string,
-  outcome: "successful" | "pending" | "failed",
-  providerTransactionId: string,
-  payload: Json,
-) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("trusted_complete_bill_purchase", {
-    _user_id: userId,
-    _internal_reference: internalReference,
-    _outcome: outcome,
-    _provider_transaction_id: providerTransactionId || "",
-    _payload: payload,
-  });
-
-  if (error) {
-    console.error(
-      "[settle] trusted_complete_bill_purchase",
-      internalReference,
-      error.message,
-      outcome,
-    );
-    if (outcome === "successful" || outcome === "failed") {
-      const { error: bErr } = await supabaseAdmin
-        .from("bill_transactions")
-        .update({
-          status: outcome,
-          provider_transaction_id: providerTransactionId || null,
-          provider_response_code:
-            String((payload as { vtpass_code?: string })?.vtpass_code ?? "") || null,
-          provider_status:
-            String((payload as { vtpass_status?: string })?.vtpass_status ?? "") || null,
-          provider_response_message:
-            String((payload as { response_description?: string })?.response_description ?? "") ||
-            null,
-          updated_at: new Date().toISOString(),
-          metadata: payload,
-        })
-        .eq("internal_reference", internalReference)
-        .eq("status", "pending");
-      if (bErr) console.error("[settle] bill fallback", bErr.message);
-      await syncWalletLedgerStatus(internalReference, outcome);
-      return {
-        data: [
-          {
-            bill_id: null,
-            internal_reference: internalReference,
-            status: outcome,
-            balance_after: null,
-            refunded: outcome === "failed",
-          },
-        ],
-        error: null,
-      };
-    }
-    return { data, error };
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
-  const finalStatus = (row?.status ?? outcome) as "successful" | "pending" | "failed";
-  await syncWalletLedgerStatus(internalReference, finalStatus);
-  return { data, error: null };
 }
 
 export const listVtpassServices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { category: string }) => {
     const category = String(input?.category ?? "").trim();
-    if (category !== "tv-subscription" && category !== "electricity-bill" && category !== "data") {
+    if (category !== "tv-subscription" && category !== "electricity-bill" && category !== "data")
       throw new Error("Unsupported catalogue category.");
-    }
     return { category };
   })
   .handler(async ({ data }) => {
@@ -218,13 +147,10 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
     const serviceID = String(input?.serviceID ?? "").trim();
     const billersCode = String(input?.billersCode ?? "").replace(/\s/g, "");
     if (!serviceID) throw new Error("Select a provider.");
-    if (!billersCode || billersCode.length < 5) {
-      throw new Error("Enter a valid number.");
-    }
+    if (!billersCode || billersCode.length < 5) throw new Error("Enter a valid number.");
     const type = input?.type ? String(input.type).trim().toLowerCase() : undefined;
-    if (type && type !== "prepaid" && type !== "postpaid") {
+    if (type && type !== "prepaid" && type !== "postpaid")
       throw new Error("Select prepaid or postpaid.");
-    }
     return { serviceID, billersCode, type };
   })
   .handler(async ({ data }) => {
@@ -235,15 +161,13 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
       billersCode: data.billersCode,
       type: data.type,
     });
-    if (!result.ok) {
-      if (data.type === "prepaid" || data.type === "postpaid") {
-        throw new Error(
-          result.message ||
-            "Meter verification failed. Please check the meter number and try again.",
-        );
-      }
-      throw new Error(result.message || "Could not verify this number. Check and try again.");
-    }
+    if (!result.ok)
+      throw new Error(
+        result.message ||
+          (data.type
+            ? "Meter verification failed. Please check the number and try again."
+            : "Could not verify this number. Check and try again."),
+      );
     return {
       customerName: result.customerName,
       address: result.address,
@@ -256,6 +180,116 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
       snapshot: safePayload(result.raw),
     };
   });
+
+async function settleBillPurchase(
+  context: { supabase: AuthSupabase; userId: string },
+  input: {
+    slug: "data" | "cable" | "electricity";
+    serviceID: string;
+    product: string;
+    identifier: string;
+    amount: number;
+    requestId: string;
+    providerRequestId: string;
+    customerName: string | null;
+    metadata: Record<string, unknown>;
+    providerPayload: Record<string, unknown>;
+    providerTransactionId: string | null;
+    providerResult: import("./vtpass.server").VtpassPayResult;
+  },
+): Promise<BillPurchaseResult> {
+  const { mapVtpassOutcome } = await import("./vtpass.server");
+  const outcome = mapVtpassOutcome(input.providerResult);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: finalized, error } = await asAdmin(supabaseAdmin).rpc(
+    "trusted_complete_bill_purchase",
+    {
+      _user_id: context.userId,
+      _internal_reference: input.requestId,
+      _outcome: outcome,
+      _provider_transaction_id: input.providerTransactionId ?? "",
+      _payload: { ...input.providerPayload, ...input.metadata },
+    },
+  );
+  if (error) {
+    console.error(`[${input.slug}] complete`, error.message);
+    return {
+      status: "pending",
+      reference: input.requestId,
+      requestId: input.providerRequestId,
+      providerTransactionId: input.providerTransactionId,
+      amount: input.amount,
+      identifierMasked:
+        input.slug === "data" ? maskPhone(input.identifier) : maskId(input.identifier),
+      provider: input.serviceID,
+      product: input.product,
+      token: null,
+      balanceAfter: null,
+      message: customerMessage("pending", input.slug),
+      customerName: input.customerName,
+    };
+  }
+  const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+    Record<string, unknown> | null | undefined;
+  const status = (fin?.['status'] ?? outcome) as BillPurchaseResult["status"];
+  return {
+    status,
+    reference: String(fin?.['internal_reference'] ?? input.requestId),
+    requestId: input.providerRequestId,
+    providerTransactionId: input.providerTransactionId,
+    amount: input.amount,
+    identifierMasked:
+      input.slug === "data" ? maskPhone(input.identifier) : maskId(input.identifier),
+    provider: input.serviceID,
+    product: input.product,
+    token: input.providerResult.purchasedCode,
+    balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+    message: customerMessage(
+      status,
+      input.slug,
+      input.amount,
+      input.providerResult.responseDescription,
+    ),
+    customerName: input.customerName,
+  };
+}
+
+async function recordBillProfit(
+  reference: string,
+  service: "data" | "cable" | "electricity",
+  provider: string,
+  productCode: string,
+  customerAmount: number,
+  providerAmount: number,
+) {
+  const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await maybeRecordTransactionProfit(asAdmin(supabaseAdmin), {
+    internalReference: reference,
+    customerAmount,
+    providerAmount,
+    rockpayFee: null,
+    pricingRuleId: null,
+    service,
+    provider,
+    productCode,
+    providerCost: null,
+  });
+}
+
+async function rejectDuplicateRequest(
+  context: { supabase: AuthSupabase; userId: string },
+  requestId: string,
+) {
+  const { data } = await context.supabase
+    .from("bill_transactions")
+    .select("internal_reference")
+    .eq("provider_request_id", requestId)
+    .eq("user_id", context.userId)
+    .limit(1);
+  if (data?.[0])
+    throw new Error("This payment request has already been submitted. Refresh its status.");
+}
 
 export const purchaseCable = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -276,12 +310,8 @@ export const purchaseCable = createServerFn({ method: "POST" })
       const variationCode = String(input?.variationCode ?? "").trim();
       const amount = Math.round(Number(input?.amount));
       const pin = String(input?.pin ?? "");
-      if (!serviceID) throw new Error("Select a provider.");
-      if (!billersCode) throw new Error("Enter your smartcard number.");
-      if (!variationCode) throw new Error("Select a package.");
-      if (!Number.isFinite(amount) || amount < 50) {
-        throw new Error("Enter a valid amount.");
-      }
+      if (!serviceID || !billersCode || !variationCode || !Number.isFinite(amount) || amount < 50)
+        throw new Error("Invalid cable payment details.");
       if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
       return {
         serviceID,
@@ -289,118 +319,105 @@ export const purchaseCable = createServerFn({ method: "POST" })
         variationCode,
         amount,
         pin,
-        phone: input?.phone ? String(input.phone) : undefined,
-        customerName: input?.customerName ? String(input.customerName) : undefined,
-        subscriptionType: input?.subscriptionType ? String(input.subscriptionType) : "change",
+        phone: input?.phone,
+        customerName: input?.customerName,
+        subscriptionType: input?.subscriptionType || "change",
         requestId: String(input?.requestId ?? "").trim() || `cable-${crypto.randomUUID()}`,
       };
     },
   )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const { getVtpassConfig, vtpassListVariations, vtpassPay, mapVtpassOutcome, normalizeNgPhone } =
+    const { getVtpassConfig, vtpassListVariations, vtpassPay, normalizeNgPhone } =
       await import("./vtpass.server");
+    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
     const variations = await vtpassListVariations(data.serviceID);
-    const pack = variations.find((v) => v.variationCode === data.variationCode);
-    if (!pack) {
-      throw new Error("Selected package is no longer available. Refresh and try again.");
+    const pack = variations.find((variation) => variation.variationCode === data.variationCode);
+    if (!pack) throw new Error("Selected package is no longer available.");
+    const providerAmount = Math.round(pack.amount);
+    const pricing = await resolvePricing({
+      service: "cable",
+      provider: data.serviceID,
+      productCode: data.variationCode,
+      baseAmount: providerAmount,
+    });
+    await rejectDuplicateRequest(context, data.requestId);
+    let phone = "08011111111";
+    if (data.phone) {
+      try {
+        phone = normalizeNgPhone(data.phone);
+      } catch {
+        // Keep the provider fallback phone when normalization fails.
+      }
     }
-    const amount = pack.fixedPrice ? Math.round(pack.amount) : data.amount;
-    if (amount < 50) throw new Error("Enter a valid amount.");
-    let phone = data.phone;
-    try {
-      if (phone) phone = normalizeNgPhone(phone);
-    } catch {
-      phone = undefined;
-    }
-    if (!phone) phone = "08011111111";
-
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "cable",
       _service_label: "Cable TV",
       _provider: data.serviceID,
       _product: pack.name,
       _customer_identifier: data.billersCode,
-      _amount: amount,
+      _amount: pricing.customerAmount,
       _pin: data.pin,
       _metadata: {
         title: "Cable TV Payment",
         service_slug: "cable",
-        service_label: `${data.serviceID.toUpperCase()} ${pack.name}`,
-        masked: maskId(data.billersCode),
-        customer: data.customerName ?? null,
         variation_code: data.variationCode,
-        subscription_type: data.subscriptionType,
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
+        customer: data.customerName ?? null,
       },
       _request_id: data.requestId,
     });
-    if (startError) {
-      console.error("[cable] start", startError.message);
-      throw mapStartError(startError.message);
-    }
+    if (error) throw mapStartError(error.message);
     const row = Array.isArray(started) ? started[0] : started;
-    if (!row?.internal_reference || !row?.request_id) {
+    if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start cable payment.");
-    }
-
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID: data.serviceID,
       billersCode: data.billersCode,
       variation_code: data.variationCode,
-      amount,
+      amount: providerAmount,
       phone,
-      subscription_type: data.subscriptionType || "change",
+      subscription_type: data.subscriptionType,
     });
-    const outcome = mapVtpassOutcome(pay);
-    console.info("[cable] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
-
-    const { data: finalized, error: finError } = await finalizeBillPurchase(
-      context.userId,
-      row.internal_reference as string,
-      outcome,
-      pay.transactionId ?? "",
-      {
+    const result = await settleBillPurchase(context, {
+      slug: "cable",
+      serviceID: data.serviceID,
+      product: pack.name,
+      identifier: data.billersCode,
+      amount: pricing.customerAmount,
+      requestId: row.internal_reference,
+      providerRequestId: row.request_id,
+      customerName: data.customerName ?? null,
+      metadata: {
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
+      },
+      providerPayload: {
         vtpass_code: pay.code,
         vtpass_status: pay.contentStatus,
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
         vtpass_snapshot: safePayload(pay.raw),
       },
-    );
-    if (finError) {
-      console.error("[cable] complete", finError.message);
-      return {
-        status: "pending",
-        reference: row.internal_reference as string,
-        requestId: row.request_id as string,
-        providerTransactionId: pay.transactionId,
-        amount,
-        identifierMasked: maskId(data.billersCode),
-        provider: data.serviceID,
-        product: pack.name,
-        token: null,
-        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage("pending", "cable"),
-        customerName: data.customerName ?? null,
-      };
-    }
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
-    return {
-      status,
-      reference: (fin?.internal_reference ?? row.internal_reference) as string,
-      requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount,
-      identifierMasked: maskId(data.billersCode),
-      provider: data.serviceID,
-      product: pack.name,
-      token: pay.purchasedCode,
-      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, "cable", amount, pay.responseDescription),
-      customerName: data.customerName ?? null,
-    };
+      providerResult: pay,
+    });
+    if (result.status === "successful")
+      await recordBillProfit(
+        result.reference,
+        "cable",
+        data.serviceID,
+        data.variationCode,
+        pricing.customerAmount,
+        providerAmount,
+      );
+    return result;
   });
 
 export const purchaseElectricity = createServerFn({ method: "POST" })
@@ -424,18 +441,16 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         .toLowerCase();
       const amount = Math.round(Number(input?.amount));
       const pin = String(input?.pin ?? "");
-      const minAmount = input?.minAmount != null ? Number(input.minAmount) : 0;
-      if (!serviceID) throw new Error("Select a provider.");
-      if (!billersCode) throw new Error("Enter your meter number.");
-      if (meterType !== "prepaid" && meterType !== "postpaid") {
-        throw new Error("Select prepaid or postpaid.");
-      }
-      if (!Number.isFinite(amount) || amount < 50) {
-        throw new Error("Enter a valid amount.");
-      }
-      if (minAmount > 0 && amount < minAmount) {
-        throw new Error(`Minimum amount is ₦${Math.round(minAmount).toLocaleString("en-NG")}.`);
-      }
+      if (
+        !serviceID ||
+        !billersCode ||
+        !Number.isFinite(amount) ||
+        amount < 50 ||
+        !["prepaid", "postpaid"].includes(meterType)
+      )
+        throw new Error("Invalid electricity payment details.");
+      if (input?.minAmount && amount < Number(input.minAmount))
+        throw new Error("Amount is below the provider minimum.");
       if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
       return {
         serviceID,
@@ -443,72 +458,65 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         meterType,
         amount,
         pin,
-        phone: input?.phone ? String(input.phone) : undefined,
-        customerName: input?.customerName ? String(input.customerName) : undefined,
-        minAmount,
-        requestId: String(input?.requestId ?? "").trim() || `power-${crypto.randomUUID()}`,
+        phone: input?.phone,
+        customerName: input?.customerName,
+        requestId: String(input?.requestId ?? "").trim() || `electricity-${crypto.randomUUID()}`,
       };
     },
   )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const { getVtpassConfig, vtpassPay, mapVtpassOutcome, normalizeNgPhone, vtpassMerchantVerify } =
+    const { getVtpassConfig, vtpassMerchantVerify, vtpassPay, normalizeNgPhone } =
       await import("./vtpass.server");
+    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
     const verified = await vtpassMerchantVerify({
       serviceID: data.serviceID,
       billersCode: data.billersCode,
       type: data.meterType,
     });
-    if (!verified.ok) {
-      throw new Error(
-        verified.message ||
-          "Meter verification failed. Please check the meter number and try again.",
-      );
+    if (!verified.ok || !verified.customerName)
+      throw new Error(verified.message || "Meter verification failed.");
+    if (verified.minPurchaseAmount && data.amount < verified.minPurchaseAmount)
+      throw new Error("Amount is below the provider minimum.");
+    const pricing = await resolvePricing({
+      service: "electricity",
+      provider: data.serviceID,
+      productCode: data.meterType,
+      baseAmount: data.amount,
+    });
+    await rejectDuplicateRequest(context, data.requestId);
+    let phone = "08011111111";
+    if (data.phone) {
+      try {
+        phone = normalizeNgPhone(data.phone);
+      } catch {
+        // Keep the provider fallback phone when normalization fails.
+      }
     }
-    const resolvedCustomerName = verified.customerName ?? data.customerName ?? null;
-    const resolvedMin =
-      verified.minPurchaseAmount != null && Number.isFinite(verified.minPurchaseAmount)
-        ? Number(verified.minPurchaseAmount)
-        : (data.minAmount ?? 0);
-    if (resolvedMin > 0 && data.amount < resolvedMin) {
-      throw new Error(`Minimum amount is ₦${Math.round(resolvedMin).toLocaleString("en-NG")}.`);
-    }
-    let phone = data.phone;
-    try {
-      if (phone) phone = normalizeNgPhone(phone);
-    } catch {
-      phone = undefined;
-    }
-    if (!phone) phone = "08011111111";
-
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "electricity",
       _service_label: "Electricity",
       _provider: data.serviceID,
       _product: data.meterType,
       _customer_identifier: data.billersCode,
-      _amount: data.amount,
+      _amount: pricing.customerAmount,
       _pin: data.pin,
       _metadata: {
         title: "Electricity Payment",
         service_slug: "electricity",
-        service_label: `${data.serviceID} (${data.meterType})`,
-        masked: maskId(data.billersCode),
-        customer: resolvedCustomerName,
         meter_type: data.meterType,
-        verified_at: new Date().toISOString(),
+        provider_amount: data.amount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
+        customer: verified.customerName,
       },
       _request_id: data.requestId,
     });
-    if (startError) {
-      console.error("[electricity] start", startError.message);
-      throw mapStartError(startError.message);
-    }
+    if (error) throw mapStartError(error.message);
     const row = Array.isArray(started) ? started[0] : started;
-    if (!row?.internal_reference || !row?.request_id) {
+    if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start electricity payment.");
-    }
-
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID: data.serviceID,
@@ -518,55 +526,42 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
       amount: data.amount,
       phone,
     });
-    const outcome = mapVtpassOutcome(pay);
-    console.info("[electricity] pay", row.internal_reference, pay.code, pay.contentStatus, outcome);
-
-    const { data: finalized, error: finError } = await finalizeBillPurchase(
-      context.userId,
-      row.internal_reference as string,
-      outcome,
-      pay.transactionId ?? "",
-      {
+    const result = await settleBillPurchase(context, {
+      slug: "electricity",
+      serviceID: data.serviceID,
+      product: data.meterType,
+      identifier: data.billersCode,
+      amount: pricing.customerAmount,
+      requestId: row.internal_reference,
+      providerRequestId: row.request_id,
+      customerName: verified.customerName,
+      metadata: {
+        provider_amount: data.amount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
+      },
+      providerPayload: {
         vtpass_code: pay.code,
         vtpass_status: pay.contentStatus,
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
+        token: pay.purchasedCode,
         vtpass_snapshot: safePayload(pay.raw),
       },
-    );
-    if (finError) {
-      console.error("[electricity] complete", finError.message);
-      return {
-        status: "pending",
-        reference: row.internal_reference as string,
-        requestId: row.request_id as string,
-        providerTransactionId: pay.transactionId,
-        amount: data.amount,
-        identifierMasked: maskId(data.billersCode),
-        provider: data.serviceID,
-        product: data.meterType,
-        token: null,
-        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage("pending", "electricity"),
-        customerName: resolvedCustomerName,
-      };
-    }
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
-    return {
-      status,
-      reference: (fin?.internal_reference ?? row.internal_reference) as string,
-      requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount: data.amount,
-      identifierMasked: maskId(data.billersCode),
-      provider: data.serviceID,
-      product: data.meterType,
-      token: pay.purchasedCode,
-      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, "electricity", data.amount, pay.responseDescription),
-      customerName: resolvedCustomerName,
-    };
+      providerResult: pay,
+    });
+    if (result.status === "successful")
+      await recordBillProfit(
+        result.reference,
+        "electricity",
+        data.serviceID,
+        data.meterType,
+        pricing.customerAmount,
+        data.amount,
+      );
+    return result;
   });
 
 export const purchaseData = createServerFn({ method: "POST" })
@@ -576,7 +571,6 @@ export const purchaseData = createServerFn({ method: "POST" })
       serviceID: string;
       phone: string;
       variationCode: string;
-      amount?: number;
       pin: string;
       requestId?: string;
     }) => {
@@ -584,16 +578,13 @@ export const purchaseData = createServerFn({ method: "POST" })
       const phone = String(input?.phone ?? "").trim();
       const variationCode = String(input?.variationCode ?? "").trim();
       const pin = String(input?.pin ?? "");
-      if (!serviceID) throw new Error("Select a network.");
-      if (!phone) throw new Error("Enter a phone number.");
-      if (!variationCode) throw new Error("Select a data plan.");
+      if (!serviceID || !phone || !variationCode) throw new Error("Invalid data payment details.");
       if (!/^\d{4}$/.test(pin)) throw new Error("Enter your 4-digit PIN.");
       return {
         serviceID,
         phone,
         variationCode,
         pin,
-        amount: input?.amount != null ? Math.round(Number(input.amount)) : undefined,
         requestId: String(input?.requestId ?? "").trim() || `data-${crypto.randomUUID()}`,
       };
     },
@@ -603,132 +594,93 @@ export const purchaseData = createServerFn({ method: "POST" })
       getVtpassConfig,
       vtpassListVariations,
       vtpassPay,
-      mapVtpassOutcome,
       normalizeNgPhone,
       toVtpassDataServiceId,
       MOBILE_DATA_SERVICE_IDS,
     } = await import("./vtpass.server");
+    const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
-
-    let serviceID: string;
-    try {
-      serviceID = MOBILE_DATA_SERVICE_IDS.has(data.serviceID)
-        ? data.serviceID
-        : toVtpassDataServiceId(data.serviceID);
-    } catch {
-      throw new Error("Select a supported network.");
-    }
-
+    const serviceID = MOBILE_DATA_SERVICE_IDS.has(data.serviceID)
+      ? data.serviceID
+      : toVtpassDataServiceId(data.serviceID);
     const phone = normalizeNgPhone(data.phone);
     const variations = await vtpassListVariations(serviceID);
-    const pack = variations.find((v) => v.variationCode === data.variationCode);
-    if (!pack) {
-      throw new Error("Selected plan is no longer available. Refresh and try again.");
-    }
-
-    const amount = Math.round(Number(pack.amount));
-    if (!Number.isFinite(amount) || amount < 1) {
-      throw new Error("Selected plan has an invalid amount. Refresh and try again.");
-    }
-
-    const networkLabel = serviceID
-      .replace(/-data$/i, "")
-      .replace(/etisalat/i, "9mobile")
-      .toUpperCase();
-
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const pack = variations.find((variation) => variation.variationCode === data.variationCode);
+    if (!pack) throw new Error("Selected plan is no longer available.");
+    const providerAmount = Math.round(pack.amount);
+    const pricing = await resolvePricing({
+      service: "data",
+      provider: serviceID,
+      productCode: data.variationCode,
+      baseAmount: providerAmount,
+    });
+    await rejectDuplicateRequest(context, data.requestId);
+    const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
       _service_slug: "data",
       _service_label: "Data",
       _provider: serviceID,
       _product: pack.name,
       _customer_identifier: phone,
-      _amount: amount,
+      _amount: pricing.customerAmount,
       _pin: data.pin,
       _metadata: {
         title: "Data Purchase",
         service_slug: "data",
-        service_label: `${networkLabel} ${pack.name}`,
-        masked: maskPhone(phone),
         variation_code: data.variationCode,
-        network: networkLabel,
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
       },
       _request_id: data.requestId,
     });
-    if (startError) {
-      console.error("[data] start", startError.message);
-      throw mapStartError(startError.message);
-    }
+    if (error) throw mapStartError(error.message);
     const row = Array.isArray(started) ? started[0] : started;
-    if (!row?.internal_reference || !row?.request_id) {
+    if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start data purchase.");
-    }
-
     const pay = await vtpassPay({
       request_id: row.request_id,
       serviceID,
       billersCode: phone,
       variation_code: data.variationCode,
-      amount,
+      amount: providerAmount,
       phone,
     });
-    const outcome = mapVtpassOutcome(pay);
-    console.info("[data] pay", row.internal_reference, {
-      code: pay.code,
-      status: pay.contentStatus,
-      desc: pay.responseDescription,
-      txId: pay.transactionId,
+    const result = await settleBillPurchase(context, {
+      slug: "data",
       serviceID,
-      variation: data.variationCode,
-      amount,
-      outcome,
-    });
-
-    const { data: finalized, error: finError } = await finalizeBillPurchase(
-      context.userId,
-      row.internal_reference as string,
-      outcome,
-      pay.transactionId ?? "",
-      {
+      product: pack.name,
+      identifier: phone,
+      amount: pricing.customerAmount,
+      requestId: row.internal_reference,
+      providerRequestId: row.request_id,
+      customerName: null,
+      metadata: {
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        pricing_fallback: pricing.usedFallback,
+      },
+      providerPayload: {
         vtpass_code: pay.code,
         vtpass_status: pay.contentStatus,
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
         vtpass_snapshot: safePayload(pay.raw),
       },
-    );
-    if (finError) {
-      console.error("[data] complete", finError.message);
-      return {
-        status: "pending",
-        reference: row.internal_reference as string,
-        requestId: row.request_id as string,
-        providerTransactionId: pay.transactionId,
-        amount,
-        identifierMasked: maskPhone(phone),
-        provider: serviceID,
-        product: pack.name,
-        token: null,
-        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
-        message: customerMessage("pending", "data"),
-        customerName: null,
-      };
-    }
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
-    return {
-      status,
-      reference: (fin?.internal_reference ?? row.internal_reference) as string,
-      requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
-      amount,
-      identifierMasked: maskPhone(phone),
-      provider: serviceID,
-      product: pack.name,
-      token: pay.purchasedCode,
-      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, "data", amount, pay.responseDescription),
-      customerName: null,
-    };
+      providerResult: pay,
+    });
+    if (result.status === "successful")
+      await recordBillProfit(
+        result.reference,
+        "data",
+        serviceID,
+        data.variationCode,
+        pricing.customerAmount,
+        providerAmount,
+      );
+    return result;
   });
 
 export const requeryBill = createServerFn({ method: "POST" })
@@ -749,81 +701,75 @@ export const requeryBill = createServerFn({ method: "POST" })
       .limit(1);
     if (error) throw new Error(error.message);
     const bill = bills?.[0];
-    if (!bill) throw new Error("Transaction not found.");
-    if (bill.user_id && bill.user_id !== context.userId) {
-      throw new Error("Transaction not found.");
-    }
+    if (!bill || bill.user_id !== context.userId) throw new Error("Transaction not found.");
     const meta = (bill.metadata ?? {}) as Record<string, unknown>;
-    const slug = String(meta["service_slug"] ?? "bill");
-    const amount = Number(bill.amount);
-    const tokenExisting =
-      typeof meta["token"] === "string"
-        ? meta["token"]
-        : typeof meta["purchased_code"] === "string"
-          ? meta["purchased_code"]
-          : null;
-    const idMasked =
-      slug === "data"
-        ? maskPhone(String(bill.customer_identifier ?? ""))
-        : maskId(String(bill.customer_identifier ?? ""));
-
-    if (bill.status === "successful" || bill.status === "failed") {
+    const slug = String(meta["service_slug"] ?? "bill") as "data" | "cable" | "electricity";
+    const identifier = String(bill.customer_identifier ?? "");
+    if (bill.status === "successful" || bill.status === "failed")
       return {
-        status: bill.status as "successful" | "failed",
+        status: bill.status,
         reference: bill.internal_reference,
         requestId: bill.provider_request_id ?? "",
         providerTransactionId: bill.provider_transaction_id,
-        amount,
-        identifierMasked: idMasked,
+        amount: Number(bill.amount),
+        identifierMasked: slug === "data" ? maskPhone(identifier) : maskId(identifier),
         provider: String(bill.provider ?? ""),
         product: bill.product,
-        token: tokenExisting,
+        token: typeof meta["token"] === "string" ? meta["token"] : null,
         balanceAfter: null,
-        message: customerMessage(bill.status as "successful" | "failed", slug, amount),
+        message: customerMessage(bill.status, slug, Number(bill.amount)),
         customerName: typeof meta["customer"] === "string" ? meta["customer"] : null,
       };
-    }
-
-    if (!bill.provider_request_id) {
-      throw new Error(
-        "We couldn't confirm this payment yet. Your money is still protected. Check again shortly or contact RockPay Care.",
-      );
-    }
-
+    if (!bill.provider_request_id) throw new Error("Your money is protected. Check again shortly.");
     const pay = await vtpassRequery(bill.provider_request_id);
     const outcome = mapVtpassOutcome(pay);
-    console.info("[bill] requery", data.reference, pay.code, pay.contentStatus, outcome);
-
-    const { data: finalized, error: finError } = await finalizeBillPurchase(
-      context.userId,
-      bill.internal_reference as string,
-      outcome,
-      pay.transactionId ?? bill.provider_transaction_id ?? "",
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: finalized, error: settleError } = await asAdmin(supabaseAdmin).rpc(
+      "trusted_complete_bill_purchase",
       {
-        vtpass_code: pay.code,
-        vtpass_status: pay.contentStatus,
-        response_description: pay.responseDescription,
-        purchased_code: pay.purchasedCode,
-        vtpass_snapshot: safePayload(pay.raw),
-        requery: true,
+        _user_id: context.userId,
+        _internal_reference: bill.internal_reference,
+        _outcome: outcome,
+        _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
+        _payload: {
+          vtpass_code: pay.code,
+          vtpass_status: pay.contentStatus,
+          response_description: pay.responseDescription,
+          purchased_code: pay.purchasedCode,
+          token: pay.purchasedCode,
+          requery: true,
+          vtpass_snapshot: safePayload(pay.raw),
+        },
       },
     );
-    if (finError) throw new Error(finError.message);
-
-    const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? "pending") as BillPurchaseResult["status"];
+    if (settleError) throw new Error(settleError.message);
+    const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
+      Record<string, unknown> | null | undefined;
+    const status = (fin?.['status'] ?? outcome) as BillPurchaseResult["status"];
+    if (status === "successful" && ["data", "cable", "electricity"].includes(slug)) {
+      const providerAmount = Number(meta["provider_amount"]);
+      if (Number.isFinite(providerAmount))
+        await recordBillProfit(
+          bill.internal_reference,
+          slug,
+          String(bill.provider ?? ""),
+          String(meta["variation_code"] ?? meta["meter_type"] ?? ""),
+          Number(bill.amount),
+          providerAmount,
+        );
+    }
     return {
       status,
       reference: bill.internal_reference,
       requestId: bill.provider_request_id,
       providerTransactionId: pay.transactionId ?? bill.provider_transaction_id,
-      amount,
-      identifierMasked: idMasked,
+      amount: Number(bill.amount),
+      identifierMasked: slug === "data" ? maskPhone(identifier) : maskId(identifier),
       provider: String(bill.provider ?? ""),
       product: bill.product,
-      token: pay.purchasedCode ?? tokenExisting,
-      balanceAfter: fin?.balance_after != null ? Number(fin.balance_after) : null,
-      message: customerMessage(status, slug, amount, pay.responseDescription),
+      token: pay.purchasedCode ?? null,
+      balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+      message: customerMessage(status, slug, Number(bill.amount), pay.responseDescription),
       customerName: typeof meta["customer"] === "string" ? meta["customer"] : null,
     };
   });

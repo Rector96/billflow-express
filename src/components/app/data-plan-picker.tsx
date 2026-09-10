@@ -12,14 +12,14 @@ export type DataPlanItem = {
 type TabId = "best" | "daily" | "weekly" | "monthly" | "all";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "best", label: "Best" },
+  { id: "best", label: "Best Offers" },
   { id: "daily", label: "Daily" },
   { id: "weekly", label: "Weekly" },
   { id: "monthly", label: "Monthly" },
   { id: "all", label: "All" },
 ];
 
-function classifyPlan(name: string): TabId {
+function classifyPlan(name: string): Exclude<TabId, "best" | "all"> | "other" {
   const n = name.toLowerCase();
   if (/(daily|1\s*day|24\s*hours|24hrs|night)/.test(n)) return "daily";
   if (/(weekly|7\s*days|7days|14\s*days)/.test(n)) return "weekly";
@@ -27,12 +27,12 @@ function classifyPlan(name: string): TabId {
   if (/\b[1-3]\s*days?\b/.test(n)) return "daily";
   if (/\b([4-9]|1[0-5])\s*days?\b/.test(n)) return "weekly";
   if (/\b([2-9][0-9]|1[6-9])\s*days?\b/.test(n)) return "monthly";
-  return "all";
+  return "other";
 }
 
 export function planSizeLabel(name: string): string | null {
   const m = name.match(/(\d+(?:\.\d+)?)\s*(GB|MB|TB)/i);
-  if (!m) return null;
+  if (!m?.[1] || !m[2]) return null;
   return `${m[1]}${m[2].toUpperCase()}`;
 }
 
@@ -41,7 +41,7 @@ export function planDurationLabel(name: string): string | null {
   if (/night/.test(n)) return "NIGHT";
   if (/(daily|1\s*day|24\s*h)/.test(n)) return "1 DAY";
   const days = n.match(/(\d+)\s*days?/);
-  if (days) return `${days[1]} DAYS`;
+  if (days?.[1]) return `${days[1]} DAYS`;
   if (/weekly|7\s*day/.test(n)) return "7 DAYS";
   if (/monthly|30\s*day|1\s*month/.test(n)) return "30 DAYS";
   return null;
@@ -51,10 +51,11 @@ function cardTitle(name: string): string {
   const size = planSizeLabel(name);
   if (size) return size;
   const cleaned = name
-    .replace(/\b(MTN|GLO|AIRTEL|9MOBILE|SMILE)\b/gi, "")
+    .replace(/\b(MTN|GLO|AIRTEL|9MOBILE|SMILE|DATA)\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  return cleaned.length > 14 ? `${cleaned.slice(0, 13)}…` : cleaned || "Data";
+  if (cleaned.length <= 12) return cleaned || "Data";
+  return `${cleaned.slice(0, 11)}…`;
 }
 
 type Props = {
@@ -65,175 +66,159 @@ type Props = {
   onSelect: (plan: DataPlanItem) => void;
 };
 
-export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, onSelect }: Props) {
+export function DataPlanPicker({
+  plans,
+  selectedCode,
+  networkLabel,
+  phoneLabel,
+  onSelect,
+}: Props) {
   const buckets = useMemo(() => {
     const daily: DataPlanItem[] = [];
     const weekly: DataPlanItem[] = [];
     const monthly: DataPlanItem[] = [];
+    const other: DataPlanItem[] = [];
     for (const p of plans) {
       const c = classifyPlan(p.name);
       if (c === "daily") daily.push(p);
       else if (c === "weekly") weekly.push(p);
       else if (c === "monthly") monthly.push(p);
+      else other.push(p);
     }
-    const best = [...plans].sort((a, b) => a.amount - b.amount).slice(0, 9);
-    return { daily, weekly, monthly, best, all: plans };
+    const byAmount = (a: DataPlanItem, b: DataPlanItem) => a.amount - b.amount;
+    daily.sort(byAmount);
+    weekly.sort(byAmount);
+    monthly.sort(byAmount);
+    other.sort(byAmount);
+    const bestPool = [
+      ...daily.slice(0, 3),
+      ...weekly.slice(0, 3),
+      ...monthly.slice(0, 3),
+      ...other.slice(0, 2),
+    ];
+    const best = bestPool
+      .filter((p, i, arr) => arr.findIndex((x) => x.variationCode === p.variationCode) === i)
+      .sort(byAmount)
+      .slice(0, 9);
+    return { daily, weekly, monthly, other, best, all: [...plans].sort(byAmount) };
   }, [plans]);
 
-  const availableTabs = TABS.filter((t) => {
-    if (t.id === "all") return plans.length > 0;
-    if (t.id === "best") return buckets.best.length > 0;
-    return buckets[t.id as "daily" | "weekly" | "monthly"].length > 0;
-  });
+  const [tab, setTab] = useState<TabId>("best");
 
-  const defaultTab =
-    availableTabs.find((t) => t.id === "weekly")?.id ??
-    availableTabs.find((t) => t.id === "best")?.id ??
-    availableTabs[0]?.id ??
-    "all";
-
-  const [tab, setTab] = useState<TabId>(defaultTab);
-
-  const list =
-    tab === "best"
-      ? buckets.best
-      : tab === "daily"
-        ? buckets.daily
-        : tab === "weekly"
-          ? buckets.weekly
-          : tab === "monthly"
-            ? buckets.monthly
-            : buckets.all;
+  const visible = useMemo(() => {
+    if (tab === "best") return buckets.best.length ? buckets.best : buckets.all.slice(0, 9);
+    if (tab === "daily") return buckets.daily.length ? buckets.daily : buckets.all;
+    if (tab === "weekly") return buckets.weekly.length ? buckets.weekly : buckets.all;
+    if (tab === "monthly") return buckets.monthly.length ? buckets.monthly : buckets.all;
+    return buckets.all;
+  }, [tab, buckets]);
 
   return (
-    <div className="space-y-3">
-      <style>{`
-        @keyframes rpFadeSlide {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
+    <div className="space-y-4">
       {(networkLabel || phoneLabel) && (
-        <div className="flex items-center gap-2.5 rounded-2xl bg-muted/40 px-3 py-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold tracking-wide text-primary-foreground">
-            {(networkLabel || "NET").slice(0, 3).toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-[15px] font-semibold tracking-tight text-foreground">
-              {phoneLabel || "—"}
+        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-sm">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-black uppercase tracking-wide text-primary">
+            {(networkLabel || "NET").slice(0, 3)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {networkLabel || "Network"}
             </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {networkLabel ? `${networkLabel} · data` : "Choose a plan"}
+            <p className="truncate text-base font-bold tabular-nums tracking-tight text-foreground">
+              {phoneLabel || "—"}
             </p>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max items-end border-b border-border/40">
-          {availableTabs.map((t) => {
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "relative px-3 pb-2 pt-1 text-[12px] font-medium transition-colors duration-200",
-                  active ? "text-foreground" : "text-muted-foreground/80",
-                )}
-              >
-                {t.label}
-                <span
-                  className={cn(
-                    "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-foreground transition-transform duration-300 ease-out",
-                    active ? "scale-x-100" : "scale-x-0",
-                  )}
-                />
-              </button>
-            );
-          })}
-        </div>
+      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={
+                "relative shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors duration-200 " +
+                (active ? "text-primary" : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {t.label}
+              <span
+                className={
+                  "absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-primary transition-opacity duration-200 " +
+                  (active ? "opacity-100" : "opacity-0")
+                }
+              />
+            </button>
+          );
+        })}
       </div>
 
-      <div
-        key={tab}
-        className="grid grid-cols-3 gap-2"
-        style={{ animation: "rpFadeSlide 220ms ease-out" }}
-      >
-        {list.length === 0 ? (
-          <p className="col-span-3 py-10 text-center text-[11px] text-muted-foreground">
-            No plans in this category
-          </p>
-        ) : (
-          list.map((p) => {
+      {visible.length === 0 ? (
+        <div className="rounded-2xl border border-dashed bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
+          No plans in this category.
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+          {visible.map((p) => {
             const selected = selectedCode === p.variationCode;
+            const size = planSizeLabel(p.name);
             const duration = planDurationLabel(p.name);
             const title = cardTitle(p.name);
-            const size = planSizeLabel(p.name);
 
             return (
               <button
                 key={p.variationCode}
                 type="button"
                 onClick={() => onSelect(p)}
-                className={cn(
-                  "relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
-                  "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
-                  "active:scale-[0.97]",
-                  selected
-                    ? "border-primary/50 bg-primary/[0.07] shadow-[0_0_0_1px_rgba(109,40,217,0.12)]"
-                    : "border-transparent bg-[#F3F1F8] hover:border-primary/25 hover:bg-[#EFEAF8]",
-                )}
+                className={
+                  "flex min-h-[132px] flex-col items-stretch overflow-hidden rounded-2xl border p-3 text-left " +
+                  "transition-all duration-200 ease-out active:scale-[0.97] " +
+                  (selected
+                    ? "border-primary bg-primary/[0.08] shadow-sm ring-1 ring-primary/30"
+                    : "border-border/50 bg-[#F4F2F8] hover:border-primary/30 hover:bg-[#EEEAF6]")
+                }
               >
-                <span
-                  className={cn(
-                    "absolute inset-x-0 top-0 h-[2px] bg-primary transition-opacity duration-300",
-                    selected ? "opacity-100" : "opacity-0",
-                  )}
-                />
-
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
-                    {duration ?? "PLAN"}
+                <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  {duration ?? "PLAN"}
+                </p>
+                <p
+                  className={
+                    "mt-1.5 truncate text-[17px] font-black leading-none tracking-tight sm:text-[18px] " +
+                    (selected ? "text-primary" : "text-foreground")
+                  }
+                >
+                  {title}
+                </p>
+                {!size ? (
+                  <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-muted-foreground">
+                    {p.name}
                   </p>
-                  <p
-                    className={cn(
-                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight",
-                      "transition-colors duration-300",
-                      selected ? "text-primary" : "text-foreground",
-                    )}
-                  >
-                    {title}
-                  </p>
-                  {!size ? (
-                    <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-muted-foreground/80">
-                      {p.name}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-[12px] font-bold tabular-nums leading-none text-foreground">
+                ) : (
+                  <span className="mt-1 block h-0 grow" />
+                )}
+                <div className="mt-auto pt-2">
+                  <p className="truncate text-[15px] font-extrabold tabular-nums leading-none text-foreground sm:text-[16px]">
                     {formatNaira(p.amount, false)}
                   </p>
                   <p
-                    className={cn(
-                      "mt-1 text-[9px] font-semibold transition-opacity duration-300",
-                      selected ? "text-primary opacity-100" : "opacity-0",
-                    )}
+                    className={
+                      "mt-1 text-[10px] font-bold transition-opacity duration-200 " +
+                      (selected ? "text-primary opacity-100" : "opacity-0")
+                    }
                   >
                     Selected
                   </p>
                 </div>
               </button>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      <p className="pt-0.5 text-center text-[10px] text-muted-foreground/70">— End —</p>
+      <p className="pt-1 text-center text-[12px] text-muted-foreground/60">— End —</p>
     </div>
   );
 }

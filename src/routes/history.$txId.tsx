@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CareContextLink } from "@/components/app/care-entry";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { EmptyState, InfoRow, StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { friendlyError, useApp } from "@/lib/app-store";
@@ -91,7 +92,7 @@ function TransactionDetails() {
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
   const canRequery =
-    status === "pending" && Boolean(bill) && Boolean(bill.provider_request_id || isAirtime);
+    status === "pending" && Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime);
 
   const onRefresh = async () => {
     if (status !== "pending") return;
@@ -284,6 +285,30 @@ function TransactionDetails() {
               </Link>
             </Button>
           ) : null}
+          <ReceiptShareButton
+            payload={{
+              reference: txId,
+              title: (bill?.service as string) || tx?.title || "Payment",
+              status: String(status),
+              amountLabel: new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+                maximumFractionDigits: 0,
+              }).format(Math.abs(Number(amount) || 0)),
+              direction: (tx?.direction as "in" | "out") || "out",
+              service: (bill?.service as string) || tx?.service || null,
+              network: network || null,
+              recipient: phone || null,
+              providerRef: providerRef || null,
+              channel: channel || null,
+              dateLabel: bill?.created_at
+                ? new Date(bill.created_at).toLocaleString("en-NG")
+                : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim() || null,
+              method: tx?.method || null,
+              tokenLabel: tx?.token ? "Token / PIN" : null,
+              tokenValue: tx?.token || null,
+            }}
+          />
           <CareContextLink
             reference={txId}
             status={

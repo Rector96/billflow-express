@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
@@ -28,16 +28,38 @@ function Onboarding() {
     navigate({ to: "/signup" });
   };
 
+  useEffect(() => {
+    const preload = slides.map((item) => {
+      const image = new Image();
+      image.src = item.image;
+      return image;
+    });
+    return () => preload.forEach((image) => image.src = "");
+  }, [slides]);
+
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % slides.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [slides.length]);
+
   return (
     <main className="fixed inset-0 z-50 h-dvh w-full overflow-hidden bg-black">
-      <img
-        key={slide.image}
-        src={slide.image}
-        alt={slide.imageAlt}
-        className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
-        loading="eager"
-        decoding="async"
-      />
+      {slides.map((item, i) => (
+        <img
+          key={item.image}
+          src={item.image}
+          alt={item.imageAlt}
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover object-[center_30%] transition-opacity duration-700 ease-out",
+            i === index ? "opacity-100" : "opacity-0",
+          )}
+          loading={i === 0 ? "eager" : "lazy"}
+          decoding="async"
+        />
+      ))}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/20" />
 
       <div className="relative z-10 flex h-full min-h-dvh flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
@@ -72,6 +94,7 @@ function Onboarding() {
                 key={s.title}
                 type="button"
                 aria-label={`Slide ${i + 1}`}
+                aria-current={i === index ? "true" : undefined}
                 onClick={() => setIndex(i)}
                 className={cn(
                   "h-1.5 rounded-full transition-all",

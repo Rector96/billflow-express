@@ -1,24 +1,38 @@
-# RockPay Admin Operations Standard
+# RockPay admin operations standard
 
-The admin application is the operational workspace for authorized staff. It should make customer support and transaction investigation fast without giving ordinary support staff unrestricted financial power.
+## Support workflow
 
-## Customer identification
-Staff should locate customers using safe, non-secret account attributes and see account status, wallet balance and recent activity, recent transactions, pending/failed transactions, and support history. Never display passwords, authentication tokens, service-role credentials, PINs, card security data, or other secrets.
+1. Search for the customer using the minimum account information required.
+2. Confirm the correct customer record before discussing account-specific information.
+3. Search the relevant transaction using transaction ID/provider request ID/customer/date.
+4. Determine whether the issue is: funding, verification, provider processing, settlement, requery, refund, or display/history.
+5. Never mark a transaction successful manually.
+6. Never edit wallet balances directly as a normal support action.
+7. For unresolved provider transactions, use the existing trusted/requery path and preserve the original provider request ID.
+8. Record the support action and outcome in an auditable support trail.
 
-## Transaction investigation
-A transaction detail view should provide a chronological lifecycle: customer/request creation, wallet debit or funding event, provider request ID, provider response, settlement attempt, final application status, requery state when applicable, and profit/accounting state. The UI must distinguish successful, failed, and pending from catalogue, verification, and provider-connectivity errors.
+## Required admin controls
 
-## Support safety
-Support staff may investigate and document issues. They must not directly edit wallet balances, transaction financial amounts, provider request IDs, settlement outcomes, or profit records. Financial corrections must use controlled, auditable workflows.
+- RBAC with explicit roles/permissions.
+- Read-only customer/transaction investigation for support staff.
+- Restricted financial/configuration actions for authorized operations staff.
+- Server-side authorization for every privileged action; UI hiding is not security.
+- Audit logging for customer-data access where required by policy, pricing changes, wallet/reconciliation actions, and privileged transaction actions.
+- Pagination and bounded date ranges for all operational lists.
+- Search indexes for high-volume customer and transaction lookup.
+- No service-role credentials in browser code.
+- No provider credentials, payment secrets, or sensitive authentication material in admin views.
 
-## Roles
-Recommended roles are Support, Operations, Finance, Pricing/Admin, and Super Admin. Privileged actions must be authorized server-side; hiding a button is not authorization.
+## Incident categories
 
-## Audit trail
-Sensitive admin actions should record actor, role, action, target entity, timestamp, result, and a safe metadata summary. Never record credentials, payment secrets, or raw authentication material.
+- Provider catalogue unavailable
+- Customer verification failed
+- Provider payment failed
+- Provider payment pending/unknown
+- Wallet funding initiated but not confirmed
+- Wallet funding confirmed but balance mismatch
+- Duplicate/idempotency conflict
+- Settlement/profit reconciliation mismatch
+- Customer-facing history/receipt issue
 
-## Provider truth
-An unresolved provider transaction must never be manually marked successful merely because a customer reports success. Provider-backed settlement remains authoritative. If a customer was debited and confirmation is unresolved, staff should see the explicit pending state and supported requery/reconciliation path.
-
-## Performance
-Admin search must use server-side filtering, indexes, pagination, and bounded result sets. Do not load entire customer or transaction tables into the browser.
+Every category should have a distinct operational state and recovery path.

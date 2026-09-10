@@ -416,7 +416,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return typeof m["bill_reference"] === "string" ? (m["bill_reference"] as string) : null;
           })
           .filter((x): x is string => Boolean(x));
-        let billStatus = new Map<string, string>();
+        const billStatus = new Map<string, string>();
         if (billRefs.length) {
           const { data: bills } = await supabase
             .from("bill_transactions")

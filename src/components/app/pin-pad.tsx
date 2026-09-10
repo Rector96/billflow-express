@@ -43,8 +43,10 @@ export function PinPad({
           <span
             key={i}
             className={cn(
-              "size-4 rounded-full border-2 transition-colors",
-              i < value.length ? "border-primary bg-primary" : "border-border bg-transparent",
+              "size-3.5 rounded-full border-2 transition-all duration-150",
+              i < value.length
+                ? "border-primary bg-primary scale-110"
+                : "border-muted-foreground/30 bg-muted/20",
             )}
           />
         ))}
@@ -60,7 +62,7 @@ export function PinPad({
           type="button"
           aria-label="Delete last digit"
           onClick={() => onChange(value.slice(0, -1))}
-          className="press grid h-14 place-items-center rounded-2xl text-muted-foreground"
+          className="press grid h-14 place-items-center rounded-2xl text-muted-foreground hover:text-foreground active:scale-95 transition-transform"
         >
           <Delete className="size-6" />
         </button>
@@ -74,7 +76,7 @@ function Key({ label, onClick }: { label: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="press h-14 rounded-2xl border bg-card text-xl font-bold shadow-card"
+      className="press h-14 rounded-2xl border bg-card text-xl font-bold shadow-card active:scale-95 transition-transform"
     >
       {label}
     </button>

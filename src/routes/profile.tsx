@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { UserAvatar } from "@/components/app/user-avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
-import { initialsOf } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -64,18 +64,21 @@ function ProfilePage() {
 
   return (
     <AppShell>
-      <header className="px-4 pt-5 pb-3">
-        <div className="flex flex-col items-center rounded-2xl border border-border/80 bg-card p-5 text-center shadow-card">
-          <div className="relative">
-            <div className="grid size-16 place-items-center rounded-full border-2 border-primary/20 bg-primary-soft text-xl font-bold text-primary shadow-sm">
-              {initialsOf(profile.name || "U")}
+      <header className="px-4 pt-5 pb-4">
+        <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-card">
+          <div className="h-20 bg-gradient-to-br from-primary-soft via-card to-secondary" />
+          <div className="-mt-10 flex flex-col items-center px-5 pb-5 text-center">
+            <div className="rounded-full bg-card p-1.5 shadow-lg">
+              <UserAvatar name={profile.name} src={(profile as { avatar_url?: string | null }).avatar_url ?? null} size="lg" />
             </div>
-            <span className="absolute right-0 bottom-0 size-4 rounded-full border-2 border-card bg-emerald-500" />
+            <p className="mt-3 text-lg font-extrabold tracking-tight text-foreground">
+              {profile.name || "Your account"}
+            </p>
+            {profile.email ? <p className="mt-0.5 text-xs text-muted-foreground">{profile.email}</p> : null}
+            <p className="mt-3 rounded-full bg-success-soft px-3 py-1 text-[11px] font-bold text-success">
+              Account active
+            </p>
           </div>
-          <p className="mt-3 text-base font-bold tracking-tight">{profile.name || "Your account"}</p>
-          {profile.email ? (
-            <p className="text-xs text-muted-foreground">{profile.email}</p>
-          ) : null}
         </div>
       </header>
 
@@ -84,22 +87,23 @@ function ProfilePage() {
           <Link
             key={item.label}
             to={item.to}
-            className="press flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft transition-colors hover:border-border"
+            className="press flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3.5 shadow-soft transition-colors hover:border-border hover:bg-muted/40"
           >
-            <span className="grid size-8.5 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-foreground">
               <item.icon className="size-4 stroke-[2]" />
             </span>
-            <span className="flex-1 text-sm font-medium text-foreground">{item.label}</span>
+            <span className="flex-1 text-sm font-semibold text-foreground">{item.label}</span>
             <ChevronRight className="size-4 text-muted-foreground" />
           </Link>
         ))}
 
         <AlertDialog>
-          <AlertDialogTrigger className="press mt-2 flex w-full items-center gap-3 rounded-xl border border-destructive/20 bg-destructive-soft/50 px-3.5 py-3 text-left shadow-soft hover:bg-destructive-soft transition-colors">
-            <span className="grid size-8.5 place-items-center rounded-lg bg-destructive text-destructive-foreground">
+          <AlertDialogTrigger className="press mt-2 flex w-full items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive-soft/50 px-3.5 py-3.5 text-left shadow-soft hover:bg-destructive-soft transition-colors">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-destructive text-destructive-foreground">
               <LogOut className="size-4" />
             </span>
-            <span className="flex-1 text-sm font-medium text-destructive">Logout</span>
+            <span className="flex-1 text-sm font-semibold text-destructive">Logout</span>
+            <ChevronRight className="size-4 text-destructive/60" />
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
@@ -124,7 +128,7 @@ function ProfilePage() {
 
         <Link
           to="/admin"
-          className="press mt-3 block rounded-xl border border-dashed border-border/80 p-2.5 text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="press mt-3 block rounded-2xl border border-dashed border-border/80 p-3 text-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           Admin Dashboard
         </Link>
