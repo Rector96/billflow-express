@@ -65,11 +65,7 @@ function roundRect(
   ctx.closePath();
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const value = String(text || "—");
   const words = value.split(/\s+/);
   const lines: string[] = [];
@@ -105,12 +101,7 @@ function wrapText(
   return lines.length ? lines : ["—"];
 }
 
-function drawCenteredText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-) {
+function drawCenteredText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
   ctx.textAlign = "center";
   ctx.fillText(text, x, y);
   ctx.textAlign = "left";
@@ -175,7 +166,7 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   const rowValueW = innerW - rowLabelW - 22;
   const rowHeights: number[] = [];
 
-  ctxMeasure: {
+  {
     const temp = document.createElement("canvas");
     const measure = temp.getContext("2d");
     if (!measure) throw new Error("Canvas not supported");
@@ -185,15 +176,16 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
     }
   }
 
-  const tokenLines = payload.tokenLabel && payload.tokenValue
-    ? Math.max(1, String(payload.tokenValue).split(/\s+/).length)
-    : 0;
+  const tokenLines =
+    payload.tokenLabel && payload.tokenValue
+      ? Math.max(1, String(payload.tokenValue).split(/\s+/).length)
+      : 0;
   const tokenH = tokenLines ? Math.max(116, 78 + Math.ceil(tokenLines / 3) * 24) : 0;
   const headerH = 238;
   const amountH = 112;
   const detailsTopH = 62;
   const footerH = 96;
-  const detailsH = normalRows.reduce((sum, h) => sum + h + rowGap, 0) + 34;
+  const detailsH = rowHeights.reduce((sum, h) => sum + (h ?? 0) + rowGap, 0) + 34;
   const height = 44 + headerH + amountH + detailsTopH + detailsH + tokenH + footerH + 44;
 
   const canvas = document.createElement("canvas");
@@ -316,7 +308,7 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
 
   // Clean two-column rows with wrapping values.
   normalRows.forEach((row, index) => {
-    const rowH = rowHeights[index];
+    const rowH = rowHeights[index] ?? 28;
     ctx.fillStyle = "#64748B";
     ctx.font = "600 12px system-ui, -apple-system, sans-serif";
     ctx.fillText(row.label, innerX, detailsY + 16);
@@ -444,7 +436,7 @@ export async function renderReceiptPdfFromCanvas(payload: ReceiptPayload): Promi
   const scale = pageW / canvas.width;
   const pageH = Math.round(canvas.height * scale);
   const pdf = buildPdfWithJpeg(bytes, pageW, pageH, canvas.width, canvas.height);
-  return new Blob([pdf], { type: "application/pdf" });
+  return new Blob([(pdf.buffer as ArrayBuffer)], { type: "application/pdf" });
 }
 
 function buildPdfWithJpeg(

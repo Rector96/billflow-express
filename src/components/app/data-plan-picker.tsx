@@ -33,7 +33,10 @@ function classifyPlan(name: string): TabId {
 export function planSizeLabel(name: string): string | null {
   const m = name.match(/(\d+(?:\.\d+)?)\s*(GB|MB|TB)/i);
   if (!m) return null;
-  return `${m[1]}${m[2].toUpperCase()}`;
+  const size = m[1];
+  const unit = m[2];
+  if (!size || !unit) return null;
+  return `${size}${unit.toUpperCase()}`;
 }
 
 export function planDurationLabel(name: string): string | null {

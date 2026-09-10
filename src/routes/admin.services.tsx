@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { formatNaira } from "@/lib/mock-data";
 import { n, type ServiceRow } from "@/lib/admin";
@@ -32,11 +33,11 @@ function AdminServices() {
     setLoading(true); setError(null);
     try {
       const [{ data: breakdown, error: breakdownError }, { data: settings, error: settingsError }] = await Promise.all([
-        supabase.rpc("admin_service_breakdown"),
-        supabase.from("service_availability").select("service_slug, is_enabled, updated_at").order("service_slug"),
+        asLooseRpc(supabase.rpc)("admin_service_breakdown"),
+        (supabase as unknown as { from: (t: string) => { select: (c: string) => { order: (c: string) => PromiseLike<{ data: unknown; error: { message: string } | null }> } } }).from("service_availability").select("service_slug, is_enabled, updated_at").order("service_slug"),
       ]);
       if (breakdownError) setError(breakdownError.message); else setRows(Array.isArray(breakdown) ? (breakdown as ServiceRow[]) : []);
-      if (settingsError) setError((current) => current ?? settingsError.message); else setAvailability(Array.isArray(settings) ? (settings as AvailabilityRow[]) : []);
+      if (settingsError) setError((current) => current ?? settingsError.message); else setAvailability(Array.isArray(settings) ? (settings as unknown as AvailabilityRow[]) : []);
     } finally { setLoading(false); }
   }, []);
 
@@ -44,7 +45,7 @@ function AdminServices() {
 
   const toggle = async (slug: string, enabled: boolean) => {
     setSaving(slug); setError(null);
-    const { error: err } = await supabase.rpc("admin_set_service_availability", { _service_slug: slug, _enabled: enabled });
+    const { error: err } = await asLooseRpc(supabase.rpc)("admin_set_service_availability", { _service_slug: slug, _enabled: enabled });
     if (err) setError(err.message);
     else setAvailability((current) => current.map((row) => row.service_slug === slug ? { ...row, is_enabled: enabled, updated_at: new Date().toISOString() } : row));
     setSaving(null);

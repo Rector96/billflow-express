@@ -1,7 +1,11 @@
 import { BRAND } from "@/lib/brand";
 import type { ReceiptPayload } from "@/lib/receipt-share";
 
-function canvasToBlobViaDataUrl(canvas: HTMLCanvasElement, type: string, quality = 0.95): Promise<Blob> {
+function canvasToBlobViaDataUrl(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality = 0.95,
+): Promise<Blob> {
   const dataUrl = canvas.toDataURL(type, quality);
   const comma = dataUrl.indexOf(",");
   if (comma < 0) throw new Error("Could not encode receipt image");
@@ -49,10 +53,15 @@ function drawFallbackReceipt(payload: ReceiptPayload): HTMLCanvasElement {
   ctx.fillText("TRANSACTION RECEIPT", 360, 118);
 
   const status = String(payload.status || "unknown");
-  const statusColor = status === "successful" ? "#10B981" : status === "failed" ? "#EF4444" : "#F59E0B";
+  const statusColor =
+    status === "successful" ? "#10B981" : status === "failed" ? "#EF4444" : "#F59E0B";
   ctx.fillStyle = statusColor;
   ctx.font = "800 16px system-ui, sans-serif";
-  ctx.fillText(status === "successful" ? "Successful" : status === "failed" ? "Failed" : "Pending", 360, 258);
+  ctx.fillText(
+    status === "successful" ? "Successful" : status === "failed" ? "Failed" : "Pending",
+    360,
+    258,
+  );
 
   ctx.fillStyle = "#0F172A";
   ctx.font = "900 44px system-ui, sans-serif";
@@ -137,12 +146,19 @@ export async function renderFallbackReceiptPdf(payload: ReceiptPayload): Promise
   const pageW = 400;
   const scale = pageW / canvas.width;
   const pageH = Math.round(canvas.height * scale);
-  return new Blob([buildPdf(bytes, pageW, pageH, canvas.width, canvas.height)], {
+  const pdfBytes = buildPdf(bytes, pageW, pageH, canvas.width, canvas.height);
+  return new Blob([pdfBytes.buffer as ArrayBuffer], {
     type: "application/pdf",
   });
 }
 
-function buildPdf(jpeg: Uint8Array, pageW: number, pageH: number, imgW: number, imgH: number): Uint8Array {
+function buildPdf(
+  jpeg: Uint8Array,
+  pageW: number,
+  pageH: number,
+  imgW: number,
+  imgH: number,
+): Uint8Array {
   const encoder = new TextEncoder();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -159,12 +175,23 @@ function buildPdf(jpeg: Uint8Array, pageW: number, pageH: number, imgW: number, 
   const obj = () => offsets.push(size);
 
   str("%PDF-1.4\n");
-  obj(); str("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-  obj(); str("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-  obj(); str(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
-  obj(); str(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`); raw(jpeg); str("\nendstream\nendobj\n");
+  obj();
+  str("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  obj();
+  str("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  obj();
+  str(
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+  );
+  obj();
+  str(
+    `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
+  );
+  raw(jpeg);
+  str("\nendstream\nendobj\n");
   const stream = `q\n${pageW} 0 0 ${pageH} 0 0 cm\n/Im1 Do\nQ\n`;
-  obj(); str(`5 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
+  obj();
+  str(`5 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
   const xref = size;
   str(`xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`);
   for (const offset of offsets) str(`${String(offset).padStart(10, "0")} 00000 n \n`);
@@ -172,6 +199,9 @@ function buildPdf(jpeg: Uint8Array, pageW: number, pageH: number, imgW: number, 
 
   const out = new Uint8Array(size);
   let offset = 0;
-  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
   return out;
 }

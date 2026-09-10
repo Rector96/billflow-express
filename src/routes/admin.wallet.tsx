@@ -146,7 +146,10 @@ function AdminWallet() {
                   ["successful", "Successful"],
                   ["pending", "Pending"],
                   ["failed", "Failed"],
-                ].map(([value, label]) => (
+                ].map((pair) => {
+                  const value = pair[0] ?? "all";
+                  const label = pair[1] ?? "";
+                  return (
                   <button
                     key={value}
                     type="button"
@@ -157,7 +160,8 @@ function AdminWallet() {
                   >
                     {label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

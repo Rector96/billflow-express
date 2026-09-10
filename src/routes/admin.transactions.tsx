@@ -4,6 +4,7 @@ import { Copy, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,7 @@ function AdminTransactions() {
         to = end.toISOString();
       }
 
-      const { data, error } = await supabase.rpc("admin_transaction_directory", {
+      const { data, error } = await asLooseRpc(supabase.rpc)("admin_transaction_directory", {
         _query: q.trim(),
         _status: status,
         _service: service,
@@ -126,7 +127,8 @@ function AdminTransactions() {
       });
       if (error) throw error;
 
-      const mapped: BillRow[] = ((data ?? []) as BillRow[]).map((t) => ({
+      const rawRows = Array.isArray(data) ? data : [];
+      const mapped: BillRow[] = (rawRows as BillRow[]).map((t) => ({
         ...t,
         amount: n(t.amount),
         metadata: (t.metadata ?? {}) as Record<string, unknown>,
@@ -136,7 +138,8 @@ function AdminTransactions() {
       }));
 
       setRows(mapped);
-      setTotal(Number(mapped[0]?.total_count ?? 0));
+      const firstRaw = rawRows[0] as Record<string, unknown> | undefined;
+      setTotal(Number(firstRaw?.["total_count"] ?? 0));
     } catch (e) {
       toast.error(friendlyError(e, "Could not load transactions"));
       setRows([]);

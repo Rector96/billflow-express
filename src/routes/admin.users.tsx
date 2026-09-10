@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { formatNaira } from "@/lib/mock-data";
 import { n } from "@/lib/admin";
@@ -45,7 +46,7 @@ function AdminUsers() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: queryError } = await supabase.rpc("admin_user_directory", {
+      const { data, error: queryError } = await asLooseRpc(supabase.rpc)("admin_user_directory", {
         _query: q.trim(),
         _status: status,
         _limit: PAGE_SIZE,

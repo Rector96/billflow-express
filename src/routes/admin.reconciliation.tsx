@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira } from "@/lib/mock-data";
@@ -76,8 +77,8 @@ function AdminReconciliation() {
     setError(null);
     try {
       const [txResult, walletResult] = await Promise.all([
-        supabase.rpc("admin_reconciliation_queue", { _limit: 100 }),
-        supabase.rpc("admin_wallet_reconciliation", {
+        asLooseRpc(supabase.rpc)("admin_reconciliation_queue", { _limit: 100 }),
+        asLooseRpc(supabase.rpc)("admin_wallet_reconciliation", {
           _limit: 100,
           _offset: 0,
         }),
@@ -176,6 +177,7 @@ function AdminReconciliation() {
                     <Link
                       to="/admin/users/$userId"
                       params={{ userId: a.user_id }}
+                      search={{ q: "", status: "all" }}
                       className="mt-2 inline-block rounded-lg border px-3 py-1.5 text-xs font-bold"
                     >
                       Open customer

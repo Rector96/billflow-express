@@ -1,3 +1,4 @@
+import { asLooseRpc } from "@/lib/loose-rpc";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
@@ -89,7 +90,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         billersCode,
         amount,
         meterType,
-        phone: input?.phone ? String(input.phone) : undefined,
+        phone: input?.['phone'] ? String(input.phone) : undefined,
         customerName: input?.customerName ? String(input.customerName) : undefined,
         requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
       };
@@ -102,7 +103,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       billersCode,
       amount,
       variationCode,
-      phone: input?.phone ? String(input.phone) : undefined,
+      phone: input?.['phone'] ? String(input.phone) : undefined,
       customerName: input?.customerName ? String(input.customerName) : undefined,
       subscriptionType: String(input?.subscriptionType ?? "change"),
       requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
@@ -135,7 +136,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         productCode: meterType,
         baseAmount: data.amount,
       });
-      const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+      const { data: started, error } = await asLooseRpc(context.supabase.rpc)("start_direct_bill_order", {
         _service_slug: "electricity",
         _service_label: "Electricity",
         _provider: data.serviceID,
@@ -157,7 +158,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
       const row = Array.isArray(started) ? started[0] : started;
-      if (!row?.paystack_reference || !row?.internal_reference) {
+      if (!row?.['paystack_reference'] || !row?.internal_reference) {
         throw new Error("Could not create payment order.");
       }
       return await initPaystackForOrder({
@@ -184,7 +185,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       productCode: variationCode,
       baseAmount: providerAmount,
     });
-    const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+    const { data: started, error } = await asLooseRpc(context.supabase.rpc)("start_direct_bill_order", {
       _service_slug: "cable",
       _service_label: "Cable TV",
       _provider: data.serviceID,
@@ -206,7 +207,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
     const row = Array.isArray(started) ? started[0] : started;
-    if (!row?.paystack_reference || !row?.internal_reference) {
+    if (!row?.['paystack_reference'] || !row?.internal_reference) {
       throw new Error("Could not create payment order.");
     }
     return await initPaystackForOrder({
@@ -263,7 +264,7 @@ async function initPaystackForOrder(opts: {
     message?: string;
     data?: { authorization_url?: string };
   } | null;
-  if (!res.ok || !json?.status || !json.data?.authorization_url) {
+  if (!res.ok || !json?.['status'] || !json.data?.authorization_url) {
     throw new Error(json?.message ?? `Paystack initialize failed (HTTP ${res.status})`);
   }
   return {
@@ -303,23 +304,23 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     if (loadErr) throw new Error(loadErr.message);
     const bill = rows?.[0];
     if (!bill) throw new Error("Payment order not found.");
-    if ((bill.metadata as any)?.payment_mode !== "direct_paystack") {
+    if ((bill.metadata as Record<string, unknown> | null)?.['payment_mode'] !== "direct_paystack") {
       throw new Error("This is not a direct bill payment.");
     }
 
     const billRef = bill.internal_reference as string;
     const paystackRef = (bill.external_reference ||
-      (bill.metadata as any)?.paystack_reference) as string;
+      (bill.metadata as Record<string, unknown> | null)?.['paystack_reference']) as string;
     const amount = Number(bill.amount);
     const meta = (bill.metadata ?? {}) as Record<string, unknown>;
-    const slug = String(meta.service_slug ?? "").toLowerCase();
+    const slug = String(meta['service_slug'] ?? "").toLowerCase();
 
     if (bill.status === "successful") {
       return {
         billReference: billRef,
         status: "successful",
         amount,
-        token: (meta.token as string) || (meta.purchased_code as string) || null,
+        token: (meta['token'] as string) || (meta['purchased_code'] as string) || null,
         message: "Payment already completed.",
         providerTransactionId: bill.provider_transaction_id,
       };
@@ -342,7 +343,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     if (gatewayStatus !== "success") {
       const failed = gatewayStatus === "failed" || gatewayStatus === "abandoned";
       if (failed) {
-        await (supabaseAdmin as any).rpc("trusted_complete_direct_bill_purchase", {
+        await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
           _user_id: context.userId,
           _internal_reference: billRef,
           _outcome: "failed",
@@ -373,7 +374,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       Number(ps.amount) !== expectedKobo ||
       String(ps.reference) !== paystackRef
     ) {
-      await (supabaseAdmin as any).rpc("trusted_complete_direct_bill_purchase", {
+      await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
         _user_id: context.userId,
         _internal_reference: billRef,
         _outcome: "failed",
@@ -391,9 +392,9 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     }
 
     let phone = "08011111111";
-    if (meta.phone) {
+    if (meta['phone']) {
       try {
-        phone = normalizeNgPhone(String(meta.phone));
+        phone = normalizeNgPhone(String(meta['phone']));
       } catch {
         /* sandbox */
       }
@@ -402,11 +403,11 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const providerRequestId = bill.provider_request_id as string;
     const serviceID = bill.provider as string;
     const billersCode = bill.customer_identifier as string;
-    const providerAmount = Number(meta.provider_amount ?? amount);
+    const providerAmount = Number(meta['provider_amount'] ?? amount);
 
     let routed;
     if (slug === "electricity") {
-      const meterType = String(meta.meter_type ?? bill.product ?? "prepaid");
+      const meterType = String(meta['meter_type'] ?? bill.product ?? "prepaid");
       routed = await routeElectricityPay({
         request_id: providerRequestId,
         serviceID,
@@ -416,7 +417,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
         phone,
       });
     } else {
-      const variationCode = String(meta.variation_code ?? "");
+      const variationCode = String(meta['variation_code'] ?? "");
       routed = await routeCablePay({
         request_id: providerRequestId,
         serviceID,
@@ -424,13 +425,13 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
         variation_code: variationCode,
         amount: providerAmount,
         phone,
-        subscription_type: String(meta.subscription_type ?? "change"),
+        subscription_type: String(meta['subscription_type'] ?? "change"),
       });
     }
 
     const pay = toVtpassShape(routed);
     const outcome = routed.status;
-    const { data: finalized, error: finErr } = await (supabaseAdmin as any).rpc(
+    const { data: finalized, error: finErr } = await asLooseRpc(supabaseAdmin.rpc)(
       "trusted_complete_direct_bill_purchase",
       {
         _user_id: context.userId,
@@ -464,22 +465,22 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     }
 
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
-    const status = (fin?.status ?? outcome) as DirectVerifyResult["status"];
+    const status = (fin?.['status'] ?? outcome) as DirectVerifyResult["status"];
 
     if (status === "successful") {
       try {
         const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
-        await maybeRecordTransactionProfit(supabaseAdmin as any, {
+        await maybeRecordTransactionProfit({ rpc: asLooseRpc(supabaseAdmin.rpc) }, {
           internalReference: billRef,
           customerAmount: amount,
           providerAmount,
-          rockpayFee: meta.rockpay_fee != null ? Number(meta.rockpay_fee) : null,
-          pricingRuleId: meta.pricing_rule_id ? String(meta.pricing_rule_id) : null,
+          rockpayFee: meta['rockpay_fee'] != null ? Number(meta['rockpay_fee']) : null,
+          pricingRuleId: meta['pricing_rule_id'] ? String(meta['pricing_rule_id']) : null,
           service: slug === "cable" ? "cable" : "electricity",
           provider: serviceID,
-          productCode: String(meta.variation_code ?? meta.meter_type ?? ""),
-          providerCost: pay.totalAmount,
-          providerCommission: pay.commission,
+          productCode: String(meta['variation_code'] ?? meta['meter_type'] ?? ""),
+          providerCost: pay.totalAmount ?? null,
+          providerCommission: pay.commission ?? null,
         });
       } catch (e) {
         console.error("[direct-bill] profit", e);

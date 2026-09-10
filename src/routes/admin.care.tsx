@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { formatTicketStatus, statusBadgeClass } from "@/lib/care";
 import { supabase } from "@/integrations/supabase/client";
+import { asLooseRpc } from "@/lib/loose-rpc";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/care")({
@@ -52,8 +53,8 @@ function CareQueue() {
     setLoading(true);
     try {
       const [s, t] = await Promise.all([
-        supabase.rpc("admin_care_stats"),
-        supabase.rpc("admin_care_queue", {
+        asLooseRpc(supabase.rpc)("admin_care_stats"),
+        asLooseRpc(supabase.rpc)("admin_care_queue", {
           _query: q.trim(),
           _status: status,
           _limit: PAGE,
