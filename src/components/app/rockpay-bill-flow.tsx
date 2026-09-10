@@ -17,6 +17,7 @@ import confetti from "canvas-confetti";
 import { motion } from "motion/react";
 import { AppShell } from "@/components/app/app-shell";
 import { ExamPinsFlow } from "@/components/app/exam-pins-flow";
+import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PayActionBar } from "@/components/app/pay-action-bar";
@@ -28,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { friendlyError, useApp } from "@/lib/app-store";
 import { useServerFn } from "@tanstack/react-start";
 import { purchaseAirtime, requeryAirtime } from "@/lib/airtime.functions";
+import { quotePricing } from "@/lib/pricing.functions";
 import {
   listVtpassServices,
   listVtpassVariations,
@@ -108,6 +110,7 @@ export function RockPayBillFlow() {
   const buyData = useServerFn(purchaseData);
   const buyElectricity = useServerFn(purchaseElectricity);
   const checkBill = useServerFn(requeryBill);
+  const getPricingQuote = useServerFn(quotePricing);
 
   const isAirtime = service?.slug === "airtime";
   const isCable = service?.slug === "cable";
@@ -126,6 +129,9 @@ export function RockPayBillFlow() {
     typeof search.amount === "number" && search.amount > 0 ? String(Math.round(search.amount)) : "",
   );
   const [variation, setVariation] = useState<CatalogVariation | null>(null);
+  const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [rockpayFee, setRockpayFee] = useState(0);
   const [pin, setPin] = useState("");
   const [catalogServices, setCatalogServices] = useState<CatalogService[]>([]);
   const [variations, setVariations] = useState<CatalogVariation[]>([]);
@@ -145,7 +151,8 @@ export function RockPayBillFlow() {
   const payingLock = useRef(false);
   const refreshLock = useRef(false);
 
-  const total = isPackageLive && variation ? variation.amount : Number(amount || 0);
+  const baseTotal = isPackageLive && variation ? variation.amount : Number(amount || 0);
+  const total = quotedTotal ?? baseTotal;
 
   const stepsMeta: PayStepMeta[] = useMemo(() => {
     if (isElectricity)
@@ -261,6 +268,53 @@ export function RockPayBillFlow() {
     );
   }
 
+
+  const getQuote = async () => {
+    if (!service || !Number.isFinite(baseTotal) || baseTotal < 50) {
+      throw new Error("Enter a valid amount.");
+    }
+    if (isPackageLive && !variation) {
+      throw new Error(isData ? "Select a data plan." : "Select a package.");
+    }
+    setPricingLoading(true);
+    try {
+      const productCode =
+        isPackageLive && variation
+          ? variation.variationCode
+          : isElectricity
+            ? meterType
+            : null;
+      const res = await getPricingQuote({
+        data: {
+          service: service.slug,
+          provider: serviceID || provider || null,
+          productCode,
+          baseAmount: baseTotal,
+        },
+      });
+      setQuotedTotal(res.customerAmount);
+      setRockpayFee(Number(res.rockpayFee) || 0);
+      return res.customerAmount;
+    } finally {
+      setPricingLoading(false);
+    }
+  };
+
+  const continueFromAmount = async () => {
+    if (baseTotal < 50 || (isPackageLive && !variation)) return;
+    if (isElectricity && minPurchase > 0 && baseTotal < minPurchase) {
+      setError(`Minimum amount is ${minPurchase}`);
+      return;
+    }
+    setError("");
+    try {
+      await getQuote();
+      setStep("confirm");
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not calculate the amount to pay."));
+    }
+  };
+
   const startVerify = async () => {
     setError("");
     if (isData || isAirtime) {
@@ -269,6 +323,8 @@ export function RockPayBillFlow() {
         return;
       }
       setIdentifier(displayNgPhone(identifier));
+      setQuotedTotal(null);
+      setRockpayFee(0);
       setStep("amount");
       return;
     }
@@ -277,6 +333,8 @@ export function RockPayBillFlow() {
       return;
     }
     if (!isProviderBill) {
+      setQuotedTotal(null);
+      setRockpayFee(0);
       setStep("amount");
       return;
     }
@@ -299,6 +357,8 @@ export function RockPayBillFlow() {
       setVerifiedAddress(String(res.address ?? "").trim());
       setMinPurchase(Number(res.minPurchaseAmount ?? 0));
       setVerifying(false);
+      setQuotedTotal(null);
+      setRockpayFee(0);
     } catch (err) {
       setVerifying(false);
       setStep("identifier");
@@ -320,7 +380,7 @@ export function RockPayBillFlow() {
             data: {
               network: provider,
               phone: displayNgPhone(identifier),
-              amount: total,
+              amount: baseTotal,
               pin: authorizedPin,
             },
           }),
@@ -375,7 +435,7 @@ export function RockPayBillFlow() {
               serviceID: serviceID || provider,
               billersCode: identifier.trim(),
               meterType,
-              amount: total,
+              amount: baseTotal,
               pin: authorizedPin,
               ...(profile.phone ? { phone: profile.phone } : {}),
               ...(verifiedName ? { customerName: verifiedName } : {}),
@@ -710,6 +770,13 @@ export function RockPayBillFlow() {
               </div>
               <p className="text-xl font-bold">{formatNaira(total, false)}</p>
             </div>
+            {rockpayFee > 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Includes RockPay fee of {formatNaira(rockpayFee, false)}. You pay this total.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Amount calculated for your wallet debit.</p>
+            )}
           </div>
           <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
@@ -732,9 +799,14 @@ export function RockPayBillFlow() {
               <Button
                 className="h-12 w-full rounded-xl font-bold"
                 onClick={() => {
+                  if (quotedTotal == null) {
+                    void continueFromAmount();
+                    return;
+                  }
                   setPin("");
                   setStep("pin");
                 }}
+                disabled={pricingLoading || total < 50}
               >
                 Confirm & Pay {formatNaira(total, false)}
               </Button>
@@ -767,13 +839,34 @@ export function RockPayBillFlow() {
               <Loader2 className="size-4 animate-spin" />
               Loading plans…
             </div>
+          ) : isData ? (
+            <DataPlanPicker
+              plans={variations}
+              selectedCode={variation?.variationCode ?? null}
+              networkLabel={provider || serviceID}
+              phoneLabel={maskTail(identifier)}
+              onSelect={(plan) => {
+                setVariation({
+                  variationCode: plan.variationCode,
+                  name: plan.name,
+                  amount: plan.amount,
+                  fixedPrice: plan.fixedPrice ?? true,
+                });
+                setQuotedTotal(null);
+                setRockpayFee(0);
+              }}
+            />
           ) : isPackageLive ? (
             <div className="space-y-2">
               {variations.map((v) => (
                 <button
                   key={v.variationCode}
                   type="button"
-                  onClick={() => setVariation(v)}
+                  onClick={() => {
+                    setVariation(v);
+                    setQuotedTotal(null);
+                    setRockpayFee(0);
+                  }}
                   className={cn(
                     "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-card transition-colors",
                     variation?.variationCode === v.variationCode
@@ -801,7 +894,11 @@ export function RockPayBillFlow() {
                     id="bill-amount"
                     inputMode="numeric"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => {
+                    setAmount(e.target.value.replace(/\D/g, ""));
+                    setQuotedTotal(null);
+                    setRockpayFee(0);
+                  }}
                     className="h-12 border-0 bg-transparent text-2xl font-bold shadow-none focus-visible:ring-0"
                     placeholder="0"
                   />
@@ -817,13 +914,14 @@ export function RockPayBillFlow() {
           <Button
             className="h-12 w-full rounded-xl font-bold"
             disabled={
-              total < 50 ||
+              pricingLoading ||
+              baseTotal < 50 ||
               (isPackageLive && !variation) ||
-              (isElectricity && minPurchase > 0 && total < minPurchase)
+              (isElectricity && minPurchase > 0 && baseTotal < minPurchase)
             }
-            onClick={() => setStep("confirm")}
+            onClick={() => void continueFromAmount()}
           >
-            Continue
+            {pricingLoading ? "Calculating…" : "Continue"}
           </Button>
         </div>
       </AppShell>
