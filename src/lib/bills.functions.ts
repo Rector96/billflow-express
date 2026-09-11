@@ -115,7 +115,7 @@ async function finalizeBillPurchase(
   payload: Json,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("trusted_complete_bill_purchase", {
+  const { data, error } = await (supabaseAdmin as any).rpc("trusted_complete_bill_purchase", {
     _user_id: userId,
     _internal_reference: internalReference,
     _outcome: outcome,
@@ -315,7 +315,7 @@ export const purchaseCable = createServerFn({ method: "POST" })
     }
     if (!phone) phone = "08011111111";
 
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error: startError } = await (context.supabase as any).rpc("start_bill_purchase", {
       _service_slug: "cable",
       _service_label: "Cable TV",
       _provider: data.serviceID,
@@ -481,7 +481,7 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     }
     if (!phone) phone = "08011111111";
 
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error: startError } = await (context.supabase as any).rpc("start_bill_purchase", {
       _service_slug: "electricity",
       _service_label: "Electricity",
       _provider: data.serviceID,
@@ -636,7 +636,7 @@ export const purchaseData = createServerFn({ method: "POST" })
       .replace(/etisalat/i, "9mobile")
       .toUpperCase();
 
-    const { data: started, error: startError } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error: startError } = await (context.supabase as any).rpc("start_bill_purchase", {
       _service_slug: "data",
       _service_label: "Data",
       _provider: serviceID,

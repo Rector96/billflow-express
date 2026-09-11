@@ -91,7 +91,7 @@ function TransactionDetails() {
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
   const canRequery =
-    status === "pending" && Boolean(bill) && Boolean(bill.provider_request_id || isAirtime);
+    status === "pending" && Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime);
 
   const onRefresh = async () => {
     if (status !== "pending") return;

@@ -32,7 +32,7 @@ function AdminSettings() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
+      const { data, error: err } = await (supabase as any)
         .from("pricing_rules")
         .select(
           "id, service, provider, product_code, markup_type, markup_value, min_amount, max_amount, is_active, priority",
@@ -44,7 +44,7 @@ function AdminSettings() {
         setRows([]);
         return;
       }
-      setRows((data as Rule[]) ?? []);
+      setRows((data as Rule[] | null) ?? []);
     } finally {
       setLoading(false);
     }

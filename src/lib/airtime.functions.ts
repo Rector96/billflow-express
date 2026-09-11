@@ -91,7 +91,7 @@ async function finalizeAirtimePurchase(
   payload: Json,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("trusted_complete_airtime_purchase", {
+  const { data, error } = await (supabaseAdmin as any).rpc("trusted_complete_airtime_purchase", {
     _user_id: userId,
     _internal_reference: internalReference,
     _outcome: outcome,

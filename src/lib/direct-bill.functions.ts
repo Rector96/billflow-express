@@ -89,7 +89,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         billersCode,
         amount,
         meterType,
-        phone: input?.phone ? String(input.phone) : undefined,
+        phone: input?["phone"] ? String(input.phone) : undefined,
         customerName: input?.customerName ? String(input.customerName) : undefined,
         requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
       };
@@ -102,7 +102,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       billersCode,
       amount,
       variationCode,
-      phone: input?.phone ? String(input.phone) : undefined,
+      phone: input?["phone"] ? String(input.phone) : undefined,
       customerName: input?.customerName ? String(input.customerName) : undefined,
       subscriptionType: String(input?.subscriptionType ?? "change"),
       requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
@@ -135,7 +135,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         productCode: meterType,
         baseAmount: data.amount,
       });
-      const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+      const { data: started, error } = await (context.supabase as any).rpc("start_direct_bill_order", {
         _service_slug: "electricity",
         _service_label: "Electricity",
         _provider: data.serviceID,
@@ -184,7 +184,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       productCode: variationCode,
       baseAmount: providerAmount,
     });
-    const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+    const { data: started, error } = await (context.supabase as any).rpc("start_direct_bill_order", {
       _service_slug: "cable",
       _service_label: "Cable TV",
       _provider: data.serviceID,

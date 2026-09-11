@@ -10,6 +10,8 @@ export type VtpassPayResult = {
   transactionId: string | null;
   contentStatus: string | null;
   purchasedCode: string | null;
+  totalAmount?: number | null;
+  commission?: number | null;
   raw: unknown;
 };
 
