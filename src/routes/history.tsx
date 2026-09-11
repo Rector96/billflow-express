@@ -1,13 +1,21 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ReceiptText, Search, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ReceiptText,
+  Search,
+  SlidersHorizontal,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
-import { PageHeader } from "@/components/app/page-header";
-import { EmptyState, TransactionRow } from "@/components/app/ui-bits";
+import { EmptyState, StatusBadge } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { formatNaira } from "@/lib/mock-data";
 import type { Transaction, TxStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/history")({
@@ -91,6 +99,21 @@ function inDateRange(tx: Transaction, key: DateKey): boolean {
   return true;
 }
 
+function dayLabel(tx: Transaction): string {
+  const ts = parseTxTime(tx);
+  if (!ts) return tx.date;
+  const now = new Date();
+  const startOf = (y: number, m: number, day: number) => new Date(y, m, day).getTime();
+  const today0 = startOf(now.getFullYear(), now.getMonth(), now.getDate());
+  if (ts >= today0) return "Today";
+  if (ts >= today0 - 86_400_000) return "Yesterday";
+  return new Date(ts).toLocaleDateString("en-NG", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function Chip({
   active,
   children,
@@ -113,6 +136,52 @@ function Chip({
     >
       {children}
     </button>
+  );
+}
+
+function ModernRow({ tx }: { tx: Transaction }) {
+  const inbound = tx.direction === "in";
+  return (
+    <Link
+      to="/history/$txId"
+      params={{ txId: tx.id }}
+      className="press flex items-center gap-3 px-4 py-3 transition-colors hover:bg-primary-soft/30"
+    >
+      <span
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-2xl",
+          inbound
+            ? "bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 text-emerald-600"
+            : "bg-gradient-to-br from-primary/15 to-fuchsia-500/15 text-primary",
+        )}
+      >
+        {inbound ? (
+          <ArrowDownLeft className="size-4.5" strokeWidth={2} />
+        ) : (
+          <ArrowUpRight className="size-4.5" strokeWidth={2} />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{tx.title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {tx.service} · {tx.time}
+        </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p
+          className={cn(
+            "text-sm font-bold tabular-nums",
+            inbound ? "text-emerald-600" : "text-foreground",
+          )}
+        >
+          {inbound ? "+" : "-"}
+          {formatNaira(tx.amount, false)}
+        </p>
+        <div className="mt-1 flex justify-end">
+          <StatusBadge status={tx.status} compact />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -139,24 +208,87 @@ function HistoryPage() {
     });
   }, [transactions, status, category, dateKey, q]);
 
+  const totals = useMemo(() => {
+    let inn = 0;
+    let out = 0;
+    for (const t of list) {
+      if (t.status !== "successful") continue;
+      if (t.direction === "in") inn += t.amount;
+      else out += t.amount;
+    }
+    return { inn, out };
+  }, [list]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const tx of list) {
+      const label = dayLabel(tx);
+      const arr = map.get(label);
+      if (arr) arr.push(tx);
+      else map.set(label, [tx]);
+    }
+    return [...map.entries()];
+  }, [list]);
+
   const extraActive = category !== "all" || dateKey !== "all";
 
   return (
     <AppShell>
-      <PageHeader title="Transaction History" backTo="/home" />
-      <div className="space-y-3 px-4 pt-1 pb-6">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, reference or amount..."
-            aria-label="Search transactions"
-            className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
-          />
+      {/* Gradient header with search */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600" />
+        <div className="absolute -top-14 right-0 size-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-16 -left-6 size-44 rounded-full bg-fuchsia-300/20 blur-2xl" />
+        <div className="relative px-4 pt-5 pb-12">
+          <h1 className="text-xl font-bold tracking-tight text-white">Transactions</h1>
+          <p className="mt-0.5 text-xs text-white/70">
+            Every payment and top-up, all in one place.
+          </p>
+          <div className="relative mt-4">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name, reference or amount..."
+              aria-label="Search transactions"
+              className="h-11 rounded-xl border-white/20 bg-white/95 pl-10 text-sm shadow-lg placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="relative -mt-6 space-y-3 rounded-t-3xl bg-gradient-to-b from-violet-50 via-background to-background px-4 pt-4 pb-6">
+        {/* Summary strip */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 shadow-soft">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-600/25 text-emerald-600">
+              <TrendingUp className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Money in
+              </p>
+              <p className="truncate text-sm font-bold text-emerald-600 tabular-nums">
+                {formatNaira(totals.inn, false)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-card p-3 shadow-soft">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/15 to-fuchsia-500/20 text-primary">
+              <TrendingDown className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Money out
+              </p>
+              <p className="truncate text-sm font-bold tabular-nums">
+                {formatNaira(totals.out, false)}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* All | Successful | Pending | Failed */}
+        {/* Status chips + more filters */}
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS.map((t) => (
@@ -223,9 +355,18 @@ function HistoryPage() {
         ) : null}
 
         {list.length ? (
-          <div className="space-y-2">
-            {list.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} compact />
+          <div className="space-y-4">
+            {groups.map(([label, txs]) => (
+              <section key={label}>
+                <p className="mb-1.5 px-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {label}
+                </p>
+                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
+                  {txs.map((tx) => (
+                    <ModernRow key={tx.id} tx={tx} />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         ) : (
