@@ -88,8 +88,8 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
     transactionId: result.transactionId,
     purchasedCode: result.purchasedCode,
     contentStatus: result.contentStatus,
-    totalAmount: result.totalAmount,
-    commission: result.commission,
+    totalAmount: result.totalAmount ?? null,
+    commission: result.commission ?? null,
     raw: result.raw,
     fallbackUsed,
   };
