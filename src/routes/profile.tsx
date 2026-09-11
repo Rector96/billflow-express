@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
-import { initialsOf } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -64,29 +63,44 @@ function ProfilePage() {
 
   return (
     <AppShell>
-      <header className="px-4 pt-5 pb-3">
-        <div className="flex flex-col items-center rounded-2xl border border-border/80 bg-card p-5 text-center shadow-card">
+      {/* Gradient hero header */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600" />
+        <div className="absolute -top-16 -right-10 size-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-20 -left-8 size-56 rounded-full bg-fuchsia-300/20 blur-2xl" />
+        <div className="absolute top-6 left-10 size-20 rounded-full bg-violet-300/20 blur-xl" />
+
+        <div className="relative flex flex-col items-center px-4 pt-8 pb-14 text-center">
           <div className="relative">
-            <div className="grid size-16 place-items-center rounded-full border-2 border-primary/20 bg-primary-soft text-xl font-bold text-primary shadow-sm">
-              {initialsOf(profile.name || "U")}
+            <div className="grid size-20 place-items-center overflow-hidden rounded-full bg-white/25 p-1 shadow-lg ring-2 ring-white/50 backdrop-blur">
+              <img
+                src="/brand/default-avatar.png"
+                alt={`${profile.name || "Your"} avatar`}
+                width={512}
+                height={512}
+                className="size-full rounded-full object-cover"
+              />
             </div>
-            <span className="absolute right-0 bottom-0 size-4 rounded-full border-2 border-card bg-emerald-500" />
+            <span className="absolute right-1 bottom-1 size-4 rounded-full border-2 border-white bg-emerald-400" />
           </div>
-          <p className="mt-3 text-base font-bold tracking-tight">{profile.name || "Your account"}</p>
+          <p className="mt-3 text-lg font-bold tracking-tight text-white">
+            {profile.name || "Your account"}
+          </p>
           {profile.email ? (
-            <p className="text-xs text-muted-foreground">{profile.email}</p>
+            <p className="text-xs text-white/75">{profile.email}</p>
           ) : null}
         </div>
       </header>
 
-      <div className="space-y-2 px-4 pt-1 pb-6">
+      {/* Menu card overlapping the gradient */}
+      <div className="relative -mt-8 space-y-2 rounded-t-3xl bg-gradient-to-b from-violet-50 via-background to-background px-4 pt-6 pb-6">
         {items.map((item) => (
           <Link
             key={item.label}
             to={item.to}
-            className="press flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft transition-colors hover:border-border"
+            className="press flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft transition-colors hover:border-primary/30 hover:bg-primary-soft/40"
           >
-            <span className="grid size-8.5 shrink-0 place-items-center rounded-lg bg-secondary text-foreground">
+            <span className="grid size-8.5 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary/15 to-fuchsia-500/15 text-primary">
               <item.icon className="size-4 stroke-[2]" />
             </span>
             <span className="flex-1 text-sm font-medium text-foreground">{item.label}</span>
