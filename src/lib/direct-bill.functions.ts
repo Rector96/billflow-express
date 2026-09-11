@@ -89,7 +89,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         billersCode,
         amount,
         meterType,
-        phone: input?["phone"] ? String(input.phone) : undefined,
+        phone: input?.["phone"] ? String(input.phone) : undefined,
         customerName: input?.customerName ? String(input.customerName) : undefined,
         requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
       };
@@ -102,7 +102,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       billersCode,
       amount,
       variationCode,
-      phone: input?["phone"] ? String(input.phone) : undefined,
+      phone: input?.["phone"] ? String(input.phone) : undefined,
       customerName: input?.customerName ? String(input.customerName) : undefined,
       subscriptionType: String(input?.subscriptionType ?? "change"),
       requestId: String(input?.requestId ?? "").trim() || `direct-${crypto.randomUUID()}`,
