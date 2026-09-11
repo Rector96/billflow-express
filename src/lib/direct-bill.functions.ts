@@ -478,8 +478,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
           service: slug === "cable" ? "cable" : "electricity",
           provider: serviceID,
           productCode: String(meta["variation_code"] ?? meta["meter_type"] ?? ""),
-          providerCost: pay.totalAmount,
-          providerCommission: pay.commission,
+          providerCost: pay.totalAmount ?? null,
+          providerCommission: pay.commission ?? null,
         });
       } catch (e) {
         console.error("[direct-bill] profit", e);
