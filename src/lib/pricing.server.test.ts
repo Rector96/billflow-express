@@ -2,7 +2,7 @@
  * Unit tests for the pure pricing engine.
  * Run with: bun test src/lib/pricing.server.test.ts
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
   applyPricingRule,
   computeFromRule,

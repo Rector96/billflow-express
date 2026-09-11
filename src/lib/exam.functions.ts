@@ -209,7 +209,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     }
     const requestId = `exam-${crypto.randomUUID()}`;
     const identifier = data.exam === "jamb" ? data.profileId : data.exam;
-    const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
+    const { data: started, error } = await (context.supabase as any).rpc("start_bill_purchase", {
       _service_slug: "exam-pins",
       _service_label: "Exam PIN",
       _provider: serviceID,
@@ -260,7 +260,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       quantity: data.quantity,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await supabaseAdmin.rpc(
+    const { data: finalized, error: settleError } = await (supabaseAdmin as any).rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,

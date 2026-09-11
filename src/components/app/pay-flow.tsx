@@ -498,11 +498,11 @@ export function PayFlow() {
             ) : isData ? (
               <DataPlanPicker
                 plans={variations}
-                selectedCode={variation?.variationCode}
+                selectedCode={variation?.variationCode ?? null}
                 networkLabel={provider || serviceID}
                 phoneLabel={identifier}
                 onSelect={(v) => {
-                  setVariation(v);
+                  setVariation({ ...v, fixedPrice: v.fixedPrice ?? false });
                   scrollIntoAction("pay-action");
                 }}
               />
