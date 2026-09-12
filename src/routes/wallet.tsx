@@ -49,24 +49,27 @@ function WalletPage() {
         </div>
       </header>
 
-      <div className="space-y-4 px-4 pt-1 pb-6">
-        <section className="relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-card">
+      <div className="wallet-page-wash min-h-[calc(100dvh-5rem)] space-y-4 px-4 pt-2 pb-6">
+        <section className="wallet-surface relative overflow-hidden rounded-2xl border border-primary-foreground/10 p-5 text-primary-foreground shadow-float">
+          <span className="wallet-glow pointer-events-none absolute -right-10 -top-12 size-40 rounded-full blur-2xl" />
+          <span className="wallet-glow pointer-events-none absolute -bottom-16 -left-10 size-32 rounded-full blur-2xl" />
+          <div className="relative">
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-medium text-primary">
-              <span className="size-1.5 rounded-full bg-primary" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/12 px-2.5 py-1 text-xs font-medium text-primary-foreground/80">
+              <span className="size-1.5 rounded-full bg-success" />
               Available Balance
             </span>
             <button
               type="button"
               onClick={toggleBalance}
               aria-label={hideBalance ? "Show balance" : "Hide balance"}
-              className="press grid size-8 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:text-foreground"
+              className="press grid size-8 place-items-center rounded-full bg-primary-foreground/12 text-primary-foreground transition-colors hover:bg-primary-foreground/20"
             >
               {hideBalance ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
 
-          <p className="mt-3.5 text-3xl font-bold tracking-tight tabular-nums text-foreground">
+          <p className="mt-3.5 text-3xl font-bold tabular-nums text-primary-foreground">
             {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
           </p>
 
@@ -74,10 +77,11 @@ function WalletPage() {
             <Link
               to="/wallet/fund"
               search={{}}
-              className="press flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary-deep"
+              className="press flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-foreground text-xs font-semibold text-primary shadow-sm hover:bg-primary-foreground/90"
             >
               <Plus className="size-4 stroke-[2.2]" /> Fund Wallet
             </Link>
+          </div>
           </div>
         </section>
 
