@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Smartphone } from "lucide-react";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,7 @@ export type DataPlanItem = {
 type TabId = "best" | "daily" | "weekly" | "monthly" | "all";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "best", label: "Best" },
+  { id: "best", label: "Best offers" },
   { id: "daily", label: "Daily" },
   { id: "weekly", label: "Weekly" },
   { id: "monthly", label: "Monthly" },
@@ -94,6 +95,10 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
 
   const [tab, setTab] = useState<TabId>(defaultTab);
 
+  useEffect(() => {
+    if (!availableTabs.some((item) => item.id === tab)) setTab(defaultTab);
+  }, [availableTabs, defaultTab, tab]);
+
   const list =
     tab === "best"
       ? buckets.best
@@ -106,32 +111,26 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
             : buckets.all;
 
   return (
-    <div className="space-y-3">
-      <style>{`
-        @keyframes rpFadeSlide {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
+    <div className="space-y-5">
       {(networkLabel || phoneLabel) && (
-        <div className="flex items-center gap-2.5 rounded-2xl bg-muted/40 px-3 py-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold tracking-wide text-primary-foreground">
+        <div className="flex items-center gap-3 rounded-2xl border border-primary/10 bg-primary-soft/70 px-3.5 py-3 shadow-soft">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-[10px] font-bold uppercase text-primary-foreground shadow-sm">
             {(networkLabel || "NET").slice(0, 3).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+            <p className="truncate text-base font-bold text-foreground">
               {phoneLabel || "—"}
             </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {networkLabel ? `${networkLabel} · data` : "Choose a plan"}
+            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+              <Smartphone className="size-3" />
+              {networkLabel ? `${networkLabel} data` : "Choose a plan"}
             </p>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max items-end border-b border-border/40">
+      <div className="overflow-x-auto pb-1 [scrollbar-width:none]">
+        <div className="flex min-w-max gap-1 rounded-xl bg-secondary p-1">
           {availableTabs.map((t) => {
             const active = tab === t.id;
             return (
@@ -140,17 +139,13 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 type="button"
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "relative px-3 pb-2 pt-1 text-[12px] font-medium transition-colors duration-200",
-                  active ? "text-foreground" : "text-muted-foreground/80",
+                  "relative rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200",
+                  active
+                    ? "bg-card text-primary shadow-pill"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {t.label}
-                <span
-                  className={cn(
-                    "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-foreground transition-transform duration-300 ease-out",
-                    active ? "scale-x-100" : "scale-x-0",
-                  )}
-                />
               </button>
             );
           })}
@@ -159,11 +154,10 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
 
       <div
         key={tab}
-        className="grid grid-cols-3 gap-2"
-        style={{ animation: "rpFadeSlide 220ms ease-out" }}
+        className="plan-enter grid grid-cols-2 gap-3"
       >
         {list.length === 0 ? (
-          <p className="col-span-3 py-10 text-center text-[11px] text-muted-foreground">
+          <p className="col-span-2 py-10 text-center text-xs text-muted-foreground">
             No plans in this category
           </p>
         ) : (
@@ -179,28 +173,25 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 type="button"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "relative flex aspect-[0.92] flex-col justify-between overflow-hidden rounded-[14px] border px-2 py-2 text-left",
+                   "relative flex min-h-32 flex-col justify-between overflow-hidden rounded-2xl border p-4 text-left",
                   "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
                   "active:scale-[0.97]",
                   selected
-                    ? "border-primary/50 bg-primary/[0.07] shadow-[0_0_0_1px_rgba(109,40,217,0.12)]"
-                    : "border-transparent bg-[#F3F1F8] hover:border-primary/25 hover:bg-[#EFEAF8]",
+                     ? "-translate-y-0.5 border-primary bg-primary-soft shadow-float"
+                     : "border-border/70 bg-card shadow-soft hover:-translate-y-0.5 hover:border-primary/30",
                 )}
               >
-                <span
-                  className={cn(
-                    "absolute inset-x-0 top-0 h-[2px] bg-primary transition-opacity duration-300",
-                    selected ? "opacity-100" : "opacity-0",
-                  )}
-                />
+                <span className={cn("absolute right-3 top-3 grid size-5 place-items-center rounded-full border transition-all", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-transparent")}>
+                  <Check className="size-3" strokeWidth={3} />
+                </span>
 
                 <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">
+                  <p className="pr-6 text-[10px] font-semibold uppercase text-muted-foreground">
                     {duration ?? "PLAN"}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 truncate text-[13px] font-bold leading-none tracking-tight",
+                       "mt-2 truncate text-xl font-bold leading-none",
                       "transition-colors duration-300",
                       selected ? "text-primary" : "text-foreground",
                     )}
@@ -208,19 +199,19 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                     {title}
                   </p>
                   {!size ? (
-                    <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-muted-foreground/80">
+                     <p className="mt-2 line-clamp-2 text-[10px] leading-snug text-muted-foreground">
                       {p.name}
                     </p>
                   ) : null}
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[12px] font-bold tabular-nums leading-none text-foreground">
+                   <p className="truncate text-base font-bold tabular-nums leading-none text-foreground">
                     {formatNaira(p.amount, false)}
                   </p>
                   <p
                     className={cn(
-                      "mt-1 text-[9px] font-semibold transition-opacity duration-300",
+                       "mt-1.5 text-[10px] font-semibold transition-opacity duration-300",
                       selected ? "text-primary opacity-100" : "opacity-0",
                     )}
                   >
@@ -233,7 +224,9 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         )}
       </div>
 
-      <p className="pt-0.5 text-center text-[10px] text-muted-foreground/70">— End —</p>
+      <p className="pt-1 text-center text-[10px] text-muted-foreground/70">
+        Prices and availability update from your network.
+      </p>
     </div>
   );
 }
