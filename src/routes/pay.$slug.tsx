@@ -25,6 +25,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
+import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1200,6 +1201,16 @@ function PayFlow() {
               <p className="py-6 text-center text-xs text-muted-foreground">
                 Service information is temporarily unavailable. Please try again.
               </p>
+            ) : isData ? (
+              <DataPlanPicker
+                plans={variations}
+                selectedCode={variation?.variationCode ?? null}
+                networkLabel={provider || serviceID}
+                phoneLabel={identifier}
+                onSelect={(selectedPlan) => {
+                  setVariation({ ...selectedPlan, fixedPrice: selectedPlan.fixedPrice ?? false });
+                }}
+              />
             ) : (
               <div className="space-y-2">
                 {variations.map((v) => (
