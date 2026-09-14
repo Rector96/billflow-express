@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
-import { BrandLogo } from "@/components/app/app-shell";
+import { BrandMark } from "@/components/app/app-shell";
+import { ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,6 +20,8 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Fund one wallet and pay every bill in seconds.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Splash,
@@ -39,16 +42,28 @@ function Splash() {
   }, [hydrated, authed, seenOnboarding, navigate]);
 
   return (
-    <main className="brand-gradient flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-primary-foreground">
-      <div className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-5 duration-700">
-        <div className="grid place-items-center rounded-3xl bg-white p-4 shadow-float sm:p-6">
-          <BrandLogo className="h-[clamp(4.5rem,26vw,9rem)]" />
+    <main className="splash-surface relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 text-primary-foreground">
+      <div className="splash-grid pointer-events-none absolute inset-0 opacity-25" />
+      <div className="splash-orbit pointer-events-none absolute left-1/2 top-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary-foreground/10" />
+
+      <div className="page-fade relative flex flex-col items-center">
+        <div className="relative grid size-24 place-items-center rounded-3xl border border-primary-foreground/20 bg-primary-foreground/95 shadow-float backdrop-blur sm:size-28">
+          <BrandMark className="size-16 rounded-2xl ring-0 sm:size-20" />
         </div>
-        <p className="text-xs font-bold tracking-[0.28em] opacity-85">{BRAND.tagline}</p>
+        <h1 className="mt-6 text-3xl font-bold text-primary-foreground">{BRAND.name}</h1>
+        <p className="mt-2 text-[10px] font-bold tracking-[0.24em] text-primary-foreground/75">
+          {BRAND.tagline}
+        </p>
+        <div className="mt-7 flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1.5 text-[10px] font-semibold text-primary-foreground/80 backdrop-blur">
+          <ShieldCheck className="size-3.5" /> Secure payments, made simple
+        </div>
       </div>
-      <div className="absolute bottom-10 flex items-center gap-2 text-xs opacity-70">
-        <span className="size-1.5 animate-pulse rounded-full bg-current" />
-        Loading your experience
+
+      <div className="absolute bottom-[max(2rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-3 text-primary-foreground/65">
+        <div className="h-1 w-24 overflow-hidden rounded-full bg-primary-foreground/15">
+          <span className="splash-loader block h-full w-1/2 rounded-full bg-primary-foreground/80" />
+        </div>
+        <p className="text-[10px] font-medium">Preparing your wallet</p>
       </div>
     </main>
   );

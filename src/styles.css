@@ -114,6 +114,8 @@
   --wallet-surface: linear-gradient(135deg, #17113f 0%, #4b2fc9 58%, #7c5cfc 100%);
   --wallet-glow: rgba(255, 255, 255, 0.16);
   --page-wash: linear-gradient(180deg, #f4f1ff 0%, #f8fafc 42%, #f8fafc 100%);
+  --splash-surface: linear-gradient(155deg, var(--primary-deep) 0%, var(--primary) 52%, #6d28d9 100%);
+  --splash-grid: color-mix(in oklch, var(--primary-foreground) 20%, transparent);
 }
 
 .dark {
@@ -159,6 +161,8 @@
   --wallet-surface: linear-gradient(135deg, #17113f 0%, #38229e 58%, #6547df 100%);
   --wallet-glow: rgba(255, 255, 255, 0.12);
   --page-wash: linear-gradient(180deg, #17113f 0%, #090d16 38%, #090d16 100%);
+  --splash-surface: linear-gradient(155deg, #17113f 0%, var(--primary-deep) 55%, #4c1d95 100%);
+  --splash-grid: color-mix(in oklch, var(--primary-foreground) 16%, transparent);
 }
 
 @layer base {
@@ -219,6 +223,36 @@
 
 @utility wallet-glow {
   background: var(--wallet-glow);
+}
+
+@utility splash-surface {
+  background: var(--splash-surface);
+}
+
+@utility splash-grid {
+  background-image:
+    linear-gradient(var(--splash-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--splash-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
+
+@utility splash-orbit {
+  animation: splash-breathe 2.8s ease-in-out infinite;
+}
+
+@utility splash-loader {
+  animation: splash-load 1.25s ease-in-out infinite;
+}
+
+@keyframes splash-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.4; }
+  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.8; }
+}
+
+@keyframes splash-load {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(210%); }
 }
 
 @utility plan-enter {
@@ -402,6 +436,10 @@
     animation: none !important;
   }
   .plan-enter {
+    animation: none !important;
+  }
+  .splash-orbit,
+  .splash-loader {
     animation: none !important;
   }
 }
