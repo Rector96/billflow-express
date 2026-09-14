@@ -1096,7 +1096,7 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader title="Confirm Payment" onBack={() => setStep("amount")} />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-5 pb-28 sm:pt-7">
           <PayStepper steps={stepsMeta} current={currentStepIndex} />
           <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-soft">
             <div className="flex items-center justify-between gap-3">
@@ -1181,7 +1181,7 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader
-          title={isPackageLive || service.mode === "package" ? "Select package" : "Enter amount"}
+          title={isData ? "Choose a data plan" : isPackageLive || service.mode === "package" ? "Select package" : "Enter amount"}
           subtitle={`${provider || serviceID} · ${maskTail(identifier) || service.name}`}
           onBack={() =>
             setStep(
@@ -1191,11 +1191,17 @@ function PayFlow() {
         />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
           <PayStepper steps={stepsMeta} current={currentStepIndex} />
-          <PrefillBanner />
+          {!isData ? <PrefillBanner /> : null}
           {isPackageLive ? (
             variationsLoading ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Loading packages…
+              <div className="space-y-3 py-2" aria-label="Loading data plans">
+                <div className="skeleton h-24 w-full" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="skeleton h-36" />
+                  <div className="skeleton h-36" />
+                  <div className="skeleton h-36" />
+                  <div className="skeleton h-36" />
+                </div>
               </div>
             ) : variations.length === 0 ? (
               <p className="py-6 text-center text-xs text-muted-foreground">
@@ -1366,8 +1372,9 @@ function PayFlow() {
               </div>
             </>
           )}
+          <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 -mx-1 bg-gradient-to-t from-background via-background to-transparent px-1 pt-5 pb-1 lg:bottom-0">
           <Button
-            className="h-11 w-full rounded-xl text-sm font-bold"
+            className="h-12 w-full rounded-xl text-sm font-bold shadow-float"
             disabled={
               total < 50 ||
               (isPackageLive && !variation) ||
@@ -1389,8 +1396,9 @@ function PayFlow() {
               setStep("confirm");
             }}
           >
-            Continue
+            {isData && variation ? `Continue · ${formatNaira(total, false)}` : "Continue"}
           </Button>
+          </div>
         </div>
       </AppShell>
     );

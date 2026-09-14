@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Search, Smartphone, Sparkles } from "lucide-react";
+import { Check, Search, Signal, Smartphone, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatNaira } from "@/lib/mock-data";
@@ -151,24 +151,26 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
     .trim();
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {(networkLabel || phoneLabel) && (
-        <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-primary-soft p-4 shadow-soft">
+        <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-primary-soft p-4 shadow-card">
           <span className="pointer-events-none absolute -right-7 -top-8 size-24 rounded-full bg-primary/10 blur-2xl" />
           <div className="relative flex items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-[11px] font-bold uppercase text-primary-foreground shadow-card">
-            {displayNetwork.slice(0, 3).toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-base font-extrabold text-foreground">
-              {phoneLabel || "—"}
-            </p>
-            <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-              <Smartphone className="size-3" />
-              {displayNetwork} data · {plans.length} plans available
-            </p>
-          </div>
-          <Sparkles className="size-5 shrink-0 text-primary/60" />
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary text-[11px] font-bold uppercase text-primary-foreground shadow-card">
+              {displayNetwork.slice(0, 3).toUpperCase()}
+            </span>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-base font-extrabold text-foreground">
+                {phoneLabel || "—"}
+              </p>
+              <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                <Smartphone className="size-3" />
+                {displayNetwork} data · {plans.length} plans
+              </p>
+            </div>
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-card/80 text-primary shadow-soft">
+              <Signal className="size-4" />
+            </span>
           </div>
         </div>
       )}
@@ -184,7 +186,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         />
       </div>
 
-      <div className="overflow-x-auto pb-1 [scrollbar-width:none]">
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         <div className="flex min-w-max gap-1.5">
           {availableTabs.map((t) => {
             const active = tab === t.id;
@@ -223,7 +225,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         </span>
       </div>
 
-      <motion.div layout className="grid grid-cols-2 gap-3">
+      <motion.div layout className="grid grid-cols-2 gap-2.5 sm:gap-3">
         {list.length === 0 ? (
           <div className="col-span-2 rounded-2xl border border-dashed border-border bg-card py-10 text-center">
             <p className="text-sm font-bold text-foreground">No matching plan</p>
@@ -251,7 +253,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 variant="outline"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "relative h-full min-h-36 w-full whitespace-normal rounded-2xl p-4 text-left",
+                  "relative h-full min-h-36 w-full whitespace-normal rounded-xl p-3.5 text-left sm:p-4",
                   "flex flex-col items-stretch justify-between overflow-hidden",
                   "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
                   selected
@@ -269,7 +271,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                   </p>
                   <p
                     className={cn(
-                       "mt-2 truncate text-xl font-bold leading-none",
+                       "mt-2 truncate text-xl font-bold leading-none tabular-nums",
                       "transition-colors duration-300",
                       selected ? "text-primary" : "text-foreground",
                     )}
@@ -281,8 +283,8 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                       {p.name}
                     </p>
                   ) : (
-                    <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">
-                      {planTypeLabel(p.name)} plan
+                    <p className="mt-2 flex items-center gap-1 truncate text-[10px] font-medium text-muted-foreground">
+                      <Sparkles className="size-3 text-primary/60" /> {planTypeLabel(p.name)} plan
                     </p>
                   )}
                 </div>
@@ -308,8 +310,8 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         )}
       </motion.div>
 
-      <p className="pt-1 text-center text-[10px] text-muted-foreground/70">
-        All plans and prices are supplied live by {displayNetwork}.
+      <p className="flex items-center justify-center gap-1.5 pt-1 text-center text-[10px] text-muted-foreground/70">
+        <Signal className="size-3" /> Live plans and prices from {displayNetwork}
       </p>
     </div>
   );
