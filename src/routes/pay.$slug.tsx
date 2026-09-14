@@ -1181,7 +1181,7 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader
-          title={isPackageLive || service.mode === "package" ? "Select package" : "Enter amount"}
+          title={isData ? "Choose a data plan" : isPackageLive || service.mode === "package" ? "Select package" : "Enter amount"}
           subtitle={`${provider || serviceID} · ${maskTail(identifier) || service.name}`}
           onBack={() =>
             setStep(
@@ -1191,7 +1191,7 @@ function PayFlow() {
         />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-6 pb-10 sm:pt-8">
           <PayStepper steps={stepsMeta} current={currentStepIndex} />
-          <PrefillBanner />
+          {!isData ? <PrefillBanner /> : null}
           {isPackageLive ? (
             variationsLoading ? (
               <div className="space-y-3 py-2" aria-label="Loading data plans">
