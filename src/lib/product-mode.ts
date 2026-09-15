@@ -3,14 +3,15 @@
  *
  * IMPORTANT:
  * - A route existing in the app does NOT mean the service is production-ready.
- * - `isBillLive()` is used by the Services UI to decide whether a customer may
- *   enter a payment flow. Keep a service out of LIVE_BILL_SLUGS until its
- *   provider/fulfillment path is real and payment-safe.
+ * - `isBillLive()` is used by the Services UI and payment routes to decide
+ *   whether a customer may enter a payment flow.
  * - Demo/fallback data must never be presented as a completed government or
- *   regulated service. Services without a real provider are shown as coming soon.
+ *   regulated service.
+ * - Exam PINs are provider-controlled and currently disabled in the database,
+ *   so they stay out of the public live set until VTpass enables them.
  *
  * Current production-ready core services:
- * electricity, cable, education/exam-pins, airtime and data.
+ * electricity, cable, airtime and data.
  *
  * Hub services that depend on external verification/fulfillment (CAC, NIN, TIN,
  * vehicle) are deliberately NOT marked live until the required provider access
@@ -49,14 +50,14 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
 /**
  * Only services with a verified production fulfillment path belong here.
  *
- * Do not add a service merely because its UI exists. In particular, CAC/NIN/TIN/
- * vehicle must stay out until their real provider integrations are available.
+ * Exam PINs are intentionally excluded for now because the database service
+ * availability control currently keeps `education` and `exam-pins` disabled.
+ * Once the provider is enabled and the service is tested end-to-end, add the
+ * appropriate slug here together with the database availability change.
  */
 export const LIVE_BILL_SLUGS = new Set([
   "electricity",
   "cable",
-  "education",
-  "exam-pins",
   "airtime",
   "data",
 ]);
@@ -72,7 +73,7 @@ export function isServiceVisible(slug: string): boolean {
 
 /**
  * Production gate for payment-capable services.
- * Returning false intentionally makes an unfinished hub module display as
+ * Returning false intentionally makes an unfinished service display as
  * unavailable/coming soon instead of accepting money that cannot be fulfilled.
  */
 export function isBillLive(slug: string): boolean {
