@@ -16,7 +16,7 @@ export const Route = createFileRoute("/services")({
       {
         name: "description",
         content:
-          "Electricity, cable TV, education, airtime, data, internet, water, insurance and exam pins.",
+          "Electricity, cable TV, education, airtime, data, internet, water, insurance, exam pins and CAC registration.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
       { property: "og:description", content: "All your everyday payments in one place." },
@@ -40,7 +40,7 @@ function ServicesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search airtime, electricity, cable..."
+            placeholder="Search airtime, electricity, CAC..."
             aria-label="Search services"
             className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
@@ -51,14 +51,15 @@ function ServicesPage() {
             <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
               {list.map((s) => {
                 const live = isBillLive(s.slug);
+                const isCac = s.slug === "cac";
                 return (
                   <ServiceTile
                     key={s.slug}
                     label={live ? s.short : `${s.short} · Soon`}
                     Icon={s.icon}
                     tint={s.tint}
-                    to="/pay/$slug"
-                    params={{ slug: s.slug }}
+                    to={isCac ? "/cac" : "/pay/$slug"}
+                    params={isCac ? undefined : { slug: s.slug }}
                   />
                 );
               })}
@@ -68,7 +69,7 @@ function ServicesPage() {
           <EmptyState
             Icon={SearchX}
             title="No service found"
-            body="Try a different keyword, like electricity, data or DSTV."
+            body="Try a different keyword, like electricity, data or CAC."
           />
         )}
 

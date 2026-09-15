@@ -6,6 +6,7 @@
  * DIRECT_PAY  = true  → electricity/cable can use Paystack checkout path.
  *
  * Education & exam pins share the same student-friendly PIN purchase flow (VTpass).
+ * CAC Business Name is a separate assisted flow at /cac (see docs/CAC_BUSINESS_NAME.md).
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -14,7 +15,7 @@ export const DIRECT_PAY = true;
 export const HOME_BILL_SLUGS = ["electricity", "cable", "education", "exam-pins"] as const;
 
 /** Classic home (full fintech) */
-export const HOME_CLASSIC_SLUGS = ["electricity", "cable", "education", "airtime", "data"] as const;
+export const HOME_CLASSIC_SLUGS = ["electricity", "cable", "education", "airtime", "data", "cac"] as const;
 
 /** Hidden on Services + Home when BILLS_FOCUS */
 export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
@@ -33,6 +34,7 @@ export const LIVE_BILL_SLUGS = new Set([
   "exam-pins",
   "airtime",
   "data",
+  "cac",
 ]);
 
 export function homeServiceSlugs(): readonly string[] {
