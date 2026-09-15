@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Ticket,
   Building2,
+  Fingerprint,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -68,7 +69,8 @@ export type ServiceSlug =
   | "water"
   | "insurance"
   | "exam-pins"
-  | "cac";
+  | "cac"
+  | "nin";
 
 export type Package = { id: string; name: string; price: number; note?: string };
 
@@ -275,6 +277,23 @@ export const SERVICES: ServiceConfig[] = [
     mode: "package",
     packages: [
       { id: "bn-start", name: "Start Business (Business Name)", price: 27500, note: "Demo package" },
+    ],
+  },
+  {
+    slug: "nin",
+    name: "NIN Services",
+    short: "NIN",
+    icon: Fingerprint,
+    tint: "text-[#4F46E5] bg-[#E0E7FF] border border-[#C7D2FE]/60 shadow-[0_4px_12px_-2px_rgba(79,70,229,0.15)]",
+    providerLabel: "NIN helpers",
+    providers: ["Retrieve NIN", "Print NIN Slip"],
+    identifierLabel: "NIN / Phone",
+    identifierPlaceholder: "",
+    verifies: false,
+    mode: "package",
+    packages: [
+      { id: "nin-retrieve", name: "Retrieve NIN", price: 300, note: "Demo" },
+      { id: "nin-slip", name: "Print NIN Slip", price: 500, note: "Demo" },
     ],
   },
 ];
