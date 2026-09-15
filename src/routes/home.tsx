@@ -1,18 +1,16 @@
-import { useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bell, ChevronRight, Plus, Wallet } from "lucide-react";
+import { useMemo } from "react";
+import { Bell, HeartHandshake } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
-import { ServiceTile } from "@/components/app/service-tile";
-import { StatusBadge } from "@/components/app/status-badge";
+import { WalletCard } from "@/components/app/wallet-card";
+import { HomePromos } from "@/components/app/home-promos";
+import { BuyAgainRail } from "@/components/app/buy-again-rail";
+import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
+import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
-import {
-  BRAND,
-  buildBuyAgain,
-  formatNaira,
-  getService,
-  greeting,
-  initialsOf,
-} from "@/lib/mock-data";
+import { buildBuyAgain } from "@/lib/buy-again";
+import { BRAND } from "@/lib/brand";
+import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/home")({
@@ -30,7 +28,7 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-/** Core hub modules — NIN tile covers retrieve + plastic-style card / slip */
+/** Hub-first grid: CAC, NIN (retrieve + plastic card), TIN, Documents, Vehicle, + education */
 const HOME_SERVICES = ["cac", "nin", "tin", "documents", "vehicle", "education"] as const;
 
 function serviceHref(slug: string): { to: string; params?: { slug: string } } {
@@ -84,154 +82,128 @@ function HomePage() {
               </h1>
             </div>
           </div>
-          <Link
-            to="/notifications"
-            className="press relative grid size-10 place-items-center rounded-full border border-border/70 bg-card text-foreground shadow-sm"
-            aria-label="Notifications"
-          >
-            <Bell className="size-4" />
-            {unreadCount > 0 ? (
-              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />
-            ) : null}
-          </Link>
-        </div>
 
-        <div className="mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/80 p-4 text-primary-foreground shadow-soft">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-primary-foreground/80">Wallet balance</p>
-              <p className="mt-1 text-2xl font-extrabold tracking-tight tabular-nums">
-                {formatNaira(profile.balance, false)}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate({ to: "/fund" })}
-              className="press inline-flex items-center gap-1.5 rounded-2xl bg-white/15 px-3 py-2 text-xs font-bold backdrop-blur"
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/notifications"
+              aria-label={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
+              className="press relative grid size-9 place-items-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
             >
-              <Plus className="size-3.5" /> Fund
-            </button>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-primary-foreground/85">
-            <Wallet className="size-3.5" />
-            <span>Secure payments · instant confirmation</span>
+              <Bell className="size-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" />
+              ) : null}
+            </Link>
           </div>
         </div>
       </header>
 
-      <section className="px-4 pb-3">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-extrabold tracking-tight">Services</h2>
-          <Link to="/services" className="text-xs font-semibold text-primary">
-            See all
-          </Link>
-        </div>
-        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-3">
-          {serviceTiles.map((s) =>
-            s ? (
-              <Link
-                key={s.slug}
-                to={serviceHref(s.slug).to}
-                params={serviceHref(s.slug).params}
-                className="press"
-              >
+      <div className="space-y-4 px-4 pt-1 pb-6">
+        <WalletCard />
+
+        <HomePromos className="mt-3" />
+
+        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+          <SectionTitle title="Quick Services" action="View all" to="/services" />
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {serviceTiles.map((s) =>
+              s ? (
                 <ServiceTile
-                  name={s.short || s.name}
-                  icon={s.icon}
+                  key={s.slug}
+                  label={s.short}
+                  Icon={s.icon}
                   tint={s.tint}
+                  to={serviceHref(s.slug).to}
+                  params={serviceHref(s.slug).params}
                 />
-              </Link>
-            ) : null,
-          )}
-        </div>
-      </section>
-
-      {savedHome.length > 0 ? (
-        <section className="px-4 pb-3">
-          <h2 className="mb-2 text-sm font-extrabold tracking-tight">Saved</h2>
-          <div className="space-y-2">
-            {savedHome.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() =>
-                  navigate({
-                    to: "/pay/$slug",
-                    params: { slug: item.serviceSlug },
-                  })
-                }
-                className="press flex w-full items-center justify-between rounded-2xl border border-border/70 bg-card px-3.5 py-3 text-left shadow-soft"
-              >
-                <div>
-                  <p className="text-sm font-bold">{item.label}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.provider}</p>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </button>
-            ))}
+              ) : null,
+            )}
+            <ServiceTile
+              label="More"
+              Icon={MoreIcon}
+              tint="bg-secondary text-muted-foreground border border-border/70"
+              to="/services"
+            />
           </div>
         </section>
-      ) : null}
 
-      {buyAgain.length > 0 ? (
-        <section className="px-4 pb-3">
-          <h2 className="mb-2 text-sm font-extrabold tracking-tight">Buy again</h2>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {buyAgain.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() =>
-                  navigate({
-                    to: "/pay/$slug",
-                    params: { slug: item.serviceSlug },
-                  })
-                }
-                className="press min-w-[140px] rounded-2xl border border-border/70 bg-card px-3 py-2.5 text-left shadow-soft"
-              >
-                <p className="truncate text-xs font-bold">{item.title}</p>
-                <p className="text-[11px] text-muted-foreground">{formatNaira(item.amount, false)}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
+        {(buyAgain.length > 0 || savedHome.length > 0) && (
+          <section>
+            <SectionTitle title="Quick Pay" action="See all" to="/saved-payments" />
+            <div className="space-y-2">
+              <BuyAgainRail items={buyAgain} compact />
+              {savedHome.map((item) => {
+                const svc = getService(item.serviceSlug);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-2.5 shadow-soft"
+                  >
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-full",
+                        svc?.tint ?? "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {svc ? <svc.icon className="size-4" strokeWidth={1.8} /> : null}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{item.label}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.provider} · {item.masked}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-7.5 shrink-0 rounded-lg px-3 text-xs font-semibold"
+                      onClick={() =>
+                        navigate({
+                          to: "/pay/$slug",
+                          params: { slug: item.serviceSlug },
+                          search: { saved: item.id },
+                        })
+                      }
+                    >
+                      Pay
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-      <section className="px-4 pb-8">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-extrabold tracking-tight">Recent</h2>
-          <Link to="/history" className="text-xs font-semibold text-primary">
-            History
-          </Link>
-        </div>
-        <div className="space-y-2">
+        <section>
+          <SectionTitle title="Recent Activity" action="See all" to="/history" />
           {recent.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 py-6 text-center text-xs text-muted-foreground">
-              No transactions yet
+            <p className="rounded-xl border border-dashed border-border/80 bg-card py-6 text-center text-xs text-muted-foreground">
+              Your recent payments will appear here.
             </p>
           ) : (
-            recent.map((tx) => (
-              <Link
-                key={tx.id}
-                to="/history/$txId"
-                params={{ txId: tx.id }}
-                className={cn(
-                  "press flex items-center justify-between rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft",
-                )}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{tx.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{tx.service}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-extrabold tabular-nums">{formatNaira(tx.amount, false)}</p>
-                  <StatusBadge status={tx.status} className="mt-0.5" />
-                </div>
-              </Link>
-            ))
+            <div className="space-y-2">
+              {recent.map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} compact />
+              ))}
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+
+        <Link
+          to="/support"
+          className="press flex items-center gap-3 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card transition-colors hover:border-primary/40"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+            <HeartHandshake className="size-4.5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground">Need help with a payment?</p>
+            <p className="text-[11px] text-muted-foreground">RockPay Support is available 24/7</p>
+          </div>
+          <span className="text-xs font-medium text-primary">Get help →</span>
+        </Link>
+      </div>
     </AppShell>
   );
 }
