@@ -1,6 +1,6 @@
 /**
- * Phase A — /admin/hub-orders
- * Staff console for CAC, NIN, TIN, documents, vehicle hub orders.
+ * Phase A+B — /admin/hub-orders
+ * List + detail with CAC checklist, staff notes, fulfillment hooks.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,8 +9,11 @@ import { RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
+  addHubStaffNote,
   listHubOrders,
+  updateHubFulfillment,
   updateHubOrderStatus,
   type HubOrderRow,
   type HubOrderStatus,
@@ -30,8 +33,7 @@ function slaLabel(createdAt: string): { text: string; tone: "ok" | "warn" | "bad
   if (mins < 60) return { text: `${mins}m`, tone: "ok" };
   const hours = Math.floor(mins / 60);
   if (hours < 24) return { text: `${hours}h`, tone: hours >= 6 ? "warn" : "ok" };
-  const days = Math.floor(hours / 24);
-  return { text: `${days}d`, tone: "bad" };
+  return { text: `${Math.floor(hours / 24)}d`, tone: "bad" };
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -65,6 +67,8 @@ function metaGet(meta: Record<string, unknown> | null | undefined, ...keys: stri
 function AdminHubOrders() {
   const runList = useServerFn(listHubOrders);
   const runStatus = useServerFn(updateHubOrderStatus);
+  const runNote = useServerFn(addHubStaffNote);
+  const runFul = useServerFn(updateHubFulfillment);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -73,6 +77,7 @@ function AdminHubOrders() {
   const [busy, setBusy] = useState(false);
   const [filterService, setFilterService] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [noteText, setNoteText] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +91,10 @@ function AdminHubOrders() {
         },
       });
       setOrders(res.orders ?? []);
+      setSelected((prev) => {
+        if (!prev) return null;
+        return res.orders?.find((o) => o.id === prev.id) ?? prev;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load hub orders");
       setOrders([]);
@@ -98,16 +107,30 @@ function AdminHubOrders() {
     void load();
   }, [load]);
 
-  const setStatus = async (status: HubOrderStatus) => {
+  const setStatus = async (status: HubOrderStatus, note?: string) => {
     if (!selected) return;
     setBusy(true);
     try {
-      await runStatus({ data: { orderId: selected.id, status } });
+      await runStatus({ data: { orderId: selected.id, status, note } });
       toast.success(`Marked ${status.replace(/_/g, " ")}`);
-      setSelected((prev) => (prev ? { ...prev, status } : null));
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveNote = async () => {
+    if (!selected || !noteText.trim()) return;
+    setBusy(true);
+    try {
+      await runNote({ data: { orderId: selected.id, note: noteText.trim() } });
+      setNoteText("");
+      toast.success("Note saved");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save note");
     } finally {
       setBusy(false);
     }
@@ -117,6 +140,18 @@ function AdminHubOrders() {
     const m = selected?.metadata;
     return m && typeof m === "object" ? m : null;
   }, [selected]);
+
+  const isCac = selected?.service?.toLowerCase().includes("cac");
+  const isPhysical =
+    selected &&
+    ["nin_card", "plastic", "license_sticker", "vehicle_license"].some((x) =>
+      selected.service.toLowerCase().includes(x.replace("_", "")) ||
+      selected.service.toLowerCase().includes(x),
+    );
+
+  const staffNotes = Array.isArray(detailMeta?.["staff_notes"])
+    ? (detailMeta!["staff_notes"] as { at?: string; text?: string; by?: string }[])
+    : [];
 
   return (
     <AdminShell
@@ -165,9 +200,6 @@ function AdminHubOrders() {
       {error ? (
         <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
           {error}
-          <span className="mt-1 block text-xs">
-            Confirm you are staff (`is_staff`) and `hub_orders` exists. Apply hub migrations if needed.
-          </span>
         </p>
       ) : null}
 
@@ -274,6 +306,39 @@ function AdminHubOrders() {
               <Row label="Customer id" value={selected.customer_identifier || "—"} />
               <Row label="Created" value={new Date(selected.created_at).toLocaleString("en-NG")} />
 
+              {isCac ? (
+                <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800 dark:text-teal-200">
+                    CAC workflow
+                  </p>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-muted-foreground">
+                    <li>Confirm payment + docs in metadata</li>
+                    <li>Mark in progress when filing starts</li>
+                    <li>Request more docs via staff note if incomplete</li>
+                    <li>Complete when certificate is ready for customer</li>
+                  </ol>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl text-[10px]"
+                      disabled={busy}
+                      onClick={() => void setStatus("in_progress", "CAC filing started")}
+                    >
+                      Start filing
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl text-[10px]"
+                      disabled={busy}
+                      onClick={() => void setStatus("successful", "CAC certificate ready")}
+                    >
+                      Certificate ready
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
               <p className="pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                 Metadata
               </p>
@@ -285,12 +350,79 @@ function AdminHubOrders() {
               />
               <Row label="TIN" value={metaGet(detailMeta, "tin")} />
               <Row label="Taxpayer" value={metaGet(detailMeta, "taxpayerName")} />
+              <Row
+                label="Fulfillment"
+                value={metaGet(detailMeta, "fulfillment_status") || (isPhysical ? "queued" : "")}
+              />
+
+              {isPhysical ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl text-[10px]"
+                    disabled={busy}
+                    onClick={() =>
+                      void runFul({
+                        data: { orderId: selected.id, fulfillmentStatus: "printing" },
+                      }).then(() => load())
+                    }
+                  >
+                    Mark printing
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="rounded-xl text-[10px]"
+                    disabled={busy}
+                    onClick={() =>
+                      void runFul({
+                        data: { orderId: selected.id, fulfillmentStatus: "dispatched" },
+                      }).then(() => load())
+                    }
+                  >
+                    Mark dispatched
+                  </Button>
+                </div>
+              ) : null}
+
+              <p className="pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Staff notes
+              </p>
+              <div className="max-h-32 space-y-2 overflow-y-auto">
+                {staffNotes.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">No notes yet.</p>
+                ) : (
+                  staffNotes
+                    .slice()
+                    .reverse()
+                    .map((n, i) => (
+                      <div key={i} className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]">
+                        <p>{n.text}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {n.at ? new Date(n.at).toLocaleString("en-NG") : ""}
+                        </p>
+                      </div>
+                    ))
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Internal note…"
+                  className="h-10 rounded-xl text-xs"
+                />
+                <Button size="sm" className="h-10 rounded-xl" disabled={busy} onClick={() => void saveNote()}>
+                  Add
+                </Button>
+              </div>
+
               <pre className="max-h-40 overflow-auto rounded-xl bg-muted/40 p-3 font-mono text-[10px]">
                 {JSON.stringify(detailMeta ?? {}, null, 2)}
               </pre>
             </div>
             <div className="space-y-2 border-t p-4">
-              <p className="text-[11px] font-semibold text-muted-foreground">State transitions</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">Order status</p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   size="sm"
