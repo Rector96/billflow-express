@@ -1,12 +1,21 @@
 /**
- * Product mode — ONE place to reverse.
+ * Product/service availability is intentionally centralized here.
  *
- * BILLS_FOCUS = false → full product (airtime, data, utility, education).
- * BILLS_FOCUS = true  → utility + education only; airtime/data hidden.
- * DIRECT_PAY  = true  → electricity/cable can use Paystack checkout path.
+ * IMPORTANT:
+ * - A route existing in the app does NOT mean the service is production-ready.
+ * - `isBillLive()` is used by the Services UI to decide whether a customer may
+ *   enter a payment flow. Keep a service out of LIVE_BILL_SLUGS until its
+ *   provider/fulfillment path is real and payment-safe.
+ * - Demo/fallback data must never be presented as a completed government or
+ *   regulated service. Services without a real provider are shown as coming soon.
  *
- * Education & exam pins share the same student-friendly PIN purchase flow (VTpass).
- * CAC: /cac · NIN: /nin · TIN: /tin · Documents: /documents · Vehicle: /vehicle
+ * Current production-ready core services:
+ * electricity, cable, education/exam-pins, airtime and data.
+ *
+ * Hub services that depend on external verification/fulfillment (CAC, NIN, TIN,
+ * vehicle) are deliberately NOT marked live until the required provider access
+ * is configured. Documents is also held back until its server-side payment and
+ * real PDF delivery path is complete.
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -37,7 +46,12 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
   "insurance",
 ]);
 
-/** Live bill / hub services (not "coming soon") */
+/**
+ * Only services with a verified production fulfillment path belong here.
+ *
+ * Do not add a service merely because its UI exists. In particular, CAC/NIN/TIN/
+ * vehicle must stay out until their real provider integrations are available.
+ */
 export const LIVE_BILL_SLUGS = new Set([
   "electricity",
   "cable",
@@ -45,11 +59,6 @@ export const LIVE_BILL_SLUGS = new Set([
   "exam-pins",
   "airtime",
   "data",
-  "cac",
-  "nin",
-  "tin",
-  "documents",
-  "vehicle",
 ]);
 
 export function homeServiceSlugs(): readonly string[] {
@@ -61,6 +70,11 @@ export function isServiceVisible(slug: string): boolean {
   return !HIDDEN_WHEN_BILLS_FOCUS.has(slug);
 }
 
+/**
+ * Production gate for payment-capable services.
+ * Returning false intentionally makes an unfinished hub module display as
+ * unavailable/coming soon instead of accepting money that cannot be fulfilled.
+ */
 export function isBillLive(slug: string): boolean {
   return LIVE_BILL_SLUGS.has(slug);
 }
