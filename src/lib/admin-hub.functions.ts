@@ -1,6 +1,5 @@
 /**
- * Phase A — staff-only hub order + hub catalog fee mutations.
- * All handlers require Supabase auth + public.is_staff via service role check.
+ * Phase A+B — staff hub orders, catalog fees, notes, fulfillment/dispatch.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -22,6 +21,24 @@ export type HubOrderRow = {
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
 export type HubOrderStatus = (typeof HUB_STATUSES)[number];
 
+/** Physical delivery lifecycle (stored in metadata.fulfillment_status). */
+export const FULFILLMENT_STATUSES = [
+  "queued",
+  "printing",
+  "dispatched",
+  "delivered",
+  "cancelled",
+] as const;
+export type FulfillmentStatus = (typeof FULFILLMENT_STATUSES)[number];
+
+export const PHYSICAL_SERVICES = [
+  "nin_card_print",
+  "nin_plastic_card",
+  "plastic_card",
+  "vehicle_license_sticker",
+  "license_sticker",
+] as const;
+
 export const HUB_CATALOG_SERVICES = [
   "tin",
   "documents",
@@ -42,6 +59,10 @@ async function assertStaff(userId: string) {
   if (error) throw new Error(error.message || "Staff check failed");
   if (data !== true) throw new Error("Forbidden: staff only");
   return supabaseAdmin;
+}
+
+function asMeta(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
 }
 
 export const listHubOrders = createServerFn({ method: "GET" })
@@ -69,6 +90,30 @@ export const listHubOrders = createServerFn({ method: "GET" })
     return { orders: (rows ?? []) as HubOrderRow[] };
   });
 
+/** Physical items needing address / courier handling. */
+export const listDispatchQueue = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ orders: HubOrderRow[] }> => {
+    const admin = await assertStaff(context.userId);
+    const { data: rows, error } = await admin
+      .from("hub_orders")
+      .select(
+        "id, user_id, service, amount, status, payment_reference, tracking_reference, customer_identifier, metadata, created_at, updated_at",
+      )
+      .in("service", [...PHYSICAL_SERVICES])
+      .order("created_at", { ascending: true })
+      .limit(150);
+    if (error) throw new Error(error.message);
+
+    const orders = ((rows ?? []) as HubOrderRow[]).filter((o) => {
+      const st = String(o.status).toLowerCase();
+      if (st === "failed") return false;
+      const ful = String(asMeta(o.metadata)["fulfillment_status"] ?? "queued").toLowerCase();
+      return ful !== "delivered" && ful !== "cancelled";
+    });
+    return { orders };
+  });
+
 export const updateHubOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string; status: string; note?: string }) => {
@@ -94,8 +139,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       | undefined;
     if (!row) throw new Error("Order not found");
 
-    const prevMeta =
-      row.metadata && typeof row.metadata === "object" ? { ...row.metadata } : {};
+    const prevMeta = asMeta(row.metadata);
     const history = Array.isArray(prevMeta["status_history"])
       ? [...(prevMeta["status_history"] as unknown[])]
       : [];
@@ -120,6 +164,137 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     return { ok: true as const, status: data.status };
   });
 
+export const addHubStaffNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; note: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    const note = String(input?.note ?? "").trim();
+    if (!orderId) throw new Error("Missing order id");
+    if (note.length < 2) throw new Error("Note is too short");
+    if (note.length > 2000) throw new Error("Note is too long");
+    return { orderId, note };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: existing, error: readErr } = await admin
+      .from("hub_orders")
+      .select("id, metadata")
+      .eq("id", data.orderId)
+      .limit(1);
+    if (readErr) throw new Error(readErr.message);
+    const row = existing?.[0] as { id: string; metadata: unknown } | undefined;
+    if (!row) throw new Error("Order not found");
+
+    const prevMeta = asMeta(row.metadata);
+    const notes = Array.isArray(prevMeta["staff_notes"])
+      ? [...(prevMeta["staff_notes"] as unknown[])]
+      : [];
+    notes.push({
+      at: new Date().toISOString(),
+      by: context.userId,
+      text: data.note,
+    });
+
+    const { error } = await admin
+      .from("hub_orders")
+      .update({
+        metadata: { ...prevMeta, staff_notes: notes },
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+export const updateHubFulfillment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      orderId: string;
+      fulfillmentStatus: string;
+      courierName?: string;
+      courierPhone?: string;
+      trackingCode?: string;
+      note?: string;
+    }) => {
+      const orderId = String(input?.orderId ?? "").trim();
+      const fulfillmentStatus = String(input?.fulfillmentStatus ?? "")
+        .trim()
+        .toLowerCase();
+      if (!orderId) throw new Error("Missing order id");
+      if (!FULFILLMENT_STATUSES.includes(fulfillmentStatus as FulfillmentStatus)) {
+        throw new Error("Invalid fulfillment status");
+      }
+      return {
+        orderId,
+        fulfillmentStatus: fulfillmentStatus as FulfillmentStatus,
+        courierName: String(input?.courierName ?? "").trim(),
+        courierPhone: String(input?.courierPhone ?? "").trim(),
+        trackingCode: String(input?.trackingCode ?? "").trim(),
+        note: String(input?.note ?? "").trim(),
+      };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: existing, error: readErr } = await admin
+      .from("hub_orders")
+      .select("id, metadata, status")
+      .eq("id", data.orderId)
+      .limit(1);
+    if (readErr) throw new Error(readErr.message);
+    const row = existing?.[0] as
+      | { id: string; metadata: unknown; status: string }
+      | undefined;
+    if (!row) throw new Error("Order not found");
+
+    const prevMeta = asMeta(row.metadata);
+    const history = Array.isArray(prevMeta["fulfillment_history"])
+      ? [...(prevMeta["fulfillment_history"] as unknown[])]
+      : [];
+    history.push({
+      to: data.fulfillmentStatus,
+      at: new Date().toISOString(),
+      by: context.userId,
+      courierName: data.courierName || null,
+      courierPhone: data.courierPhone || null,
+      trackingCode: data.trackingCode || null,
+      note: data.note || null,
+    });
+
+    const nextMeta: Record<string, unknown> = {
+      ...prevMeta,
+      fulfillment_status: data.fulfillmentStatus,
+      fulfillment_history: history,
+    };
+    if (data.courierName) nextMeta["courier_name"] = data.courierName;
+    if (data.courierPhone) nextMeta["courier_phone"] = data.courierPhone;
+    if (data.trackingCode) nextMeta["courier_tracking"] = data.trackingCode;
+
+    // Keep order status aligned with late fulfillment stages
+    let nextStatus = row.status;
+    if (data.fulfillmentStatus === "dispatched" || data.fulfillmentStatus === "printing") {
+      nextStatus = "in_progress";
+    }
+    if (data.fulfillmentStatus === "delivered") {
+      nextStatus = "successful";
+    }
+    if (data.fulfillmentStatus === "cancelled") {
+      nextStatus = "failed";
+    }
+
+    const { error } = await admin
+      .from("hub_orders")
+      .update({
+        status: nextStatus,
+        metadata: nextMeta,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
+  });
+
 export const listHubCatalogFees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -133,7 +308,6 @@ export const listHubCatalogFees = createServerFn({ method: "GET" })
     return { rules: data ?? [] };
   });
 
-/** Updates markup_value (not base_price — that column does not exist). */
 export const updateHubCatalogFee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { service: string; markupValue: number }) => {
