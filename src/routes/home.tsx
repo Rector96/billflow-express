@@ -30,6 +30,12 @@ export const Route = createFileRoute("/home")({
 
 const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data", "cac"] as const;
 
+function serviceHref(slug: string): { to: string; params?: { slug: string } } {
+  if (slug === "cac") return { to: "/cac" };
+  if (slug === "nin") return { to: "/nin" };
+  return { to: "/pay/$slug", params: { slug } };
+}
+
 function HomePage() {
   const navigate = useNavigate();
   const { profile, transactions, saved, unreadCount } = useApp();
@@ -105,8 +111,8 @@ function HomePage() {
                   label={s.short}
                   Icon={s.icon}
                   tint={s.tint}
-                  to={s.slug === "cac" ? "/cac" : "/pay/$slug"}
-                  params={s.slug === "cac" ? undefined : { slug: s.slug }}
+                  to={serviceHref(s.slug).to}
+                  params={serviceHref(s.slug).params}
                 />
               ) : null,
             )}
