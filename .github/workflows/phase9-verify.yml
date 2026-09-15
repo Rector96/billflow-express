@@ -1,9 +1,17 @@
 name: Phase 9 verification
 
+# Keep the production verification workflow attached to the branches that can
+# contain deployable application code. This prevents a green CI result on an
+# unrelated hardening branch from being mistaken for feature-branch health.
 on:
   push:
     branches:
+      - feature/rockpay-pricing
+      - main
       - hardening/admin-production-readiness
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
