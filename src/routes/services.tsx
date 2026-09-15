@@ -16,7 +16,7 @@ export const Route = createFileRoute("/services")({
       {
         name: "description",
         content:
-          "Electricity, cable, education, airtime, data, CAC registration and NIN services.",
+          "Electricity, cable, education, airtime, data, CAC, NIN, TIN and document services.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
       { property: "og:description", content: "All your everyday payments in one place." },
@@ -28,6 +28,8 @@ export const Route = createFileRoute("/services")({
 function servicePath(slug: string): { to: string; params?: { slug: string } } {
   if (slug === "cac") return { to: "/cac" };
   if (slug === "nin") return { to: "/nin" };
+  if (slug === "tin") return { to: "/tin" };
+  if (slug === "documents") return { to: "/documents" };
   return { to: "/pay/$slug", params: { slug } };
 }
 
@@ -46,7 +48,7 @@ function ServicesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search airtime, NIN, CAC..."
+            placeholder="Search airtime, NIN, TIN, CAC..."
             aria-label="Search services"
             className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
