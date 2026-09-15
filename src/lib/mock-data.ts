@@ -10,6 +10,8 @@ import {
   Ticket,
   Building2,
   Fingerprint,
+  Hash,
+  FileText,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -47,16 +49,7 @@ export type AppNotification = {
   title: string;
   body: string;
   time: string;
-  read?: boolean;
-};
-
-export const DEMO_USER = {
-  name: "Pablo Emmanuel",
-  firstName: "Pablo",
-  phone: "0803 123 4567",
-  email: "pablo@example.com",
-  initials: "PE",
-  billpayId: "48291736",
+  read: boolean;
 };
 
 export type ServiceSlug =
@@ -70,7 +63,9 @@ export type ServiceSlug =
   | "insurance"
   | "exam-pins"
   | "cac"
-  | "nin";
+  | "nin"
+  | "tin"
+  | "documents";
 
 export type Package = { id: string; name: string; price: number; note?: string };
 
@@ -142,30 +137,25 @@ export const SERVICES: ServiceConfig[] = [
     short: "Education",
     icon: GraduationCap,
     tint: "text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE]/60 shadow-[0_4px_12px_-2px_rgba(124,58,237,0.15)]",
-    providerLabel: "Select education service",
-    providers: ["WAEC", "JAMB", "NECO", "NABTEB"],
-    identifierLabel: "Profile / Candidate Number",
-    identifierPlaceholder: "Enter candidate number",
-    identifierHelp: "Use the profile code sent to you when you registered.",
-    verifies: true,
+    providerLabel: "Select exam body",
+    providers: ["WAEC", "NECO", "NABTEB", "JAMB"],
+    identifierLabel: "Quantity",
+    identifierPlaceholder: "",
+    verifies: false,
     mode: "package",
-    packages: [
-      { id: "waec-result", name: "Result Checker PIN", price: 3500, note: "1 PIN" },
-      { id: "waec-reg", name: "Registration PIN", price: 27000, note: "1 PIN" },
-      { id: "jamb-utme", name: "UTME PIN", price: 7700, note: "Direct entry available" },
-    ],
-    customerName: "John Doe",
+    packages: [],
+    numeric: true,
   },
   {
     slug: "airtime",
     name: "Airtime",
     short: "Airtime",
     icon: Smartphone,
-    tint: "text-[#E11D48] bg-[#FFE4E6] border border-[#FECDD3]/60 shadow-[0_4px_12px_-2px_rgba(225,29,72,0.15)]",
+    tint: "text-[#DB2777] bg-[#FCE7F3] border border-[#FBCFE8]/60 shadow-[0_4px_12px_-2px_rgba(219,39,119,0.15)]",
     providerLabel: "Select network",
     providers: ["MTN", "Airtel", "Glo", "9mobile"],
     identifierLabel: "Phone Number",
-    identifierPlaceholder: "080 0000 0000",
+    identifierPlaceholder: "0801 234 5678",
     verifies: false,
     mode: "amount",
     quickAmounts: [100, 200, 500, 1000, 2000],
@@ -180,16 +170,10 @@ export const SERVICES: ServiceConfig[] = [
     providerLabel: "Select network",
     providers: ["MTN", "Airtel", "Glo", "9mobile"],
     identifierLabel: "Phone Number",
-    identifierPlaceholder: "080 0000 0000",
+    identifierPlaceholder: "0801 234 5678",
     verifies: false,
     mode: "package",
-    packages: [
-      { id: "d1", name: "1GB", price: 500, note: "30 days" },
-      { id: "d2", name: "2GB", price: 1000, note: "30 days" },
-      { id: "d3", name: "5GB", price: 2500, note: "30 days" },
-      { id: "d4", name: "10GB", price: 4500, note: "30 days" },
-      { id: "d5", name: "40GB", price: 12000, note: "60 days" },
-    ],
+    packages: [],
     numeric: true,
   },
   {
@@ -197,34 +181,27 @@ export const SERVICES: ServiceConfig[] = [
     name: "Internet",
     short: "Internet",
     icon: Globe,
-    tint: "text-[#0284C7] bg-[#E0F2FE] border border-[#BAE6FD]/60 shadow-[0_4px_12px_-2px_rgba(2,132,199,0.15)]",
-    providerLabel: "Select internet provider",
-    providers: ["Smile", "Spectranet", "Swift"],
-    identifierLabel: "Account / Device ID",
-    identifierPlaceholder: "Enter account ID",
-    verifies: true,
+    tint: "text-[#0891B2] bg-[#CFFAFE] border border-[#A5F3FC]/60 shadow-[0_4px_12px_-2px_rgba(8,145,178,0.15)]",
+    providerLabel: "Provider",
+    providers: ["Smile", "Spectranet"],
+    identifierLabel: "Account",
+    identifierPlaceholder: "",
+    verifies: false,
     mode: "package",
-    packages: [
-      { id: "i1", name: "Starter 20GB", price: 8000, note: "30 days" },
-      { id: "i2", name: "Value 60GB", price: 15000, note: "30 days" },
-      { id: "i3", name: "Unlimited", price: 25000, note: "30 days" },
-    ],
-    customerName: "John Doe",
+    packages: [],
   },
   {
     slug: "water",
     name: "Water",
     short: "Water",
     icon: Droplets,
-    tint: "text-[#0891B2] bg-[#CFFAFE] border border-[#A5F3FC]/60 shadow-[0_4px_12px_-2px_rgba(8,145,178,0.15)]",
-    providerLabel: "Select water board",
-    providers: ["Lagos Water Corporation", "FCT Water Board", "Abia Water"],
-    identifierLabel: "Customer ID",
-    identifierPlaceholder: "Enter customer ID",
-    verifies: true,
+    tint: "text-[#0284C7] bg-[#E0F2FE] border border-[#BAE6FD]/60 shadow-[0_4px_12px_-2px_rgba(2,132,199,0.15)]",
+    providerLabel: "Provider",
+    providers: [],
+    identifierLabel: "Account",
+    identifierPlaceholder: "",
+    verifies: false,
     mode: "amount",
-    quickAmounts: [2000, 5000, 10000, 15000],
-    customerName: "John Doe",
   },
   {
     slug: "insurance",
@@ -232,17 +209,12 @@ export const SERVICES: ServiceConfig[] = [
     short: "Insurance",
     icon: ShieldCheck,
     tint: "text-[#059669] bg-[#D1FAE5] border border-[#A7F3D0]/60 shadow-[0_4px_12px_-2px_rgba(5,150,105,0.15)]",
-    providerLabel: "Select insurance plan",
-    providers: ["Third Party Motor", "Health Cover", "Home Cover"],
-    identifierLabel: "Policy / Plate Number",
-    identifierPlaceholder: "Enter policy number",
-    verifies: true,
-    mode: "package",
-    packages: [
-      { id: "p1", name: "Private Vehicle", price: 15000, note: "12 months" },
-      { id: "p2", name: "Commercial Vehicle", price: 22000, note: "12 months" },
-    ],
-    customerName: "John Doe",
+    providerLabel: "Provider",
+    providers: [],
+    identifierLabel: "Policy",
+    identifierPlaceholder: "",
+    verifies: false,
+    mode: "amount",
   },
   {
     slug: "exam-pins",
@@ -250,17 +222,13 @@ export const SERVICES: ServiceConfig[] = [
     short: "Exam Pins",
     icon: Ticket,
     tint: "text-warning bg-warning-soft",
-    providerLabel: "Select exam body",
-    providers: ["WAEC", "NECO", "NABTEB"],
-    identifierLabel: "Phone Number",
-    identifierPlaceholder: "080 0000 0000",
+    providerLabel: "Exam",
+    providers: ["WAEC", "NECO", "NABTEB", "JAMB"],
+    identifierLabel: "Quantity",
+    identifierPlaceholder: "",
     verifies: false,
     mode: "package",
-    packages: [
-      { id: "e1", name: "1 PIN", price: 3500 },
-      { id: "e2", name: "3 PINs", price: 10200 },
-      { id: "e3", name: "5 PINs", price: 16800 },
-    ],
+    packages: [],
     numeric: true,
   },
   {
@@ -296,6 +264,34 @@ export const SERVICES: ServiceConfig[] = [
       { id: "nin-slip", name: "Print NIN Slip", price: 500, note: "Demo" },
     ],
   },
+  {
+    slug: "tin",
+    name: "TIN Retrieval",
+    short: "TIN",
+    icon: Hash,
+    tint: "text-[#B45309] bg-[#FEF3C7] border border-[#FDE68A]/60 shadow-[0_4px_12px_-2px_rgba(180,83,9,0.15)]",
+    providerLabel: "JTB TIN",
+    providers: ["NIN lookup", "CAC lookup"],
+    identifierLabel: "NIN / CAC",
+    identifierPlaceholder: "",
+    verifies: false,
+    mode: "package",
+    packages: [{ id: "tin-retrieve", name: "TIN Retrieval", price: 1500, note: "Demo" }],
+  },
+  {
+    slug: "documents",
+    name: "Documents",
+    short: "Docs",
+    icon: FileText,
+    tint: "text-[#475569] bg-[#F1F5F9] border border-[#E2E8F0]/80 shadow-[0_4px_12px_-2px_rgba(71,85,105,0.12)]",
+    providerLabel: "Document generator",
+    providers: ["Business Constitution", "Tenancy Agreement"],
+    identifierLabel: "Document",
+    identifierPlaceholder: "",
+    verifies: false,
+    mode: "package",
+    packages: [{ id: "doc-gen", name: "Document draft", price: 3000, note: "Demo" }],
+  },
 ];
 
 export const MoreIcon = MoreHorizontal;
@@ -318,102 +314,65 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     date: "13 Aug 2026",
     time: "11:15 AM",
     customer: "John Doe",
-    reference: "••••••8901",
+    reference: "REF-482913",
     method: "Wallet",
-    token: "1234 5678 9012 3456",
+    token: "1234-5678-9012-3456",
   },
   {
-    id: "TXN-482884",
-    title: "Cable TV Payment",
-    service: "DSTV Compact Plus",
+    id: "TXN-482900",
+    title: "DSTV Compact",
+    service: "Cable TV",
     serviceSlug: "cable",
-    amount: 15000,
+    amount: 12000,
     direction: "out",
     status: "successful",
     date: "12 Aug 2026",
-    time: "12:30 PM",
+    time: "6:40 PM",
     customer: "John Doe",
-    reference: "••••123",
     method: "Wallet",
   },
   {
-    id: "TXN-482801",
+    id: "TXN-482850",
     title: "Wallet Funded",
-    service: "Card Top-up",
-    serviceSlug: "wallet",
+    service: "Wallet",
+    serviceSlug: "airtime",
     amount: 20000,
     direction: "in",
     status: "successful",
     date: "12 Aug 2026",
-    time: "10:20 AM",
-    method: "Card",
+    time: "9:02 AM",
+    method: "Paystack",
   },
   {
-    id: "TXN-482740",
+    id: "TXN-482800",
     title: "Data Purchase",
-    service: "MTN 5GB",
+    service: "MTN Data",
     serviceSlug: "data",
     amount: 2500,
     direction: "out",
     status: "successful",
     date: "11 Aug 2026",
-    time: "1:45 PM",
-    reference: "0803 123 4567",
-    method: "Wallet",
-  },
-  {
-    id: "TXN-482655",
-    title: "Airtime Purchase",
-    service: "MTN Airtime",
-    serviceSlug: "airtime",
-    amount: 1000,
-    direction: "out",
-    status: "pending",
-    date: "10 Aug 2026",
-    time: "2:30 PM",
-    reference: "0803 123 4567",
-    method: "Wallet",
-  },
-  {
-    id: "TXN-482610",
-    title: "Electricity Payment",
-    service: "EKEDC Electricity",
-    serviceSlug: "electricity",
-    amount: 5000,
-    direction: "out",
-    status: "failed",
-    date: "09 Aug 2026",
-    time: "9:05 AM",
-    customer: "John Doe",
-    reference: "••••••4521",
+    time: "3:18 PM",
     method: "Wallet",
   },
 ];
 
 export const INITIAL_SAVED: SavedPayment[] = [
   {
-    id: "sp1",
+    id: "svd-1",
     label: "Home Electricity",
     provider: "AEDC",
     serviceSlug: "electricity",
-    masked: "Meter ••••901",
+    masked: "••••901",
     identifier: "12345678901",
   },
   {
-    id: "sp2",
-    label: "Office Electricity",
-    provider: "AEDC",
-    serviceSlug: "electricity",
-    masked: "Meter ••••4521",
-    identifier: "12345674521",
-  },
-  {
-    id: "sp3",
+    id: "svd-2",
     label: "My DSTV",
     provider: "DSTV",
     serviceSlug: "cable",
-    masked: "Smartcard ••••123",
-    identifier: "70123456123",
+    masked: "••••123",
+    identifier: "7012345678",
   },
 ];
 
@@ -422,43 +381,53 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     id: "n1",
     type: "success",
     title: "Electricity payment successful",
-    body: "Your ₦10,000 AEDC payment was completed. Token issued.",
-    time: "Today • 11:16 AM",
+    body: "Your AEDC payment of ₦10,000 was successful.",
+    time: "2h ago",
+    read: false,
   },
   {
     id: "n2",
     type: "success",
-    title: "Wallet funded with ₦10,000",
-    body: "Your wallet top-up was received successfully.",
-    time: "Today • 10:20 AM",
+    title: "Wallet funded",
+    body: "₦20,000 was added to your wallet.",
+    time: "1d ago",
+    read: true,
   },
   {
     id: "n3",
     type: "warning",
-    title: "Your transaction is still pending",
-    body: "MTN airtime of ₦1,000 is being confirmed by the network.",
-    time: "Yesterday • 2:31 PM",
+    title: "Transaction pending",
+    body: "A recent payment is still being confirmed.",
+    time: "2d ago",
+    read: true,
   },
   {
     id: "n4",
     type: "info",
-    title: "Welcome 🎉",
+    title: "Welcome to RockPay",
     body: "Thanks for joining. Fund your wallet to start paying bills instantly.",
-    time: "10 Aug • 8:00 AM",
+    time: "3d ago",
+    read: true,
   },
 ];
 
-export function formatNaira(amount: number, withKobo = true): string {
-  return `₦${amount.toLocaleString("en-NG", {
-    minimumFractionDigits: withKobo ? 2 : 0,
-    maximumFractionDigits: withKobo ? 2 : 0,
-  })}`;
+export function formatNaira(amount: number, withSymbol = true): string {
+  const n = Number.isFinite(amount) ? amount : 0;
+  const formatted = n.toLocaleString("en-NG", { maximumFractionDigits: 2 });
+  return withSymbol ? `₦${formatted}` : formatted;
 }
 
-export function maskTail(value: string, visible = 4): string {
-  if (!value) return "";
-  const tail = value.slice(-visible);
-  return `••••••${tail}`;
+export function maskTail(value: string, keep = 4): string {
+  const v = String(value ?? "");
+  if (v.length <= keep) return v;
+  return `••••${v.slice(-keep)}`;
+}
+
+export function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
 }
 
 export function greeting(): string {
@@ -466,10 +435,4 @@ export function greeting(): string {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
-}
-
-export function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "BP";
-  return (parts[0]![0]! + (parts[1]?.[0] ?? "")).toUpperCase();
 }
