@@ -7,6 +7,7 @@ import {
   HeartHandshake,
   LayoutDashboard,
   Menu,
+  Package,
   Scale,
   Search,
   Settings,
@@ -28,6 +29,7 @@ export type AdminNavId =
   | "dashboard"
   | "users"
   | "transactions"
+  | "hub-orders"
   | "reconciliation"
   | "wallet"
   | "services"
@@ -43,6 +45,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "dashboard", label: "Dashboard", to: "/admin", icon: LayoutDashboard },
   { id: "users", label: "Users", to: "/admin/users", icon: Users },
   { id: "transactions", label: "Transactions", to: "/admin/transactions", icon: ArrowLeftRight },
+  { id: "hub-orders", label: "Hub orders", to: "/admin/hub-orders", icon: Package },
   { id: "reconciliation", label: "Reconciliation", to: "/admin/reconciliation", icon: Scale },
   { id: "wallet", label: "Wallet", to: "/admin/wallet", icon: Wallet },
   { id: "services", label: "Services", to: "/admin/services", icon: Boxes },
@@ -57,6 +60,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
 
 function activeId(pathname: string): AdminNavId {
   if (pathname.startsWith("/admin/users")) return "users";
+  if (pathname.startsWith("/admin/hub-orders")) return "hub-orders";
   if (pathname.startsWith("/admin/reconciliation")) return "reconciliation";
   if (pathname.startsWith("/admin/transactions")) return "transactions";
   if (pathname.startsWith("/admin/wallet")) return "wallet";
@@ -96,11 +100,11 @@ export function AdminShell({
       window.location.href = `/admin/care?q=${encodeURIComponent(term)}`;
       return;
     }
-    if (/^WAL-|BIL-|TXN-/i.test(term) || term.length > 20) {
-      window.location.href = `/admin/transactions?q=${encodeURIComponent(term)}`;
-    } else {
-      window.location.href = `/admin/users?q=${encodeURIComponent(term)}`;
+    if (/^WAL-|BIL-|TXN-|HUB-|TIN-|VR-/i.test(term) || term.length > 20) {
+      window.location.href = `/admin/hub-orders`;
+      return;
     }
+    window.location.href = `/admin/users?q=${encodeURIComponent(term)}`;
   };
 
   const Sidebar = (
@@ -181,9 +185,7 @@ export function AdminShell({
                   {title}
                 </h1>
                 {subtitle ? (
-                  <p className="truncate text-xs text-muted-foreground hidden sm:block">
-                    {subtitle}
-                  </p>
+                  <p className="truncate text-xs text-muted-foreground hidden sm:block">{subtitle}</p>
                 ) : null}
               </div>
             </div>
