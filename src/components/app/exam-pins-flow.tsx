@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Copy, Home, Loader2, Minus, Plus, Ticket } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Copy, Home, Loader2, Mail, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -33,7 +33,7 @@ export function ExamPinsFlow({
   entryTitle?: string;
 }) {
   const navigate = useNavigate();
-  const { refresh } = useApp();
+  const { refresh, profile } = useApp();
   const loadCatalog = useServerFn(listExamCatalog);
   const purchase = useServerFn(purchaseExamPins);
   const [step, setStep] = useState<Step>("exam");
@@ -52,7 +52,8 @@ export function ExamPinsFlow({
   const [resultPins, setResultPins] = useState<string[]>([]);
   const [resultRef, setResultRef] = useState("");
   const [resultMsg, setResultMsg] = useState("");
-  const [resultOk, setResultOk] = useState(false);
+  const [resultStatus, setResultStatus] = useState<"successful" | "pending" | "failed">("failed");
+  const deliveryEmail = (profile?.email ?? "").trim();
 
   const exam = EXAMS.find((item) => item.id === examId);
   const variation = variations.find((item) => item.variationCode === variationCode);
@@ -106,7 +107,7 @@ export function ExamPinsFlow({
       setResultRef(result.reference);
       setResultMsg(result.message);
       setResultPins(result.pins ?? []);
-      setResultOk(result.status === "successful" || result.status === "pending");
+      setResultStatus(result.status);
       setStep("result");
       setPin("");
     } catch (err) {
@@ -120,51 +121,95 @@ export function ExamPinsFlow({
   };
 
   if (step === "result") {
+    const isOk = resultStatus === "successful";
+    const isPending = resultStatus === "pending";
     return (
       <AppShell>
         <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
           <span
             className={cn(
               "grid size-16 place-items-center rounded-full",
-              resultOk ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive",
+              isOk
+                ? "bg-success-soft text-success"
+                : isPending
+                  ? "bg-warning-soft text-warning"
+                  : "bg-destructive-soft text-destructive",
             )}
           >
-            {resultOk ? <CheckCircle2 className="size-8" /> : <AlertCircle className="size-8" />}
+            {isOk ? (
+              <CheckCircle2 className="size-8" />
+            ) : isPending ? (
+              <Clock3 className="size-8" />
+            ) : (
+              <AlertCircle className="size-8" />
+            )}
           </span>
           <h1 className="text-xl font-extrabold tracking-tight">
-            {resultOk ? "PIN ready" : "Could not complete"}
+            {isOk ? "PIN ready" : isPending ? "Confirming with provider" : "Could not complete"}
           </h1>
           <p className="max-w-sm text-sm text-muted-foreground">{resultMsg}</p>
 
           {resultPins.length > 0 ? (
-            <div className="w-full rounded-2xl border bg-card p-4 text-left shadow-soft">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Your PIN{resultPins.length > 1 ? "s" : ""}
-              </p>
-              <ul className="mt-2 space-y-2">
-                {resultPins.map((p) => (
+            <div className="w-full rounded-2xl border border-border/70 bg-card p-4 text-left shadow-soft">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Your PIN{resultPins.length > 1 ? "s" : ""} · {resultPins.length} code
+                  {resultPins.length > 1 ? "s" : ""}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-xl text-xs font-bold"
+                  onClick={() => void copyPins()}
+                >
+                  <Copy className="mr-1 size-3.5" /> Copy all
+                </Button>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {resultPins.map((p, index) => (
                   <li
-                    key={p}
-                    className="break-all font-mono text-base font-extrabold tracking-wide"
+                    key={`${p}-${index}`}
+                    className="flex items-start justify-between gap-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5"
                   >
-                    {p}
+                    <span className="break-all font-mono text-[15px] font-extrabold tracking-wide">
+                      {p}
+                    </span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                      aria-label={`Copy PIN ${index + 1}`}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(p).then(
+                          () => toast.success("Copied"),
+                          () => toast.error("Could not copy"),
+                        );
+                      }}
+                    >
+                      <Copy className="size-3.5" />
+                    </button>
                   </li>
                 ))}
               </ul>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 rounded-xl"
-                onClick={() => void copyPins()}
-              >
-                <Copy className="mr-1.5 size-3.5" /> Copy PIN{resultPins.length > 1 ? "s" : ""}
-              </Button>
+              {deliveryEmail ? (
+                <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                  <Mail className="mt-0.5 size-3.5 shrink-0" />
+                  Keep this screen or open History. A copy may also go to{" "}
+                  <span className="font-semibold text-foreground">{deliveryEmail}</span> when email
+                  delivery is enabled on your account.
+                </p>
+              ) : (
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  Save or copy your PIN(s) now. You can also open the receipt from History.
+                </p>
+              )}
             </div>
-          ) : resultOk ? (
-            <p className="text-xs text-muted-foreground">
-              Open History with your reference if the PIN is not shown yet.
-            </p>
+          ) : isOk || isPending ? (
+            <div className="w-full rounded-2xl border border-border/70 bg-card px-4 py-3 text-left text-xs text-muted-foreground shadow-soft">
+              {isPending
+                ? "Provider has not returned the PIN yet. Open History and refresh status shortly — do not pay again."
+                : "PIN not shown here yet. Open History with your reference, or check your email if delivery is on."}
+            </div>
           ) : null}
 
           {resultRef ? (
@@ -335,24 +380,42 @@ export function ExamPinsFlow({
                   <Plus className="size-4" />
                 </Button>
               </div>
-              <p className="mt-4 text-center text-xl font-extrabold tabular-nums">
+              <p className="mt-4 text-center text-xs text-muted-foreground">
+                {formatNaira(variation.amount, false)} × {quantity}
+              </p>
+              <p className="mt-1 text-center text-xl font-extrabold tabular-nums">
                 {formatNaira(total, false)}
               </p>
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                Total before PIN — this is what you pay
+              </p>
             </div>
-            <PayActionBar>
+            {examId === "jamb" ? (
+              <div className="space-y-2">
+                <Label htmlFor="jamb-profile">JAMB Profile ID</Label>
+                <Input
+                  id="jamb-profile"
+                  value={profileId}
+                  onChange={(e) => setProfileId(e.target.value)}
+                  placeholder="Enter JAMB Profile ID"
+                  className="h-12 rounded-2xl"
+                />
+              </div>
+            ) : null}
+            <PayActionBar id="pay-action">
               <Button
-                className="h-12 w-full rounded-xl font-bold"
-                onClick={() => setStep("confirm")}
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={examId === "jamb" && !profileId.trim()}
+                onClick={() => {
+                  setStep("confirm");
+                  scrollIntoAction("pay-action");
+                }}
               >
-                Continue
+                Continue · {formatNaira(total, false)}
               </Button>
             </PayActionBar>
-            <Button
-              variant="ghost"
-              className="w-full text-xs font-bold"
-              onClick={() => setStep("product")}
-            >
-              Back to products
+            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("product")}>
+              Change product
             </Button>
           </section>
         ) : null}
@@ -362,104 +425,82 @@ export function ExamPinsFlow({
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">Confirm purchase</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Check the details, then enter your transaction PIN.
+                Check quantity and total before entering your transaction PIN.
               </p>
             </div>
-            <div className="space-y-2 rounded-2xl border bg-card p-4 shadow-soft">
-              <Row label="Exam" value={exam.name} />
-              <Row label="Product" value={variation.name} />
-              <Row label="Quantity" value={String(quantity)} />
-              <Row label="Total" value={formatNaira(total, false)} />
-            </div>
-            {examId === "jamb" ? (
-              <div className="space-y-2">
-                <Label htmlFor="profile-id">JAMB Profile ID</Label>
-                <Input
-                  id="profile-id"
-                  value={profileId}
-                  onChange={(event) => setProfileId(event.target.value)}
-                  placeholder="Enter your JAMB Profile ID"
-                  className="h-11 rounded-xl"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Find this on your JAMB profile or registration slip.
-                </p>
+            <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Exam</span>
+                <span className="font-bold">{exam.name}</span>
               </div>
-            ) : null}
-            <div className="flex items-start gap-2 rounded-2xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
-              <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
-              <p>After payment, your PIN(s) show on the next screen — copy them immediately.</p>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Product</span>
+                <span className="max-w-[60%] text-right font-bold">{variation.name}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Quantity</span>
+                <span className="font-bold tabular-nums">{quantity}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Unit price</span>
+                <span className="font-bold tabular-nums">{formatNaira(variation.amount, false)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 text-base">
+                <span className="font-extrabold">Total</span>
+                <span className="font-extrabold tabular-nums">{formatNaira(total, false)}</span>
+              </div>
             </div>
             {error ? (
-              <p className="text-center text-xs font-semibold text-destructive">{error}</p>
+              <div className="rounded-2xl border border-destructive/30 bg-destructive-soft/40 px-3 py-3 text-xs text-destructive">
+                {error}
+              </div>
             ) : null}
-            <PayActionBar>
+            <PayActionBar id="pay-action">
               <Button
-                className="h-12 w-full rounded-xl font-bold"
-                disabled={examId === "jamb" && !profileId.trim()}
+                className="h-12 w-full rounded-2xl font-bold"
                 onClick={() => setStep("pin")}
               >
-                Continue to PIN
+                Enter PIN to pay {formatNaira(total, false)}
               </Button>
             </PayActionBar>
-            <Button
-              variant="ghost"
-              className="w-full text-xs font-bold"
-              onClick={() => setStep("quantity")}
-            >
-              Back
+            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("quantity")}>
+              Change quantity
             </Button>
           </section>
         ) : null}
 
-        {step === "pin" && variation && exam ? (
+        {step === "pin" ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-extrabold tracking-tight">Enter transaction PIN</h2>
+              <h2 className="text-lg font-extrabold tracking-tight">Transaction PIN</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Confirm {formatNaira(total, false)} for {quantity} {exam.name} PIN
-                {quantity === 1 ? "" : "s"}.
+                Authorise {formatNaira(total, false)} for {quantity} PIN{quantity > 1 ? "s" : ""}.
               </p>
             </div>
-            <PinPad
-              value={pin}
-              onChange={setPin}
-              onFilled={() => {
-                scrollIntoAction("pay-action");
-                window.setTimeout(() => {
-                  (document.getElementById("exam-pin-submit") as HTMLButtonElement | null)?.click();
-                }, 80);
-              }}
-            />
-            <PayActionBar>
+            <PinPad value={pin} onChange={setPin} maxLength={4} />
+            {error ? (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive-soft/40 px-3 py-3 text-xs text-destructive">
+                {error}
+              </div>
+            ) : null}
+            <PayActionBar id="pay-action">
               <Button
-                id="exam-pin-submit"
-                className="h-12 w-full rounded-xl font-bold"
+                className="h-12 w-full rounded-2xl font-bold"
                 disabled={pin.length !== 4 || loading}
                 onClick={() => void submit()}
               >
-                {loading ? <Loader2 className="size-4 animate-spin" /> : "Pay and get PIN"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Processing…
+                  </>
+                ) : (
+                  <>Pay {formatNaira(total, false)}</>
+                )}
               </Button>
             </PayActionBar>
-            <Button
-              variant="ghost"
-              className="w-full text-xs font-bold"
-              onClick={() => setStep("confirm")}
-            >
-              Back
-            </Button>
           </section>
         ) : null}
       </div>
     </AppShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-extrabold">{value}</span>
-    </div>
   );
 }
