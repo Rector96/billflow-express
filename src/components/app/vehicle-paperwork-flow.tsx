@@ -1,19 +1,19 @@
 /**
- * Vehicle Paperwork & Renewals — multi-step wizard
- * Plate + state → simulated registry pre-fetch → Pay Now → success receipt
- * Price from SERVICE_PRICES.vehicle_renewal (admin-overridable later)
+ * Vehicle renewals — simple 3-step flow for everyday car owners
+ * 1 Lookup → 2 Choose renewal + pay → 3 Success (PDF or dispatch tracker)
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Car,
+  Check,
   CheckCircle2,
-  Copy,
+  Circle,
   FileDown,
   Home,
-  Info,
   Loader2,
-  ShieldCheck,
+  Shield,
+  Sticker,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
@@ -29,9 +29,9 @@ import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const STEPS: PayStepMeta[] = [
-  { key: "input", label: "Plate" },
-  { key: "preview", label: "Verify" },
-  { key: "success", label: "Done" },
+  { key: "lookup", label: "Find car" },
+  { key: "renew", label: "Renew" },
+  { key: "done", label: "Done" },
 ];
 
 const NG_STATES = [
@@ -48,225 +48,252 @@ const NG_STATES = [
   "Other",
 ] as const;
 
-type Step = "input" | "preview" | "success";
+type Step = "lookup" | "renew" | "done";
+type RenewalChoice = "license_sticker" | "third_party_insurance";
 
 type VehicleLookup = {
   plate: string;
   state: string;
   makeModel: string;
-  chassisMasked: string;
-  chassisFull: string;
   color: string;
-  expiryStatus: "valid" | "expiring_soon" | "expired";
-  expiryLabel: string;
+  /** Active = papers still valid; Expired = needs renewal */
+  papersStatus: "active" | "expired";
 };
 
-function HelpNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      <Info className="mt-0.5 size-3.5 shrink-0 text-primary" />
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function DemoBanner() {
-  return (
-    <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100">
-      <span className="font-bold">Registry lookup simulated.</span> Paystack test path only. Wire Dojah
-      vehicle nodes when credentials are ready.
-    </div>
-  );
-}
-
-/** Deterministic demo lookup from plate + state (stands in for Dojah Vehicle Registry). */
 function simulateVehicleRegistry(plate: string, state: string): VehicleLookup {
   const clean = plate.replace(/\s+/g, "").toUpperCase();
   const seed = [...clean].reduce((a, c) => a + c.charCodeAt(0), 0);
   const makes = ["Toyota Corolla", "Honda Accord", "Lexus RX 350", "Mercedes C300", "Kia Rio"];
   const colors = ["Silver", "Black", "White", "Grey", "Blue"];
-  const statusRoll = seed % 3;
-  const expiryStatus: VehicleLookup["expiryStatus"] =
-    statusRoll === 0 ? "valid" : statusRoll === 1 ? "expiring_soon" : "expired";
-  const expiryLabel =
-    expiryStatus === "valid"
-      ? "Valid — renews in 8 months"
-      : expiryStatus === "expiring_soon"
-        ? "Expiring soon — within 45 days"
-        : "Expired — renewal required";
-  const chassisCore = `${(seed % 900) + 100}XYZ${(seed % 9000) + 1000}`;
   return {
     plate: clean,
     state,
     makeModel: makes[seed % makes.length]!,
-    chassisMasked: `••••••••${chassisCore.slice(-4)}`,
-    chassisFull: `JTD${chassisCore}KN`,
     color: colors[seed % colors.length]!,
-    expiryStatus,
-    expiryLabel,
+    papersStatus: seed % 2 === 0 ? "active" : "expired",
   };
+}
+
+function feeFor(choice: RenewalChoice): number {
+  return choice === "license_sticker"
+    ? SERVICE_PRICES.vehicle_license_sticker
+    : SERVICE_PRICES.vehicle_third_party_insurance;
 }
 
 function trackingRef(plate: string): string {
   return `VR-${Date.now().toString(36).toUpperCase()}-${plate.replace(/\W/g, "").slice(0, 6)}`;
 }
 
+function DeliveryTracker() {
+  const items: { label: string; state: "done" | "active" | "todo" }[] = [
+    { label: "Payment received", state: "done" },
+    { label: "Printing at Motor Licensing Office", state: "active" },
+    { label: "Assigned to dispatch rider", state: "todo" },
+    { label: "Delivered to your address", state: "todo" },
+  ];
+
+  return (
+    <ol className="w-full space-y-0 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-soft">
+      {items.map((item, i) => (
+        <li key={item.label} className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <span
+              className={cn(
+                "grid size-8 shrink-0 place-items-center rounded-full border",
+                item.state === "done" && "border-success bg-success-soft text-success",
+                item.state === "active" && "border-primary bg-primary/10 text-primary",
+                item.state === "todo" && "border-border bg-muted/40 text-muted-foreground",
+              )}
+            >
+              {item.state === "done" ? (
+                <Check className="size-4" strokeWidth={2.5} />
+              ) : item.state === "active" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Circle className="size-3.5 opacity-50" />
+              )}
+            </span>
+            {i < items.length - 1 ? (
+              <span
+                className={cn(
+                  "my-1 w-0.5 flex-1 min-h-4 rounded-full",
+                  item.state === "done" ? "bg-success/40" : "bg-border",
+                )}
+              />
+            ) : null}
+          </div>
+          <div className={cn("pb-4", i === items.length - 1 && "pb-0")}>
+            <p
+              className={cn(
+                "text-sm font-semibold leading-snug",
+                item.state === "todo" && "text-muted-foreground",
+              )}
+            >
+              {item.label}
+            </p>
+            {item.state === "active" ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Usually 1–2 working days</p>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function VehiclePaperworkFlow() {
   const navigate = useNavigate();
-  const fee = SERVICE_PRICES.vehicle_renewal;
 
-  const [step, setStep] = useState<Step>("input");
+  const [step, setStep] = useState<Step>("lookup");
   const [plate, setPlate] = useState("");
   const [state, setState] = useState<string>("Lagos");
   const [lookingUp, setLookingUp] = useState(false);
   const [vehicle, setVehicle] = useState<VehicleLookup | null>(null);
+  const [choice, setChoice] = useState<RenewalChoice | null>(null);
   const [paying, setPaying] = useState(false);
   const [payRef, setPayRef] = useState("");
   const [trackId, setTrackId] = useState("");
 
+  const fee = choice ? feeFor(choice) : 0;
+
   const stepIndex = useMemo(() => {
-    if (step === "input") return 0;
-    if (step === "preview") return 1;
+    if (step === "lookup") return 0;
+    if (step === "renew") return 1;
     return 2;
   }, [step]);
 
-  const validateInput = () => {
+  const onLookup = async () => {
     const p = plate.replace(/\s+/g, "").trim();
     if (p.length < 5) {
-      toast.error("Enter a valid license plate number.");
-      return false;
+      toast.error("Please enter your plate number (e.g. ABC-123XY).");
+      return;
     }
     if (!state) {
-      toast.error("Select the state of registration.");
-      return false;
+      toast.error("Select the state where the car is registered.");
+      return;
     }
-    return true;
-  };
-
-  const onContinueLookup = async () => {
-    if (!validateInput()) return;
     setLookingUp(true);
     try {
-      await new Promise((r) => setTimeout(r, 900));
-      const data = simulateVehicleRegistry(plate, state);
-      setVehicle(data);
-      setStep("preview");
+      await new Promise((r) => setTimeout(r, 800));
+      setVehicle(simulateVehicleRegistry(plate, state));
+      setChoice(null);
+      setStep("renew");
     } finally {
       setLookingUp(false);
     }
   };
 
-  const onPayNow = async () => {
-    if (!vehicle) return;
+  const onPay = async () => {
+    if (!vehicle || !choice) {
+      toast.error("Choose what you want to renew first.");
+      return;
+    }
     setPaying(true);
     try {
       const paystack = await simulatePaystackInline({
         email: "customer@rockpay.app",
         amountNaira: fee,
-        metadata: { service: "vehicle_renewal", plate: vehicle.plate, state: vehicle.state },
+        metadata: {
+          service: choice,
+          plate: vehicle.plate,
+          state: vehicle.state,
+        },
       });
       if (paystack.status !== "success") throw new Error("Payment was not completed.");
-      const tid = trackingRef(vehicle.plate);
       setPayRef(paystack.reference);
-      setTrackId(tid);
-      setStep("success");
-      toast.success(`Paid · ${paystack.reference.slice(0, 12)}…`);
+      setTrackId(trackingRef(vehicle.plate));
+      setStep("done");
+      toast.success("Payment confirmed");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment failed");
+      toast.error(e instanceof Error ? e.message : "Payment could not be completed. Try again.");
     } finally {
       setPaying(false);
     }
   };
 
-  const copyTrack = async () => {
-    if (!trackId) return;
-    try {
-      await navigator.clipboard.writeText(trackId);
-      toast.success("Tracking reference copied");
-    } catch {
-      toast.error("Could not copy");
-    }
-  };
-
-  const downloadSheet = () => {
+  const downloadInsurancePdf = () => {
     if (!vehicle || !trackId) return;
     const body = [
-      "RockPay — Vehicle Registration Sync Confirmation",
-      "================================================",
-      `Tracking: ${trackId}`,
-      `Paystack: ${payRef}`,
+      "RockPay — Motor 3rd-Party Insurance (Demo Certificate)",
+      "=====================================================",
+      `Reference: ${trackId}`,
+      `Payment: ${payRef}`,
       `Plate: ${vehicle.plate}`,
+      `Vehicle: ${vehicle.makeModel}`,
       `State: ${vehicle.state}`,
-      `Make/Model: ${vehicle.makeModel}`,
-      `Color: ${vehicle.color}`,
-      `Chassis: ${vehicle.chassisFull}`,
-      `Status: ${vehicle.expiryLabel}`,
-      `Fee: ₦${fee}`,
-      `Date: ${new Date().toISOString()}`,
+      `Cover: Third-party only`,
+      `Issued: ${new Date().toLocaleDateString("en-NG")}`,
       "",
-      "Simulated registry sync — connect Dojah for production data.",
+      "This is a demo document for UI testing. Live certificates come from your insurer partner.",
     ].join("\n");
     const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `rockpay-vehicle-${trackId}.txt`;
+    a.download = `rockpay-insurance-${vehicle.plate}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Confirmation sheet downloaded");
+    toast.success("Insurance file ready");
   };
 
-  if (step === "success" && vehicle) {
+  /* ─── STEP 3: Success ─── */
+  if (step === "done" && vehicle && choice) {
+    const isInsurance = choice === "third_party_insurance";
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
+        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center gap-4 px-4 py-10 text-center">
           <span className="grid size-16 place-items-center rounded-full bg-success-soft text-success">
             <CheckCircle2 className="size-8" />
           </span>
-          <h1 className="text-xl font-extrabold tracking-tight">Records synchronized</h1>
-          <p className="max-w-sm text-sm font-medium text-foreground">
-            Vehicle Registration Records Successfully Synchronized!
-          </p>
-
-          <div className="w-full rounded-2xl border border-border/70 bg-card p-5 text-left shadow-soft">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Tracking reference
+          <div className="space-y-1">
+            <h1 className="text-xl font-extrabold tracking-tight leading-snug">
+              Payment confirmed! Your renewal is processing.
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {vehicle.plate} · {vehicle.makeModel}
             </p>
-            <p className="mt-2 break-all font-mono text-lg font-extrabold tracking-wide">{trackId}</p>
-            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-              <p>
-                Plate: <span className="font-semibold text-foreground">{vehicle.plate}</span>
-              </p>
-              <p>
-                {vehicle.makeModel} · {vehicle.state}
-              </p>
-              <p className="font-mono text-[10px]">Paystack · {payRef}</p>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => void copyTrack()}>
-                <Copy className="mr-1.5 size-3.5" /> Copy reference
-              </Button>
-              <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={downloadSheet}>
-                <FileDown className="mr-1.5 size-3.5" /> Download sheet
-              </Button>
-            </div>
           </div>
+
+          {isInsurance ? (
+            <div className="w-full space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your third-party cover is ready. Save the document on your phone.
+              </p>
+              <Button
+                className="h-14 w-full rounded-2xl text-base font-bold"
+                onClick={downloadInsurancePdf}
+              >
+                <FileDown className="mr-2 size-5" />
+                Download official insurance PDF
+              </Button>
+            </div>
+          ) : (
+            <div className="w-full space-y-3 text-left">
+              <p className="text-center text-sm text-muted-foreground">
+                Your license sticker is being prepared. Track progress below.
+              </p>
+              <DeliveryTracker />
+            </div>
+          )}
+
+          <p className="font-mono text-[10px] text-muted-foreground">Ref · {trackId}</p>
 
           <div className="mt-2 w-full space-y-2">
             <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
-              <Home className="mr-2 size-4" /> Home
+              <Home className="mr-2 size-4" /> Back to home
             </Button>
             <Button
               variant="outline"
               className="h-12 w-full rounded-2xl font-bold"
               onClick={() => {
-                setStep("input");
+                setStep("lookup");
                 setVehicle(null);
+                setChoice(null);
                 setPayRef("");
                 setTrackId("");
               }}
             >
-              Look up another vehicle
+              Check another vehicle
             </Button>
           </div>
         </div>
@@ -276,136 +303,205 @@ export function VehiclePaperworkFlow() {
 
   return (
     <AppShell>
-      <PageHeader title="Vehicle papers" backTo="/services" />
+      <PageHeader title="Vehicle renewal" backTo="/services" />
       <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
-        <DemoBanner />
         <PayStepper steps={STEPS} current={stepIndex} />
 
-        {step === "input" ? (
+        {/* ─── STEP 1: Lookup ─── */}
+        {step === "lookup" ? (
           <section className="space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-                <Car className="size-5" />
-              </span>
-              <div>
-                <h2 className="text-lg font-extrabold tracking-tight">License plate</h2>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  Enter plate number and registration state to pre-fetch records.
-                </p>
+            <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
+              <div className="flex items-start gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+                  <Car className="size-5" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-extrabold tracking-tight">Verify your vehicle</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Enter your plate number to check your official record instantly.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="plate">Plate number</Label>
+                  <Input
+                    id="plate"
+                    value={plate}
+                    onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                    placeholder="e.g. ABC-123XY"
+                    className="h-12 rounded-2xl font-mono uppercase"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="vstate">Registration state</Label>
+                  <select
+                    id="vstate"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="flex h-12 w-full rounded-2xl border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {NG_STATES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
-              <div className="space-y-1.5">
-                <Label htmlFor="plate">License plate number</Label>
-                <Input
-                  id="plate"
-                  value={plate}
-                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                  placeholder="e.g. ABC-123XY"
-                  className="h-12 rounded-2xl font-mono uppercase"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="vstate">State of registration</Label>
-                <select
-                  id="vstate"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="flex h-12 w-full rounded-2xl border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {NG_STATES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <HelpNote>
-              Next step simulates a Dojah-style vehicle registry lookup. Production will call your
-              compliance provider with the same fields.
-            </HelpNote>
 
             <PayActionBar id="pay-action">
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={lookingUp} onClick={() => void onContinueLookup()}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={lookingUp}
+                onClick={() => void onLookup()}
+              >
                 {lookingUp ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Looking up…
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Checking…
                   </>
                 ) : (
-                  "Continue"
+                  "Check vehicle"
                 )}
               </Button>
             </PayActionBar>
           </section>
         ) : null}
 
-        {step === "preview" && vehicle ? (
+        {/* ─── STEP 2: Preview + choice + pay ─── */}
+        {step === "renew" && vehicle ? (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-extrabold tracking-tight">Confirm vehicle</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Review registry preview, then pay the renewal / sync fee.
+              <h2 className="text-lg font-extrabold tracking-tight">We found your vehicle details</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Confirm the car, then pick what you want to renew.
               </p>
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <ShieldCheck className="size-3.5 text-success" /> Registry match
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Vehicle</p>
+                  <p className="text-base font-extrabold">{vehicle.makeModel}</p>
+                  <p className="mt-1 font-mono text-sm font-semibold">{vehicle.plate}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {vehicle.color} · {vehicle.state}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold",
+                    vehicle.papersStatus === "expired"
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-success-soft text-success",
+                  )}
+                >
+                  {vehicle.papersStatus === "expired" ? "Expired" : "Active"}
+                </span>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">Plate · State</p>
-              <p className="font-mono text-sm font-bold">
-                {vehicle.plate} · {vehicle.state}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                What do you want to renew?
               </p>
-              <p className="mt-3 text-xs text-muted-foreground">Make / model</p>
-              <p className="text-sm font-bold">{vehicle.makeModel}</p>
-              <p className="mt-3 text-xs text-muted-foreground">Chassis number</p>
-              <p className={cn("mt-1 select-none font-mono text-base font-extrabold tracking-wide blur-[5px]")}>
-                {vehicle.chassisFull}
-              </p>
-              <p className="mt-1 font-mono text-[11px] text-muted-foreground">{vehicle.chassisMasked}</p>
-              <p className="mt-3 text-xs text-muted-foreground">Expiration</p>
-              <p
+
+              <button
+                type="button"
+                onClick={() => setChoice("license_sticker")}
                 className={cn(
-                  "text-sm font-bold",
-                  vehicle.expiryStatus === "valid" && "text-success",
-                  vehicle.expiryStatus === "expiring_soon" && "text-warning",
-                  vehicle.expiryStatus === "expired" && "text-destructive",
+                  "flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors",
+                  choice === "license_sticker"
+                    ? "border-primary bg-primary/5 shadow-soft"
+                    : "border-border/70 bg-card hover:border-primary/40",
                 )}
               >
-                {vehicle.expiryLabel}
-              </p>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <Sticker className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">Renew vehicle license sticker</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Physical sticker printed and sent to you
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold tabular-nums">
+                    {formatNaira(SERVICE_PRICES.vehicle_license_sticker, false)}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "mt-1 size-5 shrink-0 rounded-full border-2",
+                    choice === "license_sticker" ? "border-primary bg-primary" : "border-muted-foreground/40",
+                  )}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setChoice("third_party_insurance")}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors",
+                  choice === "third_party_insurance"
+                    ? "border-primary bg-primary/5 shadow-soft"
+                    : "border-border/70 bg-card hover:border-primary/40",
+                )}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <Shield className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">Renew 3rd-party insurance</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Digital certificate you can download after payment
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold tabular-nums">
+                    {formatNaira(SERVICE_PRICES.vehicle_third_party_insurance, false)}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "mt-1 size-5 shrink-0 rounded-full border-2",
+                    choice === "third_party_insurance"
+                      ? "border-primary bg-primary"
+                      : "border-muted-foreground/40",
+                  )}
+                />
+              </button>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Payment summary
-              </p>
-              <div className="mt-3 flex justify-between text-sm">
-                <span className="text-muted-foreground">Vehicle paperwork / renewal</span>
-                <span className="font-extrabold tabular-nums">{formatNaira(fee, false)}</span>
+            {choice ? (
+              <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Payment summary
+                </p>
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {choice === "license_sticker" ? "License sticker" : "3rd-party insurance"}
+                  </span>
+                  <span className="font-extrabold tabular-nums">{formatNaira(fee, false)}</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3 text-base">
+                  <span className="font-extrabold">Total</span>
+                  <span className="font-extrabold tabular-nums">{formatNaira(fee, false)}</span>
+                </div>
               </div>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Price key: <code className="font-mono">vehicle_renewal</code> · {" "}
-                from SERVICE_PRICES (admin override later)
-              </p>
-              <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-base">
-                <span className="font-extrabold">Total</span>
-                <span className="font-extrabold tabular-nums">{formatNaira(fee, false)}</span>
-              </div>
-            </div>
+            ) : null}
 
             <PayActionBar id="pay-action">
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={!choice || paying}
+                onClick={() => void onPay()}
+              >
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Paystack (test)…
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…
                   </>
                 ) : (
-                  <>Pay Now · {formatNaira(fee, false)}</>
+                  "Proceed to secure Paystack payment"
                 )}
               </Button>
               <Button
@@ -413,11 +509,12 @@ export function VehiclePaperworkFlow() {
                 className="mt-2 w-full text-xs font-bold"
                 disabled={paying}
                 onClick={() => {
-                  setStep("input");
+                  setStep("lookup");
                   setVehicle(null);
+                  setChoice(null);
                 }}
               >
-                Edit plate
+                Change plate number
               </Button>
             </PayActionBar>
           </section>
