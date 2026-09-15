@@ -1,7 +1,17 @@
 /**
  * Hub production server functions (TanStack Start).
- * Paystack verify → optional Dojah → write hub_orders.
- * Pricing reads real pricing_rules columns (markup_value / is_active).
+ *
+ * SECURITY / FULFILLMENT RULE:
+ * - Payment verification happens on the server.
+ * - A payment is never treated as successful fulfillment by itself.
+ * - Government/regulated services must have a real provider result before we
+ *   return a successful result to the customer.
+ * - Dojah is optional during development, but missing Dojah access MUST make
+ *   TIN/vehicle verification unavailable — never fabricate government data.
+ * - Demo/simulated providers are intentionally removed from production paths.
+ *
+ * This file is deliberately documented so the next developer can continue the
+ * implementation safely when real provider credentials become available.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -78,6 +88,16 @@ export const recoverTin = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<RecoverTinSuccess> => {
+    // IMPORTANT: Provider availability is checked BEFORE payment verification.
+    // Without a real TIN provider we cannot fulfil the customer's order, so we
+    // refuse the operation instead of accepting money for fabricated data.
+    const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
+    if (data.identifierType !== "cac" || !isDojahConfigured()) {
+      throw new Error(
+        "TIN retrieval is temporarily unavailable. A verified TIN provider is required before this service can be purchased.",
+      );
+    }
+
     await assertPaystackSuccess(data.paymentReference, data.amount);
 
     let tinPayload: {
@@ -89,35 +109,12 @@ export const recoverTin = createServerFn({ method: "POST" })
       rawProvider: string;
     };
 
-    const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
-
-    if (data.identifierType === "cac" && isDojahConfigured()) {
-      try {
-        const r = await dojahLookupCompanyTin({ rcNumber: data.identifier });
-        tinPayload = { ...r, taxpayerName: r.taxpayerName || data.fullName };
-      } catch (e) {
-        throw new Error(e instanceof Error ? e.message : "TIN lookup failed.");
-      }
-    } else if (data.identifierType === "cac" && !isDojahConfigured()) {
-      const digits = data.identifier.replace(/\D/g, "").padEnd(11, "0").slice(0, 11);
-      tinPayload = {
-        tin: `${digits.slice(0, 8)}-${String((Number(digits.slice(-3)) % 9000) + 1000)}`,
-        taxpayerName: data.fullName.toUpperCase(),
-        taxpayerType: "business",
-        cacNumber: data.identifier,
-        nin: null,
-        rawProvider: "sandbox_fallback",
-      };
-    } else {
-      const digits = data.identifier.replace(/\D/g, "").padEnd(11, "0").slice(0, 11);
-      tinPayload = {
-        tin: `${digits.slice(0, 8)}-${String((Number(digits.slice(-3)) % 9000) + 1000)}`,
-        taxpayerName: data.fullName.toUpperCase(),
-        taxpayerType: "individual",
-        cacNumber: null,
-        nin: data.identifier,
-        rawProvider: isDojahConfigured() ? "pending_jtb_product" : "sandbox_fallback",
-      };
+    try {
+      const r = await dojahLookupCompanyTin({ rcNumber: data.identifier });
+      tinPayload = { ...r, taxpayerName: r.taxpayerName || data.fullName };
+    } catch (e) {
+      // Do not turn provider errors into a successful/locally generated TIN.
+      throw new Error(e instanceof Error ? e.message : "TIN lookup failed.");
     }
 
     const track = uid("TIN");
@@ -168,15 +165,21 @@ export const verifyVehicle = createServerFn({ method: "POST" })
     return { plate, state };
   })
   .handler(async ({ data }) => {
+    // Vehicle registry information is regulated data. Never return a synthetic
+    // vehicle record when the provider is missing or unavailable.
     const { dojahLookupVehicle, isDojahConfigured } = await import("./dojah.server");
-    if (isDojahConfigured()) {
-      try {
-        return await dojahLookupVehicle(data);
-      } catch (e) {
-        console.warn("[hub] verifyVehicle dojah", e instanceof Error ? e.message : e);
-      }
+    if (!isDojahConfigured()) {
+      throw new Error(
+        "Vehicle verification is temporarily unavailable. A verified vehicle registry provider is required.",
+      );
     }
-    return simulateVehicleRegistry(data.plate, data.state);
+
+    try {
+      return await dojahLookupVehicle(data);
+    } catch (e) {
+      console.warn("[hub] verifyVehicle dojah", e instanceof Error ? e.message : e);
+      throw new Error(e instanceof Error ? e.message : "Vehicle verification failed.");
+    }
   });
 
 export const completeVehicleRenewal = createServerFn({ method: "POST" })
@@ -211,6 +214,9 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
+    // This endpoint currently records the paid order only. Actual renewal,
+    // sticker issuance and insurance certificate delivery must be connected to
+    // an authorized provider before this is advertised as fulfilled.
     await assertPaystackSuccess(data.paymentReference, data.amount);
     const trackingReference = `VR-${Date.now().toString(36).toUpperCase()}-${data.plate.slice(0, 6)}`;
     await logHubOrder({
@@ -268,48 +274,18 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     return { ok: true as const, reference: data.paymentReference };
   });
 
-function simulateVehicleRegistry(plate: string, state: string) {
-  const clean = plate.replace(/\s+/g, "").toUpperCase();
-  const seed = [...clean].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const makes = ["Toyota Corolla", "Honda Accord", "Lexus RX 350", "Mercedes C300", "Kia Rio"];
-  const colors = ["Silver", "Black", "White", "Grey", "Blue"];
-  const statusRoll = seed % 3;
-  const expiryStatus =
-    statusRoll === 0
-      ? ("valid" as const)
-      : statusRoll === 1
-        ? ("expiring_soon" as const)
-        : ("expired" as const);
-  const chassisCore = `${(seed % 900) + 100}XYZ${(seed % 9000) + 1000}`;
-  return {
-    plate: clean,
-    state,
-    makeModel: makes[seed % makes.length]!,
-    chassisMasked: `••••••••${chassisCore.slice(-4)}`,
-    chassisFull: `JTD${chassisCore}KN`,
-    color: colors[seed % colors.length]!,
-    expiryStatus,
-    expiryLabel:
-      expiryStatus === "valid"
-        ? "Valid — renews in 8 months"
-        : expiryStatus === "expiring_soon"
-          ? "Expiring soon — within 45 days"
-          : "Expired — renewal required",
-    rawProvider: "sandbox_fallback" as const,
-  };
-}
-
 /**
  * Verify Paystack when secret is set.
- * Allows PSK_DEMO_* only when HUB_ALLOW_UNVERIFIED_PAY=true (local UI tests).
- * Accepts both sk_test_ and sk_live_ secrets (no hard reject).
+ * Demo references are accepted only when HUB_ALLOW_UNVERIFIED_PAY=true.
+ * That flag is intended for local UI tests only and must remain false in
+ * production. A real payment reference is always verified against Paystack.
  */
 async function assertPaystackSuccess(reference: string, expectedNaira: number) {
   const secret = String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
   const allowUnverified = String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true";
 
   if (!secret) {
-    if (allowUnverified || reference.startsWith("PSK_DEMO_")) return;
+    if (allowUnverified && reference.startsWith("PSK_DEMO_")) return;
     throw new Error(
       "PAYSTACK_SECRET_KEY is not set on the server. Add it in Netlify env and redeploy.",
     );
@@ -318,7 +294,7 @@ async function assertPaystackSuccess(reference: string, expectedNaira: number) {
   if (reference.startsWith("PSK_DEMO_")) {
     if (allowUnverified) return;
     throw new Error(
-      "Demo payment was used but Paystack is configured. Open checkout with VITE_PAYSTACK_PUBLIC_KEY set, or set HUB_ALLOW_UNVERIFIED_PAY=true for sandbox only.",
+      "Demo payment was used but Paystack is configured. Use a real Paystack checkout reference.",
     );
   }
 
