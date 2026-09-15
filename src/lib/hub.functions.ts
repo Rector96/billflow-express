@@ -1,6 +1,7 @@
 /**
  * Hub production server functions (TanStack Start).
- * Paystack verify → optional Dojah → write hub_orders (+ bill_transactions mirror).
+ * Paystack verify → optional Dojah → write hub_orders.
+ * Pricing reads real pricing_rules columns (markup_value / is_active).
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -21,6 +22,7 @@ function slugToPriceKey(slug: string): HubPriceKey {
   if (s === "cac") return "cac_registration";
   if (s === "nin_retrieve") return "nin_retrieve";
   if (s === "nin_slip") return "nin_slip";
+  if (s === "nin_card_print" || s === "nin_plastic_card") return "nin_plastic_card";
   return "tin_retrieve";
 }
 
@@ -35,14 +37,18 @@ export const getHubServiceFee = createServerFn({ method: "GET" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: rows, error } = await supabaseAdmin
         .from("pricing_rules")
-        .select("fixed_fee, percent_fee, service, active")
+        .select("markup_type, markup_value, service, is_active, priority")
         .eq("service", slug)
-        .eq("active", true)
+        .eq("is_active", true)
+        .order("priority", { ascending: false })
         .limit(5);
       if (error || !rows?.length) return { fee: fallback, source: "fallback" };
-      const row = rows[0] as { fixed_fee?: number | null };
-      const fixed = Number(row.fixed_fee ?? 0);
-      if (Number.isFinite(fixed) && fixed > 0) return { fee: Math.round(fixed), source: "db" };
+      const row = rows[0] as { markup_type?: string; markup_value?: number };
+      const type = String(row.markup_type ?? "").toLowerCase();
+      const value = Number(row.markup_value ?? 0);
+      if ((type === "selling_price" || type === "fixed") && Number.isFinite(value) && value > 0) {
+        return { fee: Math.round(value), source: "db" };
+      }
       return { fee: fallback, source: "fallback" };
     } catch {
       return { fee: fallback, source: "fallback" };
@@ -93,7 +99,6 @@ export const recoverTin = createServerFn({ method: "POST" })
         throw new Error(e instanceof Error ? e.message : "TIN lookup failed.");
       }
     } else if (data.identifierType === "cac" && !isDojahConfigured()) {
-      // Soft sandbox: deterministic demo TIN when Dojah keys missing
       const digits = data.identifier.replace(/\D/g, "").padEnd(11, "0").slice(0, 11);
       tinPayload = {
         tin: `${digits.slice(0, 8)}-${String((Number(digits.slice(-3)) % 9000) + 1000)}`,
@@ -104,7 +109,6 @@ export const recoverTin = createServerFn({ method: "POST" })
         rawProvider: "sandbox_fallback",
       };
     } else {
-      // NIN path — Dojah company TIN needs RC; soft result for product UX until JTB product is live
       const digits = data.identifier.replace(/\D/g, "").padEnd(11, "0").slice(0, 11);
       tinPayload = {
         tin: `${digits.slice(0, 8)}-${String((Number(digits.slice(-3)) % 9000) + 1000)}`,
@@ -169,7 +173,6 @@ export const verifyVehicle = createServerFn({ method: "POST" })
       try {
         return await dojahLookupVehicle(data);
       } catch (e) {
-        // Fall through to deterministic registry for UX if product not enabled
         console.warn("[hub] verifyVehicle dojah", e instanceof Error ? e.message : e);
       }
     }
@@ -272,7 +275,11 @@ function simulateVehicleRegistry(plate: string, state: string) {
   const colors = ["Silver", "Black", "White", "Grey", "Blue"];
   const statusRoll = seed % 3;
   const expiryStatus =
-    statusRoll === 0 ? ("valid" as const) : statusRoll === 1 ? ("expiring_soon" as const) : ("expired" as const);
+    statusRoll === 0
+      ? ("valid" as const)
+      : statusRoll === 1
+        ? ("expiring_soon" as const)
+        : ("expired" as const);
   const chassisCore = `${(seed % 900) + 100}XYZ${(seed % 9000) + 1000}`;
   return {
     plate: clean,
@@ -292,20 +299,29 @@ function simulateVehicleRegistry(plate: string, state: string) {
   };
 }
 
+/**
+ * Verify Paystack when secret is set.
+ * Allows PSK_DEMO_* only when HUB_ALLOW_UNVERIFIED_PAY=true (local UI tests).
+ * Accepts both sk_test_ and sk_live_ secrets (no hard reject).
+ */
 async function assertPaystackSuccess(reference: string, expectedNaira: number) {
   const secret = String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  const allowUnverified = String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true";
+
   if (!secret) {
-    if (String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true") return;
-    // Demo references from client when public key missing
-    if (reference.startsWith("PSK_DEMO_")) return;
+    if (allowUnverified || reference.startsWith("PSK_DEMO_")) return;
     throw new Error(
-      "PAYSTACK_SECRET_KEY is not set. Add it on Netlify, or set HUB_ALLOW_UNVERIFIED_PAY=true for testing.",
+      "PAYSTACK_SECRET_KEY is not set on the server. Add it in Netlify env and redeploy.",
     );
   }
+
   if (reference.startsWith("PSK_DEMO_")) {
-    if (String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true") return;
-    throw new Error("Demo payment references are not allowed when Paystack secret is configured.");
+    if (allowUnverified) return;
+    throw new Error(
+      "Demo payment was used but Paystack is configured. Open checkout with VITE_PAYSTACK_PUBLIC_KEY set, or set HUB_ALLOW_UNVERIFIED_PAY=true for sandbox only.",
+    );
   }
+
   const res = await fetch(
     `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
     { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" } },
@@ -354,7 +370,6 @@ async function logHubOrder(input: {
     console.warn("[hub] hub_orders insert", hubErr.message);
   }
 
-  // Mirror into bill_transactions so history/admin still see the order
   try {
     const ref = input.trackingReference || input.paymentReference;
     const { error } = await supabaseAdmin.from("bill_transactions").insert({
