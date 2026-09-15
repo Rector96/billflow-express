@@ -2,6 +2,7 @@
 
 **Repo:** `Rector96/billflow-express`  
 **Primary branch for product work:** `feature/rockpay-pricing`  
+**Merge into production:** see `docs/MERGE_WITH_MAIN.md`  
 **Audience:** engineers, product, and any AI agent onboarding to this codebase.
 
 This file is the **single source of truth** for *what the platform is*, *what works*, *what is demo*, and *what not to build next*.
@@ -61,9 +62,12 @@ RockPay is a **Nigeria-focused utility + identity + formalisation hub** — not 
 | `/cac` | `docs/CAC_BUSINESS_NAME.md` |
 | `/nin` | `docs/NIN_SERVICES.md` |
 | `/admin/*` | Ops |
+| Merge guide | `docs/MERGE_WITH_MAIN.md` |
 | This file | `docs/PLATFORM.md` |
 
 **Flags:** `CAC_DEMO_MODE`, `NIN_DEMO_MODE` in flow components — keep `true` until backend is connected.
+
+**UI uniformity:** New hub flows reuse AppShell, PageHeader, PayStepper, PayActionBar, card styles — same language as bill pay so merge does not create a second product look.
 
 ---
 
@@ -93,49 +97,48 @@ RockPay is a **Nigeria-focused utility + identity + formalisation hub** — not 
 
 ## 5. High-demand paid services (hub roadmap)
 
-Prioritised for **fast delivery + willingness to pay** (not e-commerce):
+### Tier A — ship hard
+1. Data + airtime  
+2. Electricity + cable  
+3. Exam PINs  
+4. Wallet funding  
 
-### Tier A — already in DNA / ship hard
-1. **Data + airtime** (huge daily spend; honest face-value + margin on data)
-2. **Electricity + cable**
-3. **Exam PINs** (seasonal spikes)
-4. **Wallet funding**
-
-### Tier B — high fee, form-based (assisted)
-5. **CAC Business Name** (demo live; go-live = pay + admin + certificate)
-6. **NIN retrieve / slip** (demo live)
-7. **Company name search / verify** (cheap, high search volume)
+### Tier B — assisted (form + fee)
+5. CAC Business Name (L1 demo)  
+6. NIN retrieve / slip (L1 demo)  
+7. Company name search / verify  
 
 ### Tier C — later
-8. Plastic NIN card via **partners**  
-9. TIN assist only if still needed after NIN=Tax ID rules  
+8. Plastic NIN card via partners  
+9. TIN assist if still needed  
 10. Ltd CAC, annual returns  
-11. SME tools engineers pay for: **invoice PDF**, **receipt branding**, **team wallet**, **API for agents** (reseller later if policy allows)
+11. SME/agent tools (invoices, branded receipts, agent API)  
 
-### Explicitly deprioritise
-- Full online store / physical goods  
-- Unlicensed scraping of NIMC/CAC portals  
-- Blind multi-provider failover without requery  
+### Deprioritise
+- Physical goods e-commerce  
+- Unlicensed portal scraping  
+- Blind failover without requery  
 
 ---
 
 ## 6. Engineering rules
 
-1. **No false success** — wallet debit only with clear provider outcome or explicit pending.  
+1. **No false success** — clear provider outcome or explicit pending.  
 2. **Demos stay demos** until `*_DEMO_MODE = false` and backend exists.  
 3. **One vertical production-ready** beats five half-wired demos.  
-4. Prefer **provider APIs** (VTpass, Paystack, licensed identity) over HTML scraping.  
-5. Admin must support: search users, txs, Care, pricing, reconciliation.
+4. Prefer **provider APIs** over scraping.  
+5. **Uniform UI** — shared components; no one-off visual system on feature branch.  
+6. Changes on `feature/rockpay-pricing` must remain **mergeable to `main`** (see `docs/MERGE_WITH_MAIN.md`).  
 
 ---
 
-## 7. Suggested next work (product order)
+## 7. Suggested next work
 
-1. Harden **VTU pending → terminal status** + live catalogues.  
-2. CAC **L2–L3**: storage, payment, admin queue, email.  
-3. NIN **L2** only with lawful partner.  
-4. Optional plastic card as **ops queue**, not fake automation.  
+1. Harden VTU pending → terminal status + live catalogues.  
+2. CAC L2–L3: storage, payment, admin queue, email.  
+3. NIN L2 only with lawful partner.  
+4. Optional plastic card as ops queue.  
 
 ---
 
-*Last updated for branch `feature/rockpay-pricing`. Update this file when maturity levels change.*
+*Branch: `feature/rockpay-pricing`. Update when maturity levels change.*
