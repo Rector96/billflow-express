@@ -1058,42 +1058,56 @@ function PayFlow() {
   if (step === "pin") {
     return (
       <AppShell>
-        <PageHeader title="Enter Transaction PIN" onBack={() => setStep("confirm")} />
-        <div className="mx-auto flex min-h-[calc(100dvh-10rem)] w-full max-w-md flex-col justify-center px-4 py-8 sm:min-h-[calc(100dvh-8rem)]">
-          <PayStepper steps={stepsMeta} current={currentStepIndex} className="mb-4" />
-          <div className="rounded-[26px] border border-border/70 bg-card p-4 shadow-soft sm:p-5">
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-primary-soft px-3 py-2.5 text-left">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Amount
-                </p>
-                <p className="mt-1 text-lg font-extrabold tabular-nums">
+        <PageHeader
+          title="Enter Transaction PIN"
+          subtitle="Final step · Secure authorization"
+          onBack={() => setStep("confirm")}
+        />
+        <div className="mx-auto flex min-h-[calc(100dvh-9rem)] w-full max-w-md flex-col px-4 pt-5 pb-8">
+          <PayStepper steps={stepsMeta} current={currentStepIndex} className="mb-5" />
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-1 flex-col justify-center"
+          >
+            <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-card">
+              <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <LockKeyhole className="size-4.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-extrabold">Authorize payment</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {service.name} · {maskTail(identifier)}
+                  </p>
+                </div>
+                <p className="shrink-0 text-base font-extrabold tabular-nums text-primary">
                   {formatNaira(total, false)}
                 </p>
               </div>
-              <span className={cn("grid size-10 place-items-center rounded-xl", service.tint)}>
-                <service.icon className="size-4" />
-              </span>
-            </div>
-            <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
-              Enter your 4-digit PIN to authorize this payment.
-            </p>
-            <div className="mt-5">
+              <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+                Enter your 4-digit transaction PIN
+              </p>
+              <div className="mt-4">
               <PinPad value={pin} onChange={setPin} />
+              </div>
+              <Button
+                className="mt-5 h-12 w-full rounded-xl text-sm font-bold shadow-sm"
+                disabled={pin.length < 4 || payingLock.current}
+                onClick={() => {
+                  if (payingLock.current || pin.length < 4) return;
+                  const authorized = pin;
+                  setPin("");
+                  void runPayment(authorized);
+                }}
+              >
+                <ShieldCheck className="mr-2 size-4" /> Pay securely
+              </Button>
+              <p className="mt-3 text-center text-[10px] text-muted-foreground">
+                Your PIN is encrypted and never shared with the provider.
+              </p>
             </div>
-            <Button
-              className="mt-6 h-11 w-full rounded-xl text-sm font-bold"
-              disabled={pin.length < 4 || payingLock.current}
-              onClick={() => {
-                if (payingLock.current || pin.length < 4) return;
-                const authorized = pin;
-                setPin("");
-                void runPayment(authorized);
-              }}
-            >
-              Confirm payment
-            </Button>
-          </div>
+          </motion.div>
         </div>
       </AppShell>
     );
