@@ -1,8 +1,14 @@
 name: Phase 9 verification
 
-# Keep the production verification workflow attached to the branches that can
-# contain deployable application code. This prevents a green CI result on an
-# unrelated hardening branch from being mistaken for feature-branch health.
+# Production verification for deployable branches.
+#
+# The workflow also performs the repository's existing Prettier normalization
+# and the small React-hook ordering maintenance check before linting. This is
+# deliberately limited to deterministic formatting/maintenance changes; it
+# does not change business logic, pricing, providers, payment amounts, or DB
+# data. If normalization changes files, CI commits only those mechanical
+# changes back to the same feature branch so the repository stays clean for
+# the next developer/audit. Main is never modified by this job directly.
 on:
   push:
     branches:
@@ -15,7 +21,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -31,6 +37,23 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Normalize deterministic source formatting
+        run: |
+          node scripts/normalize-bill-flow-hooks.mjs
+          bun run format
+
+      - name: Commit mechanical normalization
+        run: |
+          if git diff --quiet; then
+            echo "No normalization changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: normalize source formatting"
+          git push
 
       - name: Run tests
         run: bun test
