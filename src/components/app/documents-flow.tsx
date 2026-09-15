@@ -1,8 +1,7 @@
 /**
- * Automated Document Generator — DEMO UI
- * Business Constitution | Residential Tenancy Agreement
- * DOC_DEMO_MODE=true → no PDF engine / lawyer review / payment
- * See docs/TIN_AND_DOCUMENTS.md
+ * Automated Document Generator — DEMO UI + state / API payload shapes
+ * DOC_DEMO_MODE=true → simulated Paystack + POST /api/v1/generate-document
+ * See docs/TIN_AND_DOCUMENTS.md · src/lib/hub-api.types.ts
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -24,14 +23,27 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  buildGenerateDocumentPayload,
+  postGenerateDocumentDemo,
+  simulatePaystackInline,
+} from "@/lib/hub-api.demo";
+import type { GenerateDocumentSuccess } from "@/lib/hub-api.types";
 import { formatNaira } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
 
 export const DOC_DEMO_MODE = true;
 export const DOC_GENERATOR_FEE = 3000;
 
 type DocType = "constitution" | "tenancy";
 type Step = "type" | "form" | "preview" | "success";
+
+type DocFormState = {
+  partyA: string;
+  partyB: string;
+  address: string;
+  rent: string;
+  duration: string;
+};
 
 const STEPS: PayStepMeta[] = [
   { key: "type", label: "Type" },
@@ -52,24 +64,22 @@ function HelpNote({ children }: { children: React.ReactNode }) {
 function DemoBanner() {
   return (
     <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100">
-      <span className="font-bold">Demo mode.</span> Draft text only — not legal advice. No real PDF engine or payment yet.
+      <span className="font-bold">Demo mode.</span> Paystack and generate-document API are simulated. Not legal
+      advice.
     </div>
   );
 }
 
 function buildDraft(input: {
   type: DocType;
-  partyA: string;
-  partyB: string;
-  address: string;
-  rent: string;
-  duration: string;
+  form: DocFormState;
 }): string {
   const today = new Date().toLocaleDateString("en-NG", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+  const { form } = input;
   if (input.type === "constitution") {
     return [
       "BUSINESS CONSTITUTION (DEMO DRAFT)",
@@ -77,16 +87,16 @@ function buildDraft(input: {
       `Date: ${today}`,
       "",
       `1. PARTIES`,
-      `This constitution is adopted by ${input.partyA || "[Business / Proprietor]"} ("the Business").`,
+      `This constitution is adopted by ${form.partyA || "[Business / Proprietor]"} ("the Business").`,
       "",
       `2. PURPOSE`,
       "The Business is established to carry on lawful trade and related activities in Nigeria.",
       "",
       `3. MANAGEMENT`,
-      `${input.partyB || "[Manager / Partner]"} may assist in day-to-day management as agreed in writing.`,
+      `${form.partyB || "[Manager / Partner]"} may assist in day-to-day management as agreed in writing.`,
       "",
       `4. REGISTERED ADDRESS`,
-      input.address || "[Business address]",
+      form.address || "[Business address]",
       "",
       `5. GENERAL`,
       "This demo document is a template outline only. Have a qualified professional review before use.",
@@ -99,17 +109,17 @@ function buildDraft(input: {
     "==========================================",
     `Date: ${today}`,
     "",
-    `LANDLORD: ${input.partyA || "[Landlord full name]"}`,
-    `TENANT: ${input.partyB || "[Tenant full name]"}`,
+    `LANDLORD: ${form.partyA || "[Landlord full name]"}`,
+    `TENANT: ${form.partyB || "[Tenant full name]"}`,
     "",
     `PROPERTY`,
-    input.address || "[Property address]",
+    form.address || "[Property address]",
     "",
     `RENT & TERM`,
-    `Annual rent: ₦${input.rent || "[amount]"}`,
-    `Duration: ${input.duration || "1 Year"}`,
+    `Annual rent: ₦${form.rent || "[amount]"}`,
+    `Duration: ${form.duration || "1 Year"}`,
     "",
-    `The Tenant shall occupy the Property for the Duration and pay Rent as stated. The Landlord shall ensure quiet enjoyment subject to the Tenant observing this agreement.`,
+    `The Tenant shall occupy the Property for the Duration and pay Rent as stated.`,
     "",
     `This is a demo template for product flow testing only — not a substitute for legal advice.`,
     "",
@@ -121,25 +131,21 @@ export function DocumentsFlow() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("type");
   const [docType, setDocType] = useState<DocType | null>(null);
-  const [partyA, setPartyA] = useState("");
-  const [partyB, setPartyB] = useState("");
-  const [address, setAddress] = useState("");
-  const [rent, setRent] = useState("");
-  const [duration, setDuration] = useState("1 Year");
+  const [form, setForm] = useState<DocFormState>({
+    partyA: "",
+    partyB: "",
+    address: "",
+    rent: "",
+    duration: "1 Year",
+  });
   const [paying, setPaying] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState("");
+  const [payPhase, setPayPhase] = useState<"idle" | "paystack" | "api">("idle");
+  const [apiResult, setApiResult] = useState<GenerateDocumentSuccess | null>(null);
+  const [localBlobUrl, setLocalBlobUrl] = useState("");
 
   const draft = useMemo(
-    () =>
-      buildDraft({
-        type: docType ?? "tenancy",
-        partyA,
-        partyB,
-        address,
-        rent,
-        duration,
-      }),
-    [docType, partyA, partyB, address, rent, duration],
+    () => buildDraft({ type: docType ?? "tenancy", form }),
+    [docType, form],
   );
 
   const stepIndex = useMemo(() => {
@@ -149,8 +155,12 @@ export function DocumentsFlow() {
     return 3;
   }, [step]);
 
+  const setField = <K extends keyof DocFormState>(key: K, value: DocFormState[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
   const validateForm = () => {
-    if (!partyA.trim() || !partyB.trim()) {
+    if (!form.partyA.trim() || !form.partyB.trim()) {
       toast.error(
         docType === "constitution"
           ? "Enter business/proprietor and manager names."
@@ -158,39 +168,74 @@ export function DocumentsFlow() {
       );
       return false;
     }
-    if (!address.trim()) {
+    if (!form.address.trim()) {
       toast.error("Enter the property or business address.");
       return false;
     }
-    if (docType === "tenancy" && !rent.trim()) {
+    if (docType === "tenancy" && !form.rent.trim()) {
       toast.error("Enter rent amount per year.");
       return false;
     }
     return true;
   };
 
-  const onPay = async () => {
+  const onPayNow = async () => {
+    if (!docType || !validateForm()) return;
     setPaying(true);
-    await new Promise((r) => setTimeout(r, 900));
-    const blob = new Blob([draft], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    setDownloadUrl(url);
-    setPaying(false);
-    setStep("success");
-    toast.success(DOC_DEMO_MODE ? "Demo payment complete" : "Document ready");
+    setPayPhase("paystack");
+    try {
+      const paystack = await simulatePaystackInline({
+        email: "customer@rockpay.app",
+        amountNaira: DOC_GENERATOR_FEE,
+        metadata: { service: "generate_document", documentType: docType },
+      });
+      if (paystack.status !== "success" || !paystack.reference) {
+        throw new Error("Payment was not completed.");
+      }
+
+      setPayPhase("api");
+      const payload = buildGenerateDocumentPayload({
+        documentType:
+          docType === "constitution" ? "business_constitution" : "residential_tenancy",
+        partyA: form.partyA,
+        partyB: form.partyB,
+        address: form.address,
+        rent: form.rent,
+        duration: form.duration,
+        paymentReference: paystack.reference,
+        fee: DOC_GENERATOR_FEE,
+      });
+
+      // Production:
+      // await fetch("/api/v1/generate-document", { method: "POST", body: JSON.stringify(payload) })
+      const json = await postGenerateDocumentDemo(payload, draft);
+
+      const blob = new Blob([json.data.previewText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      setLocalBlobUrl(url);
+      setApiResult(json);
+      setStep("success");
+      toast.success(`Paid · ref ${paystack.reference.slice(0, 12)}…`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not generate document.");
+    } finally {
+      setPaying(false);
+      setPayPhase("idle");
+    }
   };
 
   const downloadFile = () => {
-    if (!downloadUrl) return;
+    if (!localBlobUrl || !apiResult) return;
     const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = `rockpay-${docType ?? "document"}-${Date.now()}.txt`;
+    a.href = localBlobUrl;
+    a.download = `rockpay-${apiResult.data.documentId}.txt`;
     a.click();
-    toast.success("Download started (demo text file)");
+    toast.success("Download started (demo file)");
   };
 
   const copyLink = async () => {
-    const link = downloadUrl || `${window.location.origin}/documents#demo`;
+    const link = apiResult?.data.downloadUrl || localBlobUrl;
+    if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
       toast.success("Link copied");
@@ -199,7 +244,7 @@ export function DocumentsFlow() {
     }
   };
 
-  if (step === "success") {
+  if (step === "success" && apiResult) {
     return (
       <AppShell>
         <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
@@ -207,23 +252,26 @@ export function DocumentsFlow() {
             <CheckCircle2 className="size-8" />
           </span>
           <h1 className="text-xl font-extrabold tracking-tight">Document ready</h1>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Demo draft generated. Live PDF export will replace the text download when connected.
-          </p>
+          <p className="max-w-sm text-sm text-muted-foreground">{apiResult.data.title}</p>
 
           <div className="w-full space-y-3 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-soft">
             <Button className="h-12 w-full rounded-2xl font-bold" onClick={downloadFile}>
               <FileText className="mr-2 size-4" /> Download PDF
             </Button>
-            <p className="text-[11px] text-muted-foreground">Demo file is plain text until a PDF engine is wired.</p>
+            <p className="text-[11px] text-muted-foreground">
+              Demo delivers text until a PDF engine is connected. API download URL is shown below.
+            </p>
             <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
               <p className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">
-                {downloadUrl || "blob:demo-download"}
+                {apiResult.data.downloadUrl}
               </p>
               <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-xl" onClick={() => void copyLink()}>
                 <Copy className="size-3.5" />
               </Button>
             </div>
+            <p className="font-mono text-[10px] text-muted-foreground">
+              Paystack · {apiResult.meta.paymentReference}
+            </p>
           </div>
 
           <div className="mt-2 w-full space-y-2">
@@ -234,8 +282,9 @@ export function DocumentsFlow() {
               variant="outline"
               className="h-12 w-full rounded-2xl font-bold"
               onClick={() => {
-                if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-                setDownloadUrl("");
+                if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
+                setLocalBlobUrl("");
+                setApiResult(null);
                 setStep("type");
                 setDocType(null);
               }}
@@ -311,8 +360,8 @@ export function DocumentsFlow() {
               <div className="space-y-1.5">
                 <Label>{docType === "constitution" ? "Business / proprietor name" : "Landlord full name"}</Label>
                 <Input
-                  value={partyA}
-                  onChange={(e) => setPartyA(e.target.value)}
+                  value={form.partyA}
+                  onChange={(e) => setField("partyA", e.target.value)}
                   className="h-12 rounded-2xl"
                   placeholder={docType === "constitution" ? "e.g. Ada Ventures" : "Landlord name"}
                 />
@@ -320,8 +369,8 @@ export function DocumentsFlow() {
               <div className="space-y-1.5">
                 <Label>{docType === "constitution" ? "Manager / partner name" : "Tenant full name"}</Label>
                 <Input
-                  value={partyB}
-                  onChange={(e) => setPartyB(e.target.value)}
+                  value={form.partyB}
+                  onChange={(e) => setField("partyB", e.target.value)}
                   className="h-12 rounded-2xl"
                   placeholder={docType === "constitution" ? "Optional partner" : "Tenant name"}
                 />
@@ -329,8 +378,8 @@ export function DocumentsFlow() {
               <div className="space-y-1.5">
                 <Label>{docType === "constitution" ? "Business address" : "Property address"}</Label>
                 <Input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  value={form.address}
+                  onChange={(e) => setField("address", e.target.value)}
                   className="h-12 rounded-2xl"
                   placeholder="Street, city, state"
                 />
@@ -341,8 +390,8 @@ export function DocumentsFlow() {
                     <Label>Rent amount per year (₦)</Label>
                     <Input
                       inputMode="numeric"
-                      value={rent}
-                      onChange={(e) => setRent(e.target.value.replace(/[^\d]/g, ""))}
+                      value={form.rent}
+                      onChange={(e) => setField("rent", e.target.value.replace(/[^\d]/g, ""))}
                       className="h-12 rounded-2xl"
                       placeholder="e.g. 1200000"
                     />
@@ -350,8 +399,8 @@ export function DocumentsFlow() {
                   <div className="space-y-1.5">
                     <Label>Duration</Label>
                     <Input
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
+                      value={form.duration}
+                      onChange={(e) => setField("duration", e.target.value)}
                       className="h-12 rounded-2xl"
                       placeholder="1 Year"
                     />
@@ -381,7 +430,9 @@ export function DocumentsFlow() {
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">Preview & pay</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Read-only draft. Fee unlocks download.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paystack charge, then <code className="text-[10px]">POST /api/v1/generate-document</code>.
+              </p>
             </div>
 
             <div className="max-h-56 overflow-y-auto rounded-2xl border border-border/70 bg-muted/20 p-4 shadow-soft">
@@ -401,16 +452,17 @@ export function DocumentsFlow() {
             </div>
 
             <PayActionBar id="pay-action">
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPay()}>
+              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPayNow()}>
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Processing…
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    {payPhase === "paystack" ? "Opening Paystack…" : "Generating…"}
                   </>
                 ) : (
-                  <>Pay {formatNaira(DOC_GENERATOR_FEE, false)}</>
+                  <>Pay Now · {formatNaira(DOC_GENERATOR_FEE, false)}</>
                 )}
               </Button>
-              <Button variant="ghost" className="mt-2 w-full text-xs font-bold" onClick={() => setStep("form")}>
+              <Button variant="ghost" className="mt-2 w-full text-xs font-bold" disabled={paying} onClick={() => setStep("form")}>
                 Edit answers
               </Button>
             </PayActionBar>
