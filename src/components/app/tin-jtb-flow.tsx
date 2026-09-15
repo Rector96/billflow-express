@@ -1,11 +1,10 @@
 /**
- * JTB TIN Retrieval — DEMO UI + state / API payload shapes
- * Flow: Input → Preview & Pay (Paystack sim) → Success
- * TIN_DEMO_MODE=true → simulated Paystack + POST /api/v1/recover-tin mock
- * See docs/TIN_AND_DOCUMENTS.md · src/lib/hub-api.types.ts
+ * JTB TIN Retrieval — live server path when logged in
+ * Paystack → recoverTin (verify + Dojah/fallback) → hub_orders
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   CheckCircle2,
   Copy,
@@ -24,25 +23,16 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  buildRecoverTinPayload,
-  postRecoverTinDemo,
-  simulatePaystackInline,
-} from "@/lib/hub-api.demo";
+import { useApp } from "@/lib/app-store";
+import { simulatePaystackInline } from "@/lib/hub-api.demo";
+import { getHubServiceFee, recoverTin } from "@/lib/hub.functions";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
+import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-export const TIN_DEMO_MODE = true;
-export const TIN_RETRIEVE_FEE = 1500;
-
 type Step = "input" | "preview" | "success";
-
-/** All form fields captured for payload + success mapping */
-type TinFormState = {
-  identifier: string;
-  fullName: string;
-};
+type TinFormState = { identifier: string; fullName: string };
 
 const STEPS: PayStepMeta[] = [
   { key: "input", label: "Details" },
@@ -59,25 +49,26 @@ function HelpNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DemoBanner() {
-  return (
-    <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100">
-      <span className="font-bold">Demo mode.</span> Paystack Pop and recover-tin API are simulated.
-      No real charge.
-    </div>
-  );
-}
-
 export function TinJtbFlow() {
   const navigate = useNavigate();
+  const { profile, authed } = useApp();
+  const runRecover = useServerFn(recoverTin);
+  const runFee = useServerFn(getHubServiceFee);
+
   const [step, setStep] = useState<Step>("input");
-  const [form, setForm] = useState<TinFormState>({
-    identifier: "",
-    fullName: "",
-  });
+  const [form, setForm] = useState<TinFormState>({ identifier: "", fullName: "" });
   const [paying, setPaying] = useState(false);
   const [payPhase, setPayPhase] = useState<"idle" | "paystack" | "api">("idle");
   const [result, setResult] = useState<RecoverTinSuccess | null>(null);
+  const [fee, setFee] = useState(SERVICE_PRICES.tin_retrieve);
+
+  useMemo(() => {
+    void runFee({ data: { serviceSlug: "tin" } })
+      .then((r) => {
+        if (r.fee > 0) setFee(r.fee);
+      })
+      .catch(() => undefined);
+  }, [runFee]);
 
   const stepIndex = useMemo(() => {
     if (step === "input") return 0;
@@ -107,50 +98,43 @@ export function TinJtbFlow() {
     return true;
   };
 
-  /**
-   * Pay Now:
-   * 1) Simulate Paystack Pop → reference
-   * 2) POST /api/v1/recover-tin with reference + form fields
-   * 3) Map aggregator-shaped JSON onto success UI
-   */
   const onPayNow = async () => {
     if (!validateInput()) return;
+    if (!authed) {
+      toast.error("Please log in to continue.");
+      navigate({ to: "/login" });
+      return;
+    }
     setPaying(true);
     setPayPhase("paystack");
     try {
+      const email = profile.email?.trim() || "customer@rockpay.app";
       const paystack = await simulatePaystackInline({
-        email: "customer@rockpay.app",
-        amountNaira: TIN_RETRIEVE_FEE,
-        metadata: {
-          service: "recover_tin",
-          identifier: form.identifier.trim(),
-        },
+        email,
+        amountNaira: fee,
+        metadata: { service: "tin", identifier: form.identifier.trim() },
       });
-
       if (paystack.status !== "success" || !paystack.reference) {
         throw new Error("Payment was not completed.");
       }
 
       setPayPhase("api");
-      const payload = buildRecoverTinPayload({
-        identifier: form.identifier,
-        fullName: form.fullName,
-        paymentReference: paystack.reference,
-        fee: TIN_RETRIEVE_FEE,
-      });
+      const digits = form.identifier.replace(/\D/g, "");
+      const identifierType = digits.length === 11 ? "nin" : "cac";
 
-      // Production:
-      // const res = await fetch("/api/v1/recover-tin", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(payload),
-      // });
-      // const json = (await res.json()) as RecoverTinSuccess;
-      const json = await postRecoverTinDemo(payload);
+      const json = await runRecover({
+        data: {
+          identifier: form.identifier.replace(/\s/g, "").trim(),
+          identifierType,
+          fullName: form.fullName.trim(),
+          paymentReference: paystack.reference,
+          amount: fee,
+        },
+      });
 
       setResult(json);
       setStep("success");
-      toast.success(`Paid · ref ${paystack.reference.slice(0, 12)}…`);
+      toast.success("TIN retrieved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not complete TIN retrieval.");
     } finally {
@@ -182,8 +166,6 @@ export function TinJtbFlow() {
       `Request ID: ${result.meta.requestId}`,
       `Fee: ₦${result.meta.fee}`,
       `Date: ${new Date().toISOString()}`,
-      "",
-      TIN_DEMO_MODE ? "Demo receipt — live JTB not connected." : "",
     ].join("\n");
     const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -207,7 +189,6 @@ export function TinJtbFlow() {
           <p className="max-w-sm text-sm text-muted-foreground">
             Retrieved for <span className="font-semibold text-foreground">{data.taxpayerName}</span>
           </p>
-
           <div className="w-full rounded-2xl border border-border/70 bg-card p-5 text-left shadow-soft">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Tax Identification Number
@@ -222,16 +203,6 @@ export function TinJtbFlow() {
                   {data.taxpayerType === "business" ? "Business" : "Individual"}
                 </span>
               </p>
-              {data.nin ? (
-                <p>
-                  NIN: <span className="font-mono text-foreground">{data.nin}</span>
-                </p>
-              ) : null}
-              {data.cacNumber ? (
-                <p>
-                  CAC: <span className="font-mono text-foreground">{data.cacNumber}</span>
-                </p>
-              ) : null}
               <p className="font-mono text-[10px]">Paystack · {meta.paymentReference}</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -243,7 +214,6 @@ export function TinJtbFlow() {
               </Button>
             </div>
           </div>
-
           <div className="mt-2 w-full space-y-2">
             <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
               <Home className="mr-2 size-4" /> Home
@@ -268,8 +238,7 @@ export function TinJtbFlow() {
     <AppShell>
       <PageHeader title="TIN Retrieval" backTo="/services" />
       <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
-        <DemoBanner />
-        <PayStepper steps={STEPS} currentIndex={stepIndex} />
+        <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "input" ? (
           <section className="space-y-4">
@@ -284,7 +253,6 @@ export function TinJtbFlow() {
                 </p>
               </div>
             </div>
-
             <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
               <div className="space-y-1.5">
                 <Label htmlFor="tin-id">NIN or CAC number</Label>
@@ -309,12 +277,10 @@ export function TinJtbFlow() {
                 />
               </div>
             </div>
-
             <HelpNote>
-              Payload will send <code className="text-[10px]">identifierType</code> as nin or cac, then
-              charge via Paystack before calling recover-tin.
+              After Paystack confirms payment, we look up the TIN on the server and save the order in
+              your account history.
             </HelpNote>
-
             <PayActionBar id="pay-action">
               <Button
                 className="h-12 w-full rounded-2xl font-bold"
@@ -334,10 +300,9 @@ export function TinJtbFlow() {
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">Preview & pay</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Pay with Paystack, then we fetch the TIN from the compliance API.
+                Pay with Paystack, then we fetch the TIN securely.
               </p>
             </div>
-
             <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <ShieldCheck className="size-3.5 text-success" /> Ready to retrieve
@@ -351,43 +316,22 @@ export function TinJtbFlow() {
                 {blurredTin}
               </p>
             </div>
-
             <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Payment summary
-              </p>
-              <div className="mt-3 flex justify-between text-sm">
-                <span className="text-muted-foreground">Service</span>
-                <span className="font-bold">JTB TIN retrieval</span>
-              </div>
-              <div className="mt-2 flex justify-between text-sm">
-                <span className="text-muted-foreground">Convenience fee</span>
-                <span className="font-extrabold tabular-nums">{formatNaira(TIN_RETRIEVE_FEE, false)}</span>
-              </div>
-              <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-base">
+              <div className="flex items-center justify-between text-base">
                 <span className="font-extrabold">Total</span>
-                <span className="font-extrabold tabular-nums">{formatNaira(TIN_RETRIEVE_FEE, false)}</span>
+                <span className="font-extrabold tabular-nums">{formatNaira(fee, false)}</span>
               </div>
             </div>
-
-            <HelpNote>
-              Demo runs Paystack simulation → <code className="text-[10px]">POST /api/v1/recover-tin</code> with the
-              payment reference. Open the browser console in dev to inspect request/response JSON.
-            </HelpNote>
-
             <PayActionBar id="pay-action">
               <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPayNow()}>
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    {payPhase === "paystack" ? "Opening Paystack…" : "Fetching TIN…"}
+                    <Loader2 className="mr-2 size-4 animate-spin" />{" "}
+                    {payPhase === "api" ? "Fetching TIN…" : "Opening Paystack…"}
                   </>
                 ) : (
-                  <>Pay Now · {formatNaira(TIN_RETRIEVE_FEE, false)}</>
+                  "Pay now"
                 )}
-              </Button>
-              <Button variant="ghost" className="mt-2 w-full text-xs font-bold" disabled={paying} onClick={() => setStep("input")}>
-                Edit details
               </Button>
             </PayActionBar>
           </section>
