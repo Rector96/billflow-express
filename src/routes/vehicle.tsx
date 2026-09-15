@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { VehiclePaperworkFlow } from "@/components/app/vehicle-paperwork-flow";
-import { BRAND } from "@/lib/mock-data";
+import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/vehicle")({
   head: () => ({
