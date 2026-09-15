@@ -1,6 +1,15 @@
 /**
  * Multi-vendor bill routing: VTpass primary → VTUAfrica fallback.
- * Never throws if at least one vendor returns a structured result.
+ *
+ * SAFETY RULE:
+ * A fallback provider may only be used after VTpass gives a DEFINITIVE failure.
+ * A timeout, network error, 5xx, or other ambiguous result is NOT a failure.
+ * VTpass may have accepted/processed the transaction even when our request did
+ * not receive a response. Sending the same transaction to another provider in
+ * that situation can double-fulfil a customer's bill.
+ *
+ * Requery remains the correct recovery path for an ambiguous VTpass transaction.
+ * This router therefore never falls back when the primary call itself throws.
  */
 import { mapVtpassOutcome, vtpassPay, type VtpassPayResult } from "./vtpass.server";
 import {
@@ -63,6 +72,10 @@ export function toVtpassShape(r: RoutedPayResult): VtpassPayResult {
   };
 }
 
+/**
+ * These are provider responses that represent a concrete inability to fulfil
+ * the request. They are intentionally narrower than transport errors.
+ */
 const FAILOVER_CODES = new Set([
   "016",
   "018",
@@ -80,13 +93,13 @@ const FAILOVER_CODES = new Set([
 export function shouldFailoverVtpass(result: VtpassPayResult): boolean {
   const code = String(result.code ?? "").trim();
   if (FAILOVER_CODES.has(code)) return true;
+
   const msg = (result.responseDescription ?? "").toUpperCase();
+  // Only provider responses that explicitly say the service/account is
+  // unavailable are eligible. Transport timeouts are handled separately.
   if (
     msg.includes("WHITELIST") ||
     msg.includes("NOT ENABLED") ||
-    msg.includes("UNAVAILABLE") ||
-    msg.includes("TIMEOUT") ||
-    msg.includes("UNREACHABLE") ||
     msg.includes("SUSPENDED") ||
     msg.includes("INACTIVE")
   ) {
@@ -143,7 +156,10 @@ async function tryVtpass(body: Record<string, unknown>): Promise<VtpassPayResult
     getVtpassConfig();
     return await vtpassPay(body);
   } catch (e) {
-    console.error("[vendor-router] VTpass call failed", e instanceof Error ? e.message : e);
+    // A thrown provider call is intentionally converted to null so callers can
+    // distinguish a transport/unknown outcome from a provider's explicit
+    // definitive failure response. NEVER use this null result to fail over.
+    console.error("[vendor-router] VTpass transport/config error", e instanceof Error ? e.message : e);
     return null;
   }
 }
@@ -166,20 +182,26 @@ export async function routeElectricityPay(input: {
     phone: input.phone,
   });
 
-  if (primary) {
-    const outcome = mapVtpassOutcome(primary);
-    if (outcome === "successful" || outcome === "pending") {
-      return fromVtpass(primary, false);
-    }
-    if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
-      return fromVtpass(primary, false);
-    }
-  } else if (!isVtuafricaEnabled()) {
+  if (!primary) {
+    // IMPORTANT: VTpass may have processed the request before the network failed.
+    // Do not send the same order to VTUAfrica. Persist/return an ambiguous state
+    // and let the normal requery/reconciliation path determine the final result.
     throw new Error(
-      "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
+      "Primary bill provider did not return a definitive result. Your payment is protected; please check the transaction status before retrying.",
     );
   }
 
+  const outcome = mapVtpassOutcome(primary);
+  if (outcome === "successful" || outcome === "pending") {
+    return fromVtpass(primary, false);
+  }
+
+  if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
+    return fromVtpass(primary, false);
+  }
+
+  // At this point VTpass has returned a definitive failure, so (and only so)
+  // the secondary provider is allowed to attempt the transaction.
   const ref = `${input.request_id}-va`.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
   try {
     const secondary = await vtuafricaPayElectricity({
@@ -192,10 +214,7 @@ export async function routeElectricityPay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica electricity error", e);
-    if (primary) return fromVtpass(primary, true);
-    throw new Error(
-      "Both bill providers failed. Please try again later or open Care with your details.",
-    );
+    return fromVtpass(primary, true);
   }
 }
 
@@ -218,20 +237,24 @@ export async function routeCablePay(input: {
     subscription_type: input.subscription_type,
   });
 
-  if (primary) {
-    const outcome = mapVtpassOutcome(primary);
-    if (outcome === "successful" || outcome === "pending") {
-      return fromVtpass(primary, false);
-    }
-    if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
-      return fromVtpass(primary, false);
-    }
-  } else if (!isVtuafricaEnabled()) {
+  if (!primary) {
+    // Same safety rule as electricity: never fail over an ambiguous VTpass
+    // transport result because doing so can create a duplicate fulfilment.
     throw new Error(
-      "Bill provider is temporarily unavailable. Try again in a moment or contact Care.",
+      "Primary bill provider did not return a definitive result. Your payment is protected; please check the transaction status before retrying.",
     );
   }
 
+  const outcome = mapVtpassOutcome(primary);
+  if (outcome === "successful" || outcome === "pending") {
+    return fromVtpass(primary, false);
+  }
+
+  if (!shouldFailoverVtpass(primary) || !isVtuafricaEnabled()) {
+    return fromVtpass(primary, false);
+  }
+
+  // Only a definitive VTpass failure reaches this secondary-provider path.
   const ref = `${input.request_id}-va`.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
   try {
     const secondary = await vtuafricaPayCable({
@@ -244,9 +267,6 @@ export async function routeCablePay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica cable error", e);
-    if (primary) return fromVtpass(primary, true);
-    throw new Error(
-      "Both bill providers failed. Please try again later or open Care with your details.",
-    );
+    return fromVtpass(primary, true);
   }
 }
