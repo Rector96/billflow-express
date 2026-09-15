@@ -350,258 +350,97 @@ export interface FileRoutesByFullPath {
   '/history/$txId/report': typeof HistoryTxIdReportRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
 }
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/history': typeof HistoryRouteWithChildren
-  '/home': typeof HomeRoute
-  '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
-  '/onboarding': typeof OnboardingRoute
-  '/otp': typeof OtpRoute
-  '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRouteWithChildren
-  '/saved-payments': typeof SavedPaymentsRoute
-  '/security': typeof SecurityRoute
-  '/services': typeof ServicesRoute
-  '/cac': typeof CacRoute
-  '/nin': typeof NinRoute
-  '/tin': typeof TinRoute
-  '/documents': typeof DocumentsRoute
-  '/vehicle': typeof VehicleRoute
-  '/setup-pin': typeof SetupPinRoute
-  '/signup': typeof SignupRoute
-  '/support': typeof SupportRouteWithChildren
-  '/terms': typeof TermsRoute
-  '/wallet': typeof WalletRouteWithChildren
-  '/admin/activity': typeof AdminActivityRoute
-  '/admin/audit-logs': typeof AdminAuditLogsRoute
-  '/admin/care': typeof AdminCareRouteWithChildren
-  '/admin/pricing': typeof AdminPricingRoute
-  '/admin/reconciliation': typeof AdminReconciliationRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/services': typeof AdminServicesRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/staff': typeof AdminStaffRoute
-  '/admin/transactions': typeof AdminTransactionsRoute
-  '/admin/users': typeof AdminUsersRouteWithChildren
-  '/admin/wallet': typeof AdminWalletRoute
-  '/history/$txId': typeof HistoryTxIdRouteWithChildren
-  '/pay/$slug': typeof PaySlugRoute
-  '/pay/complete': typeof PayCompleteRoute
-  '/profile/personal': typeof ProfilePersonalRoute
-  '/profile/privacy': typeof ProfilePrivacyRoute
-  '/support/$ticketId': typeof SupportTicketIdRoute
-  '/wallet/fund': typeof WalletFundRoute
-  '/admin': typeof AdminIndexRoute
-  '/admin/care/$ticketId': typeof AdminCareTicketIdRoute
-  '/admin/users/$userId': typeof AdminUsersUserIdRoute
-  '/history/$txId/report': typeof HistoryTxIdReportRoute
-  '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+
+interface AdminCareRouteChildren {
+  AdminCareTicketIdRoute: typeof AdminCareTicketIdRoute
 }
-export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/forgot-password': typeof ForgotPasswordRoute
-  '/history': typeof HistoryRouteWithChildren
-  '/home': typeof HomeRoute
-  '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
-  '/onboarding': typeof OnboardingRoute
-  '/otp': typeof OtpRoute
-  '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRouteWithChildren
-  '/saved-payments': typeof SavedPaymentsRoute
-  '/security': typeof SecurityRoute
-  '/services': typeof ServicesRoute
-  '/cac': typeof CacRoute
-  '/nin': typeof NinRoute
-  '/tin': typeof TinRoute
-  '/documents': typeof DocumentsRoute
-  '/vehicle': typeof VehicleRoute
-  '/setup-pin': typeof SetupPinRoute
-  '/signup': typeof SignupRoute
-  '/support': typeof SupportRouteWithChildren
-  '/terms': typeof TermsRoute
-  '/wallet': typeof WalletRouteWithChildren
-  '/admin/activity': typeof AdminActivityRoute
-  '/admin/audit-logs': typeof AdminAuditLogsRoute
-  '/admin/care': typeof AdminCareRouteWithChildren
-  '/admin/pricing': typeof AdminPricingRoute
-  '/admin/reconciliation': typeof AdminReconciliationRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/services': typeof AdminServicesRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/staff': typeof AdminStaffRoute
-  '/admin/transactions': typeof AdminTransactionsRoute
-  '/admin/users': typeof AdminUsersRouteWithChildren
-  '/admin/wallet': typeof AdminWalletRoute
-  '/history/$txId': typeof HistoryTxIdRouteWithChildren
-  '/pay/$slug': typeof PaySlugRoute
-  '/pay/complete': typeof PayCompleteRoute
-  '/profile/personal': typeof ProfilePersonalRoute
-  '/profile/privacy': typeof ProfilePrivacyRoute
-  '/support/$ticketId': typeof SupportTicketIdRoute
-  '/wallet/fund': typeof WalletFundRoute
-  '/admin/': typeof AdminIndexRoute
-  '/admin/care/$ticketId': typeof AdminCareTicketIdRoute
-  '/admin/users/$userId': typeof AdminUsersUserIdRoute
-  '/history/$txId/report': typeof HistoryTxIdReportRoute
-  '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+const AdminCareRouteChildren: AdminCareRouteChildren = {
+  AdminCareTicketIdRoute: AdminCareTicketIdRoute,
 }
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/admin'
-    | '/forgot-password'
-    | '/history'
-    | '/home'
-    | '/login'
-    | '/notifications'
-    | '/onboarding'
-    | '/otp'
-    | '/privacy'
-    | '/profile'
-    | '/saved-payments'
-    | '/security'
-    | '/services'
-    | '/cac'
-    | '/nin'
-    | '/tin'
-    | '/documents'
-    | '/vehicle'
-    | '/setup-pin'
-    | '/signup'
-    | '/support'
-    | '/terms'
-    | '/wallet'
-    | '/admin/activity'
-    | '/admin/audit-logs'
-    | '/admin/care'
-    | '/admin/pricing'
-    | '/admin/reconciliation'
-    | '/admin/reports'
-    | '/admin/services'
-    | '/admin/settings'
-    | '/admin/staff'
-    | '/admin/transactions'
-    | '/admin/users'
-    | '/admin/wallet'
-    | '/history/$txId'
-    | '/pay/$slug'
-    | '/pay/complete'
-    | '/profile/personal'
-    | '/profile/privacy'
-    | '/support/$ticketId'
-    | '/wallet/fund'
-    | '/admin/'
-    | '/admin/care/$ticketId'
-    | '/admin/users/$userId'
-    | '/history/$txId/report'
-    | '/api/public/webhooks/paystack'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/forgot-password'
-    | '/history'
-    | '/home'
-    | '/login'
-    | '/notifications'
-    | '/onboarding'
-    | '/otp'
-    | '/privacy'
-    | '/profile'
-    | '/saved-payments'
-    | '/security'
-    | '/services'
-    | '/cac'
-    | '/nin'
-    | '/tin'
-    | '/documents'
-    | '/vehicle'
-    | '/setup-pin'
-    | '/signup'
-    | '/support'
-    | '/terms'
-    | '/wallet'
-    | '/admin/activity'
-    | '/admin/audit-logs'
-    | '/admin/care'
-    | '/admin/pricing'
-    | '/admin/reconciliation'
-    | '/admin/reports'
-    | '/admin/services'
-    | '/admin/settings'
-    | '/admin/staff'
-    | '/admin/transactions'
-    | '/admin/users'
-    | '/admin/wallet'
-    | '/history/$txId'
-    | '/pay/$slug'
-    | '/pay/complete'
-    | '/profile/personal'
-    | '/profile/privacy'
-    | '/support/$ticketId'
-    | '/wallet/fund'
-    | '/admin'
-    | '/admin/care/$ticketId'
-    | '/admin/users/$userId'
-    | '/history/$txId/report'
-    | '/api/public/webhooks/paystack'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/forgot-password'
-    | '/history'
-    | '/home'
-    | '/login'
-    | '/notifications'
-    | '/onboarding'
-    | '/otp'
-    | '/privacy'
-    | '/profile'
-    | '/saved-payments'
-    | '/security'
-    | '/services'
-    | '/cac'
-    | '/nin'
-    | '/tin'
-    | '/documents'
-    | '/vehicle'
-    | '/setup-pin'
-    | '/signup'
-    | '/support'
-    | '/terms'
-    | '/wallet'
-    | '/admin/activity'
-    | '/admin/audit-logs'
-    | '/admin/care'
-    | '/admin/pricing'
-    | '/admin/reconciliation'
-    | '/admin/reports'
-    | '/admin/services'
-    | '/admin/settings'
-    | '/admin/staff'
-    | '/admin/transactions'
-    | '/admin/users'
-    | '/admin/wallet'
-    | '/history/$txId'
-    | '/pay/$slug'
-    | '/pay/complete'
-    | '/profile/personal'
-    | '/profile/privacy'
-    | '/support/$ticketId'
-    | '/wallet/fund'
-    | '/admin/'
-    | '/admin/care/$ticketId'
-    | '/admin/users/$userId'
-    | '/history/$txId/report'
-    | '/api/public/webhooks/paystack'
-  fileRoutesById: FileRoutesById
+const AdminCareRouteWithChildren = AdminCareRoute._addFileChildren(AdminCareRouteChildren)
+
+interface AdminUsersRouteChildren {
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
 }
+const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
+}
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(AdminUsersRouteChildren)
+
+interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
+  AdminAuditLogsRoute: typeof AdminAuditLogsRoute
+  AdminCareRoute: typeof AdminCareRouteWithChildren
+  AdminPricingRoute: typeof AdminPricingRoute
+  AdminReconciliationRoute: typeof AdminReconciliationRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminServicesRoute: typeof AdminServicesRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStaffRoute: typeof AdminStaffRoute
+  AdminTransactionsRoute: typeof AdminTransactionsRoute
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren
+  AdminWalletRoute: typeof AdminWalletRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
+  AdminAuditLogsRoute: AdminAuditLogsRoute,
+  AdminCareRoute: AdminCareRouteWithChildren,
+  AdminPricingRoute: AdminPricingRoute,
+  AdminReconciliationRoute: AdminReconciliationRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminServicesRoute: AdminServicesRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminStaffRoute: AdminStaffRoute,
+  AdminTransactionsRoute: AdminTransactionsRoute,
+  AdminUsersRoute: AdminUsersRouteWithChildren,
+  AdminWalletRoute: AdminWalletRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface HistoryTxIdRouteChildren {
+  HistoryTxIdReportRoute: typeof HistoryTxIdReportRoute
+}
+const HistoryTxIdRouteChildren: HistoryTxIdRouteChildren = {
+  HistoryTxIdReportRoute: HistoryTxIdReportRoute,
+}
+const HistoryTxIdRouteWithChildren = HistoryTxIdRoute._addFileChildren(HistoryTxIdRouteChildren)
+
+interface HistoryRouteChildren {
+  HistoryTxIdRoute: typeof HistoryTxIdRouteWithChildren
+}
+const HistoryRouteChildren: HistoryRouteChildren = {
+  HistoryTxIdRoute: HistoryTxIdRouteWithChildren,
+}
+const HistoryRouteWithChildren = HistoryRoute._addFileChildren(HistoryRouteChildren)
+
+interface ProfileRouteChildren {
+  ProfilePersonalRoute: typeof ProfilePersonalRoute
+  ProfilePrivacyRoute: typeof ProfilePrivacyRoute
+}
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfilePersonalRoute: ProfilePersonalRoute,
+  ProfilePrivacyRoute: ProfilePrivacyRoute,
+}
+const ProfileRouteWithChildren = ProfileRoute._addFileChildren(ProfileRouteChildren)
+
+interface SupportRouteChildren {
+  SupportTicketIdRoute: typeof SupportTicketIdRoute
+}
+const SupportRouteChildren: SupportRouteChildren = {
+  SupportTicketIdRoute: SupportTicketIdRoute,
+}
+const SupportRouteWithChildren = SupportRoute._addFileChildren(SupportRouteChildren)
+
+interface WalletRouteChildren {
+  WalletFundRoute: typeof WalletFundRoute
+}
+const WalletRouteChildren: WalletRouteChildren = {
+  WalletFundRoute: WalletFundRoute,
+}
+const WalletRouteWithChildren = WalletRoute._addFileChildren(WalletRouteChildren)
+
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
@@ -666,43 +505,10 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-// Child route type helpers (generated)
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/cac': {
-      id: '/cac'
-      path: '/cac'
-      fullPath: '/cac'
-      preLoaderRoute: typeof CacRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nin': {
-      id: '/nin'
-      path: '/nin'
-      fullPath: '/nin'
-      preLoaderRoute: typeof NinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tin': {
-      id: '/tin'
-      path: '/tin'
-      fullPath: '/tin'
-      preLoaderRoute: typeof TinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documents': {
-      id: '/documents'
-      path: '/documents'
-      fullPath: '/documents'
-      preLoaderRoute: typeof DocumentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vehicle': {
-      id: '/vehicle'
-      path: '/vehicle'
-      fullPath: '/vehicle'
-      preLoaderRoute: typeof VehicleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  }
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: keyof FileRoutesByFullPath
+  to: keyof FileRoutesByFullPath
+  id: string
+  fileRoutesById: Record<string, unknown>
 }
