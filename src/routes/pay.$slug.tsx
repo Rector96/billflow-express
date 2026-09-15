@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/app/app-shell";
+import { PageHeader } from "@/components/app/page-header";
 import { RockPayBillEntry } from "@/components/app/rockpay-bill-entry";
 import { BRAND } from "@/lib/brand";
 import { getService } from "@/lib/mock-data";
+import { isBillLive } from "@/lib/product-mode";
 
 type Search = {
   saved?: string;
@@ -33,5 +37,36 @@ export const Route = createFileRoute("/pay/$slug")({
       ],
     };
   },
-  component: RockPayBillEntry,
+  component: PaySlugPage,
 });
+
+/**
+ * Defense-in-depth for direct URLs such as /pay/education.
+ * The Services screen already labels unavailable services as "Soon", but a
+ * customer can still enter any route manually. Never let that bypass the
+ * centralized production-service gate.
+ */
+function PaySlugPage() {
+  const { slug } = Route.useParams();
+
+  if (!isBillLive(slug)) {
+    const service = getService(slug);
+    return (
+      <AppShell>
+        <PageHeader title={service?.name ?? "Service"} backTo="/services" />
+        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+          <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
+            <ShieldCheck className="size-7" />
+          </span>
+          <h1 className="mt-4 text-xl font-extrabold">Service is coming soon</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This service is not currently enabled for customer payments. We will only open it after
+            the provider and fulfillment path have been verified.
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return <RockPayBillEntry />;
+}
