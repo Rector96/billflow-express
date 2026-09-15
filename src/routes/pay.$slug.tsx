@@ -533,7 +533,8 @@ function PayFlow() {
               amount: total,
               pin: authorizedPin,
             },
-          }), 60_000,
+          }),
+          60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -556,7 +557,8 @@ function PayFlow() {
               variationCode: variation.variationCode,
               pin: authorizedPin,
             },
-          }), 60_000,
+          }),
+          60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -582,7 +584,8 @@ function PayFlow() {
               ...(verifiedName ? { customerName: verifiedName } : {}),
               subscriptionType: "change",
             },
-          }), 60_000,
+          }),
+          60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -607,7 +610,8 @@ function PayFlow() {
               ...(verifiedName ? { customerName: verifiedName } : {}),
               minAmount: minPurchase,
             },
-          }), 60_000,
+          }),
+          60_000,
         );
         setTxId(res.reference);
         setProviderRequestId(res.requestId ?? "");
@@ -1115,9 +1119,7 @@ function PayFlow() {
           >
             <div className="relative flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span
-                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15"
-                >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15">
                   <service.icon className="size-5 text-primary-foreground" />
                 </span>
                 <div className="min-w-0">
@@ -1220,7 +1222,8 @@ function PayFlow() {
           ) : null}
 
           <p className="flex items-center justify-center gap-1.5 px-4 text-center text-[10px] leading-relaxed text-muted-foreground">
-            <LockKeyhole className="size-3 shrink-0" /> Your payment is protected and requires your transaction PIN.
+            <LockKeyhole className="size-3 shrink-0" /> Your payment is protected and requires your
+            transaction PIN.
           </p>
 
           <PayActionBar>
@@ -1252,7 +1255,13 @@ function PayFlow() {
     return (
       <AppShell>
         <PageHeader
-          title={isData ? "Choose a data plan" : isPackageLive || service.mode === "package" ? "Select package" : "Enter amount"}
+          title={
+            isData
+              ? "Choose a data plan"
+              : isPackageLive || service.mode === "package"
+                ? "Select package"
+                : "Enter amount"
+          }
           subtitle={`${provider || serviceID} · ${maskTail(identifier) || service.name}`}
           onBack={() =>
             setStep(
@@ -1444,31 +1453,31 @@ function PayFlow() {
             </>
           )}
           <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-20 -mx-1 bg-gradient-to-t from-background via-background to-transparent px-1 pt-5 pb-1 lg:bottom-0">
-          <Button
-            className="h-12 w-full rounded-xl text-sm font-bold shadow-float"
-            disabled={
-              total < 50 ||
-              (isPackageLive && !variation) ||
-              (service.mode === "package" && !isPackageLive && !pack)
-            }
-            onClick={() => {
-              if (isPackageLive && !variation) {
-                toast.error(isData ? "Select a data plan" : "Select a package");
-                return;
+            <Button
+              className="h-12 w-full rounded-xl text-sm font-bold shadow-float"
+              disabled={
+                total < 50 ||
+                (isPackageLive && !variation) ||
+                (service.mode === "package" && !isPackageLive && !pack)
               }
-              if (isElectricity && minPurchase > 0 && total < minPurchase) {
-                toast.error(`Minimum amount is ${formatNaira(minPurchase, false)}`);
-                return;
-              }
-              if (service.mode === "package" && !isPackageLive && !pack) {
-                toast.error("Select a package");
-                return;
-              }
-              setStep("confirm");
-            }}
-          >
-            {isData && variation ? `Continue · ${formatNaira(total, false)}` : "Continue"}
-          </Button>
+              onClick={() => {
+                if (isPackageLive && !variation) {
+                  toast.error(isData ? "Select a data plan" : "Select a package");
+                  return;
+                }
+                if (isElectricity && minPurchase > 0 && total < minPurchase) {
+                  toast.error(`Minimum amount is ${formatNaira(minPurchase, false)}`);
+                  return;
+                }
+                if (service.mode === "package" && !isPackageLive && !pack) {
+                  toast.error("Select a package");
+                  return;
+                }
+                setStep("confirm");
+              }}
+            >
+              {isData && variation ? `Continue · ${formatNaira(total, false)}` : "Continue"}
+            </Button>
           </div>
         </div>
       </AppShell>
