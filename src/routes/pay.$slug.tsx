@@ -9,12 +9,15 @@ import {
   Clock3,
   Copy,
   HelpCircle,
+  LockKeyhole,
   Loader2,
+  Pencil,
   RefreshCw,
   Share2,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  WalletCards,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -27,6 +30,7 @@ import { InfoRow } from "@/components/app/ui-bits";
 import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { PinPad } from "@/components/app/pin-pad";
+import { PayActionBar } from "@/components/app/pay-action-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1095,39 +1099,64 @@ function PayFlow() {
     const insufficient = total > balance;
     return (
       <AppShell>
-        <PageHeader title="Confirm Payment" onBack={() => setStep("amount")} />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-5 pb-28 sm:pt-7">
+        <PageHeader
+          title="Confirm Payment"
+          subtitle="Review your details before you pay"
+          onBack={() => setStep("amount")}
+        />
+        <div className="mx-auto min-h-[calc(100dvh-9rem)] w-full max-w-md space-y-4 px-4 pt-5 pb-8 sm:pt-7">
           <PayStepper steps={stepsMeta} current={currentStepIndex} />
-          <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-soft">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22 }}
+            className="brand-gradient relative overflow-hidden rounded-2xl p-5 text-primary-foreground shadow-float"
+          >
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <span
-                  className={cn(
-                    "grid size-11 shrink-0 place-items-center rounded-2xl",
-                    service.tint,
-                  )}
+                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15"
                 >
-                  <service.icon className="size-5" />
+                  <service.icon className="size-5 text-primary-foreground" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="truncate text-sm font-bold">{service.name}</p>
+                  <p className="truncate text-[11px] text-primary-foreground/75">
                     {provider || serviceID}
                   </p>
-                  <p className="truncate text-sm font-extrabold">{service.name}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Total
-                </p>
-                <p className="mt-1 text-lg font-extrabold tabular-nums">
-                  {formatNaira(total, false)}
-                </p>
-              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-foreground/15 px-2.5 py-1 text-[10px] font-semibold">
+                <ShieldCheck className="size-3" /> Secure
+              </span>
             </div>
-          </div>
+            <div className="relative mt-7">
+              <p className="text-xs text-primary-foreground/75">Total to pay</p>
+              <p className="mt-1 text-3xl font-extrabold tabular-nums">
+                {formatNaira(total, false)}
+              </p>
+            </div>
+          </motion.div>
 
-          <div className="rounded-[24px] border border-border/70 bg-card p-3 shadow-soft">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.05 }}
+            className="rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-card"
+          >
+            <div className="flex items-center justify-between border-b border-border/70 py-1.5 pb-3">
+              <p className="text-sm font-extrabold">Payment details</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-2.5 text-xs font-semibold text-primary"
+                onClick={() => setStep("amount")}
+              >
+                <Pencil className="mr-1.5 size-3" /> Edit
+              </Button>
+            </div>
             <div className="divide-y divide-border/70">
               <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
               {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
@@ -1143,10 +1172,45 @@ function PayFlow() {
                 />
               ) : null}
               <InfoRow label="Amount" value={formatNaira(total)} />
-              <InfoRow label="Wallet balance" value={formatNaira(balance)} />
-              <InfoRow label="After payment" value={formatNaira(Math.max(balance - total, 0))} />
             </div>
-          </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.1 }}
+            className={cn(
+              "flex items-center gap-3 rounded-2xl border p-3.5 shadow-soft",
+              insufficient
+                ? "border-destructive/20 bg-destructive-soft"
+                : "border-primary/15 bg-primary-soft/70",
+            )}
+          >
+            <span
+              className={cn(
+                "grid size-10 shrink-0 place-items-center rounded-xl",
+                insufficient
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-card text-primary shadow-soft",
+              )}
+            >
+              <WalletCards className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold">RockPay Wallet</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Available balance · {formatNaira(balance)}
+              </p>
+            </div>
+            {!insufficient ? (
+              <div className="shrink-0 text-right">
+                <p className="text-[10px] text-muted-foreground">After payment</p>
+                <p className="text-xs font-bold tabular-nums">
+                  {formatNaira(Math.max(balance - total, 0))}
+                </p>
+              </div>
+            ) : null}
+          </motion.div>
 
           {insufficient ? (
             <div className="flex items-start gap-2 rounded-2xl bg-destructive-soft p-3 text-destructive">
@@ -1155,23 +1219,30 @@ function PayFlow() {
             </div>
           ) : null}
 
-          {insufficient ? (
-            <Button className="h-11 w-full rounded-xl font-bold" asChild>
-              <Link to="/wallet/fund" search={{}}>
-                Fund Wallet
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              className="h-11 w-full rounded-xl text-sm font-bold"
-              onClick={() => {
-                setPin("");
-                setStep("pin");
-              }}
-            >
-              Confirm & Pay {formatNaira(total, false)}
-            </Button>
-          )}
+          <p className="flex items-center justify-center gap-1.5 px-4 text-center text-[10px] leading-relaxed text-muted-foreground">
+            <LockKeyhole className="size-3 shrink-0" /> Your payment is protected and requires your transaction PIN.
+          </p>
+
+          <PayActionBar>
+            {insufficient ? (
+              <Button className="h-12 w-full rounded-xl font-bold" asChild>
+                <Link to="/wallet/fund" search={{}}>
+                  Fund Wallet
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                className="h-12 w-full rounded-xl text-sm font-bold shadow-sm"
+                onClick={() => {
+                  setPin("");
+                  setStep("pin");
+                }}
+              >
+                Confirm & Pay {formatNaira(total, false)}
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            )}
+          </PayActionBar>
         </div>
       </AppShell>
     );
