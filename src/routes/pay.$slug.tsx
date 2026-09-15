@@ -20,7 +20,8 @@ export const Route = createFileRoute("/pay/$slug")({
     if (typeof s["saved"] === "string") out.saved = s["saved"] as string;
     if (typeof s["provider"] === "string") out.provider = s["provider"] as string;
     if (typeof s["identifier"] === "string") out.identifier = s["identifier"] as string;
-    if (typeof s["amount"] === "number" && Number.isFinite(s["amount"] as number)) out.amount = s["amount"] as number;
+    if (typeof s["amount"] === "number" && Number.isFinite(s["amount"] as number))
+      out.amount = s["amount"] as number;
     if (typeof s["amount"] === "string" && String(s["amount"]).trim()) {
       const amount = Number(s["amount"]);
       if (Number.isFinite(amount)) out.amount = amount;

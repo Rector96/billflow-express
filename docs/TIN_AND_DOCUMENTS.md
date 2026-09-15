@@ -5,25 +5,25 @@
 
 ## Routes
 
-| Path | Component |
-|------|-----------|
-| `/tin` | `src/components/app/tin-jtb-flow.tsx` |
+| Path         | Component                               |
+| ------------ | --------------------------------------- |
+| `/tin`       | `src/components/app/tin-jtb-flow.tsx`   |
 | `/documents` | `src/components/app/documents-flow.tsx` |
 
 ## Flow A — TIN (₦1,500 demo fee)
 
-1. **Input** — NIN or CAC number + full name  
-2. **Preview & pay** — blurred TIN + payment summary  
-3. **Success** — full demo TIN, copy, download receipt  
+1. **Input** — NIN or CAC number + full name
+2. **Preview & pay** — blurred TIN + payment summary
+3. **Success** — full demo TIN, copy, download receipt
 
 No JTB/FIRS API yet.
 
 ## Flow B — Documents (₦3,000 demo fee)
 
-1. **Type** — Business Constitution | Residential Tenancy  
-2. **Form** — parties, address, rent/duration (tenancy)  
-3. **Preview & pay** — scrollable draft + fee  
-4. **Success** — download (demo `.txt` until PDF engine) + copy link  
+1. **Type** — Business Constitution | Residential Tenancy
+2. **Form** — parties, address, rent/duration (tenancy)
+3. **Preview & pay** — scrollable draft + fee
+4. **Success** — download (demo `.txt` until PDF engine) + copy link
 
 ## UI system
 

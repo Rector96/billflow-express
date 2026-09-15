@@ -69,8 +69,12 @@ export const listHubOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { limit?: number; service?: string; status?: string } | undefined) => ({
     limit: Math.min(Math.max(Number(input?.limit ?? 100), 1), 200),
-    service: String(input?.service ?? "").trim().toLowerCase(),
-    status: String(input?.status ?? "").trim().toLowerCase(),
+    service: String(input?.service ?? "")
+      .trim()
+      .toLowerCase(),
+    status: String(input?.status ?? "")
+      .trim()
+      .toLowerCase(),
   }))
   .handler(async ({ data, context }): Promise<{ orders: HubOrderRow[] }> => {
     const admin = await assertStaff(context.userId);
@@ -118,7 +122,9 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string; status: string; note?: string }) => {
     const orderId = String(input?.orderId ?? "").trim();
-    const status = String(input?.status ?? "").trim().toLowerCase();
+    const status = String(input?.status ?? "")
+      .trim()
+      .toLowerCase();
     if (!orderId) throw new Error("Missing order id");
     if (!HUB_STATUSES.includes(status as HubOrderStatus)) {
       throw new Error("Invalid status");
@@ -135,8 +141,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       .limit(1);
     if (readErr) throw new Error(readErr.message);
     const row = existing?.[0] as
-      | { id: string; metadata: Record<string, unknown> | null; status: string }
-      | undefined;
+      { id: string; metadata: Record<string, unknown> | null; status: string } | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -243,9 +248,7 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
-    const row = existing?.[0] as
-      | { id: string; metadata: unknown; status: string }
-      | undefined;
+    const row = existing?.[0] as { id: string; metadata: unknown; status: string } | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -311,7 +314,9 @@ export const listHubCatalogFees = createServerFn({ method: "GET" })
 export const updateHubCatalogFee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { service: string; markupValue: number }) => {
-    const service = String(input?.service ?? "").trim().toLowerCase();
+    const service = String(input?.service ?? "")
+      .trim()
+      .toLowerCase();
     if (!(HUB_CATALOG_SERVICES as readonly string[]).includes(service)) {
       throw new Error("Unknown hub service");
     }

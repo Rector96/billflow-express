@@ -16,10 +16,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/components/app/rockpay-bill-flow.tsx";
 const source = readFileSync(path, "utf8");
 
-const pollStart = '  useEffect(() => {\n    if (step !== "result" || outcome !== "pending" || !txId) return;';
-const pollEnd = '  }, [step, outcome, txId, isAirtime, checkAirtime, checkBill, refresh]);';
-const confettiStart = '  useEffect(() => {\n    if (step === "result" && outcome === "successful") {';
-const confettiEnd = '  }, [step, outcome]);';
+const pollStart =
+  '  useEffect(() => {\n    if (step !== "result" || outcome !== "pending" || !txId) return;';
+const pollEnd = "  }, [step, outcome, txId, isAirtime, checkAirtime, checkBill, refresh]);";
+const confettiStart =
+  '  useEffect(() => {\n    if (step === "result" && outcome === "successful") {';
+const confettiEnd = "  }, [step, outcome]);";
 const earlyReturn = '  if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;';
 
 const pollStartIndex = source.indexOf(pollStart);
@@ -59,4 +61,6 @@ if (target === -1) throw new Error("Early-return marker disappeared during norma
 
 next = next.slice(0, target) + insert + next.slice(target);
 writeFileSync(path, next);
-console.log("[normalize-bill-flow-hooks] moved pending polling and success hooks above early returns");
+console.log(
+  "[normalize-bill-flow-hooks] moved pending polling and success hooks above early returns",
+);

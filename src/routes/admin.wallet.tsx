@@ -150,16 +150,16 @@ function AdminWallet() {
                   const value = pair[0] ?? "all";
                   const label = pair[1] ?? "";
                   return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setStatus(value)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                      status === value ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
-                  >
-                    {label}
-                  </button>
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setStatus(value)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                        status === value ? "bg-primary text-primary-foreground" : "bg-muted"
+                      }`}
+                    >
+                      {label}
+                    </button>
                   );
                 })}
               </div>

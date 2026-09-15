@@ -114,7 +114,10 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <Copy className="mr-1.5 size-3.5" /> Copy
             </Button>
           </div>
-          <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-12 w-full rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -133,11 +136,19 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
             <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4">
               <div className="space-y-1.5">
                 <Label>NIN or CAC number</Label>
-                <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="h-12 rounded-2xl" />
+                <Input
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="h-12 rounded-2xl"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Full name</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-12 rounded-2xl" />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-12 rounded-2xl"
+                />
               </div>
             </div>
             <PayActionBar>
@@ -165,7 +176,11 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </div>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={paying}
+                onClick={() => void onPayNow()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…

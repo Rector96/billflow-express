@@ -55,12 +55,7 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
  * Once the provider is enabled and the service is tested end-to-end, add the
  * appropriate slug here together with the database availability change.
  */
-export const LIVE_BILL_SLUGS = new Set([
-  "electricity",
-  "cable",
-  "airtime",
-  "data",
-]);
+export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "airtime", "data"]);
 
 export function homeServiceSlugs(): readonly string[] {
   return BILLS_FOCUS ? HOME_BILL_SLUGS : HOME_CLASSIC_SLUGS;

@@ -246,7 +246,12 @@ export const SERVICES: ServiceConfig[] = [
     verifies: false,
     mode: "package",
     packages: [
-      { id: "bn-start", name: "Start Business (Business Name)", price: 27500, note: "Demo package" },
+      {
+        id: "bn-start",
+        name: "Start Business (Business Name)",
+        price: 27500,
+        note: "Demo package",
+      },
     ],
   },
   {
@@ -307,7 +312,9 @@ export const SERVICES: ServiceConfig[] = [
     identifierPlaceholder: "ABC-123XY",
     verifies: false,
     mode: "package",
-    packages: [{ id: "vehicle-renewal", name: "Vehicle paperwork / renewal", price: 2500, note: "Demo" }],
+    packages: [
+      { id: "vehicle-renewal", name: "Vehicle paperwork / renewal", price: 2500, note: "Demo" },
+    ],
   },
 ];
 

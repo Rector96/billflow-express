@@ -144,9 +144,10 @@ function AdminHubOrders() {
   const isCac = selected?.service?.toLowerCase().includes("cac");
   const isPhysical =
     selected &&
-    ["nin_card", "plastic", "license_sticker", "vehicle_license"].some((x) =>
-      selected.service.toLowerCase().includes(x.replace("_", "")) ||
-      selected.service.toLowerCase().includes(x),
+    ["nin_card", "plastic", "license_sticker", "vehicle_license"].some(
+      (x) =>
+        selected.service.toLowerCase().includes(x.replace("_", "")) ||
+        selected.service.toLowerCase().includes(x),
     );
 
   const staffNotes = Array.isArray(detailMeta?.["staff_notes"])
@@ -175,13 +176,22 @@ function AdminHubOrders() {
           className="h-9 rounded-xl border bg-card px-3 text-xs font-semibold"
         >
           <option value="">All services</option>
-          {["cac", "tin", "documents", "nin_retrieve", "nin_slip", "nin_card_print", "vehicle_license_sticker", "vehicle_third_party_insurance", "license_sticker", "third_party_insurance"].map(
-            (s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ),
-          )}
+          {[
+            "cac",
+            "tin",
+            "documents",
+            "nin_retrieve",
+            "nin_slip",
+            "nin_card_print",
+            "vehicle_license_sticker",
+            "vehicle_third_party_insurance",
+            "license_sticker",
+            "third_party_insurance",
+          ].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
         <select
           value={filterStatus}
@@ -396,7 +406,10 @@ function AdminHubOrders() {
                     .slice()
                     .reverse()
                     .map((n, i) => (
-                      <div key={i} className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]">
+                      <div
+                        key={i}
+                        className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]"
+                      >
                         <p>{n.text}</p>
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {n.at ? new Date(n.at).toLocaleString("en-NG") : ""}
@@ -412,7 +425,12 @@ function AdminHubOrders() {
                   placeholder="Internal note…"
                   className="h-10 rounded-xl text-xs"
                 />
-                <Button size="sm" className="h-10 rounded-xl" disabled={busy} onClick={() => void saveNote()}>
+                <Button
+                  size="sm"
+                  className="h-10 rounded-xl"
+                  disabled={busy}
+                  onClick={() => void saveNote()}
+                >
                   Add
                 </Button>
               </div>

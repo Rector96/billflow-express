@@ -31,7 +31,10 @@ export function ReceiptShareButton({ payload, className }: Props) {
         try {
           blob = await renderReceiptPng(payload);
         } catch (primaryError) {
-          console.warn("[receipt-share] primary image renderer failed; using fallback", primaryError);
+          console.warn(
+            "[receipt-share] primary image renderer failed; using fallback",
+            primaryError,
+          );
           blob = await renderFallbackReceiptPng(payload);
           usedFallback = true;
         }
@@ -125,7 +128,11 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-                  {busy === "image" ? <Loader2 className="size-5 animate-spin" /> : <FileImage className="size-5" />}
+                  {busy === "image" ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    <FileImage className="size-5" />
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold">Share as image</span>
@@ -142,7 +149,11 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-                  {busy === "pdf" ? <Loader2 className="size-5 animate-spin" /> : <FileText className="size-5" />}
+                  {busy === "pdf" ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    <FileText className="size-5" />
+                  )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold">Share as PDF</span>

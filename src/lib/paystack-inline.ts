@@ -26,7 +26,9 @@ function loadPaystackScript(): Promise<void> {
       reject(new Error("Paystack is only available in the browser."));
       return;
     }
-    const w = window as Window & { PaystackPop?: { setup: (opts: unknown) => { openIframe: () => void } } };
+    const w = window as Window & {
+      PaystackPop?: { setup: (opts: unknown) => { openIframe: () => void } };
+    };
     if (w.PaystackPop) {
       resolve();
       return;
@@ -65,9 +67,7 @@ export async function openPaystackInline(input: {
   }
   await loadPaystackScript();
   const amountKobo = Math.round(input.amountNaira * 100);
-  const reference =
-    input.reference ||
-    `PSK_${Date.now()}${Math.floor(Math.random() * 1e5)}`;
+  const reference = input.reference || `PSK_${Date.now()}${Math.floor(Math.random() * 1e5)}`;
 
   return new Promise((resolve, reject) => {
     const w = window as Window & {

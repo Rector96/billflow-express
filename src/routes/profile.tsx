@@ -69,12 +69,18 @@ function ProfilePage() {
           <div className="h-20 bg-gradient-to-br from-primary-soft via-card to-secondary" />
           <div className="-mt-10 flex flex-col items-center px-5 pb-5 text-center">
             <div className="rounded-full bg-card p-1.5 shadow-lg">
-              <UserAvatar name={profile.name} src={(profile as { avatar_url?: string | null }).avatar_url ?? null} size="lg" />
+              <UserAvatar
+                name={profile.name}
+                src={(profile as { avatar_url?: string | null }).avatar_url ?? null}
+                size="lg"
+              />
             </div>
             <p className="mt-3 text-lg font-extrabold tracking-tight text-foreground">
               {profile.name || "Your account"}
             </p>
-            {profile.email ? <p className="mt-0.5 text-xs text-muted-foreground">{profile.email}</p> : null}
+            {profile.email ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">{profile.email}</p>
+            ) : null}
             <p className="mt-3 rounded-full bg-success-soft px-3 py-1 text-[11px] font-bold text-success">
               Account active
             </p>

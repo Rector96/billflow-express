@@ -88,10 +88,7 @@ This document is a product template for operational convenience. Obtain professi
 
 /** Printable HTML wrapper for client-side print / download. */
 export function documentToPrintableHtml(title: string, bodyText: string): string {
-  const escaped = bodyText
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escaped = bodyText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const paragraphs = escaped
     .split(/\n\n+/)
     .map((block) => {
@@ -157,7 +154,10 @@ export function openPrintableDocument(title: string, bodyText: string) {
     throw new Error("Allow pop-ups to print this document.");
   }
   w.document.open();
-  w.document.write(html.replace("</body>", "") + `<script>window.onload=function(){window.print();}</script></body></html>`);
+  w.document.write(
+    html.replace("</body>", "") +
+      `<script>window.onload=function(){window.print();}</script></body></html>`,
+  );
   w.document.close();
 }
 

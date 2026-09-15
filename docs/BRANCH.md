@@ -10,10 +10,10 @@
 
 ## Do not use for day-to-day work
 
-| Branch | Status |
-|--------|--------|
-| `rockPay-pricing` | Legacy name (capital P). Content was force-aligned into `feature/rockpay-pricing`. Do not deploy or develop here. |
-| `rockpay-pricing-v2` | Older experiments. Ignore unless recovering a specific commit. |
+| Branch               | Status                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `rockPay-pricing`    | Legacy name (capital P). Content was force-aligned into `feature/rockpay-pricing`. Do not deploy or develop here. |
+| `rockpay-pricing-v2` | Older experiments. Ignore unless recovering a specific commit.                                                    |
 
 ## Providers
 

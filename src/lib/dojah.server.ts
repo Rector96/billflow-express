@@ -13,7 +13,9 @@ export type DojahConfig = {
 export function getDojahConfig(): DojahConfig {
   const secretKey = String(process.env["DOJAH_SECRET_KEY"] ?? "").trim();
   const appId = String(process.env["DOJAH_APP_ID"] ?? "").trim();
-  const modeRaw = String(process.env["DOJAH_MODE"] ?? "sandbox").trim().toLowerCase();
+  const modeRaw = String(process.env["DOJAH_MODE"] ?? "sandbox")
+    .trim()
+    .toLowerCase();
   const mode = modeRaw === "live" || modeRaw === "production" ? "live" : "sandbox";
   const baseUrl =
     String(process.env["DOJAH_BASE_URL"] ?? "").trim() ||

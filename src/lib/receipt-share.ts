@@ -436,7 +436,7 @@ export async function renderReceiptPdfFromCanvas(payload: ReceiptPayload): Promi
   const scale = pageW / canvas.width;
   const pageH = Math.round(canvas.height * scale);
   const pdf = buildPdfWithJpeg(bytes, pageW, pageH, canvas.width, canvas.height);
-  return new Blob([(pdf.buffer as ArrayBuffer)], { type: "application/pdf" });
+  return new Blob([pdf.buffer as ArrayBuffer], { type: "application/pdf" });
 }
 
 function buildPdfWithJpeg(

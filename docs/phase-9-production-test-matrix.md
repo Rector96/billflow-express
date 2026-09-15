@@ -15,6 +15,7 @@
 ## Manual/provider verification still required
 
 ### Wallet funding
+
 - successful Paystack funding credits exactly once;
 - failed/abandoned funding does not credit the wallet;
 - callback replay is idempotent;
@@ -22,6 +23,7 @@
 - amount/reference/currency mismatch is rejected.
 
 ### Bill services
+
 - Airtime: success, failure, pending, requery, duplicate submission.
 - Data: catalogue, plan selection, purchase, settlement, receipt.
 - Electricity: meter verification, purchase, token/result, failure/pending recovery.
@@ -29,6 +31,7 @@
 - Education/exam PINs: successful and failed provider outcomes, with no generic payment bypass.
 
 ### Wallet and settlement
+
 - insufficient balance cannot create a provider purchase;
 - concurrent debit cannot overspend the wallet;
 - successful provider outcome debits once;
@@ -38,6 +41,7 @@
 - successful transaction profit is recorded once.
 
 ### Administration and abuse
+
 - staff can search customers and transactions server-side;
 - transaction investigation links to the correct customer/Care record;
 - reconciliation identifies wallet anomalies;

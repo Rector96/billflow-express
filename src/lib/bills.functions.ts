@@ -231,10 +231,10 @@ async function settleBillPurchase(
   }
   const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
     Record<string, unknown> | null | undefined;
-  const status = (fin?.['status'] ?? outcome) as BillPurchaseResult["status"];
+  const status = (fin?.["status"] ?? outcome) as BillPurchaseResult["status"];
   return {
     status,
-    reference: String(fin?.['internal_reference'] ?? input.requestId),
+    reference: String(fin?.["internal_reference"] ?? input.requestId),
     requestId: input.providerRequestId,
     providerTransactionId: input.providerTransactionId,
     amount: input.amount,
@@ -243,7 +243,7 @@ async function settleBillPurchase(
     provider: input.serviceID,
     product: input.product,
     token: input.providerResult.purchasedCode,
-    balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+    balanceAfter: fin?.["balance_after"] != null ? Number(fin["balance_after"]) : null,
     message: customerMessage(
       status,
       input.slug,
@@ -745,7 +745,7 @@ export const requeryBill = createServerFn({ method: "POST" })
     if (settleError) throw new Error(settleError.message);
     const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
       Record<string, unknown> | null | undefined;
-    const status = (fin?.['status'] ?? outcome) as BillPurchaseResult["status"];
+    const status = (fin?.["status"] ?? outcome) as BillPurchaseResult["status"];
     if (status === "successful" && ["data", "cable", "electricity"].includes(slug)) {
       const providerAmount = Number(meta["provider_amount"]);
       if (Number.isFinite(providerAmount))
@@ -768,7 +768,7 @@ export const requeryBill = createServerFn({ method: "POST" })
       provider: String(bill.provider ?? ""),
       product: bill.product,
       token: pay.purchasedCode ?? null,
-      balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+      balanceAfter: fin?.["balance_after"] != null ? Number(fin["balance_after"]) : null,
       message: customerMessage(status, slug, Number(bill.amount), pay.responseDescription),
       customerName: typeof meta["customer"] === "string" ? meta["customer"] : null,
     };

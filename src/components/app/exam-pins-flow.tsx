@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle2, Clock3, Copy, Home, Loader2, Mail, Minus, Plus, Ticket } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Home,
+  Loader2,
+  Mail,
+  Minus,
+  Plus,
+  Ticket,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -414,7 +425,11 @@ export function ExamPinsFlow({
                 Continue · {formatNaira(total, false)}
               </Button>
             </PayActionBar>
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("product")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("product")}
+            >
               Change product
             </Button>
           </section>
@@ -443,7 +458,9 @@ export function ExamPinsFlow({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Unit price</span>
-                <span className="font-bold tabular-nums">{formatNaira(variation.amount, false)}</span>
+                <span className="font-bold tabular-nums">
+                  {formatNaira(variation.amount, false)}
+                </span>
               </div>
               <div className="flex justify-between border-t pt-2 text-base">
                 <span className="font-extrabold">Total</span>
@@ -456,14 +473,15 @@ export function ExamPinsFlow({
               </div>
             ) : null}
             <PayActionBar id="pay-action">
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                onClick={() => setStep("pin")}
-              >
+              <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => setStep("pin")}>
                 Enter PIN to pay {formatNaira(total, false)}
               </Button>
             </PayActionBar>
-            <Button variant="ghost" className="w-full text-xs font-bold" onClick={() => setStep("quantity")}>
+            <Button
+              variant="ghost"
+              className="w-full text-xs font-bold"
+              onClick={() => setStep("quantity")}
+            >
               Change quantity
             </Button>
           </section>

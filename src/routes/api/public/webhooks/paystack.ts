@@ -157,10 +157,7 @@ async function recordHubOrderFromCharge(data: PaystackChargeData) {
   >;
 
   const service =
-    readMeta(meta, "service_type") ||
-    readMeta(meta, "service") ||
-    readMeta(meta, "channel") ||
-    "";
+    readMeta(meta, "service_type") || readMeta(meta, "service") || readMeta(meta, "channel") || "";
 
   // Only treat as hub if metadata looks like a hub product (not pure wallet fund)
   const isHub =
@@ -185,7 +182,9 @@ async function recordHubOrderFromCharge(data: PaystackChargeData) {
 
   const amountKobo = Number(data.amount ?? 0);
   const amountNaira = Math.round((Number.isFinite(amountKobo) ? amountKobo : 0) / 100);
-  const email = String(data.customer?.email ?? "").trim().toLowerCase();
+  const email = String(data.customer?.email ?? "")
+    .trim()
+    .toLowerCase();
   const plate =
     readMeta(meta, "plate_number") || readMeta(meta, "plate") || readMeta(meta, "identifier");
   const userIdMeta = readMeta(meta, "user_id");
@@ -259,5 +258,10 @@ async function recordHubOrderFromCharge(data: PaystackChargeData) {
     throw new Error(error.message);
   }
 
-  console.info("[paystack-webhook] hub_orders inserted", { reference, tracking, service, amountNaira });
+  console.info("[paystack-webhook] hub_orders inserted", {
+    reference,
+    tracking,
+    service,
+    amountNaira,
+  });
 }

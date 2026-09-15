@@ -104,7 +104,10 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 : "Your NIN retrieval is processing."}
           </p>
           <p className="font-mono text-[10px]">Ref · {refId}</p>
-          <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-12 w-full rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -134,11 +137,15 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <div className="flex-1">
                 <p className="text-sm font-extrabold">Retrieve NIN</p>
                 <p className="text-[11px] text-muted-foreground">Look up your 11-digit number</p>
-                <p className="mt-1 text-xs font-bold text-primary">{formatNaira(priceRetrieve, false)}</p>
+                <p className="mt-1 text-xs font-bold text-primary">
+                  {formatNaira(priceRetrieve, false)}
+                </p>
               </div>
             </button>
 
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Delivery format</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Delivery format
+            </p>
 
             <button
               type="button"
@@ -155,7 +162,9 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <div className="flex-1">
                 <p className="text-sm font-extrabold">Download digital NIN slip (PDF)</p>
                 <p className="text-[11px] text-muted-foreground">Instant file on your phone</p>
-                <p className="mt-1 text-xs font-bold text-primary">{formatNaira(priceSlip, false)}</p>
+                <p className="mt-1 text-xs font-bold text-primary">
+                  {formatNaira(priceSlip, false)}
+                </p>
               </div>
             </button>
 
@@ -163,7 +172,9 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               type="button"
               className={cn(
                 "flex w-full gap-3 rounded-2xl border p-4 text-left",
-                product === "plastic_card" ? "border-primary bg-primary/5" : "border-border/80 bg-card",
+                product === "plastic_card"
+                  ? "border-primary bg-primary/5"
+                  : "border-border/80 bg-card",
               )}
               onClick={() => {
                 setProduct("plastic_card");
@@ -173,7 +184,9 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <CreditCard className="size-5 text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-extrabold">Print & deliver premium plastic ID card</p>
-                <p className="text-[11px] text-muted-foreground">Card print + courier to your address</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Card print + courier to your address
+                </p>
                 <p className="mt-1 text-xs font-bold text-primary">
                   {formatNaira(priceCard + priceCourier, false)}
                 </p>
@@ -188,7 +201,11 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
             {product === "retrieve" ? (
               <div className="space-y-1.5">
                 <Label>Registered phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-12 rounded-2xl" />
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-12 rounded-2xl"
+                />
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -217,7 +234,10 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
             ) : null}
 
             <PayActionBar>
-              <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => setStep("confirm")}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                onClick={() => setStep("confirm")}
+              >
                 Continue
               </Button>
             </PayActionBar>
@@ -256,7 +276,11 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </div>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPay()}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={paying}
+                onClick={() => void onPay()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…

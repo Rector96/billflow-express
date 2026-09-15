@@ -21,7 +21,8 @@ export const Route = createFileRoute("/documents")({
       { title: `Documents — ${BRAND.name}` },
       {
         name: "description",
-        content: "Document generation will be available when secure payment and PDF delivery are ready.",
+        content:
+          "Document generation will be available when secure payment and PDF delivery are ready.",
       },
     ],
   }),

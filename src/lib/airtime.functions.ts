@@ -193,9 +193,17 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
         .eq("internal_reference", row.internal_reference)
         .limit(1);
       const existingRow = Array.isArray(existingRows) ? existingRows[0] : null;
-      const prevMeta = existingRow && typeof existingRow === "object" && existingRow !== null && "metadata" in existingRow
-        ? (existingRow as { metadata?: unknown }).metadata : null;
-      const prev = (prevMeta && typeof prevMeta === "object" ? prevMeta : {}) as Record<string, unknown>;
+      const prevMeta =
+        existingRow &&
+        typeof existingRow === "object" &&
+        existingRow !== null &&
+        "metadata" in existingRow
+          ? (existingRow as { metadata?: unknown }).metadata
+          : null;
+      const prev = (prevMeta && typeof prevMeta === "object" ? prevMeta : {}) as Record<
+        string,
+        unknown
+      >;
       const { error: metadataError } = await asAdmin(supabaseAdmin)
         .from("bill_transactions")
         .update({
@@ -278,12 +286,12 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
 
     const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
       Record<string, unknown> | null | undefined;
-    const status = (fin?.['status'] ?? outcome) as AirtimePurchaseResult["status"];
+    const status = (fin?.["status"] ?? outcome) as AirtimePurchaseResult["status"];
     if (status === "successful") {
       try {
         const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
         await maybeRecordTransactionProfit(asAdmin(supabaseAdmin), {
-          internalReference: String(fin?.['internal_reference'] ?? row.internal_reference),
+          internalReference: String(fin?.["internal_reference"] ?? row.internal_reference),
           customerAmount,
           providerAmount,
           rockpayFee: pricing.rockpayFee,
@@ -299,13 +307,13 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
 
     return {
       status,
-      reference: (fin?.['internal_reference'] ?? row.internal_reference) as string,
+      reference: (fin?.["internal_reference"] ?? row.internal_reference) as string,
       requestId: row.request_id as string,
       providerTransactionId: pay.transactionId,
       amount: customerAmount,
       phoneMasked: maskPhone(phone),
       network: serviceId,
-      balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+      balanceAfter: fin?.["balance_after"] != null ? Number(fin["balance_after"]) : null,
       message: customerMessage(status, customerAmount, pay.responseDescription),
     };
   });
@@ -431,7 +439,7 @@ export async function requeryAirtimeCore(opts: {
     });
   const fin = (Array.isArray(finalized) ? finalized[0] : finalized) as
     Record<string, unknown> | null | undefined;
-  const status = (fin?.['status'] ?? outcome) as AirtimePurchaseResult["status"];
+  const status = (fin?.["status"] ?? outcome) as AirtimePurchaseResult["status"];
   if (status === "successful") {
     try {
       const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
@@ -480,7 +488,7 @@ export async function requeryAirtimeCore(opts: {
     amount,
     phoneMasked: maskPhone(phone),
     network,
-    balanceAfter: fin?.['balance_after'] != null ? Number(fin['balance_after']) : null,
+    balanceAfter: fin?.["balance_after"] != null ? Number(fin["balance_after"]) : null,
     message: customerMessage(status, amount, pay.responseDescription),
   };
 }

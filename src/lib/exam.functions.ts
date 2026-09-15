@@ -288,7 +288,8 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       quantity: data.quantity,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_bill_purchase",
+    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+      "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,
         _internal_reference: row.internal_reference,
@@ -367,7 +368,8 @@ export const requeryExamPins = createServerFn({ method: "POST" })
       requery: true,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_bill_purchase",
+    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+      "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,
         _internal_reference: bill.internal_reference,

@@ -13,23 +13,23 @@ VTUAfrica is **wired** as optional fallback / exam support. It stays **inactive*
 
 ### Exam PIN purchase (Portal Owner)
 
-| Environment | Base URL |
-|-------------|----------|
-| Sandbox | `https://vtuafrica.com.ng/portal/api-test/exam-pin/` |
-| Live | `https://vtuafrica.com.ng/portal/api/exam-pin/` |
+| Environment | Base URL                                             |
+| ----------- | ---------------------------------------------------- |
+| Sandbox     | `https://vtuafrica.com.ng/portal/api-test/exam-pin/` |
+| Live        | `https://vtuafrica.com.ng/portal/api/exam-pin/`      |
 
 **Query parameters:** `apikey`, `service` (`waec` \| `neco` \| `nabteb` \| `jamb`), `product_code`, `quantity`, `ref`  
 JAMB also: `profilecode`, `sender` (email), `phone`
 
 ### Product codes (official)
 
-| Product | service | product_code |
-|---------|---------|--------------|
-| WAEC Result Checking PIN | waec | 1 |
-| WAEC GCE Registration PIN | waec | 2 |
-| NECO Result Checking Token | neco | 1 |
-| NABTEB Result Checking PIN | nabteb | 1 |
-| JAMB UTME Registration PIN | jamb | 1 |
+| Product                    | service | product_code |
+| -------------------------- | ------- | ------------ |
+| WAEC Result Checking PIN   | waec    | 1            |
+| WAEC GCE Registration PIN  | waec    | 2            |
+| NECO Result Checking Token | neco    | 1            |
+| NABTEB Result Checking PIN | nabteb  | 1            |
+| JAMB UTME Registration PIN | jamb    | 1            |
 
 ## Activate when API is ready
 

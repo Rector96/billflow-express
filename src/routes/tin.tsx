@@ -44,8 +44,8 @@ function TinPage() {
           </span>
           <h1 className="mt-4 text-xl font-extrabold">TIN retrieval is coming soon</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            We are waiting for verified TIN provider access before accepting payment or returning a TIN.
-            Your money and records are protected from unverified results.
+            We are waiting for verified TIN provider access before accepting payment or returning a
+            TIN. Your money and records are protected from unverified results.
           </p>
         </div>
       </AppShell>

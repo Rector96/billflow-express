@@ -232,7 +232,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
             </p>
             <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary-soft/60 px-3 py-2 text-primary">
               <ShieldCheck className="size-4 shrink-0" />
-              <p className="text-[11px] font-bold">Protected wallet debit · delivery status verified server-side</p>
+              <p className="text-[11px] font-bold">
+                Protected wallet debit · delivery status verified server-side
+              </p>
             </div>
           </motion.div>
         </div>

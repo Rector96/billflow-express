@@ -3,7 +3,15 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, CheckCircle2, FileText, Home, Loader2, Printer, ScrollText } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  FileText,
+  Home,
+  Loader2,
+  Printer,
+  ScrollText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -131,7 +139,9 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           <h1 className="text-xl font-extrabold">Document ready</h1>
           <Button
             className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)}
+            onClick={() =>
+              downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)
+            }
           >
             <FileText className="mr-2 size-4" /> Download
           </Button>
@@ -142,7 +152,10 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           >
             <Printer className="mr-2 size-4" /> Print / PDF
           </Button>
-          <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-12 w-full rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -192,30 +205,53 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           <section className="space-y-3">
             <div className="space-y-1.5">
               <Label>{docType === "constitution" ? "Business name" : "Landlord"}</Label>
-              <Input value={partyA} onChange={(e) => setPartyA(e.target.value)} className="h-12 rounded-2xl" />
+              <Input
+                value={partyA}
+                onChange={(e) => setPartyA(e.target.value)}
+                className="h-12 rounded-2xl"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>{docType === "constitution" ? "Manager" : "Tenant"}</Label>
-              <Input value={partyB} onChange={(e) => setPartyB(e.target.value)} className="h-12 rounded-2xl" />
+              <Input
+                value={partyB}
+                onChange={(e) => setPartyB(e.target.value)}
+                className="h-12 rounded-2xl"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Address</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} className="h-12 rounded-2xl" />
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="h-12 rounded-2xl"
+              />
             </div>
             {docType === "tenancy" ? (
               <>
                 <div className="space-y-1.5">
                   <Label>Rent / year (₦)</Label>
-                  <Input value={rent} onChange={(e) => setRent(e.target.value)} className="h-12 rounded-2xl" />
+                  <Input
+                    value={rent}
+                    onChange={(e) => setRent(e.target.value)}
+                    className="h-12 rounded-2xl"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Duration</Label>
-                  <Input value={duration} onChange={(e) => setDuration(e.target.value)} className="h-12 rounded-2xl" />
+                  <Input
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className="h-12 rounded-2xl"
+                  />
                 </div>
               </>
             ) : null}
             <PayActionBar>
-              <Button className="h-12 w-full rounded-2xl font-bold" onClick={() => setStep("preview")}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                onClick={() => setStep("preview")}
+              >
                 Continue
               </Button>
             </PayActionBar>
@@ -231,7 +267,11 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <span className="tabular-nums">{formatNaira(fee, false)}</span>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-2xl font-bold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={paying}
+                onClick={() => void onPayNow()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…

@@ -10,12 +10,12 @@
 
 RockPay is expanding beyond VTU into high-ticket assisted services.
 
-| Decision | Choice |
-|----------|--------|
-| First product | **CAC Business Name** (not Ltd first) |
-| User price | **₦27,500** |
-| TIN | Later — after CAC exists |
-| Automation | No public CAC register API; assisted demo until connected |
+| Decision      | Choice                                                    |
+| ------------- | --------------------------------------------------------- |
+| First product | **CAC Business Name** (not Ltd first)                     |
+| User price    | **₦27,500**                                               |
+| TIN           | Later — after CAC exists                                  |
+| Automation    | No public CAC register API; assisted demo until connected |
 
 ## User flow
 
@@ -32,13 +32,13 @@ intro → names → business → proprietor → documents → review → pay →
 
 ## Code map
 
-| Path | Role |
-|------|------|
-| `src/components/app/cac-registration-flow.tsx` | Demo wizard |
-| `src/routes/cac.tsx` | Route `/cac` |
-| `src/lib/mock-data.ts` | Service slug `cac` |
-| `src/lib/product-mode.ts` | Visibility / home |
-| `docs/CAC_BUSINESS_NAME.md` | This reference |
+| Path                                           | Role               |
+| ---------------------------------------------- | ------------------ |
+| `src/components/app/cac-registration-flow.tsx` | Demo wizard        |
+| `src/routes/cac.tsx`                           | Route `/cac`       |
+| `src/lib/mock-data.ts`                         | Service slug `cac` |
+| `src/lib/product-mode.ts`                      | Visibility / home  |
+| `docs/CAC_BUSINESS_NAME.md`                    | This reference     |
 
 ## Going live (remaining)
 

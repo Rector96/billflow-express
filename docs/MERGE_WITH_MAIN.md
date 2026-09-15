@@ -22,15 +22,15 @@ Use this when promoting work so **one uniform RockPay** ships (no parallel UIs o
 
 ## After merge
 
-1. Deploy `main` (or production branch) on Netlify  
-2. Smoke: airtime face-value, one data buy, wallet fund, `/cac` demo banner, `/nin` demo banner  
+1. Deploy `main` (or production branch) on Netlify
+2. Smoke: airtime face-value, one data buy, wallet fund, `/cac` demo banner, `/nin` demo banner
 3. Continue feature work on `feature/rockpay-pricing` (or a new branch from updated `main`)
 
 ## Do not merge if
 
-- Bill success UI shows success while DB stays `pending`  
-- Accidental submodule / nested `.git` under `billflow-express`  
-- Broad unrelated rewrites mixed with pricing/payment without review  
+- Bill success UI shows success while DB stays `pending`
+- Accidental submodule / nested `.git` under `billflow-express`
+- Broad unrelated rewrites mixed with pricing/payment without review
 
 ---
 

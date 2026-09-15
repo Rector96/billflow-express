@@ -34,8 +34,14 @@ function AdminSettings() {
     try {
       type PricingQuery = {
         select: (columns: string) => {
-          order: (column: string, options: { ascending: boolean }) => {
-            order: (column: string, options: { ascending: boolean }) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+          order: (
+            column: string,
+            options: { ascending: boolean },
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
           };
         };
       };

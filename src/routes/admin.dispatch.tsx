@@ -145,7 +145,9 @@ function AdminDispatch() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-extrabold">{o.service}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">{o.id.slice(0, 13)}…</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {o.id.slice(0, 13)}…
+                    </p>
                   </div>
                   <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase">
                     {ful}
@@ -154,7 +156,9 @@ function AdminDispatch() {
                 <p className="text-xs text-muted-foreground">
                   {address || "No shipping address on file — contact customer"}
                 </p>
-                <p className="text-xs font-bold tabular-nums">{formatNaira(Number(o.amount), false)}</p>
+                <p className="text-xs font-bold tabular-nums">
+                  {formatNaira(Number(o.amount), false)}
+                </p>
               </button>
             );
           })}
@@ -163,7 +167,11 @@ function AdminDispatch() {
 
       {active ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-          <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setActive(null)} />
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setActive(null)}
+          />
           <div className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border bg-background p-4 shadow-float sm:rounded-3xl">
             <div className="mb-3 flex items-center gap-2">
               <Truck className="size-5 text-primary" />
@@ -172,9 +180,9 @@ function AdminDispatch() {
             <p className="font-mono text-[10px] text-muted-foreground">{active.id}</p>
             <p className="mt-2 text-sm font-bold">{active.service}</p>
             {(() => {
-              const meta = (active.metadata && typeof active.metadata === "object"
-                ? active.metadata
-                : {}) as Record<string, unknown>;
+              const meta = (
+                active.metadata && typeof active.metadata === "object" ? active.metadata : {}
+              ) as Record<string, unknown>;
               return (
                 <div className="mt-3 space-y-2 rounded-2xl border bg-card p-3 text-xs">
                   <p>
@@ -196,33 +204,67 @@ function AdminDispatch() {
             <div className="mt-4 space-y-2">
               <div className="space-y-1">
                 <Label>Courier name</Label>
-                <Input value={courierName} onChange={(e) => setCourierName(e.target.value)} className="h-10 rounded-xl" />
+                <Input
+                  value={courierName}
+                  onChange={(e) => setCourierName(e.target.value)}
+                  className="h-10 rounded-xl"
+                />
               </div>
               <div className="space-y-1">
                 <Label>Courier phone</Label>
-                <Input value={courierPhone} onChange={(e) => setCourierPhone(e.target.value)} className="h-10 rounded-xl" />
+                <Input
+                  value={courierPhone}
+                  onChange={(e) => setCourierPhone(e.target.value)}
+                  className="h-10 rounded-xl"
+                />
               </div>
               <div className="space-y-1">
                 <Label>Tracking code</Label>
-                <Input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)} className="h-10 rounded-xl" />
+                <Input
+                  value={trackingCode}
+                  onChange={(e) => setTrackingCode(e.target.value)}
+                  className="h-10 rounded-xl"
+                />
               </div>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="outline" className="rounded-xl text-xs" disabled={busy} onClick={() => void apply("printing")}>
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs"
+                disabled={busy}
+                onClick={() => void apply("printing")}
+              >
                 Printing
               </Button>
-              <Button className="rounded-xl text-xs" disabled={busy} onClick={() => void apply("dispatched")}>
+              <Button
+                className="rounded-xl text-xs"
+                disabled={busy}
+                onClick={() => void apply("dispatched")}
+              >
                 Dispatched
               </Button>
-              <Button className="rounded-xl text-xs" disabled={busy} onClick={() => void apply("delivered")}>
+              <Button
+                className="rounded-xl text-xs"
+                disabled={busy}
+                onClick={() => void apply("delivered")}
+              >
                 Delivered
               </Button>
-              <Button variant="destructive" className="rounded-xl text-xs" disabled={busy} onClick={() => void apply("cancelled")}>
+              <Button
+                variant="destructive"
+                className="rounded-xl text-xs"
+                disabled={busy}
+                onClick={() => void apply("cancelled")}
+              >
                 Cancel
               </Button>
             </div>
-            <Button variant="ghost" className="mt-2 w-full rounded-xl" onClick={() => setActive(null)}>
+            <Button
+              variant="ghost"
+              className="mt-2 w-full rounded-xl"
+              onClick={() => setActive(null)}
+            >
               Close
             </Button>
           </div>

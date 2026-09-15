@@ -3,9 +3,7 @@ export type LooseRpcResult<T = unknown> = PromiseLike<{
   error: { message: string } | null;
 }>;
 
-export function asLooseRpc<T>(
-  rpcResult: LooseRpcResult<T>
-): PromiseLike<{
+export function asLooseRpc<T>(rpcResult: LooseRpcResult<T>): PromiseLike<{
   data: T;
   error: { message: string } | null;
 }> {

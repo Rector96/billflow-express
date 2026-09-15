@@ -159,7 +159,10 @@ async function tryVtpass(body: Record<string, unknown>): Promise<VtpassPayResult
     // A thrown provider call is intentionally converted to null so callers can
     // distinguish a transport/unknown outcome from a provider's explicit
     // definitive failure response. NEVER use this null result to fail over.
-    console.error("[vendor-router] VTpass transport/config error", e instanceof Error ? e.message : e);
+    console.error(
+      "[vendor-router] VTpass transport/config error",
+      e instanceof Error ? e.message : e,
+    );
     return null;
   }
 }

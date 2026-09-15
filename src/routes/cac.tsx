@@ -20,7 +20,8 @@ export const Route = createFileRoute("/cac")({
       { title: `CAC Registration — ${BRAND.name}` },
       {
         name: "description",
-        content: "CAC Business Name assistance will be available when production filing is connected.",
+        content:
+          "CAC Business Name assistance will be available when production filing is connected.",
       },
     ],
   }),

@@ -237,6 +237,57 @@ export function RockPayBillFlow() {
     };
   }, [isPackageLive, serviceID, loadVariations]);
 
+  // Keep these hooks above all conditional route/service returns.
+  useEffect(() => {
+    if (step !== "result" || outcome !== "pending" || !txId) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 12;
+
+    const poll = async () => {
+      if (cancelled || refreshLock.current || attempts >= maxAttempts) return;
+      attempts += 1;
+      refreshLock.current = true;
+      try {
+        if (isAirtime) {
+          const res = await checkAirtime({ data: { reference: txId } });
+          if (cancelled) return;
+          setOutcome(res.status);
+          setResultMessage(res.message);
+          if (res.requestId) setProviderRequestId(res.requestId);
+          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
+          if (res.status === "successful") await refresh();
+        } else {
+          const res = await checkBill({ data: { reference: txId } });
+          if (cancelled) return;
+          setOutcome(res.status);
+          setResultMessage(res.message);
+          if (res.requestId) setProviderRequestId(res.requestId);
+          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
+          if (res.token) setToken(res.token);
+          if (res.status === "successful") await refresh();
+        }
+      } catch {
+        // Keep pending UI; user can still tap Check status.
+      } finally {
+        refreshLock.current = false;
+      }
+    };
+
+    const t0 = window.setTimeout(() => void poll(), 1500);
+    const interval = window.setInterval(() => void poll(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t0);
+      window.clearInterval(interval);
+    };
+  }, [step, outcome, txId, isAirtime, checkAirtime, checkBill, refresh]);
+
+  useEffect(() => {
+    if (step === "result" && outcome === "successful") {
+      void confetti({ particleCount: 90, spread: 70, origin: { y: 0.65 } });
+    }
+  }, [step, outcome]);
   if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
   if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
 
@@ -268,7 +319,6 @@ export function RockPayBillFlow() {
     );
   }
 
-
   const getQuote = async () => {
     if (!service || !Number.isFinite(baseTotal) || baseTotal < 50) {
       throw new Error("Enter a valid amount.");
@@ -279,11 +329,7 @@ export function RockPayBillFlow() {
     setPricingLoading(true);
     try {
       const productCode =
-        isPackageLive && variation
-          ? variation.variationCode
-          : isElectricity
-            ? meterType
-            : null;
+        isPackageLive && variation ? variation.variationCode : isElectricity ? meterType : null;
       const res = await getPricingQuote({
         data: {
           service: service.slug,
@@ -489,58 +535,7 @@ export function RockPayBillFlow() {
     }
   };
 
-
   // Auto-requery pending provider status (bounded) so success settles without manual taps.
-  useEffect(() => {
-    if (step !== "result" || outcome !== "pending" || !txId) return;
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 12;
-
-    const poll = async () => {
-      if (cancelled || refreshLock.current || attempts >= maxAttempts) return;
-      attempts += 1;
-      refreshLock.current = true;
-      try {
-        if (isAirtime) {
-          const res = await checkAirtime({ data: { reference: txId } });
-          if (cancelled) return;
-          setOutcome(res.status);
-          setResultMessage(res.message);
-          if (res.requestId) setProviderRequestId(res.requestId);
-          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
-          if (res.status === "successful") await refresh();
-        } else {
-          const res = await checkBill({ data: { reference: txId } });
-          if (cancelled) return;
-          setOutcome(res.status);
-          setResultMessage(res.message);
-          if (res.requestId) setProviderRequestId(res.requestId);
-          if (res.providerTransactionId) setProviderTxId(res.providerTransactionId);
-          if (res.token) setToken(res.token);
-          if (res.status === "successful") await refresh();
-        }
-      } catch {
-        // Keep pending UI; user can still tap Check status.
-      } finally {
-        refreshLock.current = false;
-      }
-    };
-
-    const t0 = window.setTimeout(() => void poll(), 1500);
-    const interval = window.setInterval(() => void poll(), 3000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t0);
-      window.clearInterval(interval);
-    };
-  }, [step, outcome, txId, isAirtime, checkAirtime, checkBill, refresh]);
-
-  useEffect(() => {
-    if (step === "result" && outcome === "successful") {
-      void confetti({ particleCount: 90, spread: 70, origin: { y: 0.65 } });
-    }
-  }, [step, outcome]);
 
   const copy = (label: string, value: string) => {
     if (value) {
@@ -604,7 +599,9 @@ export function RockPayBillFlow() {
             </div>
             <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary-soft/60 px-3 py-2 text-primary">
               <ShieldCheck className="size-4 shrink-0" />
-              <p className="text-[11px] font-bold">Protected wallet debit · status confirmed by provider</p>
+              <p className="text-[11px] font-bold">
+                Protected wallet debit · status confirmed by provider
+              </p>
             </div>
           </motion.div>
         </div>
@@ -775,7 +772,9 @@ export function RockPayBillFlow() {
                 Includes RockPay fee of {formatNaira(rockpayFee, false)}. You pay this total.
               </p>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">Amount calculated for your wallet debit.</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Amount calculated for your wallet debit.
+              </p>
             )}
           </div>
           <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
@@ -895,10 +894,10 @@ export function RockPayBillFlow() {
                     inputMode="numeric"
                     value={amount}
                     onChange={(e) => {
-                    setAmount(e.target.value.replace(/\D/g, ""));
-                    setQuotedTotal(null);
-                    setRockpayFee(0);
-                  }}
+                      setAmount(e.target.value.replace(/\D/g, ""));
+                      setQuotedTotal(null);
+                      setRockpayFee(0);
+                    }}
                     className="h-12 border-0 bg-transparent text-2xl font-bold shadow-none focus-visible:ring-0"
                     placeholder="0"
                   />

@@ -47,10 +47,7 @@ function fallbackFor(slug: string): number {
 }
 
 /** Map a pricing_rules row to a flat hub fee (NGN). */
-function feeFromRule(row: {
-  markup_type?: string | null;
-  markup_value?: number | null;
-}): number {
+function feeFromRule(row: { markup_type?: string | null; markup_value?: number | null }): number {
   const type = String(row.markup_type ?? "").toLowerCase();
   const value = Number(row.markup_value ?? 0);
   if (!Number.isFinite(value) || value < 0) return 0;
@@ -88,7 +85,9 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
         markup_value?: number;
         priority?: number;
       };
-      const service = String(row.service ?? "").trim().toLowerCase();
+      const service = String(row.service ?? "")
+        .trim()
+        .toLowerCase();
       if (!service) continue;
       const fee = feeFromRule(row);
       if (fee <= 0) continue;

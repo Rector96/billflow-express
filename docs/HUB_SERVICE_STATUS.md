@@ -17,18 +17,18 @@ complete.
 
 ## Current status on `feature/rockpay-pricing`
 
-| Service | Status | Reason |
-|---|---|---|
-| Airtime | AVAILABLE | Existing VTpass production flow |
-| Data | AVAILABLE | Existing VTpass production flow |
-| Electricity | AVAILABLE | Existing VTpass verification/payment flow |
-| Cable TV | AVAILABLE | Existing VTpass verification/payment flow |
-| Education / Exam PINs | AVAILABLE* | VTpass catalog/provider dependent |
-| CAC Business Name | COMING_SOON | No real CAC filing/submission backend yet |
-| NIN | COMING_SOON | No verified NIN fulfillment provider configured |
-| TIN | COMING_SOON | Dojah/JTB provider access is not configured |
-| Vehicle | COMING_SOON | Dojah vehicle verification is not configured |
-| Documents | COMING_SOON | Final server-side payment + real PDF delivery still needs completion |
+| Service               | Status      | Reason                                                               |
+| --------------------- | ----------- | -------------------------------------------------------------------- |
+| Airtime               | AVAILABLE   | Existing VTpass production flow                                      |
+| Data                  | AVAILABLE   | Existing VTpass production flow                                      |
+| Electricity           | AVAILABLE   | Existing VTpass verification/payment flow                            |
+| Cable TV              | AVAILABLE   | Existing VTpass verification/payment flow                            |
+| Education / Exam PINs | AVAILABLE*  | VTpass catalog/provider dependent                                    |
+| CAC Business Name     | COMING_SOON | No real CAC filing/submission backend yet                            |
+| NIN                   | COMING_SOON | No verified NIN fulfillment provider configured                      |
+| TIN                   | COMING_SOON | Dojah/JTB provider access is not configured                          |
+| Vehicle               | COMING_SOON | Dojah vehicle verification is not configured                         |
+| Documents             | COMING_SOON | Final server-side payment + real PDF delivery still needs completion |
 
 `*` Provider availability must still be checked before enabling any specific
 exam product in production.

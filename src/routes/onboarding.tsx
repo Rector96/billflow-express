@@ -34,7 +34,7 @@ function Onboarding() {
       image.src = item.image;
       return image;
     });
-    return () => preload.forEach((image) => image.src = "");
+    return () => preload.forEach((image) => (image.src = ""));
   }, [slides]);
 
   useEffect(() => {

@@ -39,7 +39,9 @@ function slugToPriceKey(slug: string): HubPriceKey | null {
 
 export const getHubServiceFee = createServerFn({ method: "GET" })
   .inputValidator((input: { serviceSlug: string }) => ({
-    serviceSlug: String(input?.serviceSlug ?? "").trim().toLowerCase(),
+    serviceSlug: String(input?.serviceSlug ?? "")
+      .trim()
+      .toLowerCase(),
   }))
   .handler(async ({ data }): Promise<{ fee: number; source: "db" | "fallback" }> => {
     const slug = data.serviceSlug;
@@ -78,7 +80,9 @@ export const recoverTin = createServerFn({ method: "POST" })
       paymentReference: string;
       amount: number;
     }) => {
-      const identifier = String(input?.identifier ?? "").replace(/\s/g, "").trim();
+      const identifier = String(input?.identifier ?? "")
+        .replace(/\s/g, "")
+        .trim();
       if (identifier.length < 5) throw new Error("Enter a valid NIN or CAC number.");
       const fullName = String(input?.fullName ?? "").trim();
       if (fullName.length < 2) throw new Error("Enter the full name on the record.");
@@ -246,8 +250,7 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
         plate: data.plate,
         state: data.state,
         makeModel: data.makeModel,
-        delivery:
-          data.choice === "third_party_insurance" ? "digital_pdf" : "physical_sticker",
+        delivery: data.choice === "third_party_insurance" ? "digital_pdf" : "physical_sticker",
       },
     });
     return {

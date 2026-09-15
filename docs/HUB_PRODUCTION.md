@@ -16,36 +16,36 @@ A price in `pricing_rules` does **not** make a service available by itself.
 
 ## Current service status
 
-| Service | Status | Reason |
-|---|---|---|
-| Airtime | AVAILABLE | VTpass production path |
-| Data | AVAILABLE | VTpass production path |
-| Electricity | AVAILABLE | VTpass production path + settlement |
-| Cable | AVAILABLE | VTpass production path + settlement |
-| Exam PINs | CONTROLLED | Depends on the selected VTpass product |
-| CAC | COMING_SOON | No production CAC filing/status connection |
-| NIN | COMING_SOON | No authorized NIN fulfillment provider connected |
-| TIN | COMING_SOON | Dojah/TIN provider access not configured |
-| Vehicle | COMING_SOON | Verified registry/issuance provider access not configured |
-| Documents | COMING_SOON | Secure payment + real PDF delivery path still being finalized |
+| Service     | Status      | Reason                                                        |
+| ----------- | ----------- | ------------------------------------------------------------- |
+| Airtime     | AVAILABLE   | VTpass production path                                        |
+| Data        | AVAILABLE   | VTpass production path                                        |
+| Electricity | AVAILABLE   | VTpass production path + settlement                           |
+| Cable       | AVAILABLE   | VTpass production path + settlement                           |
+| Exam PINs   | CONTROLLED  | Depends on the selected VTpass product                        |
+| CAC         | COMING_SOON | No production CAC filing/status connection                    |
+| NIN         | COMING_SOON | No authorized NIN fulfillment provider connected              |
+| TIN         | COMING_SOON | Dojah/TIN provider access not configured                      |
+| Vehicle     | COMING_SOON | Verified registry/issuance provider access not configured     |
+| Documents   | COMING_SOON | Secure payment + real PDF delivery path still being finalized |
 
 `src/lib/product-mode.ts` is the central payment gate. A service that is not in
 `LIVE_BILL_SLUGS` must not accept customer payment.
 
 ## Environment (Netlify)
 
-| Variable | Where | Purpose |
-|---|---|---|
-| `VITE_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` | Build + runtime | Browser Supabase |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Build + runtime | Anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Server only** | Trusted server writes |
-| `SUPABASE_URL` | Server | Service client |
-| `VITE_PAYSTACK_PUBLIC_KEY` | Build | Paystack checkout |
-| `PAYSTACK_SECRET_KEY` | **Server only** | Verify charges |
-| `DOJAH_SECRET_KEY` | **Server only** | KYC / TIN / vehicle |
-| `DOJAH_APP_ID` | **Server only** | Dojah AppId header |
-| `DOJAH_MODE` | Server | `sandbox` or `live` |
-| `HUB_ALLOW_UNVERIFIED_PAY` | Server | Local UI tests only; must be false/unset in production |
+| Variable                                                           | Where           | Purpose                                                |
+| ------------------------------------------------------------------ | --------------- | ------------------------------------------------------ |
+| `VITE_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`                  | Build + runtime | Browser Supabase                                       |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Build + runtime | Anon key                                               |
+| `SUPABASE_SERVICE_ROLE_KEY`                                        | **Server only** | Trusted server writes                                  |
+| `SUPABASE_URL`                                                     | Server          | Service client                                         |
+| `VITE_PAYSTACK_PUBLIC_KEY`                                         | Build           | Paystack checkout                                      |
+| `PAYSTACK_SECRET_KEY`                                              | **Server only** | Verify charges                                         |
+| `DOJAH_SECRET_KEY`                                                 | **Server only** | KYC / TIN / vehicle                                    |
+| `DOJAH_APP_ID`                                                     | **Server only** | Dojah AppId header                                     |
+| `DOJAH_MODE`                                                       | Server          | `sandbox` or `live`                                    |
+| `HUB_ALLOW_UNVERIFIED_PAY`                                         | Server          | Local UI tests only; must be false/unset in production |
 
 ## Provider rules
 

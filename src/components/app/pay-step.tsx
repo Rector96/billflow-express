@@ -100,7 +100,9 @@ export function PayStepBody({
         </div>
       ) : null}
 
-      <div className={cn("flex flex-1 flex-col", center && "items-center justify-center text-center")}>
+      <div
+        className={cn("flex flex-1 flex-col", center && "items-center justify-center text-center")}
+      >
         {children}
       </div>
 

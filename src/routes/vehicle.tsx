@@ -20,7 +20,8 @@ export const Route = createFileRoute("/vehicle")({
       { title: `Vehicle papers — ${BRAND.name}` },
       {
         name: "description",
-        content: "Vehicle services will be available when verified provider fulfillment is connected.",
+        content:
+          "Vehicle services will be available when verified provider fulfillment is connected.",
       },
     ],
   }),

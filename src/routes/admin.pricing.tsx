@@ -178,7 +178,10 @@ function AdminPricing() {
           {loading ? (
             <AdminLoading />
           ) : billRows.length === 0 ? (
-            <AdminEmpty title="No bill pricing rules" body="Seed airtime/data/cable/electricity rules." />
+            <AdminEmpty
+              title="No bill pricing rules"
+              body="Seed airtime/data/cable/electricity rules."
+            />
           ) : (
             <div className="overflow-x-auto rounded-2xl border bg-card shadow-card">
               <table className="w-full min-w-[640px] text-left text-sm">

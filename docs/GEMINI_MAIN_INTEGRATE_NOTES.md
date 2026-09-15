@@ -10,11 +10,13 @@
 ## What we did on `feature/rockpay-pricing`
 
 **Taken (safe):**
+
 - `docs/VTUAFRICA.md`
 - `docs/ADMIN_OWNER_GUIDE.md`
 - `docs/SUPABASE_SETUP.sql`
 
 **Not taken (would break or weaken platform):**
+
 - VTpass live unlock (feature keeps sandbox lock until intentional go-live)
 - Overwriting `setup-pin.tsx` / `pay-flow.tsx` (main removes auto-scroll PIN UX)
 - Blind merge of `main` into feature

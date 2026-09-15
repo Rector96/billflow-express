@@ -166,7 +166,9 @@ export function AdminShell({
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">{Sidebar}</div>
+          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">
+            {Sidebar}
+          </div>
         </div>
       ) : null}
 
@@ -183,9 +185,13 @@ export function AdminShell({
                 {open ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
               <div className="min-w-0">
-                <h1 className="truncate text-base sm:text-lg font-extrabold tracking-tight">{title}</h1>
+                <h1 className="truncate text-base sm:text-lg font-extrabold tracking-tight">
+                  {title}
+                </h1>
                 {subtitle ? (
-                  <p className="truncate text-xs text-muted-foreground hidden sm:block">{subtitle}</p>
+                  <p className="truncate text-xs text-muted-foreground hidden sm:block">
+                    {subtitle}
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -226,7 +232,9 @@ export function KpiCard({
         <p className="truncate text-[10px] sm:text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
           {label}
         </p>
-        <p className="mt-1 truncate text-lg sm:text-xl font-black tracking-tight tabular-nums">{value}</p>
+        <p className="mt-1 truncate text-lg sm:text-xl font-black tracking-tight tabular-nums">
+          {value}
+        </p>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
         {delta !== undefined ? (
