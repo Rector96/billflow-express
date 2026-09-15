@@ -17,12 +17,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
 import { SERVICE_PRICES, type HubPriceKey } from "@/lib/hub-service-prices";
+import { isBillLive } from "@/lib/product-mode";
 
 function uid(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function slugToPriceKey(slug: string): HubPriceKey {
+function slugToPriceKey(slug: string): HubPriceKey | null {
   const s = slug.toLowerCase();
   if (s === "tin" || s === "tin_retrieve") return "tin_retrieve";
   if (s === "documents" || s === "document_generator") return "document_generator";
@@ -33,7 +34,7 @@ function slugToPriceKey(slug: string): HubPriceKey {
   if (s === "nin_retrieve") return "nin_retrieve";
   if (s === "nin_slip") return "nin_slip";
   if (s === "nin_card_print" || s === "nin_plastic_card") return "nin_plastic_card";
-  return "tin_retrieve";
+  return null;
 }
 
 export const getHubServiceFee = createServerFn({ method: "GET" })
@@ -42,7 +43,9 @@ export const getHubServiceFee = createServerFn({ method: "GET" })
   }))
   .handler(async ({ data }): Promise<{ fee: number; source: "db" | "fallback" }> => {
     const slug = data.serviceSlug;
-    const fallback = SERVICE_PRICES[slugToPriceKey(slug)];
+    const key = slugToPriceKey(slug);
+    if (!key) throw new Error("Unsupported hub service.");
+    const fallback = SERVICE_PRICES[key];
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: rows, error } = await supabaseAdmin
@@ -88,6 +91,12 @@ export const recoverTin = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<RecoverTinSuccess> => {
+    // The route and provider are both required. This second gate prevents a
+    // direct server-function call from bypassing the public service status.
+    if (!isBillLive("tin")) {
+      throw new Error("TIN retrieval is temporarily unavailable.");
+    }
+
     // IMPORTANT: Provider availability is checked BEFORE payment verification.
     // Without a real TIN provider we cannot fulfil the customer's order, so we
     // refuse the operation instead of accepting money for fabricated data.
@@ -165,6 +174,10 @@ export const verifyVehicle = createServerFn({ method: "POST" })
     return { plate, state };
   })
   .handler(async ({ data }) => {
+    if (!isBillLive("vehicle")) {
+      throw new Error("Vehicle verification is temporarily unavailable.");
+    }
+
     // Vehicle registry information is regulated data. Never return a synthetic
     // vehicle record when the provider is missing or unavailable.
     const { dojahLookupVehicle, isDojahConfigured } = await import("./dojah.server");
@@ -214,9 +227,12 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    // This endpoint currently records the paid order only. Actual renewal,
-    // sticker issuance and insurance certificate delivery must be connected to
-    // an authorized provider before this is advertised as fulfilled.
+    // Server-side defense in depth: the renewal endpoint must remain closed
+    // until an authorized renewal/insurance fulfillment provider exists.
+    if (!isBillLive("vehicle")) {
+      throw new Error("Vehicle renewal is temporarily unavailable.");
+    }
+
     await assertPaystackSuccess(data.paymentReference, data.amount);
     const trackingReference = `VR-${Date.now().toString(36).toUpperCase()}-${data.plate.slice(0, 6)}`;
     await logHubOrder({
@@ -261,6 +277,13 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
+    // Generic hub payment recording is only allowed for a service that the
+    // central production gate explicitly marks live. This prevents a caller
+    // from turning a Paystack reference into an arbitrary "successful" order.
+    if (!isBillLive(data.service)) {
+      throw new Error("This service is not currently available for payment.");
+    }
+
     await assertPaystackSuccess(data.paymentReference, data.amount);
     await logHubOrder({
       userId: context.userId,
