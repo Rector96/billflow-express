@@ -1,7 +1,8 @@
 /**
- * Automated Document Generator — DEMO UI + state / API payload shapes
- * DOC_DEMO_MODE=true → simulated Paystack + POST /api/v1/generate-document
- * See docs/TIN_AND_DOCUMENTS.md · src/lib/hub-api.types.ts
+ * Automated Document Generator
+ * Tenancy: live template compiler (Nigerian-style layout) + print/HTML download
+ * Payment: simulated / sandbox Paystack via hub-api.demo (test keys when you wire real Pop)
+ * See docs/TIN_AND_DOCUMENTS.md · src/lib/document-templates.ts
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,6 +14,7 @@ import {
   Home,
   Info,
   Loader2,
+  Printer,
   ScrollText,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,9 +31,16 @@ import {
   simulatePaystackInline,
 } from "@/lib/hub-api.demo";
 import type { GenerateDocumentSuccess } from "@/lib/hub-api.types";
+import {
+  compileBusinessConstitution,
+  compileResidentialTenancyAgreement,
+  downloadDocumentHtml,
+  openPrintableDocument,
+} from "@/lib/document-templates";
 import { formatNaira } from "@/lib/mock-data";
 
-export const DOC_DEMO_MODE = true;
+/** Payment still uses Paystack simulation / your demo account path — not a live charge until Pop is wired. */
+export const DOC_PAYSTACK_DEMO = true;
 export const DOC_GENERATOR_FEE = 3000;
 
 type DocType = "constitution" | "tenancy";
@@ -43,6 +52,7 @@ type DocFormState = {
   address: string;
   rent: string;
   duration: string;
+  startDate: string;
 };
 
 const STEPS: PayStepMeta[] = [
@@ -51,6 +61,14 @@ const STEPS: PayStepMeta[] = [
   { key: "preview", label: "Preview" },
   { key: "pay", label: "Download" },
 ];
+
+function todayLong(): string {
+  return new Date().toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 function HelpNote({ children }: { children: React.ReactNode }) {
   return (
@@ -61,70 +79,14 @@ function HelpNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DemoBanner() {
+function StatusBanner() {
   return (
     <div className="rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-100">
-      <span className="font-bold">Demo mode.</span> Paystack and generate-document API are simulated. Not legal
-      advice.
+      <span className="font-bold">Document compiler active.</span> Tenancy text is generated from your
+      inputs. Payment uses your <span className="font-semibold">Paystack test/demo</span> path — not a
+      production charge. Not legal advice.
     </div>
   );
-}
-
-function buildDraft(input: {
-  type: DocType;
-  form: DocFormState;
-}): string {
-  const today = new Date().toLocaleDateString("en-NG", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const { form } = input;
-  if (input.type === "constitution") {
-    return [
-      "BUSINESS CONSTITUTION (DEMO DRAFT)",
-      "================================",
-      `Date: ${today}`,
-      "",
-      `1. PARTIES`,
-      `This constitution is adopted by ${form.partyA || "[Business / Proprietor]"} ("the Business").`,
-      "",
-      `2. PURPOSE`,
-      "The Business is established to carry on lawful trade and related activities in Nigeria.",
-      "",
-      `3. MANAGEMENT`,
-      `${form.partyB || "[Manager / Partner]"} may assist in day-to-day management as agreed in writing.`,
-      "",
-      `4. REGISTERED ADDRESS`,
-      form.address || "[Business address]",
-      "",
-      `5. GENERAL`,
-      "This demo document is a template outline only. Have a qualified professional review before use.",
-      "",
-      "— End of draft —",
-    ].join("\n");
-  }
-  return [
-    "RESIDENTIAL TENANCY AGREEMENT (DEMO DRAFT)",
-    "==========================================",
-    `Date: ${today}`,
-    "",
-    `LANDLORD: ${form.partyA || "[Landlord full name]"}`,
-    `TENANT: ${form.partyB || "[Tenant full name]"}`,
-    "",
-    `PROPERTY`,
-    form.address || "[Property address]",
-    "",
-    `RENT & TERM`,
-    `Annual rent: ₦${form.rent || "[amount]"}`,
-    `Duration: ${form.duration || "1 Year"}`,
-    "",
-    `The Tenant shall occupy the Property for the Duration and pay Rent as stated.`,
-    "",
-    `This is a demo template for product flow testing only — not a substitute for legal advice.`,
-    "",
-    "— End of draft —",
-  ].join("\n");
 }
 
 export function DocumentsFlow() {
@@ -137,16 +99,37 @@ export function DocumentsFlow() {
     address: "",
     rent: "",
     duration: "1 Year",
+    startDate: todayLong(),
   });
   const [paying, setPaying] = useState(false);
   const [payPhase, setPayPhase] = useState<"idle" | "paystack" | "api">("idle");
   const [apiResult, setApiResult] = useState<GenerateDocumentSuccess | null>(null);
-  const [localBlobUrl, setLocalBlobUrl] = useState("");
+  const [compiledBody, setCompiledBody] = useState("");
 
-  const draft = useMemo(
-    () => buildDraft({ type: docType ?? "tenancy", form }),
-    [docType, form],
-  );
+  const agreementDate = todayLong();
+
+  const draft = useMemo(() => {
+    if (docType === "tenancy") {
+      return compileResidentialTenancyAgreement({
+        landlordName: form.partyA,
+        tenantName: form.partyB,
+        propertyAddress: form.address,
+        duration: form.duration,
+        rentAmount: form.rent,
+        agreementDate,
+        startDate: form.startDate.trim() || agreementDate,
+      });
+    }
+    if (docType === "constitution") {
+      return compileBusinessConstitution({
+        businessName: form.partyA,
+        managerName: form.partyB,
+        businessAddress: form.address,
+        agreementDate,
+      });
+    }
+    return "";
+  }, [docType, form, agreementDate]);
 
   const stepIndex = useMemo(() => {
     if (step === "type") return 0;
@@ -179,11 +162,15 @@ export function DocumentsFlow() {
     return true;
   };
 
+  const docTitle =
+    docType === "constitution" ? "Business Constitution" : "Tenancy Agreement";
+
   const onPayNow = async () => {
     if (!docType || !validateForm()) return;
     setPaying(true);
     setPayPhase("paystack");
     try {
+      // Demo / test Paystack account path — replace simulate with real PaystackPop when keys are live
       const paystack = await simulatePaystackInline({
         email: "customer@rockpay.app",
         amountNaira: DOC_GENERATOR_FEE,
@@ -194,6 +181,7 @@ export function DocumentsFlow() {
       }
 
       setPayPhase("api");
+      const body = draft;
       const payload = buildGenerateDocumentPayload({
         documentType:
           docType === "constitution" ? "business_constitution" : "residential_tenancy",
@@ -206,13 +194,8 @@ export function DocumentsFlow() {
         fee: DOC_GENERATOR_FEE,
       });
 
-      // Production:
-      // await fetch("/api/v1/generate-document", { method: "POST", body: JSON.stringify(payload) })
-      const json = await postGenerateDocumentDemo(payload, draft);
-
-      const blob = new Blob([json.data.previewText], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      setLocalBlobUrl(url);
+      const json = await postGenerateDocumentDemo(payload, body);
+      setCompiledBody(body);
       setApiResult(json);
       setStep("success");
       toast.success(`Paid · ref ${paystack.reference.slice(0, 12)}…`);
@@ -224,21 +207,26 @@ export function DocumentsFlow() {
     }
   };
 
-  const downloadFile = () => {
-    if (!localBlobUrl || !apiResult) return;
-    const a = document.createElement("a");
-    a.href = localBlobUrl;
-    a.download = `rockpay-${apiResult.data.documentId}.txt`;
-    a.click();
-    toast.success("Download started (demo file)");
+  const onPrint = () => {
+    try {
+      openPrintableDocument(docTitle, compiledBody || draft);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not open print view");
+    }
+  };
+
+  const onDownload = () => {
+    const id = apiResult?.data.documentId ?? `doc-${Date.now()}`;
+    downloadDocumentHtml(docTitle, compiledBody || draft, `rockpay-${id}`);
+    toast.success("HTML document downloaded — open and print to PDF if needed");
   };
 
   const copyLink = async () => {
-    const link = apiResult?.data.downloadUrl || localBlobUrl;
+    const link = apiResult?.data.downloadUrl;
     if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("Link copied");
+      toast.success("API link copied");
     } catch {
       toast.error("Could not copy");
     }
@@ -255,20 +243,31 @@ export function DocumentsFlow() {
           <p className="max-w-sm text-sm text-muted-foreground">{apiResult.data.title}</p>
 
           <div className="w-full space-y-3 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-soft">
-            <Button className="h-12 w-full rounded-2xl font-bold" onClick={downloadFile}>
-              <FileText className="mr-2 size-4" /> Download PDF
+            <Button className="h-12 w-full rounded-2xl font-bold" onClick={onDownload}>
+              <FileText className="mr-2 size-4" /> Download document
+            </Button>
+            <Button variant="outline" className="h-12 w-full rounded-2xl font-bold" onClick={onPrint}>
+              <Printer className="mr-2 size-4" /> Print / Save as PDF
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              Demo delivers text until a PDF engine is connected. API download URL is shown below.
+              Print opens a clean legal layout. Use your browser’s “Save as PDF” if you need a PDF file.
             </p>
-            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
-              <p className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">
-                {apiResult.data.downloadUrl}
-              </p>
-              <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-xl" onClick={() => void copyLink()}>
-                <Copy className="size-3.5" />
-              </Button>
-            </div>
+            {apiResult.data.downloadUrl ? (
+              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+                <p className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">
+                  {apiResult.data.downloadUrl}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 rounded-xl"
+                  onClick={() => void copyLink()}
+                >
+                  <Copy className="size-3.5" />
+                </Button>
+              </div>
+            ) : null}
             <p className="font-mono text-[10px] text-muted-foreground">
               Paystack · {apiResult.meta.paymentReference}
             </p>
@@ -282,9 +281,8 @@ export function DocumentsFlow() {
               variant="outline"
               className="h-12 w-full rounded-2xl font-bold"
               onClick={() => {
-                if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
-                setLocalBlobUrl("");
                 setApiResult(null);
+                setCompiledBody("");
                 setStep("type");
                 setDocType(null);
               }}
@@ -301,7 +299,7 @@ export function DocumentsFlow() {
     <AppShell>
       <PageHeader title="Documents" backTo="/services" />
       <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
-        <DemoBanner />
+        <StatusBanner />
         <PayStepper steps={STEPS} currentIndex={stepIndex} />
 
         {step === "type" ? (
@@ -339,7 +337,7 @@ export function DocumentsFlow() {
               </span>
               <div>
                 <p className="text-sm font-extrabold">Residential Tenancy Agreement</p>
-                <p className="text-[11px] text-muted-foreground">Landlord, tenant, rent & duration</p>
+                <p className="text-[11px] text-muted-foreground">Live template · landlord, tenant, rent</p>
               </div>
             </button>
 
@@ -405,6 +403,15 @@ export function DocumentsFlow() {
                       placeholder="1 Year"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Commencement date</Label>
+                    <Input
+                      value={form.startDate}
+                      onChange={(e) => setField("startDate", e.target.value)}
+                      className="h-12 rounded-2xl"
+                      placeholder={agreementDate}
+                    />
+                  </div>
                 </>
               ) : null}
             </div>
@@ -431,12 +438,14 @@ export function DocumentsFlow() {
             <div>
               <h2 className="text-lg font-extrabold tracking-tight">Preview & pay</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Paystack charge, then <code className="text-[10px]">POST /api/v1/generate-document</code>.
+                Live compiled text. Pay with your Paystack test account, then download or print.
               </p>
             </div>
 
-            <div className="max-h-56 overflow-y-auto rounded-2xl border border-border/70 bg-muted/20 p-4 shadow-soft">
-              <pre className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed text-foreground/90">{draft}</pre>
+            <div className="max-h-64 overflow-y-auto rounded-2xl border border-border/70 bg-muted/20 p-4 shadow-soft">
+              <pre className="whitespace-pre-wrap font-serif text-[11px] leading-relaxed text-foreground/90">
+                {draft}
+              </pre>
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft">
@@ -456,7 +465,7 @@ export function DocumentsFlow() {
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" />
-                    {payPhase === "paystack" ? "Opening Paystack…" : "Generating…"}
+                    {payPhase === "paystack" ? "Paystack (test)…" : "Compiling…"}
                   </>
                 ) : (
                   <>Pay Now · {formatNaira(DOC_GENERATOR_FEE, false)}</>
