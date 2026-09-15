@@ -225,9 +225,9 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         </span>
       </div>
 
-      <motion.div layout className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <motion.div layout className="grid grid-cols-3 gap-2 sm:gap-2.5">
         {list.length === 0 ? (
-          <div className="col-span-2 rounded-2xl border border-dashed border-border bg-card py-10 text-center">
+          <div className="col-span-3 rounded-2xl border border-dashed border-border bg-card py-10 text-center">
             <p className="text-sm font-bold text-foreground">No matching plan</p>
             <p className="mt-1 text-xs text-muted-foreground">Try another category or search term.</p>
           </div>
@@ -253,7 +253,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                 variant="outline"
                 onClick={() => onSelect(p)}
                 className={cn(
-                  "relative h-full min-h-36 w-full whitespace-normal rounded-xl p-3.5 text-left sm:p-4",
+                  "relative h-full min-h-28 w-full whitespace-normal rounded-xl p-2.5 text-left sm:min-h-30 sm:p-3",
                   "flex flex-col items-stretch justify-between overflow-hidden",
                   "transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out",
                   selected
@@ -261,17 +261,17 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                     : "border-border/70 bg-card shadow-soft hover:-translate-y-0.5 hover:border-primary/30",
                 )}
               >
-                <span className={cn("absolute right-3 top-3 grid size-5 place-items-center rounded-full border transition-all", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-transparent")}>
-                  <Check className="size-3" strokeWidth={3} />
+                <span className={cn("absolute right-2 top-2 grid size-4 place-items-center rounded-full border transition-all", selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-transparent")}>
+                  <Check className="size-2.5" strokeWidth={3} />
                 </span>
 
                 <div className="min-w-0">
-                  <p className="pr-6 text-[10px] font-semibold uppercase text-muted-foreground">
+                    <p className="truncate pr-4 text-[9px] font-semibold uppercase text-muted-foreground">
                     {duration ?? planTypeLabel(p.name)}
                   </p>
                   <p
                     className={cn(
-                       "mt-2 truncate text-xl font-bold leading-none tabular-nums",
+                        "mt-1.5 truncate text-base font-bold leading-none tabular-nums sm:text-lg",
                       "transition-colors duration-300",
                       selected ? "text-primary" : "text-foreground",
                     )}
@@ -279,23 +279,23 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                     {title}
                   </p>
                   {!size ? (
-                     <p className="mt-2 line-clamp-2 text-[10px] font-normal leading-snug text-muted-foreground">
+                      <p className="mt-1.5 line-clamp-2 text-[9px] font-normal leading-snug text-muted-foreground">
                       {p.name}
                     </p>
                   ) : (
-                    <p className="mt-2 flex items-center gap-1 truncate text-[10px] font-medium text-muted-foreground">
-                      <Sparkles className="size-3 text-primary/60" /> {planTypeLabel(p.name)} plan
+                    <p className="mt-1.5 flex items-center gap-1 truncate text-[9px] font-medium text-muted-foreground">
+                      <Sparkles className="size-2.5 shrink-0 text-primary/60" /> {planTypeLabel(p.name)}
                     </p>
                   )}
                 </div>
 
                 <div className="min-w-0">
-                   <p className="truncate text-base font-bold tabular-nums leading-none text-foreground">
+                    <p className="truncate text-[13px] font-bold leading-none tabular-nums text-foreground sm:text-sm">
                     {formatNaira(p.amount, false)}
                   </p>
                   <p
                     className={cn(
-                       "mt-1.5 text-[10px] font-semibold transition-opacity duration-300",
+                        "mt-1 text-[9px] font-semibold transition-opacity duration-300",
                       selected ? "text-primary opacity-100" : "opacity-0",
                     )}
                   >
