@@ -6,9 +6,7 @@
  * DIRECT_PAY  = true  → electricity/cable can use Paystack checkout path.
  *
  * Education & exam pins share the same student-friendly PIN purchase flow (VTpass).
- * CAC Business Name: /cac (docs/CAC_BUSINESS_NAME.md)
- * NIN Retrieve + Print Slip: /nin (docs/NIN_SERVICES.md)
- * TIN: /tin · Documents: /documents (docs/TIN_AND_DOCUMENTS.md)
+ * CAC: /cac · NIN: /nin · TIN: /tin · Documents: /documents · Vehicle: /vehicle
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -16,7 +14,7 @@ export const DIRECT_PAY = true;
 /** Home grid when bills-focused */
 export const HOME_BILL_SLUGS = ["electricity", "cable", "education", "exam-pins"] as const;
 
-/** Classic home (full fintech) */
+/** Classic home (full fintech + hub modules) */
 export const HOME_CLASSIC_SLUGS = [
   "electricity",
   "cable",
@@ -27,6 +25,7 @@ export const HOME_CLASSIC_SLUGS = [
   "nin",
   "tin",
   "documents",
+  "vehicle",
 ] as const;
 
 /** Hidden on Services + Home when BILLS_FOCUS */
@@ -38,7 +37,7 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
   "insurance",
 ]);
 
-/** Live bill services (not "coming soon") */
+/** Live bill / hub services (not "coming soon") */
 export const LIVE_BILL_SLUGS = new Set([
   "electricity",
   "cable",
@@ -50,6 +49,7 @@ export const LIVE_BILL_SLUGS = new Set([
   "nin",
   "tin",
   "documents",
+  "vehicle",
 ]);
 
 export function homeServiceSlugs(): readonly string[] {
