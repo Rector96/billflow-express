@@ -1,4 +1,4 @@
-const CACHE_NAME = "rockpay-static-v1";
+const CACHE_NAME = "rockwavehub-static-v1";
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
   "/favicon.png",
