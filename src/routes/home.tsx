@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Bell, ChevronRight, HeartHandshake } from "lucide-react";
+import { Bell, HeartHandshake } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { HomePromos } from "@/components/app/home-promos";
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
+const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data", "cac"] as const;
 
 function HomePage() {
   const navigate = useNavigate();
@@ -95,7 +95,6 @@ function HomePage() {
 
         <HomePromos className="mt-3" />
 
-        {/* Services in modern rounded surface */}
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <SectionTitle title="Quick Services" action="View all" to="/services" />
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -106,8 +105,8 @@ function HomePage() {
                   label={s.short}
                   Icon={s.icon}
                   tint={s.tint}
-                  to="/pay/$slug"
-                  params={{ slug: s.slug }}
+                  to={s.slug === "cac" ? "/cac" : "/pay/$slug"}
+                  params={s.slug === "cac" ? undefined : { slug: s.slug }}
                 />
               ) : null,
             )}

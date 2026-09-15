@@ -8,6 +8,7 @@ import {
   Droplets,
   ShieldCheck,
   Ticket,
+  Building2,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -66,7 +67,8 @@ export type ServiceSlug =
   | "internet"
   | "water"
   | "insurance"
-  | "exam-pins";
+  | "exam-pins"
+  | "cac";
 
 export type Package = { id: string; name: string; price: number; note?: string };
 
@@ -258,6 +260,22 @@ export const SERVICES: ServiceConfig[] = [
       { id: "e3", name: "5 PINs", price: 16800 },
     ],
     numeric: true,
+  },
+  {
+    slug: "cac",
+    name: "CAC Registration",
+    short: "CAC",
+    icon: Building2,
+    tint: "text-[#0F766E] bg-[#CCFBF1] border border-[#99F6E4]/60 shadow-[0_4px_12px_-2px_rgba(15,118,110,0.15)]",
+    providerLabel: "Business registration",
+    providers: ["Business Name"],
+    identifierLabel: "Application",
+    identifierPlaceholder: "",
+    verifies: false,
+    mode: "package",
+    packages: [
+      { id: "bn-start", name: "Start Business (Business Name)", price: 27500, note: "Demo package" },
+    ],
   },
 ];
 
