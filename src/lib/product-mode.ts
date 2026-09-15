@@ -8,6 +8,7 @@
  * Education & exam pins share the same student-friendly PIN purchase flow (VTpass).
  * CAC Business Name: /cac (docs/CAC_BUSINESS_NAME.md)
  * NIN Retrieve + Print Slip: /nin (docs/NIN_SERVICES.md)
+ * TIN: /tin · Documents: /documents (docs/TIN_AND_DOCUMENTS.md)
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -24,6 +25,8 @@ export const HOME_CLASSIC_SLUGS = [
   "data",
   "cac",
   "nin",
+  "tin",
+  "documents",
 ] as const;
 
 /** Hidden on Services + Home when BILLS_FOCUS */
@@ -45,6 +48,8 @@ export const LIVE_BILL_SLUGS = new Set([
   "data",
   "cac",
   "nin",
+  "tin",
+  "documents",
 ]);
 
 export function homeServiceSlugs(): readonly string[] {
