@@ -1,10 +1,10 @@
 /**
- * Route: /tin
- * JTB TIN Retrieval (demo). See docs/TIN_AND_DOCUMENTS.md
+ * Route: /tin — JTB TIN with live pricing_rules loader
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { TinJtbFlow } from "@/components/app/tin-jtb-flow";
 import { BRAND } from "@/lib/brand";
+import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
 
 export const Route = createFileRoute("/tin")({
   head: () => ({
@@ -12,9 +12,18 @@ export const Route = createFileRoute("/tin")({
       { title: `TIN Retrieval — ${BRAND.name}` },
       {
         name: "description",
-        content: "Retrieve your JTB Tax Identification Number on RockPay. Demo mode until connected.",
+        content: "Retrieve your JTB Tax Identification Number on RockPay.",
       },
     ],
   }),
-  component: TinJtbFlow,
+  loader: async () => {
+    const fees = await loadHubFeesFromSupabase();
+    return { fees };
+  },
+  component: TinPage,
 });
+
+function TinPage() {
+  const { fees } = Route.useLoaderData();
+  return <TinJtbFlow fees={fees} />;
+}
