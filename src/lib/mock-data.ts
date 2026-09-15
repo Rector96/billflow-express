@@ -13,6 +13,7 @@ import {
   Hash,
   FileText,
   MoreHorizontal,
+  Car,
   type LucideIcon,
 } from "lucide-react";
 
@@ -65,7 +66,8 @@ export type ServiceSlug =
   | "cac"
   | "nin"
   | "tin"
-  | "documents";
+  | "documents"
+  | "vehicle";
 
 export type Package = { id: string; name: string; price: number; note?: string };
 
@@ -254,7 +256,7 @@ export const SERVICES: ServiceConfig[] = [
     icon: Fingerprint,
     tint: "text-[#4F46E5] bg-[#E0E7FF] border border-[#C7D2FE]/60 shadow-[0_4px_12px_-2px_rgba(79,70,229,0.15)]",
     providerLabel: "NIN helpers",
-    providers: ["Retrieve NIN", "Print NIN Slip"],
+    providers: ["Retrieve NIN", "Print NIN Slip", "Plastic ID-style card"],
     identifierLabel: "NIN / Phone",
     identifierPlaceholder: "",
     verifies: false,
@@ -262,6 +264,7 @@ export const SERVICES: ServiceConfig[] = [
     packages: [
       { id: "nin-retrieve", name: "Retrieve NIN", price: 300, note: "Demo" },
       { id: "nin-slip", name: "Print NIN Slip", price: 500, note: "Demo" },
+      { id: "nin-plastic", name: "Plastic ID-style NIN card", price: 2500, note: "Demo" },
     ],
   },
   {
@@ -291,6 +294,20 @@ export const SERVICES: ServiceConfig[] = [
     verifies: false,
     mode: "package",
     packages: [{ id: "doc-gen", name: "Document draft", price: 3000, note: "Demo" }],
+  },
+  {
+    slug: "vehicle",
+    name: "Vehicle papers",
+    short: "Vehicle",
+    icon: Car,
+    tint: "text-[#0369A1] bg-[#E0F2FE] border border-[#BAE6FD]/60 shadow-[0_4px_12px_-2px_rgba(3,105,161,0.15)]",
+    providerLabel: "Vehicle registry",
+    providers: ["Plate lookup", "Renewal sync"],
+    identifierLabel: "Plate",
+    identifierPlaceholder: "ABC-123XY",
+    verifies: false,
+    mode: "package",
+    packages: [{ id: "vehicle-renewal", name: "Vehicle paperwork / renewal", price: 2500, note: "Demo" }],
   },
 ];
 
