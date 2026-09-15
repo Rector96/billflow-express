@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   Shield,
+  Truck,
   Users,
   Wallet,
   Boxes,
@@ -30,6 +31,7 @@ export type AdminNavId =
   | "users"
   | "transactions"
   | "hub-orders"
+  | "dispatch"
   | "reconciliation"
   | "wallet"
   | "services"
@@ -46,6 +48,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
   { id: "users", label: "Users", to: "/admin/users", icon: Users },
   { id: "transactions", label: "Transactions", to: "/admin/transactions", icon: ArrowLeftRight },
   { id: "hub-orders", label: "Hub orders", to: "/admin/hub-orders", icon: Package },
+  { id: "dispatch", label: "Dispatch", to: "/admin/dispatch", icon: Truck },
   { id: "reconciliation", label: "Reconciliation", to: "/admin/reconciliation", icon: Scale },
   { id: "wallet", label: "Wallet", to: "/admin/wallet", icon: Wallet },
   { id: "services", label: "Services", to: "/admin/services", icon: Boxes },
@@ -61,6 +64,7 @@ const NAV: { id: AdminNavId; label: string; to: string; icon: LucideIcon }[] = [
 function activeId(pathname: string): AdminNavId {
   if (pathname.startsWith("/admin/users")) return "users";
   if (pathname.startsWith("/admin/hub-orders")) return "hub-orders";
+  if (pathname.startsWith("/admin/dispatch")) return "dispatch";
   if (pathname.startsWith("/admin/reconciliation")) return "reconciliation";
   if (pathname.startsWith("/admin/transactions")) return "transactions";
   if (pathname.startsWith("/admin/wallet")) return "wallet";
@@ -162,9 +166,7 @@ export function AdminShell({
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">
-            {Sidebar}
-          </div>
+          <div className="absolute inset-y-0 left-0 w-72 border-r bg-sidebar p-4 shadow-float">{Sidebar}</div>
         </div>
       ) : null}
 
@@ -181,9 +183,7 @@ export function AdminShell({
                 {open ? <X className="size-5" /> : <Menu className="size-5" />}
               </button>
               <div className="min-w-0">
-                <h1 className="truncate text-base sm:text-lg font-extrabold tracking-tight">
-                  {title}
-                </h1>
+                <h1 className="truncate text-base sm:text-lg font-extrabold tracking-tight">{title}</h1>
                 {subtitle ? (
                   <p className="truncate text-xs text-muted-foreground hidden sm:block">{subtitle}</p>
                 ) : null}
@@ -226,9 +226,7 @@ export function KpiCard({
         <p className="truncate text-[10px] sm:text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
           {label}
         </p>
-        <p className="mt-1 truncate text-lg sm:text-xl font-black tracking-tight tabular-nums">
-          {value}
-        </p>
+        <p className="mt-1 truncate text-lg sm:text-xl font-black tracking-tight tabular-nums">{value}</p>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px]">
         {delta !== undefined ? (
