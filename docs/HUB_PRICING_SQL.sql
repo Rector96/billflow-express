@@ -1,9 +1,41 @@
--- RockPay hub catalog fees — REAL pricing_rules schema
--- Columns: service, provider, product_code, markup_type, markup_value,
---          min_amount, max_amount, is_active, priority
--- Use selling_price so the fee is exactly markup_value (flat Naira).
--- Do NOT use fixed_fee / percent_fee / active — those columns do not exist.
+-- ============================================================
+-- RockPay hub fees — paste in Supabase SQL Editor (in order)
+-- ============================================================
+-- WHY previous inserts failed:
+--   pricing_rules_service_check only allowed
+--   airtime | data | cable | electricity
+-- Step 1 expands the check. Step 2 seeds hub fees.
 
+-- ---------- STEP 1: expand allowed services ----------
+ALTER TABLE public.pricing_rules
+  DROP CONSTRAINT IF EXISTS pricing_rules_service_check;
+
+ALTER TABLE public.pricing_rules
+  ADD CONSTRAINT pricing_rules_service_check
+  CHECK (
+    service IN (
+      'airtime',
+      'data',
+      'cable',
+      'electricity',
+      'education',
+      'exam-pins',
+      'internet',
+      'tin',
+      'documents',
+      'cac',
+      'nin_retrieve',
+      'nin_slip',
+      'nin_card_print',
+      'nin_plastic_card',
+      'nin_courier',
+      'vehicle',
+      'vehicle_license_sticker',
+      'vehicle_third_party_insurance'
+    )
+  );
+
+-- ---------- STEP 2: seed hub catalog (selling_price = flat ₦ fee) ----------
 INSERT INTO public.pricing_rules (
   service, provider, product_code, markup_type, markup_value,
   min_amount, max_amount, is_active, priority
@@ -29,8 +61,8 @@ WHERE NOT EXISTS (
     AND pr.markup_type = 'selling_price'
 );
 
--- Optional: inspect
--- SELECT service, markup_type, markup_value, is_active, priority
+-- ---------- optional verify ----------
+-- SELECT service, markup_type, markup_value, is_active
 -- FROM public.pricing_rules
--- WHERE service IN ('tin','documents','nin_slip','vehicle_license_sticker')
+-- WHERE service NOT IN ('airtime','data','cable','electricity')
 -- ORDER BY service;
