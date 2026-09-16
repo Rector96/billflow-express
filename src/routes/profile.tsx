@@ -3,6 +3,7 @@ import {
   Bell,
   Bookmark,
   ChevronRight,
+  FolderOpen,
   KeyRound,
   FileText,
   LifeBuoy,
@@ -53,6 +54,7 @@ function ProfilePage() {
 
   const items: Item[] = [
     { label: "Personal Information", icon: User, to: "/profile/personal" },
+    { label: "My documents", icon: FolderOpen, to: "/profile/documents" },
     { label: "Change PIN", icon: KeyRound, to: "/security" },
     { label: "Security", icon: ShieldCheck, to: "/security" },
     { label: "Saved Payments", icon: Bookmark, to: "/saved-payments" },

@@ -1,8 +1,11 @@
 /**
  * Phase A+B — staff hub orders, catalog fees, notes, fulfillment/dispatch.
+ * Status changes notify the customer in-app.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { notifyCustomerHubStatus } from "@/lib/hub-documents.functions";
+import { notifyStaff } from "@/lib/hub-notify.server";
 
 export type HubOrderRow = {
   id: string;
@@ -21,7 +24,6 @@ export type HubOrderRow = {
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
 export type HubOrderStatus = (typeof HUB_STATUSES)[number];
 
-/** Physical delivery lifecycle (stored in metadata.fulfillment_status). */
 export const FULFILLMENT_STATUSES = [
   "queued",
   "printing",
@@ -43,6 +45,7 @@ export const HUB_CATALOG_SERVICES = [
   "tin",
   "documents",
   "cac",
+  "cac_courier",
   "nin_retrieve",
   "nin_slip",
   "nin_card_print",
@@ -94,7 +97,6 @@ export const listHubOrders = createServerFn({ method: "GET" })
     return { orders: (rows ?? []) as HubOrderRow[] };
   });
 
-/** Physical items needing address / courier handling. */
 export const listDispatchQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ orders: HubOrderRow[] }> => {
@@ -136,12 +138,19 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
 
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
-      .select("id, metadata, status")
+      .select("id, user_id, service, metadata, status")
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
     const row = existing?.[0] as
-      { id: string; metadata: Record<string, unknown> | null; status: string } | undefined;
+      | {
+          id: string;
+          user_id: string;
+          service: string;
+          metadata: Record<string, unknown> | null;
+          status: string;
+        }
+      | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -166,6 +175,20 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       .eq("id", data.orderId);
 
     if (error) throw new Error(error.message);
+
+    if (row.status !== data.status) {
+      await notifyCustomerHubStatus({
+        userId: row.user_id,
+        service: row.service,
+        status: data.status,
+      });
+      await notifyStaff({
+        title: "Hub order updated",
+        message: `${row.service} → ${data.status.replace(/_/g, " ")} (${data.orderId.slice(0, 8)}…)`,
+        type: "information",
+      });
+    }
+
     return { ok: true as const, status: data.status };
   });
 
@@ -244,11 +267,13 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     const admin = await assertStaff(context.userId);
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
-      .select("id, metadata, status")
+      .select("id, user_id, service, metadata, status")
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
-    const row = existing?.[0] as { id: string; metadata: unknown; status: string } | undefined;
+    const row = existing?.[0] as
+      | { id: string; user_id: string; service: string; metadata: unknown; status: string }
+      | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -274,7 +299,6 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     if (data.courierPhone) nextMeta["courier_phone"] = data.courierPhone;
     if (data.trackingCode) nextMeta["courier_tracking"] = data.trackingCode;
 
-    // Keep order status aligned with late fulfillment stages
     let nextStatus = row.status;
     if (data.fulfillmentStatus === "dispatched" || data.fulfillmentStatus === "printing") {
       nextStatus = "in_progress";
@@ -295,6 +319,32 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       } as never)
       .eq("id", data.orderId);
     if (error) throw new Error(error.message);
+
+    const msg =
+      data.fulfillmentStatus === "dispatched"
+        ? "Your package is with the dispatcher."
+        : data.fulfillmentStatus === "delivered"
+          ? "Your package was marked delivered."
+          : data.fulfillmentStatus === "printing"
+            ? "Your item is being prepared for delivery."
+            : `Fulfillment: ${data.fulfillmentStatus}`;
+
+    await notifyCustomerHubStatus({
+      userId: row.user_id,
+      service: row.service,
+      status: nextStatus,
+    });
+    // Extra clear delivery line
+    if (data.fulfillmentStatus === "dispatched" || data.fulfillmentStatus === "delivered") {
+      const { notifyUser } = await import("@/lib/hub-notify.server");
+      await notifyUser({
+        userId: row.user_id,
+        title: `Delivery · ${data.fulfillmentStatus}`,
+        message: msg,
+        type: data.fulfillmentStatus === "delivered" ? "success" : "information",
+      });
+    }
+
     return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
   });
 
