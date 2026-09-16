@@ -1,7 +1,7 @@
 /**
  * Route: /cac
- * Preview: full CacRegistrationFlow when HUB_PREVIEW_FLOWS (default on).
- * Production: coming-soon trust wall until isBillLive("cac").
+ * Preview: CacRegistrationFlow when HUB_PREVIEW_FLOWS (default on).
+ * Production: coming-soon until isBillLive("cac").
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2, CheckCircle2, Clock3, Lock, ShieldCheck, Tag } from "lucide-react";
@@ -15,29 +15,21 @@ export const Route = createFileRoute("/cac")({
   head: () => ({
     meta: [
       { title: `CAC Registration — ${BRAND.name}` },
-      {
-        name: "description",
-        content: "CAC Business Name registration assistance on RockPay.",
-      },
+      { name: "description", content: "CAC Business Name registration on RockPay." },
     ],
   }),
   component: CacPage,
 });
 
-function DemoBanner() {
-  if (!isHubDemoOnly("cac")) return null;
-  return (
-    <div className="mx-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-medium text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
-      Demo flow — not real CAC filing. No official registration is submitted.
-    </div>
-  );
-}
-
 function CacPage() {
   if (isServiceFlowOpen("cac")) {
     return (
       <>
-        <DemoBanner />
+        {isHubDemoOnly("cac") ? (
+          <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
+            Demo · no real CAC filing
+          </p>
+        ) : null}
         <CacRegistrationFlow />
       </>
     );
@@ -46,88 +38,32 @@ function CacPage() {
   return (
     <AppShell>
       <PageHeader title="CAC Registration" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-4 px-4 pb-8 pt-2">
-        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-          <div className="flex gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+      <div className="mx-auto max-w-md space-y-3 px-4 pb-8 pt-2">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
               <Building2 className="size-5" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-foreground">
-                Register your business with CAC
-              </h1>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Get your business name legally recognized. Live filing opens when production is
-                connected.
-              </p>
+              <h1 className="text-base font-bold">Business Name</h1>
+              <p className="text-xs text-muted-foreground">Coming when filing is live</p>
             </div>
           </div>
-        </section>
-
-        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            What you can register
-          </p>
-          <div className="mt-3 rounded-xl border border-primary/30 bg-primary-soft/40 px-3.5 py-3">
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Business Name</p>
-                <p className="text-xs text-muted-foreground">
-                  Ideal for sole proprietors and startups.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            Before you start
-          </p>
-          <ul className="mt-3 space-y-2.5">
-            {[
-              "Applicant information",
-              "Valid identification",
-              "Business / address details",
-              "Supporting documents",
-            ].map((item) => (
-              <li key={item} className="flex items-center gap-2.5 text-sm text-foreground">
-                <CheckCircle2 className="size-4 shrink-0 text-primary" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 flex flex-wrap gap-3 border-t border-border/60 pt-3 text-sm">
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <Clock3 className="size-3.5" /> Estimated 15–20 min
+          <div className="mt-3 flex gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Clock3 className="size-3" /> 15–20 min
             </span>
-            <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
-              <Tag className="size-3.5 text-primary" /> From ₦27,500 when live
+            <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+              <Tag className="size-3 text-primary" /> ₦27,500
             </span>
           </div>
-        </section>
-
-        <div className="rounded-2xl border border-dashed border-border/80 bg-secondary/40 px-4 py-4 text-center">
-          <span className="mx-auto grid size-10 place-items-center rounded-full bg-primary-soft text-primary">
-            <Lock className="size-4" />
-          </span>
-          <p className="mt-2 text-sm font-semibold text-foreground">Service is coming soon</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Preview is off. Enable hub preview or connect production CAC filing.
-          </p>
-          <Link
-            to="/services"
-            className="press mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm"
-          >
-            Browse other services
-          </Link>
         </div>
-
-        <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-emerald-600" />
-          Official filing only when production path is live
-        </p>
+        <Link
+          to="/services"
+          className="press inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        >
+          Back to services
+        </Link>
       </div>
     </AppShell>
   );

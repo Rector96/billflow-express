@@ -1,5 +1,5 @@
 /**
- * NIN services — live fees from loader + delivery choice (PDF slip vs plastic card)
+ * NIN services — compact mobile steps + live fees from loader
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -60,7 +60,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const onPay = async () => {
     if (!product || checkoutTotal <= 0) return;
     if (product === "plastic_card" && shippingAddress.trim().length < 10) {
-      toast.error("Enter a full delivery address for the plastic card.");
+      toast.error("Enter your full delivery address.");
       return;
     }
     if (!authed) {
@@ -94,20 +94,17 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success") {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center gap-4 px-4 py-10 text-center">
-          <h1 className="text-xl font-extrabold">Payment confirmed</h1>
+        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+          <h1 className="text-lg font-bold">Done</h1>
           <p className="text-sm text-muted-foreground">
             {product === "slip_pdf"
-              ? "Your digital NIN slip will be available shortly."
+              ? "Digital slip coming shortly."
               : product === "plastic_card"
-                ? "Your plastic ID card is being prepared for delivery."
-                : "Your NIN retrieval is processing."}
+                ? "Card is being prepared for delivery."
+                : "NIN lookup is processing."}
           </p>
-          <p className="font-mono text-[10px]">Ref · {refId}</p>
-          <Button
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => navigate({ to: "/home" })}
-          >
+          <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
+          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -117,95 +114,68 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   return (
     <AppShell>
-      <PageHeader title="NIN Services" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
+      <PageHeader title="NIN" backTo="/services" />
+      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
         <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "choose" ? (
-          <section className="space-y-3">
-            <h2 className="text-lg font-extrabold">What do you need?</h2>
-
-            <button
-              type="button"
-              className="flex w-full gap-3 rounded-2xl border border-border/80 bg-card p-4 text-left"
-              onClick={() => {
-                setProduct("retrieve");
-                setStep("details");
-              }}
-            >
-              <Search className="size-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-extrabold">Retrieve NIN</p>
-                <p className="text-[11px] text-muted-foreground">Look up your 11-digit number</p>
-                <p className="mt-1 text-xs font-bold text-primary">
-                  {formatNaira(priceRetrieve, false)}
+          <section className="space-y-2">
+            {(
+              [
+                {
+                  id: "retrieve" as const,
+                  Icon: Search,
+                  title: "Retrieve NIN",
+                  sub: "Get your 11-digit number",
+                  price: priceRetrieve,
+                },
+                {
+                  id: "slip_pdf" as const,
+                  Icon: FileText,
+                  title: "NIN slip (PDF)",
+                  sub: "Download on your phone",
+                  price: priceSlip,
+                },
+                {
+                  id: "plastic_card" as const,
+                  Icon: CreditCard,
+                  title: "Plastic ID card",
+                  sub: "Print + delivery",
+                  price: priceCard + priceCourier,
+                },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
+                onClick={() => {
+                  setProduct(item.id);
+                  setStep("details");
+                }}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <item.Icon className="size-4.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.sub}</p>
+                </div>
+                <p className="shrink-0 text-xs font-bold tabular-nums text-primary">
+                  {formatNaira(item.price, false)}
                 </p>
-              </div>
-            </button>
-
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Delivery format
-            </p>
-
-            <button
-              type="button"
-              className={cn(
-                "flex w-full gap-3 rounded-2xl border p-4 text-left",
-                product === "slip_pdf" ? "border-primary bg-primary/5" : "border-border/80 bg-card",
-              )}
-              onClick={() => {
-                setProduct("slip_pdf");
-                setStep("details");
-              }}
-            >
-              <FileText className="size-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-extrabold">Download digital NIN slip (PDF)</p>
-                <p className="text-[11px] text-muted-foreground">Instant file on your phone</p>
-                <p className="mt-1 text-xs font-bold text-primary">
-                  {formatNaira(priceSlip, false)}
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={cn(
-                "flex w-full gap-3 rounded-2xl border p-4 text-left",
-                product === "plastic_card"
-                  ? "border-primary bg-primary/5"
-                  : "border-border/80 bg-card",
-              )}
-              onClick={() => {
-                setProduct("plastic_card");
-                setStep("details");
-              }}
-            >
-              <CreditCard className="size-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-extrabold">Print & deliver premium plastic ID card</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Card print + courier to your address
-                </p>
-                <p className="mt-1 text-xs font-bold text-primary">
-                  {formatNaira(priceCard + priceCourier, false)}
-                </p>
-              </div>
-            </button>
+              </button>
+            ))}
           </section>
         ) : null}
 
         {step === "details" && product ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-extrabold">Your details</h2>
+          <section className="space-y-3">
+            <h2 className="text-base font-bold">Details</h2>
             {product === "retrieve" ? (
               <div className="space-y-1.5">
-                <Label>Registered phone</Label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-12 rounded-2xl"
-                />
+                <Label>Phone on NIN</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 rounded-xl" inputMode="tel" />
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -213,31 +183,24 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 <Input
                   value={nin}
                   onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  className="h-12 rounded-2xl"
+                  className="h-11 rounded-xl"
+                  inputMode="numeric"
                 />
               </div>
             )}
-
             {product === "plastic_card" ? (
               <div className="space-y-1.5">
-                <Label>Shipping address *</Label>
+                <Label>Delivery address</Label>
                 <Input
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Street, area, city, state"
-                  className="h-12 rounded-2xl"
+                  placeholder="Street, city, state"
+                  className="h-11 rounded-xl"
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Card {formatNaira(priceCard, false)} + courier {formatNaira(priceCourier, false)}
-                </p>
               </div>
             ) : null}
-
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                onClick={() => setStep("confirm")}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("confirm")}>
                 Continue
               </Button>
             </PayActionBar>
@@ -245,45 +208,29 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
         ) : null}
 
         {step === "confirm" && product ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-extrabold">Confirm & pay</h2>
-            <div className="rounded-2xl border border-border/70 bg-card p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
+          <section className="space-y-3">
+            <h2 className="text-base font-bold">Pay</h2>
+            <div className="rounded-2xl border border-border/70 bg-card p-4 text-sm">
+              <div className="flex justify-between gap-2">
                 <span className="text-muted-foreground">Service</span>
-                <span className="font-bold">
+                <span className="text-right font-semibold">
                   {product === "retrieve"
                     ? "Retrieve NIN"
                     : product === "slip_pdf"
-                      ? "Digital NIN slip"
+                      ? "NIN slip PDF"
                       : "Plastic ID card"}
                 </span>
               </div>
-              {product === "plastic_card" ? (
-                <>
-                  <div className="flex justify-between text-xs">
-                    <span>Card print</span>
-                    <span>{formatNaira(priceCard, false)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Courier</span>
-                    <span>{formatNaira(priceCourier, false)}</span>
-                  </div>
-                </>
-              ) : null}
-              <div className="flex justify-between border-t border-border/60 pt-2 text-base font-extrabold">
+              <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-base font-bold">
                 <span>Total</span>
-                <span className="tabular-nums">{formatNaira(checkoutTotal, false)}</span>
+                <span className="tabular-nums text-primary">{formatNaira(checkoutTotal, false)}</span>
               </div>
             </div>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                disabled={paying}
-                onClick={() => void onPay()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPay()}>
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
                   `Pay ${formatNaira(checkoutTotal, false)}`
