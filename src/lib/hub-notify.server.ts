@@ -1,6 +1,7 @@
 /**
  * Insert in-app notifications for hub order lifecycle.
  * Uses public.notifications (user_id, title, message, type, read).
+ * Email is handled separately via hub-email.server (Resend).
  */
 type NotifType = "success" | "warning" | "information" | "pending" | "security";
 
