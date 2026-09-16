@@ -89,7 +89,11 @@ function MyDocumentsPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               Paid CAC, NIN and related services will show here.
             </p>
-            <Button asChild className="mt-4 h-10 rounded-xl text-xs font-semibold" variant="outline">
+            <Button
+              asChild
+              className="mt-4 h-10 rounded-xl text-xs font-semibold"
+              variant="outline"
+            >
               <Link to="/services">Browse services</Link>
             </Button>
           </div>
@@ -104,16 +108,22 @@ function MyDocumentsPage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold capitalize">{d.service.replace(/_/g, " ")}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {new Date(d.created_at).toLocaleString("en-NG")} ·{" "}
-                  {formatNaira(d.amount, false)}
+                  {new Date(d.created_at).toLocaleString("en-NG")} · {formatNaira(d.amount, false)}
                 </p>
               </div>
-              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", statusTone(d.status))}>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                  statusTone(d.status),
+                )}
+              >
                 {d.status.replace(/_/g, " ")}
               </span>
             </div>
             {d.shipping_address ? (
-              <p className="mt-2 text-[11px] text-muted-foreground">Deliver: {d.shipping_address}</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Deliver: {d.shipping_address}
+              </p>
             ) : null}
             {d.fulfillment_status ? (
               <p className="mt-1 text-[11px] font-medium text-primary">
