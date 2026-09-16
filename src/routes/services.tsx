@@ -1,15 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, SearchX, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
-import { SERVICES } from "@/lib/mock-data";
+import { SERVICES, type ServiceConfig } from "@/lib/mock-data";
 import { isBillLive, isServiceVisible } from "@/lib/product-mode";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/services")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search.q === "string" ? search.q : undefined,
+  }),
   head: () => ({
     meta: [
       { title: `Services — ${BRAND.name}` },
@@ -34,11 +37,60 @@ function servicePath(slug: string): { to: string; params?: { slug: string } } {
   return { to: "/pay/$slug", params: { slug } };
 }
 
+const GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
+  {
+    id: "bills",
+    title: "Everyday bills",
+    slugs: ["airtime", "data", "electricity", "cable", "internet", "water", "insurance"],
+  },
+  {
+    id: "gov",
+    title: "Government & business",
+    slugs: ["cac", "tin"],
+  },
+  {
+    id: "identity",
+    title: "Identity",
+    slugs: ["nin"],
+  },
+  {
+    id: "docs",
+    title: "Documents",
+    slugs: ["documents"],
+  },
+  {
+    id: "vehicle",
+    title: "Vehicle",
+    slugs: ["vehicle"],
+  },
+  {
+    id: "edu",
+    title: "Education",
+    slugs: ["education", "exam-pins"],
+  },
+];
+
 function ServicesPage() {
-  const [query, setQuery] = useState("");
-  const list = SERVICES.filter(
-    (s) => isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
+  const { q: qFromSearch } = Route.useSearch();
+  const [query, setQuery] = useState(qFromSearch ?? "");
+
+  const visible = useMemo(
+    () =>
+      SERVICES.filter(
+        (s) =>
+          isServiceVisible(s.slug) &&
+          s.name.toLowerCase().includes(query.trim().toLowerCase()),
+      ),
+    [query],
   );
+
+  const grouped = useMemo(() => {
+    const bySlug = new Map(visible.map((s) => [s.slug, s]));
+    return GROUPS.map((g) => ({
+      ...g,
+      items: g.slugs.map((slug) => bySlug.get(slug)).filter(Boolean) as ServiceConfig[],
+    })).filter((g) => g.items.length > 0);
+  }, [visible]);
 
   return (
     <AppShell>
@@ -55,24 +107,33 @@ function ServicesPage() {
           />
         </div>
 
-        {list.length ? (
-          <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
-            <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
-              {list.map((s) => {
-                const live = isBillLive(s.slug);
-                const path = servicePath(s.slug);
-                return (
-                  <ServiceTile
-                    key={s.slug}
-                    label={live ? s.short : `${s.short} · Soon`}
-                    Icon={s.icon}
-                    tint={s.tint}
-                    to={path.to}
-                    params={path.params}
-                  />
-                );
-              })}
-            </div>
+        {grouped.length ? (
+          <div className="space-y-4">
+            {grouped.map((g) => (
+              <div key={g.id}>
+                <p className="mb-2 px-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {g.title}
+                </p>
+                <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
+                  <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
+                    {g.items.map((s) => {
+                      const live = isBillLive(s.slug);
+                      const path = servicePath(s.slug);
+                      return (
+                        <ServiceTile
+                          key={s.slug}
+                          label={live ? s.short : `${s.short} · Soon`}
+                          Icon={s.icon}
+                          tint={s.tint}
+                          to={path.to}
+                          params={path.params}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <EmptyState

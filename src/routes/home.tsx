@@ -1,15 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Bell, HeartHandshake } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, Briefcase, HeartHandshake, Search } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { HomePromos } from "@/components/app/home-promos";
 import { BuyAgainRail } from "@/components/app/buy-again-rail";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useApp } from "@/lib/app-store";
 import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
+import { readContinueDrafts, type ContinueDraft } from "@/lib/continue-draft";
 import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -19,16 +21,16 @@ export const Route = createFileRoute("/home")({
       { title: `Home — ${BRAND.name}` },
       {
         name: "description",
-        content: "Your wallet balance, quick bill payments and recent transactions at a glance.",
+        content: "Everyday payments, official services and recent activity in one place.",
       },
       { property: "og:title", content: `Home — ${BRAND.name}` },
-      { property: "og:description", content: "See your balance and pay a bill in two taps." },
+      { property: "og:description", content: "What do you need today? Pay bills or continue applications." },
     ],
   }),
   component: HomePage,
 });
 
-/** Hub-first grid: CAC, NIN (retrieve + plastic card), TIN, Documents, Vehicle, + education */
+/** Hub-first grid: CAC, NIN, TIN, Documents, Vehicle, Education */
 const HOME_SERVICES = ["cac", "nin", "tin", "documents", "vehicle", "education"] as const;
 
 function serviceHref(slug: string): { to: string; params?: { slug: string } } {
@@ -44,6 +46,12 @@ function HomePage() {
   const navigate = useNavigate();
   const { profile, transactions, saved, unreadCount } = useApp();
   const firstName = (profile.name.split(" ")[0] || "there").trim();
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [drafts, setDrafts] = useState<ContinueDraft[]>([]);
+
+  useEffect(() => {
+    setDrafts(readContinueDrafts());
+  }, []);
 
   const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
 
@@ -63,6 +71,12 @@ function HomePage() {
   const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
   const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
 
+  function runServiceSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = serviceQuery.trim();
+    void navigate({ to: "/services", search: q ? { q } : {} });
+  }
+
   return (
     <AppShell>
       <header className="px-4 pt-5 pb-3">
@@ -77,9 +91,7 @@ function HomePage() {
             </Link>
             <div>
               <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
-              <h1 className="text-base font-semibold tracking-tight text-foreground">
-                {firstName}
-              </h1>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">{firstName}</h1>
             </div>
           </div>
 
@@ -101,9 +113,24 @@ function HomePage() {
       </header>
 
       <div className="space-y-4 px-4 pt-1 pb-6">
+        {/* Compact wallet stays — approved hierarchy keeps balance visible */}
         <WalletCard />
 
-        <HomePromos className="mt-3" />
+        <section className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">What do you need today?</p>
+          <form onSubmit={runServiceSearch} className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={serviceQuery}
+              onChange={(e) => setServiceQuery(e.target.value)}
+              placeholder="Search CAC, NIN, data..."
+              aria-label="Search services"
+              className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
+            />
+          </form>
+        </section>
+
+        <HomePromos className="mt-1" />
 
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <SectionTitle title="Quick Services" action="View all" to="/services" />
@@ -131,7 +158,7 @@ function HomePage() {
 
         {(buyAgain.length > 0 || savedHome.length > 0) && (
           <section>
-            <SectionTitle title="Quick Pay" action="See all" to="/saved-payments" />
+            <SectionTitle title="Pay again" action="See all" to="/saved-payments" />
             <div className="space-y-2">
               <BuyAgainRail items={buyAgain} compact />
               {savedHome.map((item) => {
@@ -175,11 +202,49 @@ function HomePage() {
           </section>
         )}
 
+        {drafts.length > 0 ? (
+          <section>
+            <SectionTitle title="Continue" />
+            <div className="space-y-2">
+              {drafts.slice(0, 2).map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                    <Briefcase className="size-4.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{d.title}</p>
+                    <p className="text-xs text-muted-foreground">{d.stepLabel}</p>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{
+                          width: `${Math.min(100, Math.round((d.step / Math.max(1, d.totalSteps)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 rounded-lg px-3 text-xs font-semibold"
+                    onClick={() => void navigate({ to: d.href as "/cac" })}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section>
-          <SectionTitle title="Recent Activity" action="See all" to="/history" />
+          <SectionTitle title="Recent activity" action="See all" to="/history" />
           {recent.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/80 bg-card py-6 text-center text-xs text-muted-foreground">
-              Your recent payments will appear here.
+              Your recent payments and applications will appear here.
             </p>
           ) : (
             <div className="space-y-2">
@@ -198,8 +263,10 @@ function HomePage() {
             <HeartHandshake className="size-4.5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-foreground">Need help with a payment?</p>
-            <p className="text-[11px] text-muted-foreground">RockPay Support is available 24/7</p>
+            <p className="text-xs font-semibold text-foreground">Need help?</p>
+            <p className="text-[11px] text-muted-foreground">
+              Payments, applications or verification — RockPay Support
+            </p>
           </div>
           <span className="text-xs font-medium text-primary">Get help →</span>
         </Link>
