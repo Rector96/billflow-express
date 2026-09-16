@@ -350,7 +350,10 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       /* columns may not exist yet */
     }
 
-    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
+    const { error } = await admin
+      .from("hub_orders")
+      .update(patch as never)
+      .eq("id", data.orderId);
     if (error) {
       // Retry without optional columns if schema not migrated
       const { error: e2 } = await admin
