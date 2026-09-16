@@ -5,11 +5,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { RockPayBillEntry } from "@/components/app/rockpay-bill-entry";
 import { BRAND } from "@/lib/brand";
 import { getService } from "@/lib/mock-data";
-import {
-  isHubDemoOnly,
-  isServiceFlowOpen,
-  REMOVED_SERVICE_SLUGS,
-} from "@/lib/product-mode";
+import { isHubDemoOnly, isServiceFlowOpen, REMOVED_SERVICE_SLUGS } from "@/lib/product-mode";
 
 type Search = {
   saved?: string;

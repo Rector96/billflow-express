@@ -18,8 +18,7 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${BRAND.name}` },
       {
         name: "description",
-        content:
-          "Electricity, cable, education, exam pins, CAC, NIN, TIN, documents and vehicle.",
+        content: "Electricity, cable, education, exam pins, CAC, NIN, TIN, documents and vehicle.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
       { property: "og:description", content: "Bills and official services in one place." },
