@@ -1,24 +1,31 @@
 /**
- * /admin/hub-orders — queue + detail: status, notes, document link, dispatch.
- * Auto-refreshes every 20s so staff see new orders quickly.
+ * /admin/hub-orders — bank-grade queue + full customer/dispatch detail.
+ * Attach certificate → customer downloads from Profile → My documents.
+ * Agent assign + care call before dispatch.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, X } from "lucide-react";
+import { RefreshCw, X, Phone, User, MapPin, FileText, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   addHubStaffNote,
+  assignHubAgent,
+  getHubOrderDetail,
   listHubOrders,
+  notifyCustomerToDownload,
+  updateHubCareCall,
   updateHubFulfillment,
   updateHubOrderStatus,
+  type HubOrderDetail,
   type HubOrderRow,
   type HubOrderStatus,
 } from "@/lib/admin-hub.functions";
 import { attachHubDocument } from "@/lib/hub-documents.functions";
+import { FULFILLMENT_LABELS, type FulfillmentStatus } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -65,22 +72,58 @@ function metaGet(meta: Record<string, unknown> | null | undefined, ...keys: stri
   return "";
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft">
+      <p className="mb-2.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  if (!value || value === "—") {
+    return (
+      <div className="flex justify-between gap-3 border-b border-border/40 py-1.5 text-xs last:border-0">
+        <span className="shrink-0 text-muted-foreground">{label}</span>
+        <span className="text-right text-muted-foreground/70">—</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex justify-between gap-3 border-b border-border/40 py-1.5 text-xs last:border-0">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="max-w-[60%] break-words text-right font-semibold text-foreground">{value}</span>
+    </div>
+  );
+}
+
 function AdminHubOrders() {
   const runList = useServerFn(listHubOrders);
+  const runDetail = useServerFn(getHubOrderDetail);
   const runStatus = useServerFn(updateHubOrderStatus);
   const runNote = useServerFn(addHubStaffNote);
   const runFul = useServerFn(updateHubFulfillment);
   const runAttach = useServerFn(attachHubDocument);
+  const runAgent = useServerFn(assignHubAgent);
+  const runCare = useServerFn(updateHubCareCall);
+  const runNotifyDl = useServerFn(notifyCustomerToDownload);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<HubOrderRow | null>(null);
+  const [detail, setDetail] = useState<HubOrderDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filterService, setFilterService] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [noteText, setNoteText] = useState("");
   const [docUrl, setDocUrl] = useState("");
+  const [agentName, setAgentName] = useState("");
+  const [agentDesk, setAgentDesk] = useState("nin");
+  const [careNote, setCareNote] = useState("");
   const prevCount = useRef<number | null>(null);
 
   const load = useCallback(
@@ -101,10 +144,6 @@ function AdminHubOrders() {
         }
         prevCount.current = next.length;
         setOrders(next);
-        setSelected((prev) => {
-          if (!prev) return null;
-          return next.find((o) => o.id === prev.id) ?? prev;
-        });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load hub orders");
         if (!quiet) setOrders([]);
@@ -124,28 +163,59 @@ function AdminHubOrders() {
     return () => window.clearInterval(t);
   }, [load]);
 
-  useEffect(() => {
-    if (!selected) {
-      setDocUrl("");
-      return;
+  const openDetail = async (o: HubOrderRow) => {
+    setDetailLoading(true);
+    setDetail(null);
+    setNoteText("");
+    setCareNote("");
+    try {
+      const res = await runDetail({ data: { orderId: o.id } });
+      const d = res.order;
+      setDetail(d);
+      const m = d.metadata && typeof d.metadata === "object" ? d.metadata : {};
+      const existing =
+        typeof m["document_url"] === "string"
+          ? m["document_url"]
+          : typeof m["certificate_url"] === "string"
+            ? m["certificate_url"]
+            : "";
+      setDocUrl(existing);
+      setAgentName(typeof m["assigned_agent"] === "string" ? m["assigned_agent"] : "");
+      setAgentDesk(
+        typeof m["assigned_desk"] === "string"
+          ? String(m["assigned_desk"])
+          : d.service.toLowerCase().includes("vehicle")
+            ? "vehicle"
+            : d.service.toLowerCase().includes("cac")
+              ? "cac"
+              : "nin",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not load detail");
+      setDetail({ ...o, profile: null });
+    } finally {
+      setDetailLoading(false);
     }
-    const m = selected.metadata && typeof selected.metadata === "object" ? selected.metadata : {};
-    const existing =
-      typeof m["document_url"] === "string"
-        ? m["document_url"]
-        : typeof m["certificate_url"] === "string"
-          ? m["certificate_url"]
-          : "";
-    setDocUrl(existing);
-  }, [selected?.id]);
+  };
+
+  const refreshDetail = async () => {
+    if (!detail) return;
+    await openDetail(detail);
+    await load(true);
+  };
+
+  const meta = useMemo(() => {
+    const m = detail?.metadata;
+    return m && typeof m === "object" ? m : null;
+  }, [detail]);
 
   const setStatus = async (status: HubOrderStatus, note?: string) => {
-    if (!selected) return;
+    if (!detail) return;
     setBusy(true);
     try {
-      await runStatus({ data: { orderId: selected.id, status, note } });
-      toast.success(`Marked ${status.replace(/_/g, " ")} — customer notified`);
-      await load(true);
+      await runStatus({ data: { orderId: detail.id, status, note } });
+      toast.success(`Marked ${status.replace(/_/g, " ")}`);
+      await refreshDetail();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Update failed");
     } finally {
@@ -154,13 +224,13 @@ function AdminHubOrders() {
   };
 
   const saveNote = async () => {
-    if (!selected || !noteText.trim()) return;
+    if (!detail || !noteText.trim()) return;
     setBusy(true);
     try {
-      await runNote({ data: { orderId: selected.id, note: noteText.trim() } });
+      await runNote({ data: { orderId: detail.id, note: noteText.trim() } });
       setNoteText("");
       toast.success("Note saved");
-      await load(true);
+      await refreshDetail();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save note");
     } finally {
@@ -169,14 +239,14 @@ function AdminHubOrders() {
   };
 
   const saveDocument = async () => {
-    if (!selected) return;
+    if (!detail) return;
     setBusy(true);
     try {
       await runAttach({
-        data: { orderId: selected.id, documentUrl: docUrl.trim(), markReady: true },
+        data: { orderId: detail.id, documentUrl: docUrl.trim(), markReady: true },
       });
-      toast.success("Document linked — customer notified");
-      await load(true);
+      toast.success("Document attached — customer can download from My documents");
+      await refreshDetail();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not attach document");
     } finally {
@@ -184,28 +254,89 @@ function AdminHubOrders() {
     }
   };
 
-  const detailMeta = useMemo(() => {
-    const m = selected?.metadata;
-    return m && typeof m === "object" ? m : null;
-  }, [selected]);
+  const pingDownload = async () => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      await runNotifyDl({ data: { orderId: detail.id } });
+      toast.success("Customer notified — log in to download");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Notify failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const isCac = selected?.service?.toLowerCase().includes("cac");
-  const isPhysical =
-    selected &&
-    ["nin_card", "plastic", "license_sticker", "vehicle_license"].some(
-      (x) =>
-        selected.service.toLowerCase().includes(x.replace("_", "")) ||
-        selected.service.toLowerCase().includes(x),
-    );
+  const saveAgent = async () => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      await runAgent({
+        data: { orderId: detail.id, agentLabel: agentName.trim(), agentDesk },
+      });
+      toast.success("Agent assigned");
+      await refreshDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Assign failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const staffNotes = Array.isArray(detailMeta?.["staff_notes"])
-    ? (detailMeta!["staff_notes"] as { at?: string; text?: string; by?: string }[])
+  const setCare = async (careStatus: string) => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      await runCare({
+        data: { orderId: detail.id, careStatus, note: careNote.trim() },
+      });
+      toast.success(`Care · ${careStatus.replace(/_/g, " ")}`);
+      setCareNote("");
+      await refreshDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Care update failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setFul = async (fulfillmentStatus: FulfillmentStatus) => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      await runFul({ data: { orderId: detail.id, fulfillmentStatus } });
+      toast.success(FULFILLMENT_LABELS[fulfillmentStatus] ?? fulfillmentStatus);
+      await refreshDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Fulfillment update failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const staffNotes = Array.isArray(meta?.["staff_notes"])
+    ? (meta!["staff_notes"] as { at?: string; text?: string }[])
     : [];
+
+  const delivery = metaGet(meta, "delivery") || "download";
+  const ful = metaGet(meta, "fulfillment_status") || "paid";
+  const phone =
+    detail?.profile?.phone ||
+    metaGet(meta, "owner_phone", "phone") ||
+    "";
+  const email =
+    detail?.profile?.email ||
+    metaGet(meta, "owner_email", "email") ||
+    "";
+  const displayName =
+    detail?.profile?.full_name ||
+    metaGet(meta, "owner_name", "preferred_name", "taxpayerName") ||
+    "Customer";
 
   return (
     <AdminShell
       title="Hub orders"
-      subtitle="CAC, NIN, TIN, documents, vehicle — auto-refreshes every 20s"
+      subtitle="Full customer profile · agent · care call · documents"
       actions={
         <button
           type="button"
@@ -224,22 +355,13 @@ function AdminHubOrders() {
           className="h-9 rounded-xl border bg-card px-3 text-xs font-semibold"
         >
           <option value="">All services</option>
-          {[
-            "cac",
-            "tin",
-            "documents",
-            "nin_retrieve",
-            "nin_slip",
-            "nin_card_print",
-            "vehicle_license_sticker",
-            "vehicle_third_party_insurance",
-            "license_sticker",
-            "third_party_insurance",
-          ].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          {["cac", "tin", "documents", "nin_retrieve", "nin_slip", "nin_card_print", "vehicle_license_sticker", "vehicle_third_party_insurance"].map(
+            (s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ),
+          )}
         </select>
         <select
           value={filterStatus}
@@ -266,18 +388,17 @@ function AdminHubOrders() {
       ) : orders.length === 0 ? (
         <AdminEmpty
           title="No hub orders yet"
-          body="Paid CAC, TIN, NIN, documents, and vehicle orders appear here after checkout writes hub_orders."
+          body="CAC, NIN, TIN, documents and vehicle orders appear here after checkout."
         />
       ) : (
         <div className="overflow-x-auto rounded-2xl border bg-card shadow-card">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="border-b bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-2.5 font-semibold">Order</th>
+                <th className="px-3 py-2.5 font-semibold">Ref</th>
                 <th className="px-3 py-2.5 font-semibold">Service</th>
-                <th className="px-3 py-2.5 font-semibold">User</th>
+                <th className="px-3 py-2.5 font-semibold">Customer id</th>
                 <th className="px-3 py-2.5 font-semibold">Amount</th>
-                <th className="px-3 py-2.5 font-semibold">Payment ref</th>
                 <th className="px-3 py-2.5 font-semibold">Created</th>
                 <th className="px-3 py-2.5 font-semibold">SLA</th>
                 <th className="px-3 py-2.5 font-semibold">Status</th>
@@ -290,18 +411,17 @@ function AdminHubOrders() {
                   <tr
                     key={o.id}
                     className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-                    onClick={() => setSelected(o)}
+                    onClick={() => void openDetail(o)}
                   >
-                    <td className="px-3 py-2.5 font-mono text-[11px]">{o.id.slice(0, 8)}…</td>
+                    <td className="px-3 py-2.5 font-mono text-[11px]">
+                      {o.tracking_reference || `${o.id.slice(0, 8)}…`}
+                    </td>
                     <td className="px-3 py-2.5 font-semibold">{o.service}</td>
                     <td className="px-3 py-2.5 font-mono text-[11px] text-muted-foreground">
-                      {(o.customer_identifier || o.user_id).slice(0, 12)}
+                      {(o.customer_identifier || o.user_id).slice(0, 14)}
                     </td>
                     <td className="px-3 py-2.5 font-bold tabular-nums">
                       {formatNaira(Number(o.amount), false)}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono text-[10px] text-muted-foreground">
-                      {(o.payment_reference || "—").slice(0, 18)}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">
                       {new Date(o.created_at).toLocaleString("en-NG")}
@@ -329,239 +449,284 @@ function AdminHubOrders() {
         </div>
       )}
 
-      {selected ? (
+      {detail || detailLoading ? (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"
             aria-label="Close"
-            onClick={() => setSelected(null)}
+            onClick={() => setDetail(null)}
           />
           <aside className="relative z-10 flex h-full w-full max-w-md flex-col border-l bg-background shadow-float">
             <div className="flex items-center justify-between border-b px-4 py-3">
               <div>
-                <p className="text-sm font-extrabold">Order detail</p>
-                <p className="font-mono text-[10px] text-muted-foreground">{selected.id}</p>
+                <p className="text-sm font-extrabold">Order control</p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  {detail?.tracking_reference || detail?.id || "…"}
+                </p>
               </div>
               <button
                 type="button"
                 className="grid size-9 place-items-center rounded-xl border"
-                onClick={() => setSelected(null)}
+                onClick={() => setDetail(null)}
               >
                 <X className="size-4" />
               </button>
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <StatusBadge status={selected.status} />
-              </div>
-              <Row label="Service" value={selected.service} />
-              <Row label="Amount" value={formatNaira(Number(selected.amount), false)} />
-              <Row label="Payment ref" value={selected.payment_reference || "—"} />
-              <Row label="Tracking" value={selected.tracking_reference || "—"} />
-              <Row label="User id" value={selected.user_id} />
-              <Row label="Customer id" value={selected.customer_identifier || "—"} />
-              <Row label="Created" value={new Date(selected.created_at).toLocaleString("en-NG")} />
 
-              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
-                  Customer download file
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Paste an https link (Drive, storage, CDN). Customer is notified and can open
-                  Profile → My documents.
-                </p>
-                <Input
-                  value={docUrl}
-                  onChange={(e) => setDocUrl(e.target.value)}
-                  placeholder="https://…"
-                  className="mt-2 h-10 rounded-xl text-xs"
-                />
-                <Button
-                  size="sm"
-                  className="mt-2 w-full rounded-xl text-xs"
-                  disabled={busy || !docUrl.trim()}
-                  onClick={() => void saveDocument()}
-                >
-                  Attach & mark ready
-                </Button>
-              </div>
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {detailLoading || !detail ? (
+                <p className="py-10 text-center text-xs text-muted-foreground">Loading detail…</p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={detail.status} />
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">
+                      {ful.replace(/_/g, " ")}
+                    </span>
+                  </div>
 
-              {isCac ? (
-                <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800 dark:text-teal-200">
-                    CAC workflow
-                  </p>
-                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-muted-foreground">
-                    <li>Confirm payment + docs in metadata</li>
-                    <li>Mark in progress when filing starts</li>
-                    <li>Attach certificate link when ready</li>
-                    <li>Complete / notify customer</li>
-                  </ol>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <Section title="Customer">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="grid size-9 place-items-center rounded-full bg-primary-soft text-primary">
+                        <User className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-extrabold">{displayName}</p>
+                        <p className="truncate font-mono text-[10px] text-muted-foreground">
+                          {detail.user_id.slice(0, 18)}…
+                        </p>
+                      </div>
+                    </div>
+                    <Field label="Phone" value={phone || "—"} />
+                    <Field label="Email" value={email || "—"} />
+                    <Field label="ID / NIN / plate" value={detail.customer_identifier || "—"} />
+                    {phone ? (
+                      <a
+                        href={`tel:${phone.replace(/\s/g, "")}`}
+                        className="mt-2 flex h-9 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary"
+                      >
+                        <Phone className="size-3.5" /> Call customer
+                      </a>
+                    ) : null}
+                  </Section>
+
+                  <Section title="Order">
+                    <Field label="Service" value={detail.service} />
+                    <Field label="Amount" value={formatNaira(Number(detail.amount), false)} />
+                    <Field label="Payment ref" value={detail.payment_reference || "—"} />
+                    <Field label="Tracking" value={detail.tracking_reference || "—"} />
+                    <Field label="Delivery" value={delivery} />
+                    <Field
+                      label="Created"
+                      value={new Date(detail.created_at).toLocaleString("en-NG")}
+                    />
+                  </Section>
+
+                  <Section title="Application / shipping">
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+                      <MapPin className="size-3" /> Address & form data
+                    </div>
+                    <Field label="Business name" value={metaGet(meta, "preferred_name")} />
+                    <Field label="Owner" value={metaGet(meta, "owner_name")} />
+                    <Field label="NIN" value={metaGet(meta, "nin")} />
+                    <Field label="Nature" value={metaGet(meta, "nature")} />
+                    <Field label="Business address" value={metaGet(meta, "business_address")} />
+                    <Field
+                      label="Shipping address"
+                      value={metaGet(meta, "shipping_address", "shippingAddress", "address")}
+                    />
+                    <Field label="Plate" value={metaGet(meta, "plate", "plate_number")} />
+                    <Field label="Make / model" value={metaGet(meta, "makeModel", "make_model")} />
+                    <Field label="TIN" value={metaGet(meta, "tin")} />
+                    <Field label="Taxpayer" value={metaGet(meta, "taxpayerName")} />
+                  </Section>
+
+                  <Section title="Agent desk">
+                    <select
+                      value={agentDesk}
+                      onChange={(e) => setAgentDesk(e.target.value)}
+                      className="mb-2 h-9 w-full rounded-xl border bg-background px-3 text-xs font-semibold"
+                    >
+                      <option value="nin">NIN desk</option>
+                      <option value="vehicle">Vehicle desk</option>
+                      <option value="cac">CAC / docs desk</option>
+                      <option value="general">General</option>
+                    </select>
+                    <Input
+                      value={agentName}
+                      onChange={(e) => setAgentName(e.target.value)}
+                      placeholder="Agent name"
+                      className="h-9 rounded-xl text-xs"
+                    />
+                    <Field label="Currently assigned" value={metaGet(meta, "assigned_agent") || "—"} />
+                    <Button
+                      size="sm"
+                      className="mt-2 w-full rounded-xl text-xs"
+                      disabled={busy || agentName.trim().length < 2}
+                      onClick={() => void saveAgent()}
+                    >
+                      Assign agent
+                    </Button>
+                  </Section>
+
+                  <Section title="Care call">
+                    <p className="mb-2 text-[11px] text-muted-foreground">
+                      Call to confirm address / name, then mark confirmed before dispatch.
+                    </p>
+                    <Field label="Care status" value={metaGet(meta, "care_call_status") || "pending"} />
+                    <Input
+                      value={careNote}
+                      onChange={(e) => setCareNote(e.target.value)}
+                      placeholder="Call notes…"
+                      className="mb-2 h-9 rounded-xl text-xs"
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(["called", "confirmed", "no_answer", "skipped"] as const).map((s) => (
+                        <Button
+                          key={s}
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl text-[10px]"
+                          disabled={busy}
+                          onClick={() => void setCare(s)}
+                        >
+                          {s.replace(/_/g, " ")}
+                        </Button>
+                      ))}
+                    </div>
+                  </Section>
+
+                  <Section title="Document for customer">
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
+                      <FileText className="size-3" /> Paste https link (Drive / storage)
+                    </div>
+                    <p className="mb-2 text-[11px] text-muted-foreground">
+                      When CAC / NIN file is ready, attach it. Customer opens Profile → My documents.
+                    </p>
+                    <Input
+                      value={docUrl}
+                      onChange={(e) => setDocUrl(e.target.value)}
+                      placeholder="https://…"
+                      className="h-9 rounded-xl text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      className="mt-2 w-full rounded-xl text-xs"
+                      disabled={busy || !docUrl.trim()}
+                      onClick={() => void saveDocument()}
+                    >
+                      Attach & mark ready
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded-xl text-[10px]"
+                      className="mt-1.5 w-full rounded-xl text-xs"
                       disabled={busy}
-                      onClick={() => void setStatus("in_progress", "CAC filing started")}
+                      onClick={() => void pingDownload()}
                     >
-                      Start filing
+                      <Bell className="mr-1.5 size-3.5" />
+                      Notify: log in & download
                     </Button>
+                    <Field label="Linked file" value={metaGet(meta, "document_url", "certificate_url") || "—"} />
+                  </Section>
+
+                  <Section title="Workflow">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setStatus("in_progress", "Processing started")}
+                      >
+                        In progress
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setStatus("successful", "Ready for customer")}
+                      >
+                        Mark successful
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setFul("queued_print")}
+                      >
+                        Queue print
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setFul("sealed")}
+                      >
+                        Sealed
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setFul("dispatched")}
+                      >
+                        Dispatched
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="rounded-xl text-[10px]"
+                        disabled={busy}
+                        onClick={() => void setFul("delivered")}
+                      >
+                        Delivered
+                      </Button>
+                    </div>
+                  </Section>
+
+                  <Section title="Staff notes">
+                    <div className="mb-2 max-h-28 space-y-1.5 overflow-y-auto">
+                      {staffNotes.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground">No notes yet</p>
+                      ) : (
+                        staffNotes
+                          .slice()
+                          .reverse()
+                          .map((n, i) => (
+                            <div key={i} className="rounded-lg bg-muted/50 px-2 py-1.5 text-[11px]">
+                              <p className="font-medium">{n.text}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {n.at ? new Date(n.at).toLocaleString("en-NG") : ""}
+                              </p>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                    <Input
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="Add internal note…"
+                      className="h-9 rounded-xl text-xs"
+                    />
                     <Button
                       size="sm"
-                      className="rounded-xl text-[10px]"
-                      disabled={busy}
-                      onClick={() => void setStatus("successful", "CAC certificate ready")}
+                      variant="outline"
+                      className="mt-2 w-full rounded-xl text-xs"
+                      disabled={busy || noteText.trim().length < 2}
+                      onClick={() => void saveNote()}
                     >
-                      Certificate ready
+                      Save note
                     </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              <p className="pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Metadata
-              </p>
-              <Row label="Plate" value={metaGet(detailMeta, "plate", "plate_number")} />
-              <Row label="Make / model" value={metaGet(detailMeta, "makeModel", "make_model")} />
-              <Row
-                label="Shipping address"
-                value={metaGet(detailMeta, "shipping_address", "shippingAddress", "address")}
-              />
-              <Row
-                label="Document URL"
-                value={metaGet(detailMeta, "document_url", "certificate_url")}
-              />
-              <Row label="TIN" value={metaGet(detailMeta, "tin")} />
-              <Row label="Taxpayer" value={metaGet(detailMeta, "taxpayerName")} />
-              <Row
-                label="Fulfillment"
-                value={metaGet(detailMeta, "fulfillment_status") || (isPhysical ? "queued" : "")}
-              />
-
-              {isPhysical ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl text-[10px]"
-                    disabled={busy}
-                    onClick={() =>
-                      void runFul({
-                        data: { orderId: selected.id, fulfillmentStatus: "printing" },
-                      }).then(() => load(true))
-                    }
-                  >
-                    Mark printing
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="rounded-xl text-[10px]"
-                    disabled={busy}
-                    onClick={() =>
-                      void runFul({
-                        data: { orderId: selected.id, fulfillmentStatus: "dispatched" },
-                      }).then(() => {
-                        toast.success("Customer notified — dispatched");
-                        return load(true);
-                      })
-                    }
-                  >
-                    Mark dispatched
-                  </Button>
-                </div>
-              ) : null}
-
-              <p className="pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Staff notes
-              </p>
-              <div className="max-h-32 space-y-2 overflow-y-auto">
-                {staffNotes.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground">No notes yet.</p>
-                ) : (
-                  staffNotes
-                    .slice()
-                    .reverse()
-                    .map((n, i) => (
-                      <div
-                        key={i}
-                        className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]"
-                      >
-                        <p>{n.text}</p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          {n.at ? new Date(n.at).toLocaleString("en-NG") : ""}
-                        </p>
-                      </div>
-                    ))
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Internal note…"
-                  className="h-10 rounded-xl text-xs"
-                />
-                <Button
-                  size="sm"
-                  className="h-10 rounded-xl"
-                  disabled={busy}
-                  onClick={() => void saveNote()}
-                >
-                  Add
-                </Button>
-              </div>
-
-              <pre className="max-h-40 overflow-auto rounded-xl bg-muted/40 p-3 font-mono text-[10px]">
-                {JSON.stringify(detailMeta ?? {}, null, 2)}
-              </pre>
-            </div>
-            <div className="space-y-2 border-t p-4">
-              <p className="text-[11px] font-semibold text-muted-foreground">Order status</p>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-xl text-xs"
-                  disabled={busy}
-                  onClick={() => void setStatus("in_progress")}
-                >
-                  In progress
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl text-xs"
-                  disabled={busy}
-                  onClick={() => void setStatus("successful")}
-                >
-                  Complete
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="rounded-xl text-xs"
-                  disabled={busy}
-                  onClick={() => void setStatus("failed")}
-                >
-                  Fail
-                </Button>
-              </div>
+                  </Section>
+                </>
+              )}
             </div>
           </aside>
         </div>
       ) : null}
     </AdminShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  if (!value || value === "—") return null;
-  return (
-    <div className="flex items-start justify-between gap-3 border-b border-border/50 py-2">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="max-w-[60%] break-all text-right text-xs font-semibold">{value}</span>
-    </div>
   );
 }
