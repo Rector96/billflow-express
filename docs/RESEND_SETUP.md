@@ -4,12 +4,12 @@ RockPay sends lifecycle emails when **RESEND_API_KEY** and **RESEND_FROM** are s
 
 ## Events
 
-| Event | When |
-|--------|------|
-| **paid** | New hub order submitted (demo pay / real pay later) |
-| **digital_ready** | Staff attaches document or marks successful |
-| **dispatched** | Staff marks dispatched on Dispatch queue |
-| **delivered** | Staff marks delivered |
+| Event             | When                                                |
+| ----------------- | --------------------------------------------------- |
+| **paid**          | New hub order submitted (demo pay / real pay later) |
+| **digital_ready** | Staff attaches document or marks successful         |
+| **dispatched**    | Staff marks dispatched on Dispatch queue            |
+| **delivered**     | Staff marks delivered                               |
 
 If keys are missing, the app **skips email** and still uses in-app notifications.
 

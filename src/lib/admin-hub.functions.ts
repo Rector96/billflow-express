@@ -367,7 +367,10 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       /* optional columns */
     }
 
-    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
+    const { error } = await admin
+      .from("hub_orders")
+      .update(patch as never)
+      .eq("id", data.orderId);
     if (error) {
       const { error: e2 } = await admin
         .from("hub_orders")
