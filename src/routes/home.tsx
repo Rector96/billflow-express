@@ -34,7 +34,17 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-const HOME_SERVICES = ["cac", "nin", "tin", "documents", "vehicle", "education"] as const;
+/** Quick grid: hub + education (exam pins under Services). */
+const HOME_SERVICES = [
+  "education",
+  "exam-pins",
+  "cac",
+  "nin",
+  "tin",
+  "documents",
+  "vehicle",
+  "electricity",
+] as const;
 
 function serviceHref(slug: string): { to: string; params?: { slug: string } } {
   if (slug === "cac") return { to: "/cac" };
@@ -140,7 +150,7 @@ function HomePage() {
             <Input
               value={serviceQuery}
               onChange={(e) => setServiceQuery(e.target.value)}
-              placeholder="Search CAC, NIN, electricity..."
+              placeholder="Search education, exam pins, CAC..."
               aria-label="Search services"
               className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
             />
@@ -151,7 +161,7 @@ function HomePage() {
 
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <SectionTitle title="Quick Services" action="View all" to="/services" />
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
             {serviceTiles.map((s) =>
               s ? (
                 <ServiceTile
