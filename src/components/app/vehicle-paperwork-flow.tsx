@@ -252,7 +252,10 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
               : "License sticker is queued for print & delivery. Watch Notifications for updates."}
           </p>
           {isInsurance ? (
-            <Button className="h-12 w-full max-w-xs rounded-xl font-semibold" onClick={downloadInsurancePdf}>
+            <Button
+              className="h-12 w-full max-w-xs rounded-xl font-semibold"
+              onClick={downloadInsurancePdf}
+            >
               <FileDown className="mr-2 size-4" /> Temp receipt
             </Button>
           ) : (
