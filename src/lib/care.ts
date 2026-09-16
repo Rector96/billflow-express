@@ -1,9 +1,5 @@
 export type TicketCategory =
-  | "payment_not_received"
-  | "wrong_amount"
-  | "pending_transaction"
-  | "token_not_received"
-  | "other";
+  "payment_not_received" | "wrong_amount" | "pending_transaction" | "token_not_received" | "other";
 
 export const CATEGORY_OPTIONS: Array<{ key: TicketCategory; label: string }> = [
   { key: "payment_not_received", label: "Payment" },
