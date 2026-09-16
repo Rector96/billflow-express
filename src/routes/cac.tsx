@@ -1,10 +1,8 @@
 /**
- * Route: /cac
- * Preview: CacRegistrationFlow when HUB_PREVIEW_FLOWS (default on).
- * Production: coming-soon until isBillLive("cac").
+ * Route: /cac — opens CacRegistrationFlow when hub preview is on (default).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, CheckCircle2, Clock3, Lock, ShieldCheck, Tag } from "lucide-react";
+import { Building2, Clock3, Tag } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CacRegistrationFlow } from "@/components/app/cac-registration-flow";
@@ -27,7 +25,7 @@ function CacPage() {
       <>
         {isHubDemoOnly("cac") ? (
           <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
-            Demo · no real CAC filing
+            Demo · no real CAC filing yet
           </p>
         ) : null}
         <CacRegistrationFlow />

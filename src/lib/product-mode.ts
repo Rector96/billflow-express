@@ -3,16 +3,12 @@
  *
  * Layers:
  * 1) `isBillLive()` — real production fulfillment (wallet/VTpass money path).
- * 2) `HUB_PREVIEW_FLOWS` — interactive UI for hub services (QA).
+ * 2) `HUB_PREVIEW_FLOWS` — interactive UI for hub services so you can QA every step.
  * 3) `isServiceFlowOpen()` — UI may open the wizard (live OR hub preview).
  *
- * PRODUCTION BUILDS (import.meta.env.PROD):
- *   Hub preview defaults to OFF so customers only see live bills unless you
- *   explicitly set VITE_HUB_PREVIEW_FLOWS=true on Netlify (staging only).
- *
- * DEV / local: preview defaults to ON so you can walk CAC/NIN/etc.
- *
- * Only promote a slug into LIVE_BILL_SLUGS when fulfillment is real.
+ * Default: hub preview is ON so CAC/NIN/etc work on Netlify while the product is unfinished.
+ * When you are ready for strict production: set Netlify `VITE_HUB_PREVIEW_FLOWS=false`.
+ * Only promote into LIVE_BILL_SLUGS when fulfillment is real.
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -40,10 +36,7 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
   "insurance",
 ]);
 
-/**
- * Only services with a verified production fulfillment path belong here.
- * Exam PINs stay out until VTpass + DB availability are confirmed end-to-end.
- */
+/** Only services with verified production fulfillment. */
 export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "airtime", "data"]);
 
 export const HUB_PREVIEW_SLUGS = new Set([
@@ -55,14 +48,6 @@ export const HUB_PREVIEW_SLUGS = new Set([
   "education",
   "exam-pins",
 ]);
-
-function isProdBuild(): boolean {
-  try {
-    return Boolean(import.meta.env.PROD);
-  } catch {
-    return false;
-  }
-}
 
 function readEnvFlag(key: string, defaultValue: boolean): boolean {
   try {
@@ -80,12 +65,10 @@ function readEnvFlag(key: string, defaultValue: boolean): boolean {
 }
 
 /**
- * Hub interactive demos.
- * - Local/dev: default ON
- * - Production build: default OFF (safe for real customers)
- * Override anytime with VITE_HUB_PREVIEW_FLOWS=true|false on Netlify.
+ * Default ON — hub flows stay usable while we finish the product.
+ * Set VITE_HUB_PREVIEW_FLOWS=false on Netlify only when you want “coming soon” for hub.
  */
-export const HUB_PREVIEW_FLOWS = readEnvFlag("VITE_HUB_PREVIEW_FLOWS", !isProdBuild());
+export const HUB_PREVIEW_FLOWS = readEnvFlag("VITE_HUB_PREVIEW_FLOWS", true);
 
 export function homeServiceSlugs(): readonly string[] {
   return BILLS_FOCUS ? HOME_BILL_SLUGS : HOME_CLASSIC_SLUGS;

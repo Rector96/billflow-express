@@ -1,21 +1,8 @@
 /**
  * Server-side mirror of hub UI preview flag.
- *
- * Production (Netlify CONTEXT=production or NODE_ENV=production):
- *   Default OFF — demo fulfillment refuses unless explicitly enabled.
- * Dev / branch deploys:
- *   Default ON so QA can walk flows without Dojah.
- *
- * Explicit env always wins:
- *   HUB_PREVIEW_FLOWS or VITE_HUB_PREVIEW_FLOWS = true|false
+ * Default ON so CAC/NIN demo submits work on Netlify while the product is unfinished.
+ * Set HUB_PREVIEW_FLOWS=false or VITE_HUB_PREVIEW_FLOWS=false to hard-close demo APIs.
  */
-function isProductionRuntime(): boolean {
-  const ctx = String(process.env["CONTEXT"] ?? "").toLowerCase();
-  if (ctx === "production") return true;
-  if (String(process.env["NODE_ENV"] ?? "").toLowerCase() === "production") return true;
-  return false;
-}
-
 export function isHubPreviewServerEnabled(): boolean {
   const candidates = [process.env["HUB_PREVIEW_FLOWS"], process.env["VITE_HUB_PREVIEW_FLOWS"]];
   try {
@@ -35,6 +22,5 @@ export function isHubPreviewServerEnabled(): boolean {
     if (["1", "true", "yes", "on"].includes(s)) return true;
   }
 
-  // Safe default: no synthetic hub fulfillment on production hosts.
-  return !isProductionRuntime();
+  return true;
 }
