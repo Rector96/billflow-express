@@ -24,7 +24,10 @@ export const Route = createFileRoute("/home")({
         content: "Everyday payments, official services and recent activity in one place.",
       },
       { property: "og:title", content: `Home — ${BRAND.name}` },
-      { property: "og:description", content: "What do you need today? Pay bills or continue applications." },
+      {
+        property: "og:description",
+        content: "What do you need today? Pay bills or continue applications.",
+      },
     ],
   }),
   component: HomePage,
@@ -91,7 +94,9 @@ function HomePage() {
             </Link>
             <div>
               <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
-              <h1 className="text-base font-semibold tracking-tight text-foreground">{firstName}</h1>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">
+                {firstName}
+              </h1>
             </div>
           </div>
 

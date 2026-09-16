@@ -78,8 +78,7 @@ function ServicesPage() {
     () =>
       SERVICES.filter(
         (s) =>
-          isServiceVisible(s.slug) &&
-          s.name.toLowerCase().includes(query.trim().toLowerCase()),
+          isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
       ),
     [query],
   );

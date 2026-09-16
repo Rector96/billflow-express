@@ -31,7 +31,9 @@ export function readContinueDrafts(): ContinueDraft[] {
   }
 }
 
-export function saveContinueDraft(draft: Omit<ContinueDraft, "updatedAt"> & { updatedAt?: number }) {
+export function saveContinueDraft(
+  draft: Omit<ContinueDraft, "updatedAt"> & { updatedAt?: number },
+) {
   if (typeof window === "undefined") return;
   try {
     const prev = readContinueDrafts().filter((d) => d.id !== draft.id);
