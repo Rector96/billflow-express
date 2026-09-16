@@ -31,14 +31,7 @@ export const CAC_DEMO_PRICE = 27_500;
 export const CAC_DEMO_MODE = true;
 
 type Step =
-  | "intro"
-  | "names"
-  | "business"
-  | "proprietor"
-  | "documents"
-  | "review"
-  | "pay"
-  | "success";
+  "intro" | "names" | "business" | "proprietor" | "documents" | "review" | "pay" | "success";
 
 const STEPS: PayStepMeta[] = [
   { key: "intro", label: "Package" },
@@ -182,7 +175,12 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         onPointerUp={end}
         onPointerLeave={end}
       />
-      <Button type="button" variant="outline" className="h-9 w-full rounded-xl text-xs" onClick={clear}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-9 w-full rounded-xl text-xs"
+        onClick={clear}
+      >
         <Eraser className="mr-1.5 size-3.5" /> Clear
       </Button>
     </div>
@@ -209,9 +207,16 @@ function FilePick({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{label}</p>
-        <p className="truncate text-[11px] text-muted-foreground">{valueName ? valueName : "Tap to upload"}</p>
+        <p className="truncate text-[11px] text-muted-foreground">
+          {valueName ? valueName : "Tap to upload"}
+        </p>
       </div>
-      <input type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+      <input
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+      />
     </label>
   );
 }
@@ -280,7 +285,15 @@ export function CacRegistrationFlow() {
   }, [step, stepIndex, preferredName]);
 
   const goBack = () => {
-    const order: Step[] = ["intro", "names", "business", "proprietor", "documents", "review", "pay"];
+    const order: Step[] = [
+      "intro",
+      "names",
+      "business",
+      "proprietor",
+      "documents",
+      "review",
+      "pay",
+    ];
     const i = order.indexOf(step);
     if (i <= 0) {
       void navigate({ to: "/services" });
@@ -327,11 +340,16 @@ export function CacRegistrationFlow() {
                   <p className="text-xs text-muted-foreground">Sole proprietor</p>
                 </div>
               </div>
-              <p className="pt-1 text-2xl font-bold tabular-nums text-primary">{formatNaira(CAC_DEMO_PRICE)}</p>
+              <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
+                {formatNaira(CAC_DEMO_PRICE)}
+              </p>
               <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("names")}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => setStep("names")}
+              >
                 Continue
               </Button>
             </PayActionBar>
@@ -344,7 +362,12 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>1st choice *</Label>
-                <Input value={name1} onChange={(e) => setName1(e.target.value)} placeholder="e.g. Brightpath Ventures" className={field} />
+                <Input
+                  value={name1}
+                  onChange={(e) => setName1(e.target.value)}
+                  placeholder="e.g. Brightpath Ventures"
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>2nd (optional)</Label>
@@ -375,7 +398,11 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>Nature of business</Label>
-                <select value={nature} onChange={(e) => setNature(e.target.value)} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
+                <select
+                  value={nature}
+                  onChange={(e) => setNature(e.target.value)}
+                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                >
                   {NATURE_OPTIONS.map((o) => (
                     <option key={o} value={o}>
                       {o}
@@ -385,7 +412,11 @@ export function CacRegistrationFlow() {
               </div>
               <div className="space-y-1">
                 <Label>Street *</Label>
-                <Input value={street} onChange={(e) => setStreet(e.target.value)} className={field} />
+                <Input
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -399,7 +430,11 @@ export function CacRegistrationFlow() {
               </div>
               <div className="space-y-1">
                 <Label>State *</Label>
-                <select value={state} onChange={(e) => setState(e.target.value)} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                >
                   {NG_STATES.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -409,18 +444,34 @@ export function CacRegistrationFlow() {
               </div>
               <div className="space-y-1">
                 <Label>Phone *</Label>
-                <Input value={bizPhone} onChange={(e) => setBizPhone(e.target.value)} inputMode="tel" className={field} />
+                <Input
+                  value={bizPhone}
+                  onChange={(e) => setBizPhone(e.target.value)}
+                  inputMode="tel"
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Email *</Label>
-                <Input type="email" value={bizEmail} onChange={(e) => setBizEmail(e.target.value)} className={field} />
+                <Input
+                  type="email"
+                  value={bizEmail}
+                  onChange={(e) => setBizEmail(e.target.value)}
+                  className={field}
+                />
               </div>
             </div>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (!street.trim() || !city.trim() || !lga.trim() || !bizPhone.trim() || !bizEmail.trim())
+                  if (
+                    !street.trim() ||
+                    !city.trim() ||
+                    !lga.trim() ||
+                    !bizPhone.trim() ||
+                    !bizEmail.trim()
+                  )
                     toast.error("Fill address, phone and email.");
                   else setStep("proprietor");
                 }}
@@ -437,12 +488,20 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>Full name *</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label>Gender *</Label>
-                  <select value={gender} onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")}
+                    className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                  >
                     <option value="">Select</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -450,32 +509,64 @@ export function CacRegistrationFlow() {
                 </div>
                 <div className="space-y-1">
                   <Label>Date of birth *</Label>
-                  <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={field} />
+                  <Input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className={field}
+                  />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label>Nationality</Label>
-                <Input value={nationality} onChange={(e) => setNationality(e.target.value)} className={field} />
+                <Input
+                  value={nationality}
+                  onChange={(e) => setNationality(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Occupation</Label>
-                <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} className={field} />
+                <Input
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Phone *</Label>
-                <Input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} inputMode="tel" className={field} />
+                <Input
+                  value={ownerPhone}
+                  onChange={(e) => setOwnerPhone(e.target.value)}
+                  inputMode="tel"
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Email *</Label>
-                <Input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className={field} />
+                <Input
+                  type="email"
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>NIN *</Label>
-                <Input value={nin} onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))} inputMode="numeric" className={field} />
+                <Input
+                  value={nin}
+                  onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                  inputMode="numeric"
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>ID type</Label>
-                <select value={idType} onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
+                <select
+                  value={idType}
+                  onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])}
+                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                >
                   {ID_TYPES.map((t) => (
                     <option key={t} value={t}>
                       {t}
@@ -485,18 +576,35 @@ export function CacRegistrationFlow() {
               </div>
               <div className="space-y-1">
                 <Label>ID number *</Label>
-                <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} className={field} />
+                <Input
+                  value={idNumber}
+                  onChange={(e) => setIdNumber(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Residential address *</Label>
-                <Input value={resAddress} onChange={(e) => setResAddress(e.target.value)} className={field} />
+                <Input
+                  value={resAddress}
+                  onChange={(e) => setResAddress(e.target.value)}
+                  className={field}
+                />
               </div>
             </div>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (!fullName.trim() || !gender || !dob || !ownerPhone.trim() || !ownerEmail.trim() || nin.length !== 11 || !idNumber.trim() || !resAddress.trim())
+                  if (
+                    !fullName.trim() ||
+                    !gender ||
+                    !dob ||
+                    !ownerPhone.trim() ||
+                    !ownerEmail.trim() ||
+                    nin.length !== 11 ||
+                    !idNumber.trim() ||
+                    !resAddress.trim()
+                  )
                     toast.error("Complete required owner fields.");
                   else setStep("documents");
                 }}
@@ -511,8 +619,20 @@ export function CacRegistrationFlow() {
           <section className="space-y-3">
             <h2 className="text-base font-bold">Documents</h2>
             <div className="space-y-2">
-              <FilePick label="Valid ID" icon={IdCard} accept="image/*,application/pdf" valueName={idFile?.name ?? null} onPick={setIdFile} />
-              <FilePick label="Passport photo" icon={Camera} accept="image/*" valueName={photoFile?.name ?? null} onPick={setPhotoFile} />
+              <FilePick
+                label="Valid ID"
+                icon={IdCard}
+                accept="image/*,application/pdf"
+                valueName={idFile?.name ?? null}
+                onPick={setIdFile}
+              />
+              <FilePick
+                label="Passport photo"
+                icon={Camera}
+                accept="image/*"
+                valueName={photoFile?.name ?? null}
+                onPick={setPhotoFile}
+              />
               <div className={card}>
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <PenLine className="size-4 text-primary" /> Signature
@@ -524,7 +644,8 @@ export function CacRegistrationFlow() {
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (!idFile || !photoFile || !signature) toast.error("Upload ID, photo and sign.");
+                  if (!idFile || !photoFile || !signature)
+                    toast.error("Upload ID, photo and sign.");
                   else setStep("review");
                 }}
               >
@@ -547,7 +668,10 @@ export function CacRegistrationFlow() {
               <Row label="Fee" value={formatNaira(CAC_DEMO_PRICE)} />
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("pay")}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => setStep("pay")}
+              >
                 Continue to pay
               </Button>
             </PayActionBar>
@@ -562,12 +686,21 @@ export function CacRegistrationFlow() {
                 <span className="tabular-nums text-primary">{formatNaira(CAC_DEMO_PRICE)}</span>
               </div>
               <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" checked={declare} onChange={(e) => setDeclare(e.target.checked)} className="mt-0.5" />
+                <input
+                  type="checkbox"
+                  checked={declare}
+                  onChange={(e) => setDeclare(e.target.checked)}
+                  className="mt-0.5"
+                />
                 <span>I confirm details are correct (demo — no real CAC filing).</span>
               </label>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void demoPay()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={paying}
+                onClick={() => void demoPay()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
@@ -598,7 +731,10 @@ export function CacRegistrationFlow() {
             >
               <Copy className="mr-1.5 size-3.5" /> Copy ref
             </Button>
-            <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => void navigate({ to: "/home" })}>
+            <Button
+              className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+              onClick={() => void navigate({ to: "/home" })}
+            >
               <Home className="mr-2 size-4" /> Home
             </Button>
           </section>

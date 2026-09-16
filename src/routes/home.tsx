@@ -97,18 +97,24 @@ function HomePage() {
             </Link>
             <div>
               <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
-              <h1 className="text-base font-semibold tracking-tight text-foreground">{firstName}</h1>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">
+                {firstName}
+              </h1>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
-              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+              aria-label={
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+              }
               className="press relative grid size-9 place-items-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
             >
               <Bell className="size-4" />
-              {unreadCount > 0 ? <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" /> : null}
+              {unreadCount > 0 ? (
+                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" />
+              ) : null}
             </Link>
           </div>
         </div>
