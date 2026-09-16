@@ -6,10 +6,14 @@
  * - Government/regulated services need a real provider in production (isBillLive).
  * - While HUB preview is on (default), endpoints may return synthetic demo data
  *   so UX can be tested end-to-end without Dojah. Demo is never isBillLive.
+ *
+ * Every paid hub order writes hub_orders and notifies staff + the customer.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
+import { notifyStaffNewHubOrder } from "@/lib/hub-documents.functions";
+import { notifyUser } from "@/lib/hub-notify.server";
 import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES, type HubPriceKey } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
@@ -23,13 +27,23 @@ function slugToPriceKey(slug: string): HubPriceKey | null {
   if (s === "tin" || s === "tin_retrieve") return "tin_retrieve";
   if (s === "documents" || s === "document_generator") return "document_generator";
   if (s === "vehicle" || s === "vehicle_renewal") return "vehicle_renewal";
-  if (s === "vehicle_license_sticker") return "vehicle_license_sticker";
-  if (s === "vehicle_third_party_insurance") return "vehicle_third_party_insurance";
+  if (s === "vehicle_license_sticker" || s === "license_sticker") return "vehicle_license_sticker";
+  if (s === "vehicle_third_party_insurance" || s === "third_party_insurance")
+    return "vehicle_third_party_insurance";
   if (s === "cac") return "cac_registration";
   if (s === "nin_retrieve") return "nin_retrieve";
   if (s === "nin_slip") return "nin_slip";
   if (s === "nin_card_print" || s === "nin_plastic_card") return "nin_plastic_card";
   return null;
+}
+
+/** Canonical service key for admin filters + My documents. */
+function normalizeHubService(service: string): string {
+  const s = service.toLowerCase().trim();
+  if (s === "license_sticker") return "vehicle_license_sticker";
+  if (s === "third_party_insurance") return "vehicle_third_party_insurance";
+  if (s === "nin_plastic_card") return "nin_card_print";
+  return s;
 }
 
 export const getHubServiceFee = createServerFn({ method: "GET" })
@@ -97,7 +111,6 @@ export const recoverTin = createServerFn({ method: "POST" })
       throw new Error("TIN retrieval is temporarily unavailable.");
     }
 
-    // --- Demo path (preview only) ---
     if (!live && preview) {
       await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: true });
       const track = uid("TIN-DEMO");
@@ -112,7 +125,12 @@ export const recoverTin = createServerFn({ method: "POST" })
         paymentReference: data.paymentReference,
         trackingReference: track,
         customerIdentifier: data.identifier,
-        metadata: { demo: true, taxpayerName: data.fullName },
+        metadata: {
+          demo: true,
+          taxpayerName: data.fullName,
+          tin: fakeTin,
+          document_ready: true,
+        },
         status: "successful",
       });
       return {
@@ -136,7 +154,6 @@ export const recoverTin = createServerFn({ method: "POST" })
       };
     }
 
-    // --- Production path ---
     const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
     if (data.identifierType !== "cac" || !isDojahConfigured()) {
       throw new Error(
@@ -176,6 +193,7 @@ export const recoverTin = createServerFn({ method: "POST" })
         identifierType: data.identifierType,
         rawProvider: tinPayload.rawProvider,
       },
+      status: "successful",
     });
 
     return {
@@ -217,7 +235,6 @@ export const verifyVehicle = createServerFn({ method: "POST" })
       throw new Error("Vehicle verification is temporarily unavailable.");
     }
 
-    // Demo lookup — deterministic fake vehicle so the renew step is testable
     if (!live && preview) {
       const seed = data.plate.replace(/[^A-Z0-9]/g, "");
       const expired = seed.length % 2 === 0;
@@ -257,6 +274,7 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
       choice: "license_sticker" | "third_party_insurance";
       paymentReference: string;
       amount: number;
+      shippingAddress?: string;
     }) => {
       const plate = String(input?.plate ?? "")
         .replace(/\s+/g, "")
@@ -275,6 +293,7 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
         choice,
         paymentReference,
         amount,
+        shippingAddress: String(input?.shippingAddress ?? "").trim(),
       };
     },
   )
@@ -290,19 +309,28 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
       allowDemo: !live && preview,
     });
 
+    const service =
+      data.choice === "third_party_insurance"
+        ? "vehicle_third_party_insurance"
+        : "vehicle_license_sticker";
+    const isPhysical = data.choice === "license_sticker";
     const trackingReference = `VR-${Date.now().toString(36).toUpperCase()}-${data.plate.slice(0, 6)}`;
+
     await logHubOrder({
       userId: context.userId,
-      service: data.choice,
+      service,
       amount: data.amount,
       paymentReference: data.paymentReference,
       trackingReference,
       customerIdentifier: data.plate,
+      status: "pending",
       metadata: {
         plate: data.plate,
         state: data.state,
         makeModel: data.makeModel,
-        delivery: data.choice === "third_party_insurance" ? "digital_pdf" : "physical_sticker",
+        delivery: isPhysical ? "deliver" : "download",
+        fulfillment_status: isPhysical ? "queued" : null,
+        shipping_address: data.shippingAddress || null,
         demo: !live,
       },
     });
@@ -322,6 +350,7 @@ export const recordHubPayment = createServerFn({ method: "POST" })
       amount: number;
       paymentReference: string;
       metadata?: Record<string, unknown>;
+      status?: string;
     }) => ({
       service: String(input?.service ?? "").trim(),
       amount: Math.round(Number(input?.amount)),
@@ -330,6 +359,7 @@ export const recordHubPayment = createServerFn({ method: "POST" })
         input?.metadata && typeof input.metadata === "object"
           ? (input.metadata as Record<string, unknown>)
           : {},
+      status: String(input?.status ?? "pending").trim() || "pending",
     }),
   )
   .handler(async ({ data, context }) => {
@@ -340,16 +370,18 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     await assertPaystackSuccess(data.paymentReference, data.amount, {
       allowDemo: !isBillLive(data.service) && isHubPreviewServerEnabled(),
     });
+    const track = uid("HUB");
     await logHubOrder({
       userId: context.userId,
       service: data.service,
       amount: data.amount,
       paymentReference: data.paymentReference,
-      trackingReference: uid("HUB"),
+      trackingReference: track,
       customerIdentifier: null,
       metadata: data.metadata,
+      status: data.status,
     });
-    return { ok: true as const, reference: data.paymentReference };
+    return { ok: true as const, reference: data.paymentReference, trackingReference: track };
   });
 
 async function assertPaystackSuccess(
@@ -408,12 +440,14 @@ async function logHubOrder(input: {
   status?: string;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const service = normalizeHubService(input.service);
+  const status = input.status ?? "pending";
 
   const { error: hubErr } = await supabaseAdmin.from("hub_orders").insert({
     user_id: input.userId,
-    service: input.service,
+    service,
     amount: input.amount,
-    status: input.status ?? "successful",
+    status,
     payment_reference: input.paymentReference,
     tracking_reference: input.trackingReference,
     customer_identifier: input.customerIdentifier,
@@ -428,18 +462,18 @@ async function logHubOrder(input: {
     const ref = input.trackingReference || input.paymentReference;
     const { error } = await supabaseAdmin.from("bill_transactions").insert({
       user_id: input.userId,
-      service: input.service,
+      service,
       provider: "hub",
-      product: input.service,
+      product: service,
       amount: input.amount,
       customer_identifier: input.customerIdentifier,
       internal_reference: ref,
-      status: input.status ?? "successful",
+      status,
       provider_request_id: input.paymentReference,
       metadata: {
         channel: "hub",
-        title: `Hub · ${input.service}`,
-        service_slug: input.service,
+        title: `Hub · ${service}`,
+        service_slug: service,
         payment_reference: input.paymentReference,
         ...input.metadata,
       },
@@ -447,5 +481,29 @@ async function logHubOrder(input: {
     if (error) console.warn("[hub] bill_transactions mirror", error.message);
   } catch (e) {
     console.warn("[hub] bill mirror failed", e);
+  }
+
+  // Staff + customer in-app alerts (best-effort)
+  try {
+    await notifyStaffNewHubOrder({
+      service,
+      amount: input.amount,
+      orderHint: input.customerIdentifier || input.trackingReference || service,
+    });
+  } catch (e) {
+    console.warn("[hub] staff notify", e);
+  }
+  try {
+    await notifyUser({
+      userId: input.userId,
+      title: `${service.replace(/_/g, " ")} — order received`,
+      message:
+        status === "successful"
+          ? "Your order is complete. Check Profile → My documents if a file is available."
+          : "We received your payment. Staff will process it — watch Notifications for updates.",
+      type: status === "successful" ? "success" : "information",
+    });
+  } catch (e) {
+    console.warn("[hub] customer notify", e);
   }
 }

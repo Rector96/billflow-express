@@ -1,5 +1,5 @@
 /**
- * Vehicle renewals — compact mobile steps; prices from pricing_rules
+ * Vehicle renewals — writes hub_orders via completeVehicleRenewal (staff queue).
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Circle,
   FileDown,
+  FolderOpen,
   Home,
   Loader2,
   Shield,
@@ -203,7 +204,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
       setPayRef(done.paymentReference);
       setTrackId(done.trackingReference);
       setStep("done");
-      toast.success("Payment confirmed");
+      toast.success("Order saved for staff");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Payment failed.");
     } finally {
@@ -219,6 +220,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
       `Payment: ${payRef}`,
       `Plate: ${vehicle.plate}`,
       `Vehicle: ${vehicle.makeModel}`,
+      "(Demo file — staff will attach the official PDF when ready.)",
     ].join("\n");
     const blob = new Blob([body], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -240,16 +242,18 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
           <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success">
             <CheckCircle2 className="size-7" />
           </span>
-          <h1 className="text-lg font-bold">Payment confirmed</h1>
+          <h1 className="text-lg font-bold">Order received</h1>
           <p className="text-xs text-muted-foreground">
             {vehicle.plate} · {vehicle.makeModel}
           </p>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            {isInsurance
+              ? "Insurance is with our team. Official PDF will appear under My documents when ready."
+              : "License sticker is queued for print & delivery. Watch Notifications for updates."}
+          </p>
           {isInsurance ? (
-            <Button
-              className="h-12 w-full max-w-xs rounded-xl font-semibold"
-              onClick={downloadInsurancePdf}
-            >
-              <FileDown className="mr-2 size-4" /> Download insurance
+            <Button className="h-12 w-full max-w-xs rounded-xl font-semibold" onClick={downloadInsurancePdf}>
+              <FileDown className="mr-2 size-4" /> Temp receipt
             </Button>
           ) : (
             <DeliveryTracker />
@@ -257,6 +261,13 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
           <p className="font-mono text-[10px] text-muted-foreground">{trackId}</p>
           <Button
             className="h-12 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/profile/documents" })}
+          >
+            <FolderOpen className="mr-2 size-4" /> My documents
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11 w-full max-w-xs rounded-xl"
             onClick={() => navigate({ to: "/home" })}
           >
             <Home className="mr-2 size-4" /> Home
