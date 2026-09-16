@@ -18,7 +18,8 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${BRAND.name}` },
       {
         name: "description",
-        content: "Electricity, cable, education, CAC, NIN, TIN, documents and vehicle services.",
+        content:
+          "Electricity, cable, education, exam pins, CAC, NIN, TIN, documents and vehicle.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
       { property: "og:description", content: "Bills and official services in one place." },
@@ -40,7 +41,12 @@ const GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
   {
     id: "bills",
     title: "Everyday bills",
-    slugs: ["electricity", "cable", "internet", "water", "insurance"],
+    slugs: ["electricity", "cable"],
+  },
+  {
+    id: "edu",
+    title: "Education & exam pins",
+    slugs: ["education", "exam-pins"],
   },
   {
     id: "gov",
@@ -61,11 +67,6 @@ const GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
     id: "vehicle",
     title: "Vehicle",
     slugs: ["vehicle"],
-  },
-  {
-    id: "edu",
-    title: "Education",
-    slugs: ["education", "exam-pins"],
   },
 ];
 
@@ -99,7 +100,7 @@ function ServicesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search electricity, NIN, CAC, vehicle..."
+            placeholder="Search education, exam pins, NIN, CAC..."
             aria-label="Search services"
             className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
@@ -136,7 +137,7 @@ function ServicesPage() {
           <EmptyState
             Icon={SearchX}
             title="No service found"
-            body="Try a different keyword, like electricity, NIN or CAC."
+            body="Try education, exam pins, electricity, NIN or CAC."
           />
         )}
 

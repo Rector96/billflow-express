@@ -5,7 +5,11 @@ import { PageHeader } from "@/components/app/page-header";
 import { RockPayBillEntry } from "@/components/app/rockpay-bill-entry";
 import { BRAND } from "@/lib/brand";
 import { getService } from "@/lib/mock-data";
-import { isBillLive } from "@/lib/product-mode";
+import {
+  isHubDemoOnly,
+  isServiceFlowOpen,
+  REMOVED_SERVICE_SLUGS,
+} from "@/lib/product-mode";
 
 type Search = {
   saved?: string;
@@ -42,16 +46,32 @@ export const Route = createFileRoute("/pay/$slug")({
 });
 
 /**
- * Defense-in-depth for direct URLs such as /pay/education.
- * The Services screen already labels unavailable services as "Soon", but a
- * customer can still enter any route manually. Never let that bypass the
- * centralized production-service gate.
+ * Live bills: electricity, cable.
+ * Demo hub flows on /pay: education, exam-pins (PIN quantity → confirm → result).
+ * Removed: airtime, data.
  */
 function PaySlugPage() {
   const { slug } = Route.useParams();
+  const service = getService(slug);
 
-  if (!isBillLive(slug)) {
-    const service = getService(slug);
+  if (REMOVED_SERVICE_SLUGS.has(slug)) {
+    return (
+      <AppShell>
+        <PageHeader title={service?.name ?? "Service"} backTo="/services" />
+        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+          <span className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
+            <ShieldCheck className="size-7" />
+          </span>
+          <h1 className="mt-4 text-xl font-extrabold">Service not available</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This product is no longer offered on RockPay.
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!isServiceFlowOpen(slug)) {
     return (
       <AppShell>
         <PageHeader title={service?.name ?? "Service"} backTo="/services" />
@@ -61,13 +81,21 @@ function PaySlugPage() {
           </span>
           <h1 className="mt-4 text-xl font-extrabold">Service is coming soon</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            This service is not currently enabled for customer payments. We will only open it after
-            the provider and fulfillment path have been verified.
+            We will open this when the provider path is verified end-to-end.
           </p>
         </div>
       </AppShell>
     );
   }
 
-  return <RockPayBillEntry />;
+  return (
+    <>
+      {isHubDemoOnly(slug) ? (
+        <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
+          Demo · exam/education flow for UX — not live VTpass purchase yet
+        </p>
+      ) : null}
+      <RockPayBillEntry />
+    </>
+  );
 }
