@@ -1,10 +1,5 @@
 /**
  * Server-side hub fees from public.pricing_rules.
- * Schema (real RockPay table):
- *   service, provider, product_code, markup_type, markup_value,
- *   min_amount, max_amount, is_active, priority
- * Hub catalog fees use markup_type = 'selling_price' (flat Naira fee).
- * SERVICE_PRICES remain fallback only.
  */
 import { SERVICE_PRICES, type HubPriceKey } from "@/lib/hub-service-prices";
 
@@ -19,6 +14,7 @@ const HUB_SLUGS = [
   "vehicle_license_sticker",
   "vehicle_third_party_insurance",
   "cac",
+  "cac_courier",
   "nin_retrieve",
   "nin_slip",
   "nin_card_print",
@@ -34,11 +30,12 @@ function fallbackFor(slug: string): number {
     vehicle_license_sticker: "vehicle_license_sticker",
     vehicle_third_party_insurance: "vehicle_third_party_insurance",
     cac: "cac_registration",
+    cac_courier: "cac_courier",
     nin_retrieve: "nin_retrieve",
     nin_slip: "nin_slip",
     nin_card_print: "nin_plastic_card",
     nin_plastic_card: "nin_plastic_card",
-    nin_courier: NIN_COURIER_FEE_FALLBACK,
+    nin_courier: "nin_courier",
   };
   const key = map[slug];
   if (typeof key === "number") return key;
@@ -46,12 +43,10 @@ function fallbackFor(slug: string): number {
   return 0;
 }
 
-/** Map a pricing_rules row to a flat hub fee (NGN). */
 function feeFromRule(row: { markup_type?: string | null; markup_value?: number | null }): number {
   const type = String(row.markup_type ?? "").toLowerCase();
   const value = Number(row.markup_value ?? 0);
   if (!Number.isFinite(value) || value < 0) return 0;
-  // Hub products are sold as a fixed catalog price
   if (type === "selling_price" || type === "fixed") return Math.round(value);
   return 0;
 }
@@ -64,7 +59,6 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
 
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Real columns — never fixed_fee / active
     const { data, error } = await supabaseAdmin
       .from("pricing_rules")
       .select("service, markup_type, markup_value, is_active, priority")
@@ -76,7 +70,6 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
       return fees;
     }
 
-    // Prefer higher priority when multiple rows share a service
     const best = new Map<string, { fee: number; priority: number }>();
     for (const raw of data ?? []) {
       const row = raw as {

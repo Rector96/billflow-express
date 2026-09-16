@@ -1,7 +1,6 @@
 /**
- * CAC Business Name — demo UI (compact mobile steps)
- * CAC_DEMO_MODE: no wallet / no real filing
- * Saves local "Continue" drafts for Home while the user is mid-flow.
+ * CAC Business Name — demo UI
+ * After review: download certificate vs deliver printed pack (address + extra fee).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -18,6 +17,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
+import {
+  DeliveryAddressFields,
+  DeliveryMethodCards,
+  PayBreakdown,
+} from "@/components/app/hub-delivery-ui";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
 import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
@@ -25,13 +29,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { clearContinueDraft, saveContinueDraft } from "@/lib/continue-draft";
+import {
+  EMPTY_DELIVERY_ADDRESS,
+  formatDeliveryOneLine,
+  validateDeliveryAddress,
+  type DeliveryAddress,
+  type DeliveryMethod,
+} from "@/lib/hub-delivery";
+import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { formatNaira } from "@/lib/mock-data";
 
-export const CAC_DEMO_PRICE = 27_500;
+export const CAC_DEMO_PRICE = SERVICE_PRICES.cac_registration;
+export const CAC_COURIER_PRICE = SERVICE_PRICES.cac_courier;
 export const CAC_DEMO_MODE = true;
 
 type Step =
-  "intro" | "names" | "business" | "proprietor" | "documents" | "review" | "pay" | "success";
+  | "intro"
+  | "names"
+  | "business"
+  | "proprietor"
+  | "documents"
+  | "review"
+  | "delivery"
+  | "address"
+  | "pay"
+  | "success";
 
 const STEPS: PayStepMeta[] = [
   { key: "intro", label: "Package" },
@@ -40,6 +62,7 @@ const STEPS: PayStepMeta[] = [
   { key: "proprietor", label: "Owner" },
   { key: "documents", label: "Docs" },
   { key: "review", label: "Review" },
+  { key: "delivery", label: "Get it" },
   { key: "pay", label: "Pay" },
 ];
 
@@ -56,51 +79,13 @@ const NATURE_OPTIONS = [
   "Other services",
 ];
 
-const ID_TYPES = [
-  "NIN Slip",
-  "International Passport",
-  "Driver's Licence",
-  "Voter's Card",
-] as const;
+const ID_TYPES = ["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"] as const;
 
 const NG_STATES = [
-  "Abia",
-  "Adamawa",
-  "Akwa Ibom",
-  "Anambra",
-  "Bauchi",
-  "Bayelsa",
-  "Benue",
-  "Borno",
-  "Cross River",
-  "Delta",
-  "Ebonyi",
-  "Edo",
-  "Ekiti",
-  "Enugu",
-  "FCT",
-  "Gombe",
-  "Imo",
-  "Jigawa",
-  "Kaduna",
-  "Kano",
-  "Katsina",
-  "Kebbi",
-  "Kogi",
-  "Kwara",
-  "Lagos",
-  "Nasarawa",
-  "Niger",
-  "Ogun",
-  "Ondo",
-  "Osun",
-  "Oyo",
-  "Plateau",
-  "Rivers",
-  "Sokoto",
-  "Taraba",
-  "Yobe",
-  "Zamfara",
+  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River",
+  "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano",
+  "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo",
+  "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
 ];
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -175,12 +160,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         onPointerUp={end}
         onPointerLeave={end}
       />
-      <Button
-        type="button"
-        variant="outline"
-        className="h-9 w-full rounded-xl text-xs"
-        onClick={clear}
-      >
+      <Button type="button" variant="outline" className="h-9 w-full rounded-xl text-xs" onClick={clear}>
         <Eraser className="mr-1.5 size-3.5" /> Clear
       </Button>
     </div>
@@ -207,16 +187,9 @@ function FilePick({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{label}</p>
-        <p className="truncate text-[11px] text-muted-foreground">
-          {valueName ? valueName : "Tap to upload"}
-        </p>
+        <p className="truncate text-[11px] text-muted-foreground">{valueName ? valueName : "Tap to upload"}</p>
       </div>
-      <input
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-      />
+      <input type="file" accept={accept} className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
     </label>
   );
 }
@@ -251,13 +224,18 @@ export function CacRegistrationFlow() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [declare, setDeclare] = useState(false);
+  const [delivery, setDelivery] = useState<DeliveryMethod | null>(null);
+  const [shipTo, setShipTo] = useState<DeliveryAddress>(EMPTY_DELIVERY_ADDRESS);
 
   const stepIndex = useMemo(() => {
     const keys = STEPS.map((s) => s.key);
-    return Math.max(0, keys.indexOf(step === "success" ? "pay" : step));
+    const key = step === "success" ? "pay" : step === "address" ? "delivery" : step;
+    return Math.max(0, keys.indexOf(key));
   }, [step]);
 
   const preferredName = name1.trim() || name2.trim() || name3.trim();
+  const totalPay =
+    CAC_DEMO_PRICE + (delivery === "deliver" ? CAC_COURIER_PRICE : 0);
 
   useEffect(() => {
     if (step === "success") {
@@ -271,6 +249,8 @@ export function CacRegistrationFlow() {
       proprietor: "Owner details",
       documents: "Documents",
       review: "Review",
+      delivery: "How to receive",
+      address: "Delivery address",
       pay: "Payment",
     };
     saveContinueDraft({
@@ -292,11 +272,18 @@ export function CacRegistrationFlow() {
       "proprietor",
       "documents",
       "review",
+      "delivery",
+      "address",
       "pay",
     ];
     const i = order.indexOf(step);
     if (i <= 0) {
       void navigate({ to: "/services" });
+      return;
+    }
+    // Skip address when going back from pay if download-only
+    if (step === "pay" && delivery === "download") {
+      setStep("delivery");
       return;
     }
     setStep(order[i - 1]!);
@@ -307,13 +294,24 @@ export function CacRegistrationFlow() {
       toast.error("Tick the declaration to continue.");
       return;
     }
+    if (!delivery) {
+      toast.error("Choose how you want to receive your certificate.");
+      return;
+    }
+    if (delivery === "deliver") {
+      const err = validateDeliveryAddress(shipTo);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     setPaying(true);
     await new Promise((r) => setTimeout(r, 900));
     setRefId(`CAC-DEMO-${Date.now().toString(36).toUpperCase()}`);
     setPaying(false);
     setStep("success");
-    toast.success("Demo only — no real payment.");
-  }, [declare]);
+    toast.success("Application received (demo).");
+  }, [declare, delivery, shipTo]);
 
   const field = "h-11 rounded-xl";
   const card = "space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft";
@@ -340,16 +338,11 @@ export function CacRegistrationFlow() {
                   <p className="text-xs text-muted-foreground">Sole proprietor</p>
                 </div>
               </div>
-              <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
-                {formatNaira(CAC_DEMO_PRICE)}
-              </p>
+              <p className="pt-1 text-2xl font-bold tabular-nums text-primary">{formatNaira(CAC_DEMO_PRICE)}</p>
               <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
             </div>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("names")}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("names")}>
                 Continue
               </Button>
             </PayActionBar>
@@ -362,12 +355,7 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>1st choice *</Label>
-                <Input
-                  value={name1}
-                  onChange={(e) => setName1(e.target.value)}
-                  placeholder="e.g. Brightpath Ventures"
-                  className={field}
-                />
+                <Input value={name1} onChange={(e) => setName1(e.target.value)} placeholder="e.g. Brightpath Ventures" className={field} />
               </div>
               <div className="space-y-1">
                 <Label>2nd (optional)</Label>
@@ -398,25 +386,15 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>Nature of business</Label>
-                <select
-                  value={nature}
-                  onChange={(e) => setNature(e.target.value)}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                >
+                <select value={nature} onChange={(e) => setNature(e.target.value)} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
                   {NATURE_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
+                    <option key={o} value={o}>{o}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
                 <Label>Street *</Label>
-                <Input
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  className={field}
-                />
+                <Input value={street} onChange={(e) => setStreet(e.target.value)} className={field} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -430,48 +408,26 @@ export function CacRegistrationFlow() {
               </div>
               <div className="space-y-1">
                 <Label>State *</Label>
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                >
+                <select value={state} onChange={(e) => setState(e.target.value)} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
                   {NG_STATES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
                 <Label>Phone *</Label>
-                <Input
-                  value={bizPhone}
-                  onChange={(e) => setBizPhone(e.target.value)}
-                  inputMode="tel"
-                  className={field}
-                />
+                <Input value={bizPhone} onChange={(e) => setBizPhone(e.target.value)} inputMode="tel" className={field} />
               </div>
               <div className="space-y-1">
                 <Label>Email *</Label>
-                <Input
-                  type="email"
-                  value={bizEmail}
-                  onChange={(e) => setBizEmail(e.target.value)}
-                  className={field}
-                />
+                <Input type="email" value={bizEmail} onChange={(e) => setBizEmail(e.target.value)} className={field} />
               </div>
             </div>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (
-                    !street.trim() ||
-                    !city.trim() ||
-                    !lga.trim() ||
-                    !bizPhone.trim() ||
-                    !bizEmail.trim()
-                  )
+                  if (!street.trim() || !city.trim() || !lga.trim() || !bizPhone.trim() || !bizEmail.trim())
                     toast.error("Fill address, phone and email.");
                   else setStep("proprietor");
                 }}
@@ -488,20 +444,12 @@ export function CacRegistrationFlow() {
             <div className={card}>
               <div className="space-y-1">
                 <Label>Full name *</Label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={field}
-                />
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label>Gender *</Label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")}
-                    className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                  >
+                  <select value={gender} onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
                     <option value="">Select</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -509,102 +457,51 @@ export function CacRegistrationFlow() {
                 </div>
                 <div className="space-y-1">
                   <Label>Date of birth *</Label>
-                  <Input
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    className={field}
-                  />
+                  <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={field} />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label>Nationality</Label>
-                <Input
-                  value={nationality}
-                  onChange={(e) => setNationality(e.target.value)}
-                  className={field}
-                />
+                <Input value={nationality} onChange={(e) => setNationality(e.target.value)} className={field} />
               </div>
               <div className="space-y-1">
                 <Label>Occupation</Label>
-                <Input
-                  value={occupation}
-                  onChange={(e) => setOccupation(e.target.value)}
-                  className={field}
-                />
+                <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} className={field} />
               </div>
               <div className="space-y-1">
                 <Label>Phone *</Label>
-                <Input
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value)}
-                  inputMode="tel"
-                  className={field}
-                />
+                <Input value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} inputMode="tel" className={field} />
               </div>
               <div className="space-y-1">
                 <Label>Email *</Label>
-                <Input
-                  type="email"
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                  className={field}
-                />
+                <Input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} className={field} />
               </div>
               <div className="space-y-1">
                 <Label>NIN *</Label>
-                <Input
-                  value={nin}
-                  onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  inputMode="numeric"
-                  className={field}
-                />
+                <Input value={nin} onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))} inputMode="numeric" className={field} />
               </div>
               <div className="space-y-1">
                 <Label>ID type</Label>
-                <select
-                  value={idType}
-                  onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                >
+                <select value={idType} onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])} className={`w-full border border-input bg-background px-3 text-sm ${field}`}>
                   {ID_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
+                    <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
                 <Label>ID number *</Label>
-                <Input
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
-                  className={field}
-                />
+                <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} className={field} />
               </div>
               <div className="space-y-1">
                 <Label>Residential address *</Label>
-                <Input
-                  value={resAddress}
-                  onChange={(e) => setResAddress(e.target.value)}
-                  className={field}
-                />
+                <Input value={resAddress} onChange={(e) => setResAddress(e.target.value)} className={field} />
               </div>
             </div>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (
-                    !fullName.trim() ||
-                    !gender ||
-                    !dob ||
-                    !ownerPhone.trim() ||
-                    !ownerEmail.trim() ||
-                    nin.length !== 11 ||
-                    !idNumber.trim() ||
-                    !resAddress.trim()
-                  )
+                  if (!fullName.trim() || !gender || !dob || !ownerPhone.trim() || !ownerEmail.trim() || nin.length !== 11 || !idNumber.trim() || !resAddress.trim())
                     toast.error("Complete required owner fields.");
                   else setStep("documents");
                 }}
@@ -619,20 +516,8 @@ export function CacRegistrationFlow() {
           <section className="space-y-3">
             <h2 className="text-base font-bold">Documents</h2>
             <div className="space-y-2">
-              <FilePick
-                label="Valid ID"
-                icon={IdCard}
-                accept="image/*,application/pdf"
-                valueName={idFile?.name ?? null}
-                onPick={setIdFile}
-              />
-              <FilePick
-                label="Passport photo"
-                icon={Camera}
-                accept="image/*"
-                valueName={photoFile?.name ?? null}
-                onPick={setPhotoFile}
-              />
+              <FilePick label="Valid ID" icon={IdCard} accept="image/*,application/pdf" valueName={idFile?.name ?? null} onPick={setIdFile} />
+              <FilePick label="Passport photo" icon={Camera} accept="image/*" valueName={photoFile?.name ?? null} onPick={setPhotoFile} />
               <div className={card}>
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <PenLine className="size-4 text-primary" /> Signature
@@ -644,8 +529,7 @@ export function CacRegistrationFlow() {
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
-                  if (!idFile || !photoFile || !signature)
-                    toast.error("Upload ID, photo and sign.");
+                  if (!idFile || !photoFile || !signature) toast.error("Upload ID, photo and sign.");
                   else setStep("review");
                 }}
               >
@@ -665,14 +549,59 @@ export function CacRegistrationFlow() {
               <Row label="Address" value={`${street}, ${city}, ${lga}, ${state}`} />
               <Row label="Owner" value={fullName} />
               <Row label="NIN" value={nin} />
-              <Row label="Fee" value={formatNaira(CAC_DEMO_PRICE)} />
             </div>
+            <PayActionBar>
+              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("delivery")}>
+                Continue
+              </Button>
+            </PayActionBar>
+          </section>
+        ) : null}
+
+        {step === "delivery" ? (
+          <section className="space-y-3">
+            <h2 className="text-base font-bold">How do you want it?</h2>
+            <DeliveryMethodCards
+              method={delivery}
+              onChange={setDelivery}
+              downloadLabel="Download certificate"
+              downloadSub="PDF when admin finishes filing"
+              downloadPrice={CAC_DEMO_PRICE}
+              deliverLabel="Print + deliver"
+              deliverSub="Printed pack to your address"
+              deliverPrice={CAC_DEMO_PRICE + CAC_COURIER_PRICE}
+            />
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("pay")}
+                onClick={() => {
+                  if (!delivery) {
+                    toast.error("Choose download or delivery.");
+                    return;
+                  }
+                  if (delivery === "deliver") setStep("address");
+                  else setStep("pay");
+                }}
               >
-                Continue to pay
+                Continue
+              </Button>
+            </PayActionBar>
+          </section>
+        ) : null}
+
+        {step === "address" ? (
+          <section className="space-y-3">
+            <DeliveryAddressFields value={shipTo} onChange={setShipTo} />
+            <PayActionBar>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => {
+                  const err = validateDeliveryAddress(shipTo);
+                  if (err) toast.error(err);
+                  else setStep("pay");
+                }}
+              >
+                Continue
               </Button>
             </PayActionBar>
           </section>
@@ -680,33 +609,36 @@ export function CacRegistrationFlow() {
 
         {step === "pay" ? (
           <section className="space-y-3">
-            <div className={card}>
-              <div className="flex justify-between text-sm font-bold">
-                <span>Total</span>
-                <span className="tabular-nums text-primary">{formatNaira(CAC_DEMO_PRICE)}</span>
-              </div>
-              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={declare}
-                  onChange={(e) => setDeclare(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span>I confirm details are correct (demo — no real CAC filing).</span>
-              </label>
-            </div>
+            <PayBreakdown
+              lines={
+                delivery === "deliver"
+                  ? [
+                      { label: "CAC registration", amount: CAC_DEMO_PRICE },
+                      { label: "Print + delivery", amount: CAC_COURIER_PRICE },
+                    ]
+                  : [{ label: "CAC registration", amount: CAC_DEMO_PRICE }]
+              }
+              total={totalPay}
+            />
+            {delivery === "deliver" ? (
+              <p className="text-[11px] text-muted-foreground">Deliver to: {formatDeliveryOneLine(shipTo)}</p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Certificate PDF will be in Profile → My documents when ready.
+              </p>
+            )}
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={declare} onChange={(e) => setDeclare(e.target.checked)} className="mt-0.5" />
+              <span>I confirm details are correct (demo — no real CAC filing yet).</span>
+            </label>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
-                onClick={() => void demoPay()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void demoPay()}>
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
-                  `Pay ${formatNaira(CAC_DEMO_PRICE)}`
+                  `Pay ${formatNaira(totalPay)}`
                 )}
               </Button>
             </PayActionBar>
@@ -718,8 +650,12 @@ export function CacRegistrationFlow() {
             <span className="grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
               <CheckCircle2 className="size-7" />
             </span>
-            <h2 className="text-lg font-bold">Demo complete</h2>
-            <p className="text-sm text-muted-foreground">No real payment or CAC filing.</p>
+            <h2 className="text-lg font-bold">Application received</h2>
+            <p className="max-w-xs text-sm text-muted-foreground">
+              {delivery === "deliver"
+                ? "We’ll process your CAC, then send the printed pack to your address."
+                : "We’ll process your CAC. Download the certificate from My documents when it’s ready."}
+            </p>
             <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
             <Button
               variant="outline"
@@ -731,10 +667,7 @@ export function CacRegistrationFlow() {
             >
               <Copy className="mr-1.5 size-3.5" /> Copy ref
             </Button>
-            <Button
-              className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
-              onClick={() => void navigate({ to: "/home" })}
-            >
+            <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => void navigate({ to: "/home" })}>
               <Home className="mr-2 size-4" /> Home
             </Button>
           </section>
