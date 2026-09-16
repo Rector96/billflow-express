@@ -1,10 +1,10 @@
 /**
- * JTB TIN — fee from route loader (pricing_rules.tin)
+ * JTB TIN — compact mobile steps; fee from pricing_rules.tin
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Copy, FileDown, Hash, Home, Loader2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Copy, Home, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -19,14 +19,13 @@ import { recoverTin } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
 import { formatNaira } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
 
 type Step = "input" | "preview" | "success";
 
 const STEPS: PayStepMeta[] = [
   { key: "input", label: "Details" },
-  { key: "preview", label: "Preview" },
-  { key: "pay", label: "Result" },
+  { key: "preview", label: "Pay" },
+  { key: "result", label: "Result" },
 ];
 
 export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
@@ -49,11 +48,11 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const validate = () => {
     if (identifier.replace(/\s/g, "").trim().length < 7) {
-      toast.error("Enter your 11-digit NIN or CAC number.");
+      toast.error("Enter NIN (11 digits) or CAC number.");
       return false;
     }
     if (fullName.trim().length < 3) {
-      toast.error("Enter the full name on the record.");
+      toast.error("Enter full name.");
       return false;
     }
     return true;
@@ -62,7 +61,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const onPayNow = async () => {
     if (!validate()) return;
     if (!authed) {
-      toast.error("Please log in to continue.");
+      toast.error("Please log in.");
       navigate({ to: "/login" });
       return;
     }
@@ -99,25 +98,23 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success" && result) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center gap-4 px-4 py-10 text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-success-soft text-success">
-            <CheckCircle2 className="size-8" />
+        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+          <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success">
+            <CheckCircle2 className="size-7" />
           </span>
-          <h1 className="text-xl font-extrabold">Your TIN is ready</h1>
-          <p className="font-mono text-2xl font-extrabold">{result.data.tin}</p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => void navigator.clipboard.writeText(result.data.tin)}
-            >
-              <Copy className="mr-1.5 size-3.5" /> Copy
-            </Button>
-          </div>
+          <h1 className="text-lg font-bold">Your TIN</h1>
+          <p className="font-mono text-xl font-bold tracking-wide">{result.data.tin}</p>
           <Button
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => navigate({ to: "/home" })}
+            variant="outline"
+            className="h-9 rounded-xl text-xs"
+            onClick={() => {
+              void navigator.clipboard.writeText(result.data.tin);
+              toast.success("Copied");
+            }}
           >
+            <Copy className="mr-1.5 size-3.5" /> Copy
+          </Button>
+          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -125,35 +122,29 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
     );
   }
 
+  const field = "h-11 rounded-xl";
+  const card = "space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft";
+
   return (
     <AppShell>
-      <PageHeader title="TIN Retrieval" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
+      <PageHeader title="TIN" backTo="/services" />
+      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "input" ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-extrabold">Find your TIN</h2>
-            <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4">
-              <div className="space-y-1.5">
+          <section className="space-y-3">
+            <div className={card}>
+              <div className="space-y-1">
                 <Label>NIN or CAC number</Label>
-                <Input
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className="h-12 rounded-2xl"
-                />
+                <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className={field} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <Label>Full name</Label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="h-12 rounded-2xl"
-                />
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
               </div>
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-2xl font-bold"
+                className="h-12 w-full rounded-xl font-semibold"
                 onClick={() => {
                   if (validate()) setStep("preview");
                 }}
@@ -164,26 +155,21 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
           </section>
         ) : null}
         {step === "preview" ? (
-          <section className="space-y-4">
-            <h2 className="text-lg font-extrabold">Preview & pay</h2>
-            <div className="rounded-2xl border border-border/70 bg-card p-4">
-              <p className="text-sm font-bold">{fullName}</p>
-              <p className="font-mono text-xs">{identifier}</p>
-              <p className={cn("mt-3 font-mono text-xl font-extrabold blur-[6px]")}>{blurredTin}</p>
-              <div className="mt-4 flex justify-between text-base font-extrabold">
+          <section className="space-y-3">
+            <div className={card}>
+              <p className="text-sm font-semibold">{fullName}</p>
+              <p className="font-mono text-xs text-muted-foreground">{identifier}</p>
+              <p className="mt-3 font-mono text-lg font-bold blur-[5px]">{blurredTin}</p>
+              <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-sm font-bold">
                 <span>Total</span>
-                <span className="tabular-nums">{formatNaira(fee, false)}</span>
+                <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
               </div>
             </div>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                disabled={paying}
-                onClick={() => void onPayNow()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
                   `Pay ${formatNaira(fee, false)}`

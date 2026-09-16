@@ -1,17 +1,9 @@
 /**
- * Document generator — fee from route loader (pricing_rules.documents)
+ * Document generator — compact mobile steps; fee from pricing_rules.documents
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  Building2,
-  CheckCircle2,
-  FileText,
-  Home,
-  Loader2,
-  Printer,
-  ScrollText,
-} from "lucide-react";
+import { Building2, CheckCircle2, FileText, Home, Loader2, Printer, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -42,8 +34,8 @@ type Step = "type" | "form" | "preview" | "success";
 const STEPS: PayStepMeta[] = [
   { key: "type", label: "Type" },
   { key: "form", label: "Details" },
-  { key: "preview", label: "Preview" },
-  { key: "pay", label: "Download" },
+  { key: "preview", label: "Pay" },
+  { key: "done", label: "Done" },
 ];
 
 function todayLong() {
@@ -130,32 +122,29 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
     }
   };
 
+  const field = "h-11 rounded-xl";
+
   if (step === "success" && apiResult) {
     const title = apiResult.data.title;
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center gap-4 px-4 py-10 text-center">
+        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
           <CheckCircle2 className="size-10 text-success" />
-          <h1 className="text-xl font-extrabold">Document ready</h1>
+          <h1 className="text-lg font-bold">Ready</h1>
           <Button
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() =>
-              downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)
-            }
+            className="h-12 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)}
           >
             <FileText className="mr-2 size-4" /> Download
           </Button>
           <Button
             variant="outline"
-            className="h-12 w-full rounded-2xl font-bold"
+            className="h-11 w-full max-w-xs rounded-xl font-semibold"
             onClick={() => openPrintableDocument(title, compiledBody || draft)}
           >
-            <Printer className="mr-2 size-4" /> Print / PDF
+            <Printer className="mr-2 size-4" /> Print
           </Button>
-          <Button
-            className="h-12 w-full rounded-2xl font-bold"
-            onClick={() => navigate({ to: "/home" })}
-          >
+          <Button className="h-11 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -166,115 +155,91 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Documents" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-4 px-4 pb-28 pt-2">
+      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "type" ? (
-          <section className="space-y-3">
-            <h2 className="text-lg font-extrabold">Choose document</h2>
+          <section className="space-y-2">
             <button
               type="button"
-              className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-4 text-left"
+              className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
               onClick={() => {
                 setDocType("constitution");
                 setStep("form");
               }}
             >
-              <Building2 className="size-5 text-primary" />
-              <div>
-                <p className="font-extrabold">Business Constitution</p>
-                <p className="text-xs text-muted-foreground">{formatNaira(fee, false)}</p>
+              <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Building2 className="size-4.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Business constitution</p>
+                <p className="text-[11px] text-muted-foreground">{formatNaira(fee, false)}</p>
               </div>
             </button>
             <button
               type="button"
-              className="flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-4 text-left"
+              className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
               onClick={() => {
                 setDocType("tenancy");
                 setStep("form");
               }}
             >
-              <ScrollText className="size-5 text-primary" />
-              <div>
-                <p className="font-extrabold">Residential Tenancy</p>
-                <p className="text-xs text-muted-foreground">{formatNaira(fee, false)}</p>
+              <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                <ScrollText className="size-4.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Tenancy agreement</p>
+                <p className="text-[11px] text-muted-foreground">{formatNaira(fee, false)}</p>
               </div>
             </button>
           </section>
         ) : null}
         {step === "form" && docType ? (
-          <section className="space-y-3">
-            <div className="space-y-1.5">
+          <section className="space-y-2.5">
+            <div className="space-y-1">
               <Label>{docType === "constitution" ? "Business name" : "Landlord"}</Label>
-              <Input
-                value={partyA}
-                onChange={(e) => setPartyA(e.target.value)}
-                className="h-12 rounded-2xl"
-              />
+              <Input value={partyA} onChange={(e) => setPartyA(e.target.value)} className={field} />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label>{docType === "constitution" ? "Manager" : "Tenant"}</Label>
-              <Input
-                value={partyB}
-                onChange={(e) => setPartyB(e.target.value)}
-                className="h-12 rounded-2xl"
-              />
+              <Input value={partyB} onChange={(e) => setPartyB(e.target.value)} className={field} />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label>Address</Label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="h-12 rounded-2xl"
-              />
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} className={field} />
             </div>
             {docType === "tenancy" ? (
               <>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Rent / year (₦)</Label>
-                  <Input
-                    value={rent}
-                    onChange={(e) => setRent(e.target.value)}
-                    className="h-12 rounded-2xl"
-                  />
+                  <Input value={rent} onChange={(e) => setRent(e.target.value)} className={field} inputMode="numeric" />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Duration</Label>
-                  <Input
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="h-12 rounded-2xl"
-                  />
+                  <Input value={duration} onChange={(e) => setDuration(e.target.value)} className={field} />
                 </div>
               </>
             ) : null}
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                onClick={() => setStep("preview")}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("preview")}>
                 Continue
               </Button>
             </PayActionBar>
           </section>
         ) : null}
         {step === "preview" ? (
-          <section className="space-y-4">
-            <div className="max-h-48 overflow-y-auto rounded-2xl border border-border/70 bg-card p-3 text-left text-[11px] whitespace-pre-wrap">
+          <section className="space-y-3">
+            <div className="max-h-36 overflow-y-auto rounded-xl border border-border/70 bg-card p-3 text-left text-[10px] leading-relaxed whitespace-pre-wrap">
               {draft}
             </div>
-            <div className="flex justify-between rounded-2xl border border-border/70 bg-card p-4 font-extrabold">
+            <div className="flex justify-between rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-sm font-bold">
               <span>Total</span>
-              <span className="tabular-nums">{formatNaira(fee, false)}</span>
+              <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
             </div>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-2xl font-bold"
-                disabled={paying}
-                onClick={() => void onPayNow()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Opening Paystack…
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
                   `Pay ${formatNaira(fee, false)}`
