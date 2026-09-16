@@ -1,22 +1,17 @@
 /**
  * Product/service availability is intentionally centralized here.
  *
- * IMPORTANT:
- * - A route existing in the app does NOT mean the service is production-ready.
- * - `isBillLive()` is used by the Services UI and payment routes to decide
- *   whether a customer may enter a payment flow.
- * - Demo/fallback data must never be presented as a completed government or
- *   regulated service.
- * - Exam PINs are provider-controlled and currently disabled in the database,
- *   so they stay out of the public live set until VTpass enables them.
+ * Layers:
+ * 1) `isBillLive()` — real production fulfillment (wallet/VTpass money path).
+ * 2) `HUB_PREVIEW_FLOWS` — interactive UI demos for hub services so product/QA
+ *    can walk every step before APIs exist. Does NOT add a service to LIVE_BILL_SLUGS.
+ * 3) `isServiceFlowOpen()` — UI may open the wizard (live OR hub preview).
  *
- * Current production-ready core services:
- * electricity, cable, airtime and data.
+ * Production launch: set Netlify `VITE_HUB_PREVIEW_FLOWS=false` so unfinished
+ * hub services show “coming soon” again. Only promote into LIVE_BILL_SLUGS when
+ * fulfillment is real.
  *
- * Hub services that depend on external verification/fulfillment (CAC, NIN, TIN,
- * vehicle) are deliberately NOT marked live until the required provider access
- * is configured. Documents is also held back until its server-side payment and
- * real PDF delivery path is complete.
+ * Demo results must never be treated as official CAC/NIN/TIN government output.
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
@@ -49,13 +44,42 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
 
 /**
  * Only services with a verified production fulfillment path belong here.
- *
- * Exam PINs are intentionally excluded for now because the database service
- * availability control currently keeps `education` and `exam-pins` disabled.
- * Once the provider is enabled and the service is tested end-to-end, add the
- * appropriate slug here together with the database availability change.
+ * Exam PINs stay out until VTpass + DB availability are confirmed end-to-end.
  */
 export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "airtime", "data"]);
+
+/** Hub + education wizards allowed in preview (not the same as LIVE). */
+export const HUB_PREVIEW_SLUGS = new Set([
+  "cac",
+  "nin",
+  "tin",
+  "documents",
+  "vehicle",
+  "education",
+  "exam-pins",
+]);
+
+function readEnvFlag(key: string, defaultValue: boolean): boolean {
+  try {
+    const env = import.meta.env as Record<string, string | boolean | undefined>;
+    const raw = env[key];
+    if (raw === undefined || raw === "") return defaultValue;
+    if (typeof raw === "boolean") return raw;
+    const s = String(raw).trim().toLowerCase();
+    if (["0", "false", "no", "off"].includes(s)) return false;
+    if (["1", "true", "yes", "on"].includes(s)) return true;
+    return defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+/**
+ * Default TRUE while the app is unfinished so every hub flow is clickable.
+ * Set `VITE_HUB_PREVIEW_FLOWS=false` on production Netlify when you want
+ * non-live hub services to show “coming soon” only.
+ */
+export const HUB_PREVIEW_FLOWS = readEnvFlag("VITE_HUB_PREVIEW_FLOWS", true);
 
 export function homeServiceSlugs(): readonly string[] {
   return BILLS_FOCUS ? HOME_BILL_SLUGS : HOME_CLASSIC_SLUGS;
@@ -67,10 +91,30 @@ export function isServiceVisible(slug: string): boolean {
 }
 
 /**
- * Production gate for payment-capable services.
- * Returning false intentionally makes an unfinished service display as
- * unavailable/coming soon instead of accepting money that cannot be fulfilled.
+ * Production gate for real bill fulfillment / customer money that must settle.
  */
 export function isBillLive(slug: string): boolean {
   return LIVE_BILL_SLUGS.has(slug);
+}
+
+/** True when this slug is only open because of hub preview (not production live). */
+export function isHubDemoOnly(slug: string): boolean {
+  return HUB_PREVIEW_FLOWS && HUB_PREVIEW_SLUGS.has(slug) && !isBillLive(slug);
+}
+
+/**
+ * Whether the customer UI may open the multi-step flow.
+ * Live bills always open; hub services open in preview so you can QA UX.
+ */
+export function isServiceFlowOpen(slug: string): boolean {
+  if (isBillLive(slug)) return true;
+  if (HUB_PREVIEW_FLOWS && HUB_PREVIEW_SLUGS.has(slug)) return true;
+  return false;
+}
+
+/** Label suffix for service tiles */
+export function serviceAvailabilityLabel(slug: string, short: string): string {
+  if (isBillLive(slug)) return short;
+  if (isHubDemoOnly(slug)) return `${short} · Demo`;
+  return `${short} · Soon`;
 }

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { SERVICES, type ServiceConfig } from "@/lib/mock-data";
-import { isBillLive, isServiceVisible } from "@/lib/product-mode";
+import { isServiceVisible, serviceAvailabilityLabel } from "@/lib/product-mode";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/services")({
@@ -116,12 +116,11 @@ function ServicesPage() {
                 <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
                   <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
                     {g.items.map((s) => {
-                      const live = isBillLive(s.slug);
                       const path = servicePath(s.slug);
                       return (
                         <ServiceTile
                           key={s.slug}
-                          label={live ? s.short : `${s.short} · Soon`}
+                          label={serviceAvailabilityLabel(s.slug, s.short)}
                           Icon={s.icon}
                           tint={s.tint}
                           to={path.to}

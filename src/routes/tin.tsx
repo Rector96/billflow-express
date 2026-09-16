@@ -1,9 +1,5 @@
 /**
- * Route: /tin
- *
- * TIN retrieval is intentionally unavailable until a verified production TIN
- * provider is configured. The server function has the same gate, so direct
- * navigation cannot bypass the service-status decision.
+ * Route: /tin — preview opens TinJtbFlow; production uses isBillLive.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
@@ -12,7 +8,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { TinJtbFlow } from "@/components/app/tin-jtb-flow";
 import { BRAND } from "@/lib/brand";
 import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
-import { isBillLive } from "@/lib/product-mode";
+import { isHubDemoOnly, isServiceFlowOpen } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/tin")({
   head: () => ({
@@ -20,7 +16,7 @@ export const Route = createFileRoute("/tin")({
       { title: `TIN Retrieval — ${BRAND.name}` },
       {
         name: "description",
-        content: "TIN retrieval will be available when a verified provider is connected.",
+        content: "TIN retrieval helpers on RockPay.",
       },
     ],
   }),
@@ -34,23 +30,31 @@ export const Route = createFileRoute("/tin")({
 function TinPage() {
   const { fees } = Route.useLoaderData();
 
-  if (!isBillLive("tin")) {
+  if (isServiceFlowOpen("tin")) {
     return (
-      <AppShell>
-        <PageHeader title="TIN Retrieval" backTo="/services" />
-        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
-          <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
-            <ShieldCheck className="size-7" />
-          </span>
-          <h1 className="mt-4 text-xl font-extrabold">TIN retrieval is coming soon</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            We are waiting for verified TIN provider access before accepting payment or returning a
-            TIN. Your money and records are protected from unverified results.
-          </p>
-        </div>
-      </AppShell>
+      <>
+        {isHubDemoOnly("tin") ? (
+          <div className="mx-4 mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-medium text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+            Demo flow — not an official JTB TIN record.
+          </div>
+        ) : null}
+        <TinJtbFlow fees={fees} />
+      </>
     );
   }
 
-  return <TinJtbFlow fees={fees} />;
+  return (
+    <AppShell>
+      <PageHeader title="TIN Retrieval" backTo="/services" />
+      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+        <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
+          <ShieldCheck className="size-7" />
+        </span>
+        <h1 className="mt-4 text-xl font-extrabold">TIN retrieval is coming soon</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Preview is off. Enable hub preview or connect a verified TIN provider.
+        </p>
+      </div>
+    </AppShell>
+  );
 }
