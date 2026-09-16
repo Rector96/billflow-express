@@ -1,12 +1,14 @@
 /**
- * Document generator — compact mobile steps; fee from pricing_rules.documents
+ * Document generator — fee from pricing_rules; pay records hub_orders for staff.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Building2,
   CheckCircle2,
   FileText,
+  FolderOpen,
   Home,
   Loader2,
   Printer,
@@ -33,6 +35,7 @@ import {
   downloadDocumentHtml,
   openPrintableDocument,
 } from "@/lib/document-templates";
+import { recordHubPayment } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
 
@@ -52,7 +55,8 @@ function todayLong() {
 
 export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const navigate = useNavigate();
-  const { profile } = useApp();
+  const { profile, authed } = useApp();
+  const runRecord = useServerFn(recordHubPayment);
   const fee = feeFromMap(fees, "documents");
 
   const [step, setStep] = useState<Step>("type");
@@ -65,6 +69,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const [paying, setPaying] = useState(false);
   const [apiResult, setApiResult] = useState<GenerateDocumentSuccess | null>(null);
   const [compiledBody, setCompiledBody] = useState("");
+  const [trackId, setTrackId] = useState("");
 
   const agreementDate = todayLong();
   const draft = useMemo(() => {
@@ -99,6 +104,11 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const onPayNow = async () => {
     if (!docType) return;
+    if (!authed) {
+      toast.error("Please log in to continue.");
+      navigate({ to: "/login" });
+      return;
+    }
     setPaying(true);
     try {
       const email = profile.email?.trim() || "customer@rockpay.app";
@@ -108,6 +118,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
         metadata: { service: "documents", documentType: docType },
       });
       if (paystack.status !== "success") throw new Error("Payment was not completed.");
+
       const payload = buildGenerateDocumentPayload({
         documentType: docType === "constitution" ? "business_constitution" : "residential_tenancy",
         partyA,
@@ -119,6 +130,31 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
         fee,
       });
       const json = await postGenerateDocumentDemo(payload, draft);
+
+      // Ledger for admin + My documents
+      try {
+        const logged = await runRecord({
+          data: {
+            service: "documents",
+            amount: fee,
+            paymentReference: paystack.reference,
+            status: "successful",
+            metadata: {
+              documentType: docType,
+              title: json.data.title,
+              documentId: json.data.documentId,
+              partyA,
+              partyB,
+              delivery: "download",
+            },
+          },
+        });
+        setTrackId(logged.trackingReference || paystack.reference);
+      } catch (ledgerErr) {
+        console.warn("[documents] hub_orders", ledgerErr);
+        setTrackId(paystack.reference);
+      }
+
       setCompiledBody(draft);
       setApiResult(json);
       setStep("success");
@@ -139,6 +175,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
         <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
           <CheckCircle2 className="size-10 text-success" />
           <h1 className="text-lg font-bold">Ready</h1>
+          {trackId ? <p className="font-mono text-[10px] text-muted-foreground">{trackId}</p> : null}
           <Button
             className="h-12 w-full max-w-xs rounded-xl font-semibold"
             onClick={() =>
@@ -155,9 +192,13 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             <Printer className="mr-2 size-4" /> Print
           </Button>
           <Button
+            variant="outline"
             className="h-11 w-full max-w-xs rounded-xl font-semibold"
-            onClick={() => navigate({ to: "/home" })}
+            onClick={() => navigate({ to: "/profile/documents" })}
           >
+            <FolderOpen className="mr-2 size-4" /> My documents
+          </Button>
+          <Button className="h-11 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -218,38 +259,22 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             <div className="space-y-1">
               <Label>Address</Label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className={field}
-              />
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} className={field} />
             </div>
             {docType === "tenancy" ? (
               <>
                 <div className="space-y-1">
                   <Label>Rent / year (₦)</Label>
-                  <Input
-                    value={rent}
-                    onChange={(e) => setRent(e.target.value)}
-                    className={field}
-                    inputMode="numeric"
-                  />
+                  <Input value={rent} onChange={(e) => setRent(e.target.value)} className={field} inputMode="numeric" />
                 </div>
                 <div className="space-y-1">
                   <Label>Duration</Label>
-                  <Input
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className={field}
-                  />
+                  <Input value={duration} onChange={(e) => setDuration(e.target.value)} className={field} />
                 </div>
               </>
             ) : null}
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("preview")}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("preview")}>
                 Continue
               </Button>
             </PayActionBar>
@@ -265,11 +290,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
             </div>
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
-                onClick={() => void onPayNow()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…

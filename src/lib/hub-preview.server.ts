@@ -1,11 +1,21 @@
 /**
  * Server-side mirror of hub UI preview flag.
- * When true (default), regulated hub endpoints may return clearly synthetic
- * demo data so product QA can walk flows without Dojah/live providers.
  *
- * Production: set VITE_HUB_PREVIEW_FLOWS=false (and optionally HUB_PREVIEW_FLOWS=false)
- * on Netlify so these paths refuse again until isBillLive() is true.
+ * Production (Netlify CONTEXT=production or NODE_ENV=production):
+ *   Default OFF — demo fulfillment refuses unless explicitly enabled.
+ * Dev / branch deploys:
+ *   Default ON so QA can walk flows without Dojah.
+ *
+ * Explicit env always wins:
+ *   HUB_PREVIEW_FLOWS or VITE_HUB_PREVIEW_FLOWS = true|false
  */
+function isProductionRuntime(): boolean {
+  const ctx = String(process.env["CONTEXT"] ?? "").toLowerCase();
+  if (ctx === "production") return true;
+  if (String(process.env["NODE_ENV"] ?? "").toLowerCase() === "production") return true;
+  return false;
+}
+
 export function isHubPreviewServerEnabled(): boolean {
   const candidates = [process.env["HUB_PREVIEW_FLOWS"], process.env["VITE_HUB_PREVIEW_FLOWS"]];
   try {
@@ -24,6 +34,7 @@ export function isHubPreviewServerEnabled(): boolean {
     if (["0", "false", "no", "off"].includes(s)) return false;
     if (["1", "true", "yes", "on"].includes(s)) return true;
   }
-  // Default ON while the product is unfinished (matches product-mode.ts).
-  return true;
+
+  // Safe default: no synthetic hub fulfillment on production hosts.
+  return !isProductionRuntime();
 }
