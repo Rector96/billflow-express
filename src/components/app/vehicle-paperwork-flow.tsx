@@ -4,7 +4,16 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, CheckCircle2, Circle, FileDown, Home, Loader2, Shield, Sticker } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  Circle,
+  FileDown,
+  Home,
+  Loader2,
+  Shield,
+  Sticker,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -80,10 +89,21 @@ function DeliveryTracker() {
               )}
             </span>
             {i < items.length - 1 ? (
-              <span className={cn("my-0.5 min-h-3 w-0.5 flex-1 rounded-full", item.state === "done" ? "bg-success/40" : "bg-border")} />
+              <span
+                className={cn(
+                  "my-0.5 min-h-3 w-0.5 flex-1 rounded-full",
+                  item.state === "done" ? "bg-success/40" : "bg-border",
+                )}
+              />
             ) : null}
           </div>
-          <p className={cn("pb-3 text-sm font-medium", item.state === "todo" && "text-muted-foreground", i === items.length - 1 && "pb-0")}>
+          <p
+            className={cn(
+              "pb-3 text-sm font-medium",
+              item.state === "todo" && "text-muted-foreground",
+              i === items.length - 1 && "pb-0",
+            )}
+          >
             {item.label}
           </p>
         </li>
@@ -112,7 +132,11 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const [trackId, setTrackId] = useState("");
 
   const fee =
-    choice === "license_sticker" ? feeSticker : choice === "third_party_insurance" ? feeInsurance : 0;
+    choice === "license_sticker"
+      ? feeSticker
+      : choice === "third_party_insurance"
+        ? feeInsurance
+        : 0;
 
   const stepIndex = useMemo(() => {
     if (step === "lookup") return 0;
@@ -221,14 +245,20 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
             {vehicle.plate} · {vehicle.makeModel}
           </p>
           {isInsurance ? (
-            <Button className="h-12 w-full max-w-xs rounded-xl font-semibold" onClick={downloadInsurancePdf}>
+            <Button
+              className="h-12 w-full max-w-xs rounded-xl font-semibold"
+              onClick={downloadInsurancePdf}
+            >
               <FileDown className="mr-2 size-4" /> Download insurance
             </Button>
           ) : (
             <DeliveryTracker />
           )}
           <p className="font-mono text-[10px] text-muted-foreground">{trackId}</p>
-          <Button className="h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-12 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -272,7 +302,11 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </div>
             </div>
             <PayActionBar id="pay-action">
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={lookingUp} onClick={() => void onLookup()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={lookingUp}
+                onClick={() => void onLookup()}
+              >
                 {lookingUp ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Checking…
@@ -314,13 +348,17 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
               onClick={() => setChoice("license_sticker")}
               className={cn(
                 "flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left",
-                choice === "license_sticker" ? "border-primary bg-primary/5" : "border-border/80 bg-card",
+                choice === "license_sticker"
+                  ? "border-primary bg-primary/5"
+                  : "border-border/80 bg-card",
               )}
             >
               <Sticker className="size-4.5 text-primary" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">License sticker</p>
-                <p className="text-xs font-bold tabular-nums text-primary">{formatNaira(feeSticker, false)}</p>
+                <p className="text-xs font-bold tabular-nums text-primary">
+                  {formatNaira(feeSticker, false)}
+                </p>
               </div>
             </button>
             <button
@@ -328,13 +366,17 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
               onClick={() => setChoice("third_party_insurance")}
               className={cn(
                 "flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left",
-                choice === "third_party_insurance" ? "border-primary bg-primary/5" : "border-border/80 bg-card",
+                choice === "third_party_insurance"
+                  ? "border-primary bg-primary/5"
+                  : "border-border/80 bg-card",
               )}
             >
               <Shield className="size-4.5 text-primary" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">3rd-party insurance</p>
-                <p className="text-xs font-bold tabular-nums text-primary">{formatNaira(feeInsurance, false)}</p>
+                <p className="text-xs font-bold tabular-nums text-primary">
+                  {formatNaira(feeInsurance, false)}
+                </p>
               </div>
             </button>
 
@@ -346,13 +388,19 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
             ) : null}
 
             <PayActionBar id="pay-action">
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={!choice || paying} onClick={() => void onPay()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={!choice || paying}
+                onClick={() => void onPay()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
+                ) : choice ? (
+                  `Pay ${formatNaira(fee, false)}`
                 ) : (
-                  choice ? `Pay ${formatNaira(fee, false)}` : "Select option"
+                  "Select option"
                 )}
               </Button>
             </PayActionBar>

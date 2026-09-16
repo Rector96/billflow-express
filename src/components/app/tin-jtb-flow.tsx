@@ -114,7 +114,10 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
           >
             <Copy className="mr-1.5 size-3.5" /> Copy
           </Button>
-          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -135,11 +138,19 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
             <div className={card}>
               <div className="space-y-1">
                 <Label>NIN or CAC number</Label>
-                <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className={field} />
+                <Input
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className={field}
+                />
               </div>
               <div className="space-y-1">
                 <Label>Full name</Label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className={field}
+                />
               </div>
             </div>
             <PayActionBar>
@@ -166,7 +177,11 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </div>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={paying}
+                onClick={() => void onPayNow()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…

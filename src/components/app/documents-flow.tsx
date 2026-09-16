@@ -3,7 +3,15 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, CheckCircle2, FileText, Home, Loader2, Printer, ScrollText } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  FileText,
+  Home,
+  Loader2,
+  Printer,
+  ScrollText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -133,7 +141,9 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           <h1 className="text-lg font-bold">Ready</h1>
           <Button
             className="h-12 w-full max-w-xs rounded-xl font-semibold"
-            onClick={() => downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)}
+            onClick={() =>
+              downloadDocumentHtml(title, compiledBody || draft, apiResult.data.documentId)
+            }
           >
             <FileText className="mr-2 size-4" /> Download
           </Button>
@@ -144,7 +154,10 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           >
             <Printer className="mr-2 size-4" /> Print
           </Button>
-          <Button className="h-11 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-11 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -205,22 +218,38 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             <div className="space-y-1">
               <Label>Address</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} className={field} />
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className={field}
+              />
             </div>
             {docType === "tenancy" ? (
               <>
                 <div className="space-y-1">
                   <Label>Rent / year (₦)</Label>
-                  <Input value={rent} onChange={(e) => setRent(e.target.value)} className={field} inputMode="numeric" />
+                  <Input
+                    value={rent}
+                    onChange={(e) => setRent(e.target.value)}
+                    className={field}
+                    inputMode="numeric"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Duration</Label>
-                  <Input value={duration} onChange={(e) => setDuration(e.target.value)} className={field} />
+                  <Input
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className={field}
+                  />
                 </div>
               </>
             ) : null}
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("preview")}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => setStep("preview")}
+              >
                 Continue
               </Button>
             </PayActionBar>
@@ -236,7 +265,11 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={paying}
+                onClick={() => void onPayNow()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
