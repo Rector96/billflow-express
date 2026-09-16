@@ -5,11 +5,7 @@
 import { Download, Truck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  type DeliveryAddress,
-  type DeliveryMethod,
-  NG_DELIVERY_STATES,
-} from "@/lib/hub-delivery";
+import { type DeliveryAddress, type DeliveryMethod, NG_DELIVERY_STATES } from "@/lib/hub-delivery";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +47,9 @@ export function DeliveryMethodCards({
           <p className="text-sm font-semibold">{downloadLabel}</p>
           <p className="text-[11px] text-muted-foreground">{downloadSub}</p>
         </div>
-        <p className="text-xs font-bold tabular-nums text-primary">{formatNaira(downloadPrice, false)}</p>
+        <p className="text-xs font-bold tabular-nums text-primary">
+          {formatNaira(downloadPrice, false)}
+        </p>
       </button>
       <button
         type="button"
@@ -68,7 +66,9 @@ export function DeliveryMethodCards({
           <p className="text-sm font-semibold">{deliverLabel}</p>
           <p className="text-[11px] text-muted-foreground">{deliverSub}</p>
         </div>
-        <p className="text-xs font-bold tabular-nums text-primary">{formatNaira(deliverPrice, false)}</p>
+        <p className="text-xs font-bold tabular-nums text-primary">
+          {formatNaira(deliverPrice, false)}
+        </p>
       </button>
     </div>
   );
@@ -106,12 +106,20 @@ export function DeliveryAddressFields({
       </div>
       <div className="space-y-1">
         <Label>Area / landmark</Label>
-        <Input value={value.area} onChange={(e) => set({ area: e.target.value })} className={field} />
+        <Input
+          value={value.area}
+          onChange={(e) => set({ area: e.target.value })}
+          className={field}
+        />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label>LGA</Label>
-          <Input value={value.lga} onChange={(e) => set({ lga: e.target.value })} className={field} />
+          <Input
+            value={value.lga}
+            onChange={(e) => set({ lga: e.target.value })}
+            className={field}
+          />
         </div>
         <div className="space-y-1">
           <Label>State</Label>

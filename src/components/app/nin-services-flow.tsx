@@ -127,7 +127,10 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 : "Your NIN lookup is processing. Check notifications when ready."}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
-          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -197,7 +200,12 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
             {product === "retrieve" ? (
               <div className="space-y-1">
                 <Label>Phone on NIN</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 rounded-xl" inputMode="tel" />
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-11 rounded-xl"
+                  inputMode="tel"
+                />
               </div>
             ) : (
               <div className="space-y-1">
@@ -260,10 +268,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     ]
                   : [
                       {
-                        label:
-                          product === "retrieve"
-                            ? "Retrieve NIN"
-                            : "NIN slip (PDF)",
+                        label: product === "retrieve" ? "Retrieve NIN" : "NIN slip (PDF)",
                         amount: checkoutTotal,
                       },
                     ]
@@ -271,10 +276,16 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               total={checkoutTotal}
             />
             {needsAddress ? (
-              <p className="text-[11px] text-muted-foreground">Deliver to: {formatDeliveryOneLine(address)}</p>
+              <p className="text-[11px] text-muted-foreground">
+                Deliver to: {formatDeliveryOneLine(address)}
+              </p>
             ) : null}
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPay()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={paying}
+                onClick={() => void onPay()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
