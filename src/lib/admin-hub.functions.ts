@@ -1,11 +1,16 @@
 /**
- * Phase A+B — staff hub orders, catalog fees, notes, fulfillment/dispatch.
- * Status changes notify the customer in-app.
+ * Staff hub orders + fulfillment (manual dispatch, no courier API).
+ * Lifecycle: looked_up → paid → digital_ready → queued_print → sealed → dispatched → delivered
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyCustomerHubStatus } from "@/lib/hub-documents.functions";
-import { notifyStaff } from "@/lib/hub-notify.server";
+import {
+  FULFILLMENT_STATUSES,
+  type FulfillmentStatus,
+  paymentStatusForFulfillment,
+} from "@/lib/hub-fulfillment";
+import { notifyStaff, notifyUser } from "@/lib/hub-notify.server";
 
 export type HubOrderRow = {
   id: string;
@@ -19,19 +24,15 @@ export type HubOrderRow = {
   metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string | null;
+  fulfillment_status?: string | null;
+  tracking_note?: string | null;
+  document_url?: string | null;
 };
 
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
 export type HubOrderStatus = (typeof HUB_STATUSES)[number];
 
-export const FULFILLMENT_STATUSES = [
-  "queued",
-  "printing",
-  "dispatched",
-  "delivered",
-  "cancelled",
-] as const;
-export type FulfillmentStatus = (typeof FULFILLMENT_STATUSES)[number];
+export { FULFILLMENT_STATUSES, type FulfillmentStatus };
 
 export const PHYSICAL_SERVICES = [
   "nin_card_print",
@@ -39,6 +40,7 @@ export const PHYSICAL_SERVICES = [
   "plastic_card",
   "vehicle_license_sticker",
   "license_sticker",
+  "cac",
 ] as const;
 
 export const HUB_CATALOG_SERVICES = [
@@ -106,16 +108,32 @@ export const listDispatchQueue = createServerFn({ method: "GET" })
       .select(
         "id, user_id, service, amount, status, payment_reference, tracking_reference, customer_identifier, metadata, created_at, updated_at",
       )
-      .in("service", [...PHYSICAL_SERVICES])
       .order("created_at", { ascending: true })
-      .limit(150);
+      .limit(200);
     if (error) throw new Error(error.message);
 
     const orders = ((rows ?? []) as HubOrderRow[]).filter((o) => {
       const st = String(o.status).toLowerCase();
       if (st === "failed") return false;
-      const ful = String(asMeta(o.metadata)["fulfillment_status"] ?? "queued").toLowerCase();
-      return ful !== "delivered" && ful !== "cancelled";
+      const meta = asMeta(o.metadata);
+      const delivery = String(meta["delivery"] ?? "").toLowerCase();
+      const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
+      if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
+      // Physical path: explicit deliver or known physical service
+      const svc = o.service.toLowerCase();
+      const physical =
+        delivery === "deliver" ||
+        svc.includes("card_print") ||
+        svc.includes("plastic") ||
+        svc.includes("sticker") ||
+        svc.includes("license");
+      if (!physical && delivery === "download") return false;
+      if (!physical && !delivery) {
+        // include cac only if shipping_address present
+        if (svc.includes("cac") && meta["shipping_address"]) return true;
+        return false;
+      }
+      return true;
     });
     return { orders };
   });
@@ -165,11 +183,17 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       note: data.note || null,
     });
 
+    // Align fulfillment when payment status is completed for soft-copy style closes
+    const nextMeta = { ...prevMeta, status_history: history };
+    if (data.status === "successful" && !nextMeta["fulfillment_status"]) {
+      nextMeta["fulfillment_status"] = "digital_ready";
+    }
+
     const { error } = await admin
       .from("hub_orders")
       .update({
         status: data.status,
-        metadata: { ...prevMeta, status_history: history },
+        metadata: nextMeta,
         updated_at: new Date().toISOString(),
       } as never)
       .eq("id", data.orderId);
@@ -298,52 +322,74 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     if (data.courierName) nextMeta["courier_name"] = data.courierName;
     if (data.courierPhone) nextMeta["courier_phone"] = data.courierPhone;
     if (data.trackingCode) nextMeta["courier_tracking"] = data.trackingCode;
+    if (data.note) nextMeta["tracking_note"] = data.note;
 
-    let nextStatus = row.status;
-    if (data.fulfillmentStatus === "dispatched" || data.fulfillmentStatus === "printing") {
-      nextStatus = "in_progress";
-    }
-    if (data.fulfillmentStatus === "delivered") {
-      nextStatus = "successful";
-    }
-    if (data.fulfillmentStatus === "cancelled") {
-      nextStatus = "failed";
-    }
-
-    const { error } = await admin
-      .from("hub_orders")
-      .update({
-        status: nextStatus,
-        metadata: nextMeta,
-        updated_at: new Date().toISOString(),
-      } as never)
-      .eq("id", data.orderId);
-    if (error) throw new Error(error.message);
-
-    const msg =
-      data.fulfillmentStatus === "dispatched"
-        ? "Your package is with the dispatcher."
-        : data.fulfillmentStatus === "delivered"
-          ? "Your package was marked delivered."
-          : data.fulfillmentStatus === "printing"
-            ? "Your item is being prepared for delivery."
-            : `Fulfillment: ${data.fulfillmentStatus}`;
-
-    await notifyCustomerHubStatus({
-      userId: row.user_id,
-      service: row.service,
+    const nextStatus = paymentStatusForFulfillment(data.fulfillmentStatus);
+    const patch: Record<string, unknown> = {
       status: nextStatus,
-    });
-    // Extra clear delivery line
-    if (data.fulfillmentStatus === "dispatched" || data.fulfillmentStatus === "delivered") {
-      const { notifyUser } = await import("@/lib/hub-notify.server");
-      await notifyUser({
-        userId: row.user_id,
-        title: `Delivery · ${data.fulfillmentStatus}`,
-        message: msg,
-        type: data.fulfillmentStatus === "delivered" ? "success" : "information",
-      });
+      metadata: nextMeta,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Optional columns from migration (ignored if missing via catch)
+    try {
+      patch["fulfillment_status"] = data.fulfillmentStatus;
+      if (data.trackingCode || data.note) {
+        patch["tracking_note"] = data.trackingCode || data.note;
+      }
+      if (data.fulfillmentStatus === "dispatched") {
+        patch["dispatched_at"] = new Date().toISOString();
+      }
+      if (data.fulfillmentStatus === "delivered") {
+        patch["delivered_at"] = new Date().toISOString();
+      }
+      if (data.fulfillmentStatus === "paid") {
+        patch["paid_at"] = new Date().toISOString();
+      }
+    } catch {
+      /* columns may not exist yet */
     }
+
+    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
+    if (error) {
+      // Retry without optional columns if schema not migrated
+      const { error: e2 } = await admin
+        .from("hub_orders")
+        .update({
+          status: nextStatus,
+          metadata: nextMeta,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", data.orderId);
+      if (e2) throw new Error(e2.message);
+    }
+
+    const ful = data.fulfillmentStatus;
+    const customerMsg =
+      ful === "digital_ready"
+        ? "Your digital file is ready. Open Profile → My documents."
+        : ful === "queued_print"
+          ? "Your physical pack is queued for printing."
+          : ful === "sealed"
+            ? "Your package is sealed and ready for dispatch."
+            : ful === "dispatched"
+              ? `Your package is on the way.${data.trackingCode ? ` Tracking: ${data.trackingCode}` : data.courierName ? ` Rider: ${data.courierName}` : ""}`
+              : ful === "delivered"
+                ? "Your package was marked delivered."
+                : `Order progress: ${ful.replace(/_/g, " ")}`;
+
+    await notifyUser({
+      userId: row.user_id,
+      title: `Order · ${ful.replace(/_/g, " ")}`,
+      message: customerMsg,
+      type: ful === "delivered" || ful === "digital_ready" ? "success" : "information",
+    });
+
+    await notifyStaff({
+      title: "Fulfillment updated",
+      message: `${row.service} → ${ful} (${data.orderId.slice(0, 8)}…)`,
+      type: "information",
+    });
 
     return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
   });
