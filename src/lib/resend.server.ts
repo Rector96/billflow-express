@@ -16,8 +16,7 @@ export type SendEmailInput = {
 };
 
 export type SendEmailResult =
-  | { ok: true; id?: string; skipped?: boolean }
-  | { ok: false; error: string };
+  { ok: true; id?: string; skipped?: boolean } | { ok: false; error: string };
 
 function env(key: string): string {
   try {

@@ -98,7 +98,9 @@ export async function sendHubLifecycleEmail(input: {
       lines = [
         `Your <strong>${escapeHtml(service)}</strong> file is ready.`,
         `Open the app → <strong>Profile → My documents</strong> to download.`,
-        origin ? `Or sign in: <a href="${escapeHtml(origin)}/profile">${escapeHtml(docsLink)}</a>` : "",
+        origin
+          ? `Or sign in: <a href="${escapeHtml(origin)}/profile">${escapeHtml(docsLink)}</a>`
+          : "",
         `Reference: <strong>${escapeHtml(ref)}</strong>`,
       ];
       break;
@@ -108,9 +110,7 @@ export async function sendHubLifecycleEmail(input: {
       lines = [
         `Your physical pack for <strong>${escapeHtml(service)}</strong> has been handed to a rider.`,
         input.courierName ? `Rider: <strong>${escapeHtml(input.courierName)}</strong>` : "",
-        input.trackingNote
-          ? `Tracking: <strong>${escapeHtml(input.trackingNote)}</strong>`
-          : "",
+        input.trackingNote ? `Tracking: <strong>${escapeHtml(input.trackingNote)}</strong>` : "",
         `Reference: <strong>${escapeHtml(ref)}</strong>`,
       ];
       break;
@@ -127,7 +127,9 @@ export async function sendHubLifecycleEmail(input: {
 
   const bodyHtml = lines
     .filter(Boolean)
-    .map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#334155;">${p}</p>`)
+    .map(
+      (p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#334155;">${p}</p>`,
+    )
     .join("");
 
   const result = await sendEmail({
