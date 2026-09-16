@@ -13,6 +13,7 @@ import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
 import { readContinueDrafts, type ContinueDraft } from "@/lib/continue-draft";
 import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
+import { REMOVED_SERVICE_SLUGS } from "@/lib/product-mode";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/home")({
@@ -59,12 +60,18 @@ function HomePage() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
-  const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
+  const buyAgain = useMemo(() => {
+    const items = buildBuyAgain(transactions, saved, 6).filter(
+      (i) => !REMOVED_SERVICE_SLUGS.has(i.serviceSlug),
+    );
+    return items.slice(0, 3);
+  }, [transactions, saved]);
 
   const savedHome = useMemo(() => {
     const seen = new Set<string>();
     const out = [];
     for (const item of saved) {
+      if (REMOVED_SERVICE_SLUGS.has(item.serviceSlug)) continue;
       const key = `${item.serviceSlug}|${item.provider}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -74,7 +81,10 @@ function HomePage() {
     return out;
   }, [saved]);
 
-  const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
+  const recent = useMemo(
+    () => transactions.filter((t) => !REMOVED_SERVICE_SLUGS.has(t.serviceSlug)).slice(0, 3),
+    [transactions],
+  );
   const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
 
   function runServiceSearch(e: React.FormEvent) {
@@ -130,7 +140,7 @@ function HomePage() {
             <Input
               value={serviceQuery}
               onChange={(e) => setServiceQuery(e.target.value)}
-              placeholder="Search CAC, NIN, data..."
+              placeholder="Search CAC, NIN, electricity..."
               aria-label="Search services"
               className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
             />
