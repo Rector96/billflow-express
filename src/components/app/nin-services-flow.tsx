@@ -1,9 +1,10 @@
 /**
  * NIN — retrieve / slip (download) / plastic card (deliver + address).
- * Compact mobile; fees from loader.
+ * On pay: writes hub_orders (pending) for admin queue.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { CreditCard, FileText, Home, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
@@ -22,6 +23,7 @@ import {
   type DeliveryAddress,
 } from "@/lib/hub-delivery";
 import { simulatePaystackInline } from "@/lib/hub-api.demo";
+import { submitNinOrder } from "@/lib/hub-order-submit.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
 
@@ -44,6 +46,7 @@ const STEPS_DELIVER: PayStepMeta[] = [
 export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const navigate = useNavigate();
   const { profile, authed } = useApp();
+  const runSubmit = useServerFn(submitNinOrder);
 
   const priceRetrieve = feeFromMap(fees, "nin_retrieve");
   const priceSlip = feeFromMap(fees, "nin_slip");
@@ -100,13 +103,33 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
           nin: nin || phone,
           delivery: needsAddress ? "deliver" : "download",
           shipping_address: needsAddress ? formatDeliveryOneLine(address) : "",
-          shipping: needsAddress ? address : undefined,
         },
       });
       if (paystack.status !== "success") throw new Error("Payment was not completed.");
-      setRefId(paystack.reference);
+
+      const done = await runSubmit({
+        data: {
+          product,
+          amount: checkoutTotal,
+          phone,
+          nin,
+          shippingAddress: needsAddress ? formatDeliveryOneLine(address) : "",
+          shipping: needsAddress
+            ? {
+                phone: address.phone,
+                street: address.street,
+                area: address.area,
+                lga: address.lga,
+                state: address.state,
+              }
+            : {},
+          paymentReference: paystack.reference,
+        },
+      });
+
+      setRefId(done.trackingReference || paystack.reference);
       setStep("success");
-      toast.success("Payment confirmed");
+      toast.success("Order saved — staff will process it");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Payment failed");
     } finally {
@@ -118,19 +141,19 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
     return (
       <AppShell>
         <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
-          <h1 className="text-lg font-bold">Payment received</h1>
+          <h1 className="text-lg font-bold">Order received</h1>
           <p className="text-sm text-muted-foreground">
             {product === "slip_pdf"
-              ? "Your digital slip will appear under Profile → My documents when ready."
+              ? "Digital slip will appear under Profile → My documents when ready."
               : product === "plastic_card"
-                ? "Your card is being prepared. We’ll notify you when it’s out for delivery."
-                : "Your NIN lookup is processing. Check notifications when ready."}
+                ? "Card is queued for print & delivery. Track updates in Notifications."
+                : "NIN lookup is with our team. Check notifications when ready."}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
-          <Button
-            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
-            onClick={() => navigate({ to: "/home" })}
-          >
+          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/profile/documents" })}>
+            My documents
+          </Button>
+          <Button variant="outline" className="h-11 w-full max-w-xs rounded-xl" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -200,12 +223,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
             {product === "retrieve" ? (
               <div className="space-y-1">
                 <Label>Phone on NIN</Label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 rounded-xl"
-                  inputMode="tel"
-                />
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 rounded-xl" inputMode="tel" />
               </div>
             ) : (
               <div className="space-y-1">
@@ -276,16 +294,10 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               total={checkoutTotal}
             />
             {needsAddress ? (
-              <p className="text-[11px] text-muted-foreground">
-                Deliver to: {formatDeliveryOneLine(address)}
-              </p>
+              <p className="text-[11px] text-muted-foreground">Deliver to: {formatDeliveryOneLine(address)}</p>
             ) : null}
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
-                onClick={() => void onPay()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPay()}>
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…

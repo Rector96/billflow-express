@@ -212,12 +212,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
           : "nin_card_print";
 
     const trackingReference = uid("NIN");
-    const paymentReference =
-      data.paymentReference ||
-      (data.paymentReference.startsWith("PSK_")
-        ? data.paymentReference
-        : `PSK_DEMO_${trackingReference}`);
-
+    const paymentReference = data.paymentReference || `PSK_DEMO_${trackingReference}`;
     const needsDeliver = data.product === "plastic_card";
 
     await insertHubOrder({
