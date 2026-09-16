@@ -1,7 +1,7 @@
 /**
- * Staff hub orders + fulfillment (manual dispatch, no courier API).
- * Lifecycle: looked_up → paid → digital_ready → queued_print → sealed → dispatched → delivered
- * Emails via Resend when RESEND_API_KEY + RESEND_FROM are set.
+ * Staff hub orders — bank-grade detail, agent desk, care call, fulfillment.
+ * Document attach → customer notified to login & download (My documents).
+ * Resend optional (off until domain verified).
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -26,15 +26,25 @@ export type HubOrderRow = {
   metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string | null;
-  fulfillment_status?: string | null;
-  tracking_note?: string | null;
-  document_url?: string | null;
+};
+
+export type HubCustomerProfile = {
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+export type HubOrderDetail = HubOrderRow & {
+  profile: HubCustomerProfile | null;
 };
 
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
 export type HubOrderStatus = (typeof HUB_STATUSES)[number];
 
 export { FULFILLMENT_STATUSES, type FulfillmentStatus };
+
+export const CARE_CALL_STATUSES = ["pending", "called", "confirmed", "no_answer", "skipped"] as const;
+export type CareCallStatus = (typeof CARE_CALL_STATUSES)[number];
 
 export const PHYSICAL_SERVICES = [
   "nin_card_print",
@@ -99,6 +109,63 @@ export const listHubOrders = createServerFn({ method: "GET" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return { orders: (rows ?? []) as HubOrderRow[] };
+  });
+
+/** Full order + profile for bank-grade side panel */
+export const getHubOrderDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    if (!orderId) throw new Error("Missing order id");
+    return { orderId };
+  })
+  .handler(async ({ data, context }): Promise<{ order: HubOrderDetail }> => {
+    const admin = await assertStaff(context.userId);
+    const { data: rows, error } = await admin
+      .from("hub_orders")
+      .select(
+        "id, user_id, service, amount, status, payment_reference, tracking_reference, customer_identifier, metadata, created_at, updated_at",
+      )
+      .eq("id", data.orderId)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const row = rows?.[0] as HubOrderRow | undefined;
+    if (!row) throw new Error("Order not found");
+
+    let profile: HubCustomerProfile | null = null;
+    try {
+      const { data: p } = await admin
+        .from("profiles")
+        .select("full_name, email, phone")
+        .eq("user_id", row.user_id)
+        .maybeSingle();
+      if (p) {
+        profile = {
+          full_name: (p as { full_name?: string | null }).full_name ?? null,
+          email: (p as { email?: string | null }).email ?? null,
+          phone: (p as { phone?: string | null }).phone ?? null,
+        };
+      }
+    } catch {
+      /* profiles optional */
+    }
+
+    // Fallback email from auth if profile empty
+    if (!profile?.email) {
+      try {
+        const { data: authUser } = await admin.auth.admin.getUserById(row.user_id);
+        const email = authUser.user?.email ?? null;
+        profile = {
+          full_name: profile?.full_name ?? null,
+          email: email ?? profile?.email ?? null,
+          phone: profile?.phone ?? null,
+        };
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return { order: { ...row, profile } };
   });
 
 export const listDispatchQueue = createServerFn({ method: "GET" })
@@ -186,8 +253,8 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     });
 
     const nextMeta = { ...prevMeta, status_history: history };
-    if (data.status === "successful" && !nextMeta["fulfillment_status"]) {
-      nextMeta["fulfillment_status"] = "digital_ready";
+    if (data.status === "successful") {
+      nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
     }
 
     const { error } = await admin
@@ -265,6 +332,183 @@ export const addHubStaffNote = createServerFn({ method: "POST" })
       } as never)
       .eq("id", data.orderId);
     if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Assign order to an agent desk (name label is enough for launch). */
+export const assignHubAgent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; agentLabel: string; agentDesk?: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    const agentLabel = String(input?.agentLabel ?? "").trim();
+    if (!orderId) throw new Error("Missing order id");
+    if (agentLabel.length < 2) throw new Error("Enter agent name or desk");
+    return {
+      orderId,
+      agentLabel: agentLabel.slice(0, 120),
+      agentDesk: String(input?.agentDesk ?? "").trim().slice(0, 80),
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: existing, error: readErr } = await admin
+      .from("hub_orders")
+      .select("id, user_id, service, metadata")
+      .eq("id", data.orderId)
+      .limit(1);
+    if (readErr) throw new Error(readErr.message);
+    const row = existing?.[0] as
+      | { id: string; user_id: string; service: string; metadata: unknown }
+      | undefined;
+    if (!row) throw new Error("Order not found");
+
+    const prevMeta = asMeta(row.metadata);
+    const nextMeta = {
+      ...prevMeta,
+      assigned_agent: data.agentLabel,
+      assigned_desk: data.agentDesk || prevMeta["assigned_desk"] || null,
+      assigned_at: new Date().toISOString(),
+      assigned_by: context.userId,
+    };
+
+    const { error } = await admin
+      .from("hub_orders")
+      .update({
+        metadata: nextMeta,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+
+    await notifyStaff({
+      title: "Order assigned",
+      message: `${row.service} → ${data.agentLabel} (${data.orderId.slice(0, 8)}…)`,
+      type: "information",
+    });
+
+    return { ok: true as const };
+  });
+
+/** Care team call log before dispatch / after digital ready. */
+export const updateHubCareCall = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; careStatus: string; note?: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    const careStatus = String(input?.careStatus ?? "")
+      .trim()
+      .toLowerCase();
+    if (!orderId) throw new Error("Missing order id");
+    if (!CARE_CALL_STATUSES.includes(careStatus as CareCallStatus)) {
+      throw new Error("Invalid care status");
+    }
+    return {
+      orderId,
+      careStatus: careStatus as CareCallStatus,
+      note: String(input?.note ?? "").trim().slice(0, 1000),
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: existing, error: readErr } = await admin
+      .from("hub_orders")
+      .select("id, user_id, service, metadata")
+      .eq("id", data.orderId)
+      .limit(1);
+    if (readErr) throw new Error(readErr.message);
+    const row = existing?.[0] as
+      | { id: string; user_id: string; service: string; metadata: unknown }
+      | undefined;
+    if (!row) throw new Error("Order not found");
+
+    const prevMeta = asMeta(row.metadata);
+    const careLog = Array.isArray(prevMeta["care_call_log"])
+      ? [...(prevMeta["care_call_log"] as unknown[])]
+      : [];
+    careLog.push({
+      status: data.careStatus,
+      note: data.note || null,
+      at: new Date().toISOString(),
+      by: context.userId,
+    });
+
+    const nextMeta = {
+      ...prevMeta,
+      care_call_status: data.careStatus,
+      care_call_note: data.note || prevMeta["care_call_note"] || null,
+      care_call_at: new Date().toISOString(),
+      care_call_log: careLog,
+    };
+
+    const { error } = await admin
+      .from("hub_orders")
+      .update({
+        metadata: nextMeta,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+
+    if (data.careStatus === "confirmed") {
+      await notifyUser({
+        userId: row.user_id,
+        title: "We’re preparing your order",
+        message:
+          "Our team confirmed your details. Watch your notifications for download or delivery updates.",
+        type: "information",
+      });
+    }
+
+    return { ok: true as const, careStatus: data.careStatus };
+  });
+
+/** Ping customer: login and download from Profile → My documents */
+export const notifyCustomerToDownload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    if (!orderId) throw new Error("Missing order id");
+    return { orderId };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: existing, error: readErr } = await admin
+      .from("hub_orders")
+      .select("id, user_id, service, tracking_reference, amount, metadata")
+      .eq("id", data.orderId)
+      .limit(1);
+    if (readErr) throw new Error(readErr.message);
+    const row = existing?.[0] as
+      | {
+          id: string;
+          user_id: string;
+          service: string;
+          tracking_reference: string | null;
+          amount: number;
+          metadata: unknown;
+        }
+      | undefined;
+    if (!row) throw new Error("Order not found");
+
+    const meta = asMeta(row.metadata);
+    const hasDoc =
+      typeof meta["document_url"] === "string" || typeof meta["certificate_url"] === "string";
+    if (!hasDoc) throw new Error("Attach a document link first");
+
+    await notifyUser({
+      userId: row.user_id,
+      title: "Document ready — log in to download",
+      message: `Your ${row.service.replace(/_/g, " ")} file is ready. Open Profile → My documents to download.`,
+      type: "success",
+    });
+
+    void sendHubLifecycleEmail({
+      userId: row.user_id,
+      event: "digital_ready",
+      service: row.service,
+      trackingReference: row.tracking_reference,
+      amount: row.amount,
+    });
+
     return { ok: true as const };
   });
 
@@ -349,39 +593,8 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
 
-    try {
-      patch["fulfillment_status"] = data.fulfillmentStatus;
-      if (data.trackingCode || data.note) {
-        patch["tracking_note"] = data.trackingCode || data.note;
-      }
-      if (data.fulfillmentStatus === "dispatched") {
-        patch["dispatched_at"] = new Date().toISOString();
-      }
-      if (data.fulfillmentStatus === "delivered") {
-        patch["delivered_at"] = new Date().toISOString();
-      }
-      if (data.fulfillmentStatus === "paid") {
-        patch["paid_at"] = new Date().toISOString();
-      }
-    } catch {
-      /* optional columns */
-    }
-
-    const { error } = await admin
-      .from("hub_orders")
-      .update(patch as never)
-      .eq("id", data.orderId);
-    if (error) {
-      const { error: e2 } = await admin
-        .from("hub_orders")
-        .update({
-          status: nextStatus,
-          metadata: nextMeta,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id", data.orderId);
-      if (e2) throw new Error(e2.message);
-    }
+    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
+    if (error) throw new Error(error.message);
 
     const ful = data.fulfillmentStatus;
     const customerMsg =
@@ -410,7 +623,6 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       type: "information",
     });
 
-    // Resend: only key customer moments
     if (ful === "paid" || ful === "digital_ready" || ful === "dispatched" || ful === "delivered") {
       void sendHubLifecycleEmail({
         userId: row.user_id,
