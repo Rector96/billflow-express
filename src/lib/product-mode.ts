@@ -26,11 +26,7 @@ export const HOME_CLASSIC_SLUGS = [
   "vehicle",
 ] as const;
 
-export const HIDDEN_WHEN_BILLS_FOCUS = new Set([
-  "internet",
-  "water",
-  "insurance",
-]);
+export const HIDDEN_WHEN_BILLS_FOCUS = new Set(["internet", "water", "insurance"]);
 
 /** Live bill fulfillment only (no airtime/data). */
 export const LIVE_BILL_SLUGS = new Set(["electricity", "cable"]);
