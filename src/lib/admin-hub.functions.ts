@@ -1,10 +1,12 @@
 /**
  * Staff hub orders + fulfillment (manual dispatch, no courier API).
  * Lifecycle: looked_up → paid → digital_ready → queued_print → sealed → dispatched → delivered
+ * Emails via Resend when RESEND_API_KEY + RESEND_FROM are set.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyCustomerHubStatus } from "@/lib/hub-documents.functions";
+import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import {
   FULFILLMENT_STATUSES,
   type FulfillmentStatus,
@@ -119,7 +121,6 @@ export const listDispatchQueue = createServerFn({ method: "GET" })
       const delivery = String(meta["delivery"] ?? "").toLowerCase();
       const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
       if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
-      // Physical path: explicit deliver or known physical service
       const svc = o.service.toLowerCase();
       const physical =
         delivery === "deliver" ||
@@ -129,7 +130,6 @@ export const listDispatchQueue = createServerFn({ method: "GET" })
         svc.includes("license");
       if (!physical && delivery === "download") return false;
       if (!physical && !delivery) {
-        // include cac only if shipping_address present
         if (svc.includes("cac") && meta["shipping_address"]) return true;
         return false;
       }
@@ -156,7 +156,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
 
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
-      .select("id, user_id, service, metadata, status")
+      .select("id, user_id, service, metadata, status, tracking_reference, amount")
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
@@ -167,6 +167,8 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
           service: string;
           metadata: Record<string, unknown> | null;
           status: string;
+          tracking_reference: string | null;
+          amount: number;
         }
       | undefined;
     if (!row) throw new Error("Order not found");
@@ -183,7 +185,6 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       note: data.note || null,
     });
 
-    // Align fulfillment when payment status is completed for soft-copy style closes
     const nextMeta = { ...prevMeta, status_history: history };
     if (data.status === "successful" && !nextMeta["fulfillment_status"]) {
       nextMeta["fulfillment_status"] = "digital_ready";
@@ -211,6 +212,15 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
         message: `${row.service} → ${data.status.replace(/_/g, " ")} (${data.orderId.slice(0, 8)}…)`,
         type: "information",
       });
+      if (data.status === "successful") {
+        void sendHubLifecycleEmail({
+          userId: row.user_id,
+          event: "digital_ready",
+          service: row.service,
+          trackingReference: row.tracking_reference,
+          amount: row.amount,
+        });
+      }
     }
 
     return { ok: true as const, status: data.status };
@@ -291,12 +301,20 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     const admin = await assertStaff(context.userId);
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
-      .select("id, user_id, service, metadata, status")
+      .select("id, user_id, service, metadata, status, tracking_reference, amount")
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
     const row = existing?.[0] as
-      | { id: string; user_id: string; service: string; metadata: unknown; status: string }
+      | {
+          id: string;
+          user_id: string;
+          service: string;
+          metadata: unknown;
+          status: string;
+          tracking_reference: string | null;
+          amount: number;
+        }
       | undefined;
     if (!row) throw new Error("Order not found");
 
@@ -331,7 +349,6 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
 
-    // Optional columns from migration (ignored if missing via catch)
     try {
       patch["fulfillment_status"] = data.fulfillmentStatus;
       if (data.trackingCode || data.note) {
@@ -347,15 +364,11 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
         patch["paid_at"] = new Date().toISOString();
       }
     } catch {
-      /* columns may not exist yet */
+      /* optional columns */
     }
 
-    const { error } = await admin
-      .from("hub_orders")
-      .update(patch as never)
-      .eq("id", data.orderId);
+    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
     if (error) {
-      // Retry without optional columns if schema not migrated
       const { error: e2 } = await admin
         .from("hub_orders")
         .update({
@@ -393,6 +406,19 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       message: `${row.service} → ${ful} (${data.orderId.slice(0, 8)}…)`,
       type: "information",
     });
+
+    // Resend: only key customer moments
+    if (ful === "paid" || ful === "digital_ready" || ful === "dispatched" || ful === "delivered") {
+      void sendHubLifecycleEmail({
+        userId: row.user_id,
+        event: ful,
+        service: row.service,
+        trackingReference: row.tracking_reference,
+        amount: row.amount,
+        trackingNote: data.trackingCode || data.note || null,
+        courierName: data.courierName || null,
+      });
+    }
 
     return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
   });
