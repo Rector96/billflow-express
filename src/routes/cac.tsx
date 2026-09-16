@@ -66,7 +66,9 @@ function CacPage() {
               </div>
             </div>
             <div className="mt-2 rounded-xl border border-border/70 px-3.5 py-3 opacity-70">
-              <p className="text-sm font-medium text-muted-foreground">Company (Limited Liability)</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Company (Limited Liability)
+              </p>
               <p className="text-xs text-muted-foreground">Coming later — not offered yet.</p>
             </div>
           </section>
