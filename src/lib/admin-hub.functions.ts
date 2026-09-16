@@ -43,7 +43,13 @@ export type HubOrderStatus = (typeof HUB_STATUSES)[number];
 
 export { FULFILLMENT_STATUSES, type FulfillmentStatus };
 
-export const CARE_CALL_STATUSES = ["pending", "called", "confirmed", "no_answer", "skipped"] as const;
+export const CARE_CALL_STATUSES = [
+  "pending",
+  "called",
+  "confirmed",
+  "no_answer",
+  "skipped",
+] as const;
 export type CareCallStatus = (typeof CARE_CALL_STATUSES)[number];
 
 export const PHYSICAL_SERVICES = [
@@ -346,7 +352,9 @@ export const assignHubAgent = createServerFn({ method: "POST" })
     return {
       orderId,
       agentLabel: agentLabel.slice(0, 120),
-      agentDesk: String(input?.agentDesk ?? "").trim().slice(0, 80),
+      agentDesk: String(input?.agentDesk ?? "")
+        .trim()
+        .slice(0, 80),
     };
   })
   .handler(async ({ data, context }) => {
@@ -358,8 +366,7 @@ export const assignHubAgent = createServerFn({ method: "POST" })
       .limit(1);
     if (readErr) throw new Error(readErr.message);
     const row = existing?.[0] as
-      | { id: string; user_id: string; service: string; metadata: unknown }
-      | undefined;
+      { id: string; user_id: string; service: string; metadata: unknown } | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -404,7 +411,9 @@ export const updateHubCareCall = createServerFn({ method: "POST" })
     return {
       orderId,
       careStatus: careStatus as CareCallStatus,
-      note: String(input?.note ?? "").trim().slice(0, 1000),
+      note: String(input?.note ?? "")
+        .trim()
+        .slice(0, 1000),
     };
   })
   .handler(async ({ data, context }) => {
@@ -416,8 +425,7 @@ export const updateHubCareCall = createServerFn({ method: "POST" })
       .limit(1);
     if (readErr) throw new Error(readErr.message);
     const row = existing?.[0] as
-      | { id: string; user_id: string; service: string; metadata: unknown }
-      | undefined;
+      { id: string; user_id: string; service: string; metadata: unknown } | undefined;
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
@@ -593,7 +601,10 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await admin.from("hub_orders").update(patch as never).eq("id", data.orderId);
+    const { error } = await admin
+      .from("hub_orders")
+      .update(patch as never)
+      .eq("id", data.orderId);
     if (error) throw new Error(error.message);
 
     const ful = data.fulfillmentStatus;
