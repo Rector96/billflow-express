@@ -7,10 +7,7 @@
  * on Netlify so these paths refuse again until isBillLive() is true.
  */
 export function isHubPreviewServerEnabled(): boolean {
-  const candidates = [
-    process.env["HUB_PREVIEW_FLOWS"],
-    process.env["VITE_HUB_PREVIEW_FLOWS"],
-  ];
+  const candidates = [process.env["HUB_PREVIEW_FLOWS"], process.env["VITE_HUB_PREVIEW_FLOWS"]];
   try {
     const vite = (import.meta as { env?: Record<string, string | boolean | undefined> }).env;
     if (vite && "VITE_HUB_PREVIEW_FLOWS" in vite) {

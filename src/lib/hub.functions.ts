@@ -101,7 +101,10 @@ export const recoverTin = createServerFn({ method: "POST" })
     if (!live && preview) {
       await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: true });
       const track = uid("TIN-DEMO");
-      const fakeTin = `1${data.identifier.replace(/\D/g, "").slice(-9).padStart(9, "0")}`.slice(0, 10);
+      const fakeTin = `1${data.identifier.replace(/\D/g, "").slice(-9).padStart(9, "0")}`.slice(
+        0,
+        10,
+      );
       await logHubOrder({
         userId: context.userId,
         service: "tin",
