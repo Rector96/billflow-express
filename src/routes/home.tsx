@@ -33,7 +33,6 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-/** Hub-first grid: CAC, NIN, TIN, Documents, Vehicle, Education */
 const HOME_SERVICES = ["cac", "nin", "tin", "documents", "vehicle", "education"] as const;
 
 function serviceHref(slug: string): { to: string; params?: { slug: string } } {
@@ -53,7 +52,11 @@ function HomePage() {
   const [drafts, setDrafts] = useState<ContinueDraft[]>([]);
 
   useEffect(() => {
-    setDrafts(readContinueDrafts());
+    const load = () => setDrafts(readContinueDrafts());
+    load();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
@@ -94,31 +97,24 @@ function HomePage() {
             </Link>
             <div>
               <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
-              <h1 className="text-base font-semibold tracking-tight text-foreground">
-                {firstName}
-              </h1>
+              <h1 className="text-base font-semibold tracking-tight text-foreground">{firstName}</h1>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/notifications"
-              aria-label={
-                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
-              }
+              aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
               className="press relative grid size-9 place-items-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
             >
               <Bell className="size-4" />
-              {unreadCount > 0 ? (
-                <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" />
-              ) : null}
+              {unreadCount > 0 ? <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" /> : null}
             </Link>
           </div>
         </div>
       </header>
 
       <div className="space-y-4 px-4 pt-1 pb-6">
-        {/* Compact wallet stays — approved hierarchy keeps balance visible */}
         <WalletCard />
 
         <section className="space-y-2">
@@ -235,7 +231,10 @@ function HomePage() {
                     size="sm"
                     variant="outline"
                     className="h-8 shrink-0 rounded-lg px-3 text-xs font-semibold"
-                    onClick={() => void navigate({ to: d.href as "/cac" })}
+                    onClick={() => {
+                      const path = (d.href || "/home").split("?")[0] as "/cac";
+                      void navigate({ to: path });
+                    }}
                   >
                     Continue
                   </Button>
