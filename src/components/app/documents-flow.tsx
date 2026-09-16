@@ -175,7 +175,9 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
         <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
           <CheckCircle2 className="size-10 text-success" />
           <h1 className="text-lg font-bold">Ready</h1>
-          {trackId ? <p className="font-mono text-[10px] text-muted-foreground">{trackId}</p> : null}
+          {trackId ? (
+            <p className="font-mono text-[10px] text-muted-foreground">{trackId}</p>
+          ) : null}
           <Button
             className="h-12 w-full max-w-xs rounded-xl font-semibold"
             onClick={() =>
@@ -198,7 +200,10 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           >
             <FolderOpen className="mr-2 size-4" /> My documents
           </Button>
-          <Button className="h-11 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="h-11 w-full max-w-xs rounded-xl font-semibold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -259,22 +264,38 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             <div className="space-y-1">
               <Label>Address</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} className={field} />
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className={field}
+              />
             </div>
             {docType === "tenancy" ? (
               <>
                 <div className="space-y-1">
                   <Label>Rent / year (₦)</Label>
-                  <Input value={rent} onChange={(e) => setRent(e.target.value)} className={field} inputMode="numeric" />
+                  <Input
+                    value={rent}
+                    onChange={(e) => setRent(e.target.value)}
+                    className={field}
+                    inputMode="numeric"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Duration</Label>
-                  <Input value={duration} onChange={(e) => setDuration(e.target.value)} className={field} />
+                  <Input
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    className={field}
+                  />
                 </div>
               </>
             ) : null}
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" onClick={() => setStep("preview")}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => setStep("preview")}
+              >
                 Continue
               </Button>
             </PayActionBar>
@@ -290,7 +311,11 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
               <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
             </div>
             <PayActionBar>
-              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPayNow()}>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={paying}
+                onClick={() => void onPayNow()}
+              >
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…

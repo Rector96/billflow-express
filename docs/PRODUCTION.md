@@ -5,15 +5,16 @@ Goal: real money only on **live bill** rails; hub services stay gated until ops 
 
 ## What is live today (money path)
 
-| Service | Status |
-|---------|--------|
-| Airtime, Data, Electricity, Cable | **Live** (`LIVE_BILL_SLUGS`) via VTpass + wallet/Paystack |
+| Service                           | Status                                                         |
+| --------------------------------- | -------------------------------------------------------------- |
+| Airtime, Data, Electricity, Cable | **Live** (`LIVE_BILL_SLUGS`) via VTpass + wallet/Paystack      |
 | CAC, NIN, TIN, Documents, Vehicle | **Not live fulfillment** — UI demo only when hub preview is on |
-| Education / Exam pins | Preview / catalogue — confirm VTpass before promoting |
+| Education / Exam pins             | Preview / catalogue — confirm VTpass before promoting          |
 
 ## Netlify environment (production site)
 
 ### Required
+
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
 - `PAYSTACK_SECRET_KEY` (live `sk_live_…` only when taking real funds)
 - `VITE_PAYSTACK_PUBLIC_KEY` (`pk_live_…`)
@@ -21,6 +22,7 @@ Goal: real money only on **live bill** rails; hub services stay gated until ops 
 - `VTPASS_MODE=live` only after sandbox matrix passes
 
 ### Recommended for production customers
+
 ```
 VITE_HUB_PREVIEW_FLOWS=false
 HUB_PREVIEW_FLOWS=false
@@ -32,6 +34,7 @@ With preview **false**, hub tiles show **Soon** and server rejects demo hub fulf
 Live bills (airtime/data/power/cable) keep working.
 
 ### Staging / internal QA
+
 ```
 VITE_HUB_PREVIEW_FLOWS=true
 HUB_PREVIEW_FLOWS=true
