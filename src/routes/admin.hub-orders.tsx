@@ -95,7 +95,9 @@ function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-3 border-b border-border/40 py-1.5 text-xs last:border-0">
       <span className="shrink-0 text-muted-foreground">{label}</span>
-      <span className="max-w-[60%] break-words text-right font-semibold text-foreground">{value}</span>
+      <span className="max-w-[60%] break-words text-right font-semibold text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
@@ -320,14 +322,8 @@ function AdminHubOrders() {
 
   const delivery = metaGet(meta, "delivery") || "download";
   const ful = metaGet(meta, "fulfillment_status") || "paid";
-  const phone =
-    detail?.profile?.phone ||
-    metaGet(meta, "owner_phone", "phone") ||
-    "";
-  const email =
-    detail?.profile?.email ||
-    metaGet(meta, "owner_email", "email") ||
-    "";
+  const phone = detail?.profile?.phone || metaGet(meta, "owner_phone", "phone") || "";
+  const email = detail?.profile?.email || metaGet(meta, "owner_email", "email") || "";
   const displayName =
     detail?.profile?.full_name ||
     metaGet(meta, "owner_name", "preferred_name", "taxpayerName") ||
@@ -355,13 +351,20 @@ function AdminHubOrders() {
           className="h-9 rounded-xl border bg-card px-3 text-xs font-semibold"
         >
           <option value="">All services</option>
-          {["cac", "tin", "documents", "nin_retrieve", "nin_slip", "nin_card_print", "vehicle_license_sticker", "vehicle_third_party_insurance"].map(
-            (s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ),
-          )}
+          {[
+            "cac",
+            "tin",
+            "documents",
+            "nin_retrieve",
+            "nin_slip",
+            "nin_card_print",
+            "vehicle_license_sticker",
+            "vehicle_third_party_insurance",
+          ].map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
         <select
           value={filterStatus}
@@ -559,7 +562,10 @@ function AdminHubOrders() {
                       placeholder="Agent name"
                       className="h-9 rounded-xl text-xs"
                     />
-                    <Field label="Currently assigned" value={metaGet(meta, "assigned_agent") || "—"} />
+                    <Field
+                      label="Currently assigned"
+                      value={metaGet(meta, "assigned_agent") || "—"}
+                    />
                     <Button
                       size="sm"
                       className="mt-2 w-full rounded-xl text-xs"
@@ -574,7 +580,10 @@ function AdminHubOrders() {
                     <p className="mb-2 text-[11px] text-muted-foreground">
                       Call to confirm address / name, then mark confirmed before dispatch.
                     </p>
-                    <Field label="Care status" value={metaGet(meta, "care_call_status") || "pending"} />
+                    <Field
+                      label="Care status"
+                      value={metaGet(meta, "care_call_status") || "pending"}
+                    />
                     <Input
                       value={careNote}
                       onChange={(e) => setCareNote(e.target.value)}
@@ -602,7 +611,8 @@ function AdminHubOrders() {
                       <FileText className="size-3" /> Paste https link (Drive / storage)
                     </div>
                     <p className="mb-2 text-[11px] text-muted-foreground">
-                      When CAC / NIN file is ready, attach it. Customer opens Profile → My documents.
+                      When CAC / NIN file is ready, attach it. Customer opens Profile → My
+                      documents.
                     </p>
                     <Input
                       value={docUrl}
@@ -628,7 +638,10 @@ function AdminHubOrders() {
                       <Bell className="mr-1.5 size-3.5" />
                       Notify: log in & download
                     </Button>
-                    <Field label="Linked file" value={metaGet(meta, "document_url", "certificate_url") || "—"} />
+                    <Field
+                      label="Linked file"
+                      value={metaGet(meta, "document_url", "certificate_url") || "—"}
+                    />
                   </Section>
 
                   <Section title="Workflow">
