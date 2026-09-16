@@ -1,5 +1,6 @@
 /**
- * Phase B — physical dispatch queue (NIN plastic card, vehicle license sticker).
+ * Physical dispatch queue — manual rider/waybill (no courier API).
+ * Lifecycle: queued_print → sealed → dispatched → delivered
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,6 +17,7 @@ import {
   type FulfillmentStatus,
   type HubOrderRow,
 } from "@/lib/admin-hub.functions";
+import { FULFILLMENT_LABELS } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -67,6 +69,10 @@ function AdminDispatch() {
 
   const apply = async (status: FulfillmentStatus) => {
     if (!active) return;
+    if (status === "dispatched" && !courierName.trim() && !trackingCode.trim()) {
+      toast.error("Enter rider name or tracking / waybill before dispatch.");
+      return;
+    }
     setBusy(true);
     try {
       await runFul({
@@ -78,7 +84,7 @@ function AdminDispatch() {
           trackingCode,
         },
       });
-      toast.success(`Fulfillment → ${status}`);
+      toast.success(`Marked ${FULFILLMENT_LABELS[status] ?? status} — customer notified`);
       setActive(null);
       await load();
     } catch (e) {
@@ -91,7 +97,7 @@ function AdminDispatch() {
   return (
     <AdminShell
       title="Dispatch"
-      subtitle="Physical hub items — address first, then courier"
+      subtitle="Physical packs — print → seal → hand to rider (manual tracking)"
       actions={
         <button
           type="button"
@@ -104,8 +110,8 @@ function AdminDispatch() {
       }
     >
       <p className="mb-4 text-xs text-muted-foreground">
-        Queue shows NIN plastic cards and vehicle license stickers that are not yet delivered.
-        Confirm the full address before marking dispatched.
+        No courier API. Staff print, pack, give to a local rider, type name/phone or waybill, then
+        Mark dispatched. Customer gets an in-app alert (email later).
       </p>
 
       {error ? (
@@ -119,7 +125,7 @@ function AdminDispatch() {
       ) : orders.length === 0 ? (
         <AdminEmpty
           title="Nothing to dispatch"
-          body="Paid physical orders with open fulfillment status appear here."
+          body="Physical hub orders (deliver / NIN card / sticker / CAC with address) appear here."
         />
       ) : (
         <div className="space-y-3">
@@ -129,7 +135,7 @@ function AdminDispatch() {
               unknown
             >;
             const address = metaStr(meta, "shipping_address", "shippingAddress", "address");
-            const ful = metaStr(meta, "fulfillment_status") || "queued";
+            const ful = metaStr(meta, "fulfillment_status") || "paid";
             return (
               <button
                 key={o.id}
@@ -146,15 +152,15 @@ function AdminDispatch() {
                   <div>
                     <p className="text-sm font-extrabold">{o.service}</p>
                     <p className="font-mono text-[10px] text-muted-foreground">
-                      {o.id.slice(0, 13)}…
+                      {o.tracking_reference || o.id.slice(0, 13)}
                     </p>
                   </div>
                   <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-800 uppercase">
-                    {ful}
+                    {ful.replace(/_/g, " ")}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {address || "No shipping address on file — contact customer"}
+                  {address || "No shipping address — contact customer"}
                 </p>
                 <p className="text-xs font-bold tabular-nums">
                   {formatNaira(Number(o.amount), false)}
@@ -175,7 +181,7 @@ function AdminDispatch() {
           <div className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border bg-background p-4 shadow-float sm:rounded-3xl">
             <div className="mb-3 flex items-center gap-2">
               <Truck className="size-5 text-primary" />
-              <p className="text-sm font-extrabold">Dispatch order</p>
+              <p className="text-sm font-extrabold">Fulfillment</p>
             </div>
             <p className="font-mono text-[10px] text-muted-foreground">{active.id}</p>
             <p className="mt-2 text-sm font-bold">{active.service}</p>
@@ -203,27 +209,30 @@ function AdminDispatch() {
 
             <div className="mt-4 space-y-2">
               <div className="space-y-1">
-                <Label>Courier name</Label>
+                <Label>Rider / courier name</Label>
                 <Input
                   value={courierName}
                   onChange={(e) => setCourierName(e.target.value)}
                   className="h-10 rounded-xl"
+                  placeholder="e.g. Tunde bike"
                 />
               </div>
               <div className="space-y-1">
-                <Label>Courier phone</Label>
+                <Label>Rider phone</Label>
                 <Input
                   value={courierPhone}
                   onChange={(e) => setCourierPhone(e.target.value)}
                   className="h-10 rounded-xl"
+                  inputMode="tel"
                 />
               </div>
               <div className="space-y-1">
-                <Label>Tracking code</Label>
+                <Label>Waybill / tracking note</Label>
                 <Input
                   value={trackingCode}
                   onChange={(e) => setTrackingCode(e.target.value)}
                   className="h-10 rounded-xl"
+                  placeholder="Optional code"
                 />
               </div>
             </div>
@@ -233,9 +242,17 @@ function AdminDispatch() {
                 variant="outline"
                 className="rounded-xl text-xs"
                 disabled={busy}
-                onClick={() => void apply("printing")}
+                onClick={() => void apply("queued_print")}
               >
-                Printing
+                Queue print
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs"
+                disabled={busy}
+                onClick={() => void apply("sealed")}
+              >
+                Sealed / packed
               </Button>
               <Button
                 className="rounded-xl text-xs"
@@ -253,7 +270,7 @@ function AdminDispatch() {
               </Button>
               <Button
                 variant="destructive"
-                className="rounded-xl text-xs"
+                className="col-span-2 rounded-xl text-xs"
                 disabled={busy}
                 onClick={() => void apply("cancelled")}
               >
