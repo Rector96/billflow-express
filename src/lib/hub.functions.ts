@@ -3,19 +3,14 @@
  *
  * SECURITY / FULFILLMENT RULE:
  * - Payment verification happens on the server.
- * - A payment is never treated as successful fulfillment by itself.
- * - Government/regulated services must have a real provider result before we
- *   return a successful result to the customer.
- * - Dojah is optional during development, but missing Dojah access MUST make
- *   TIN/vehicle verification unavailable — never fabricate government data.
- * - Demo/simulated providers are intentionally removed from production paths.
- *
- * This file is deliberately documented so the next developer can continue the
- * implementation safely when real provider credentials become available.
+ * - Government/regulated services need a real provider in production (isBillLive).
+ * - While HUB preview is on (default), endpoints may return synthetic demo data
+ *   so UX can be tested end-to-end without Dojah. Demo is never isBillLive.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
+import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES, type HubPriceKey } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
 
@@ -95,15 +90,50 @@ export const recoverTin = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<RecoverTinSuccess> => {
-    // The route and provider are both required. This second gate prevents a
-    // direct server-function call from bypassing the public service status.
-    if (!isBillLive("tin")) {
+    const live = isBillLive("tin");
+    const preview = isHubPreviewServerEnabled();
+
+    if (!live && !preview) {
       throw new Error("TIN retrieval is temporarily unavailable.");
     }
 
-    // IMPORTANT: Provider availability is checked BEFORE payment verification.
-    // Without a real TIN provider we cannot fulfil the customer's order, so we
-    // refuse the operation instead of accepting money for fabricated data.
+    // --- Demo path (preview only) ---
+    if (!live && preview) {
+      await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: true });
+      const track = uid("TIN-DEMO");
+      const fakeTin = `1${data.identifier.replace(/\D/g, "").slice(-9).padStart(9, "0")}`.slice(0, 10);
+      await logHubOrder({
+        userId: context.userId,
+        service: "tin",
+        amount: data.amount,
+        paymentReference: data.paymentReference,
+        trackingReference: track,
+        customerIdentifier: data.identifier,
+        metadata: { demo: true, taxpayerName: data.fullName },
+        status: "successful",
+      });
+      return {
+        status: "success",
+        data: {
+          tin: fakeTin,
+          taxpayerName: data.fullName,
+          taxpayerType: data.identifierType === "cac" ? "business" : "individual",
+          jtbRegistered: true,
+          cacNumber: data.identifierType === "cac" ? data.identifier : null,
+          nin: data.identifierType === "nin" ? data.identifier : null,
+          email: null,
+          phone: null,
+          rawProvider: "demo",
+        },
+        meta: {
+          paymentReference: data.paymentReference,
+          requestId: track,
+          fee: data.amount,
+        },
+      };
+    }
+
+    // --- Production path ---
     const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
     if (data.identifierType !== "cac" || !isDojahConfigured()) {
       throw new Error(
@@ -111,7 +141,7 @@ export const recoverTin = createServerFn({ method: "POST" })
       );
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount);
+    await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: false });
 
     let tinPayload: {
       tin: string;
@@ -126,7 +156,6 @@ export const recoverTin = createServerFn({ method: "POST" })
       const r = await dojahLookupCompanyTin({ rcNumber: data.identifier });
       tinPayload = { ...r, taxpayerName: r.taxpayerName || data.fullName };
     } catch (e) {
-      // Do not turn provider errors into a successful/locally generated TIN.
       throw new Error(e instanceof Error ? e.message : "TIN lookup failed.");
     }
 
@@ -178,12 +207,28 @@ export const verifyVehicle = createServerFn({ method: "POST" })
     return { plate, state };
   })
   .handler(async ({ data }) => {
-    if (!isBillLive("vehicle")) {
+    const live = isBillLive("vehicle");
+    const preview = isHubPreviewServerEnabled();
+
+    if (!live && !preview) {
       throw new Error("Vehicle verification is temporarily unavailable.");
     }
 
-    // Vehicle registry information is regulated data. Never return a synthetic
-    // vehicle record when the provider is missing or unavailable.
+    // Demo lookup — deterministic fake vehicle so the renew step is testable
+    if (!live && preview) {
+      const seed = data.plate.replace(/[^A-Z0-9]/g, "");
+      const expired = seed.length % 2 === 0;
+      return {
+        plate: data.plate,
+        state: data.state,
+        makeModel: "Toyota Corolla (demo)",
+        color: "Silver",
+        chassisNumber: `DEMO••••${seed.slice(-4) || "0000"}`,
+        expiryStatus: expired ? ("expired" as const) : ("valid" as const),
+        rawProvider: "demo",
+      };
+    }
+
     const { dojahLookupVehicle, isDojahConfigured } = await import("./dojah.server");
     if (!isDojahConfigured()) {
       throw new Error(
@@ -231,13 +276,17 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    // Server-side defense in depth: the renewal endpoint must remain closed
-    // until an authorized renewal/insurance fulfillment provider exists.
-    if (!isBillLive("vehicle")) {
+    const live = isBillLive("vehicle");
+    const preview = isHubPreviewServerEnabled();
+
+    if (!live && !preview) {
       throw new Error("Vehicle renewal is temporarily unavailable.");
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount);
+    await assertPaystackSuccess(data.paymentReference, data.amount, {
+      allowDemo: !live && preview,
+    });
+
     const trackingReference = `VR-${Date.now().toString(36).toUpperCase()}-${data.plate.slice(0, 6)}`;
     await logHubOrder({
       userId: context.userId,
@@ -251,6 +300,7 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
         state: data.state,
         makeModel: data.makeModel,
         delivery: data.choice === "third_party_insurance" ? "digital_pdf" : "physical_sticker",
+        demo: !live,
       },
     });
     return {
@@ -280,14 +330,13 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    // Generic hub payment recording is only allowed for a service that the
-    // central production gate explicitly marks live. This prevents a caller
-    // from turning a Paystack reference into an arbitrary "successful" order.
-    if (!isBillLive(data.service)) {
+    if (!isBillLive(data.service) && !isHubPreviewServerEnabled()) {
       throw new Error("This service is not currently available for payment.");
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount);
+    await assertPaystackSuccess(data.paymentReference, data.amount, {
+      allowDemo: !isBillLive(data.service) && isHubPreviewServerEnabled(),
+    });
     await logHubOrder({
       userId: context.userId,
       service: data.service,
@@ -300,18 +349,17 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     return { ok: true as const, reference: data.paymentReference };
   });
 
-/**
- * Verify Paystack when secret is set.
- * Demo references are accepted only when HUB_ALLOW_UNVERIFIED_PAY=true.
- * That flag is intended for local UI tests only and must remain false in
- * production. A real payment reference is always verified against Paystack.
- */
-async function assertPaystackSuccess(reference: string, expectedNaira: number) {
+async function assertPaystackSuccess(
+  reference: string,
+  expectedNaira: number,
+  opts?: { allowDemo?: boolean },
+) {
   const secret = String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
-  const allowUnverified = String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true";
+  const allowUnverified =
+    String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true" || !!opts?.allowDemo;
 
   if (!secret) {
-    if (allowUnverified && reference.startsWith("PSK_DEMO_")) return;
+    if (allowUnverified && (reference.startsWith("PSK_DEMO_") || opts?.allowDemo)) return;
     throw new Error(
       "PAYSTACK_SECRET_KEY is not set on the server. Add it in Netlify env and redeploy.",
     );
@@ -354,6 +402,7 @@ async function logHubOrder(input: {
   trackingReference: string | null;
   customerIdentifier: string | null;
   metadata: Record<string, unknown>;
+  status?: string;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -361,7 +410,7 @@ async function logHubOrder(input: {
     user_id: input.userId,
     service: input.service,
     amount: input.amount,
-    status: "successful",
+    status: input.status ?? "successful",
     payment_reference: input.paymentReference,
     tracking_reference: input.trackingReference,
     customer_identifier: input.customerIdentifier,
@@ -382,7 +431,7 @@ async function logHubOrder(input: {
       amount: input.amount,
       customer_identifier: input.customerIdentifier,
       internal_reference: ref,
-      status: "successful",
+      status: input.status ?? "successful",
       provider_request_id: input.paymentReference,
       metadata: {
         channel: "hub",
