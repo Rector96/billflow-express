@@ -13,10 +13,13 @@ import type { Transaction, TxStatus } from "@/lib/mock-data";
 export const Route = createFileRoute("/history")({
   head: () => ({
     meta: [
-      { title: `Transactions — ${BRAND.name}` },
-      { name: "description", content: "Every payment and top-up, filtered by status." },
-      { property: "og:title", content: `Transactions — ${BRAND.name}` },
-      { property: "og:description", content: "Track successful, pending and failed payments." },
+      { title: `Activity — ${BRAND.name}` },
+      {
+        name: "description",
+        content: "Payments and applications — filter by status and type.",
+      },
+      { property: "og:title", content: `Activity — ${BRAND.name}` },
+      { property: "og:description", content: "Track successful, pending and failed activity." },
     ],
   }),
   component: HistoryLayout,
@@ -29,8 +32,17 @@ function HistoryLayout() {
 }
 
 type StatusKey = "all" | TxStatus;
+type ActivityTab = "all" | "payments" | "applications";
 type CategoryKey = "all" | "airtime" | "data" | "electricity" | "cable" | "other";
 type DateKey = "all" | "today" | "yesterday" | "7d" | "month" | "last_month";
+
+const HUB_SLUGS = new Set(["cac", "nin", "tin", "documents", "vehicle"]);
+
+const ACTIVITY_TABS: Array<{ key: ActivityTab; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "payments", label: "Payments" },
+  { key: "applications", label: "Applications" },
+];
 
 const STATUS: Array<{ key: StatusKey; label: string }> = [
   { key: "all", label: "All" },
@@ -69,6 +81,10 @@ function categoryOf(tx: Transaction): CategoryKey {
   if (s === "electricity") return "electricity";
   if (s === "cable") return "cable";
   return "other";
+}
+
+function isHubTx(tx: Transaction): boolean {
+  return HUB_SLUGS.has((tx.serviceSlug || "").toLowerCase());
 }
 
 function inDateRange(tx: Transaction, key: DateKey): boolean {
@@ -118,6 +134,7 @@ function Chip({
 
 function HistoryPage() {
   const { transactions } = useApp();
+  const [activityTab, setActivityTab] = useState<ActivityTab>("all");
   const [status, setStatus] = useState<StatusKey>("all");
   const [category, setCategory] = useState<CategoryKey>("all");
   const [dateKey, setDateKey] = useState<DateKey>("all");
@@ -127,6 +144,8 @@ function HistoryPage() {
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return transactions.filter((t) => {
+      if (activityTab === "payments" && isHubTx(t)) return false;
+      if (activityTab === "applications" && !isHubTx(t)) return false;
       if (status !== "all" && t.status !== status) return false;
       if (category !== "all" && categoryOf(t) !== category) return false;
       if (!inDateRange(t, dateKey)) return false;
@@ -137,26 +156,33 @@ function HistoryPage() {
       }
       return true;
     });
-  }, [transactions, status, category, dateKey, q]);
+  }, [transactions, activityTab, status, category, dateKey, q]);
 
   const extraActive = category !== "all" || dateKey !== "all";
 
   return (
     <AppShell>
-      <PageHeader title="Transaction History" backTo="/home" />
+      <PageHeader title="Activity" backTo="/home" />
       <div className="space-y-3 px-4 pt-1 pb-6">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {ACTIVITY_TABS.map((t) => (
+            <Chip key={t.key} active={activityTab === t.key} onClick={() => setActivityTab(t.key)}>
+              {t.label}
+            </Chip>
+          ))}
+        </div>
+
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by name, reference or amount..."
-            aria-label="Search transactions"
+            aria-label="Search activity"
             className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
         </div>
 
-        {/* All | Successful | Pending | Failed */}
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STATUS.map((t) => (
@@ -231,8 +257,18 @@ function HistoryPage() {
         ) : (
           <EmptyState
             Icon={ReceiptText}
-            title="No matching transactions"
-            body="Try another search term or filter status."
+            title={
+              activityTab === "applications"
+                ? "No applications yet"
+                : activityTab === "payments"
+                  ? "No payments found"
+                  : "No matching activity"
+            }
+            body={
+              activityTab === "applications"
+                ? "CAC, NIN, TIN and document requests will show here when available."
+                : "Try another search term or filter status."
+            }
           />
         )}
       </div>
