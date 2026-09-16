@@ -19,10 +19,10 @@ export const Route = createFileRoute("/services")({
       {
         name: "description",
         content:
-          "Electricity, cable, education, airtime, data, CAC, NIN, TIN, documents and vehicle services.",
+          "Electricity, cable, education, CAC, NIN, TIN, documents and vehicle services.",
       },
       { property: "og:title", content: `Services — ${BRAND.name}` },
-      { property: "og:description", content: "All your everyday payments in one place." },
+      { property: "og:description", content: "Bills and official services in one place." },
     ],
   }),
   component: ServicesPage,
@@ -41,7 +41,7 @@ const GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
   {
     id: "bills",
     title: "Everyday bills",
-    slugs: ["airtime", "data", "electricity", "cable", "internet", "water", "insurance"],
+    slugs: ["electricity", "cable", "internet", "water", "insurance"],
   },
   {
     id: "gov",
@@ -100,7 +100,7 @@ function ServicesPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search airtime, NIN, TIN, CAC, vehicle..."
+            placeholder="Search electricity, NIN, CAC, vehicle..."
             aria-label="Search services"
             className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
           />
