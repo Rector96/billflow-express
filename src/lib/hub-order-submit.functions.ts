@@ -1,10 +1,11 @@
 /**
  * Demo / preview: record CAC & NIN applications into hub_orders
- * so admin queue + My documents + notifications work end-to-end.
+ * so admin queue + My documents + notifications + Resend work end-to-end.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyStaffNewHubOrder } from "@/lib/hub-documents.functions";
+import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { notifyUser } from "@/lib/hub-notify.server";
 import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
@@ -37,7 +38,12 @@ async function insertHubOrder(input: {
       payment_reference: input.paymentReference,
       tracking_reference: input.trackingReference,
       customer_identifier: input.customerIdentifier,
-      metadata: { channel: "hub", demo: true, ...input.metadata },
+      metadata: {
+        channel: "hub",
+        demo: true,
+        fulfillment_status: "paid",
+        ...input.metadata,
+      },
     } as never)
     .select("id")
     .limit(1);
@@ -139,7 +145,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
         delivery: data.delivery,
         shipping_address: data.delivery === "deliver" ? data.shippingAddress : null,
         shipping: data.delivery === "deliver" ? data.shipping : null,
-        fulfillment_status: data.delivery === "deliver" ? "queued" : null,
+        fulfillment_status: "paid",
       },
     });
 
@@ -157,6 +163,14 @@ export const submitCacApplication = createServerFn({ method: "POST" })
           ? "We received your application. We’ll process it and deliver the printed pack to your address."
           : "We received your application. You’ll be notified when the certificate is ready to download.",
       type: "success",
+    });
+
+    void sendHubLifecycleEmail({
+      userId: context.userId,
+      event: "paid",
+      service: "cac",
+      trackingReference,
+      amount: data.amount,
     });
 
     return {
@@ -230,7 +244,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
         delivery: needsDeliver ? "deliver" : "download",
         shipping_address: needsDeliver ? data.shippingAddress : null,
         shipping: needsDeliver ? data.shipping : null,
-        fulfillment_status: needsDeliver ? "queued" : null,
+        fulfillment_status: "paid",
       },
     });
 
@@ -247,6 +261,14 @@ export const submitNinOrder = createServerFn({ method: "POST" })
         ? "Payment recorded. Your plastic card will be prepared for delivery."
         : "Payment recorded. We’ll notify you when your digital result is ready.",
       type: "success",
+    });
+
+    void sendHubLifecycleEmail({
+      userId: context.userId,
+      event: "paid",
+      service,
+      trackingReference,
+      amount: data.amount,
     });
 
     return {
