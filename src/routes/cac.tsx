@@ -9,7 +9,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { CacRegistrationFlow } from "@/components/app/cac-registration-flow";
 import { BRAND } from "@/lib/brand";
-import { isBillLive, isHubDemoOnly, isServiceFlowOpen } from "@/lib/product-mode";
+import { isHubDemoOnly, isServiceFlowOpen } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/cac")({
   head: () => ({
