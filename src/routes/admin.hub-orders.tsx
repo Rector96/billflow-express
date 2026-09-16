@@ -369,8 +369,8 @@ function AdminHubOrders() {
                   Customer download file
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Paste an https link (Drive, storage, CDN). Customer is notified and can open Profile
-                  → My documents.
+                  Paste an https link (Drive, storage, CDN). Customer is notified and can open
+                  Profile → My documents.
                 </p>
                 <Input
                   value={docUrl}
@@ -430,7 +430,10 @@ function AdminHubOrders() {
                 label="Shipping address"
                 value={metaGet(detailMeta, "shipping_address", "shippingAddress", "address")}
               />
-              <Row label="Document URL" value={metaGet(detailMeta, "document_url", "certificate_url")} />
+              <Row
+                label="Document URL"
+                value={metaGet(detailMeta, "document_url", "certificate_url")}
+              />
               <Row label="TIN" value={metaGet(detailMeta, "tin")} />
               <Row label="Taxpayer" value={metaGet(detailMeta, "taxpayerName")} />
               <Row
@@ -482,7 +485,10 @@ function AdminHubOrders() {
                     .slice()
                     .reverse()
                     .map((n, i) => (
-                      <div key={i} className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]">
+                      <div
+                        key={i}
+                        className="rounded-xl border bg-muted/30 px-2.5 py-2 text-[11px]"
+                      >
                         <p>{n.text}</p>
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {n.at ? new Date(n.at).toLocaleString("en-NG") : ""}
@@ -498,7 +504,12 @@ function AdminHubOrders() {
                   placeholder="Internal note…"
                   className="h-10 rounded-xl text-xs"
                 />
-                <Button size="sm" className="h-10 rounded-xl" disabled={busy} onClick={() => void saveNote()}>
+                <Button
+                  size="sm"
+                  className="h-10 rounded-xl"
+                  disabled={busy}
+                  onClick={() => void saveNote()}
+                >
                   Add
                 </Button>
               </div>
