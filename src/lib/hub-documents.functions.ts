@@ -3,6 +3,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { customerCopyForStatus, notifyStaff, notifyUser } from "@/lib/hub-notify.server";
 
 export type MyHubDocument = {
@@ -102,7 +103,7 @@ export const attachHubDocument = createServerFn({ method: "POST" })
     const admin = await assertStaff(context.userId);
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
-      .select("id, user_id, service, status, metadata")
+      .select("id, user_id, service, status, metadata, tracking_reference, amount")
       .eq("id", data.orderId)
       .limit(1);
     if (readErr) throw new Error(readErr.message);
@@ -113,6 +114,8 @@ export const attachHubDocument = createServerFn({ method: "POST" })
           service: string;
           status: string;
           metadata: unknown;
+          tracking_reference: string | null;
+          amount: number;
         }
       | undefined;
     if (!row) throw new Error("Order not found");
@@ -128,6 +131,7 @@ export const attachHubDocument = createServerFn({ method: "POST" })
           document_url: data.documentUrl,
           document_attached_at: new Date().toISOString(),
           document_attached_by: context.userId,
+          fulfillment_status: data.markReady ? "digital_ready" : prevMeta["fulfillment_status"],
         },
         updated_at: new Date().toISOString(),
       } as never)
@@ -149,6 +153,16 @@ export const attachHubDocument = createServerFn({ method: "POST" })
       message: `Order ${data.orderId.slice(0, 8)}… (${row.service}) has a download link.`,
       type: "information",
     });
+
+    if (data.markReady) {
+      void sendHubLifecycleEmail({
+        userId: row.user_id,
+        event: "digital_ready",
+        service: row.service,
+        trackingReference: row.tracking_reference,
+        amount: row.amount,
+      });
+    }
 
     return { ok: true as const, status: nextStatus };
   });
