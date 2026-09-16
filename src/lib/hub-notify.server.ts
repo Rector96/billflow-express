@@ -53,7 +53,10 @@ export async function notifyStaff(input: { title: string; message: string; type?
   }
 }
 
-export function customerCopyForStatus(service: string, status: string): { title: string; message: string; type: NotifType } {
+export function customerCopyForStatus(
+  service: string,
+  status: string,
+): { title: string; message: string; type: NotifType } {
   const s = service.replace(/_/g, " ");
   if (status === "in_progress") {
     return {
@@ -72,7 +75,8 @@ export function customerCopyForStatus(service: string, status: string): { title:
   if (status === "failed") {
     return {
       title: `${s} — needs attention`,
-      message: "We couldn’t complete this request. Open Support or check notifications for details.",
+      message:
+        "We couldn’t complete this request. Open Support or check notifications for details.",
       type: "warning",
     };
   }

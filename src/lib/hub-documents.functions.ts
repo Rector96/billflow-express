@@ -93,7 +93,8 @@ export const attachHubDocument = createServerFn({ method: "POST" })
     const orderId = String(input?.orderId ?? "").trim();
     const documentUrl = String(input?.documentUrl ?? "").trim();
     if (!orderId) throw new Error("Missing order id");
-    if (!/^https:\/\//i.test(documentUrl)) throw new Error("Document link must start with https://");
+    if (!/^https:\/\//i.test(documentUrl))
+      throw new Error("Document link must start with https://");
     if (documentUrl.length > 2000) throw new Error("Link is too long");
     return { orderId, documentUrl, markReady: input?.markReady !== false };
   })
