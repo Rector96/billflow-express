@@ -3,9 +3,13 @@
  */
 export const SERVICE_PRICES = {
   cac_registration: 27_500,
+  /** Optional printed CAC pack + courier (added when user chooses deliver) */
+  cac_courier: 2_500,
   nin_retrieve: 300,
   nin_slip: 500,
   nin_plastic_card: 2_500,
+  /** Courier for plastic NIN card */
+  nin_courier: 1_500,
   tin_retrieve: 1_500,
   document_generator: 3_000,
   vehicle_renewal: 2_500,

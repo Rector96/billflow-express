@@ -1,11 +1,13 @@
 /**
- * NIN services — compact mobile steps + live fees from loader
+ * NIN — retrieve / slip (download) / plastic card (deliver + address).
+ * Compact mobile; fees from loader.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CreditCard, FileText, Home, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
+import { DeliveryAddressFields, PayBreakdown } from "@/components/app/hub-delivery-ui";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
 import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
@@ -13,18 +15,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApp } from "@/lib/app-store";
+import {
+  EMPTY_DELIVERY_ADDRESS,
+  formatDeliveryOneLine,
+  validateDeliveryAddress,
+  type DeliveryAddress,
+} from "@/lib/hub-delivery";
 import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
 
 type Product = "retrieve" | "slip_pdf" | "plastic_card";
-type Step = "choose" | "details" | "confirm" | "success";
+type Step = "choose" | "details" | "address" | "confirm" | "success";
 
-const STEPS: PayStepMeta[] = [
+const STEPS_DOWNLOAD: PayStepMeta[] = [
   { key: "choose", label: "Service" },
   { key: "details", label: "Details" },
-  { key: "confirm", label: "Pay" },
+  { key: "pay", label: "Pay" },
+];
+
+const STEPS_DELIVER: PayStepMeta[] = [
+  { key: "choose", label: "Service" },
+  { key: "details", label: "Details" },
+  { key: "address", label: "Address" },
+  { key: "pay", label: "Pay" },
 ];
 
 export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
@@ -40,10 +54,11 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [phone, setPhone] = useState("");
   const [nin, setNin] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
+  const [address, setAddress] = useState<DeliveryAddress>(EMPTY_DELIVERY_ADDRESS);
   const [paying, setPaying] = useState(false);
   const [refId, setRefId] = useState("");
 
+  const needsAddress = product === "plastic_card";
   const checkoutTotal = useMemo(() => {
     if (product === "retrieve") return priceRetrieve;
     if (product === "slip_pdf") return priceSlip;
@@ -51,17 +66,23 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
     return 0;
   }, [product, priceRetrieve, priceSlip, priceCard, priceCourier]);
 
+  const steps = needsAddress ? STEPS_DELIVER : STEPS_DOWNLOAD;
   const stepIndex = useMemo(() => {
     if (step === "choose") return 0;
     if (step === "details") return 1;
-    return 2;
-  }, [step]);
+    if (step === "address") return 2;
+    if (step === "confirm") return needsAddress ? 3 : 2;
+    return needsAddress ? 3 : 2;
+  }, [step, needsAddress]);
 
   const onPay = async () => {
     if (!product || checkoutTotal <= 0) return;
-    if (product === "plastic_card" && shippingAddress.trim().length < 10) {
-      toast.error("Enter your full delivery address.");
-      return;
+    if (needsAddress) {
+      const err = validateDeliveryAddress(address);
+      if (err) {
+        toast.error(err);
+        return;
+      }
     }
     if (!authed) {
       toast.error("Please log in to continue.");
@@ -77,7 +98,9 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
         metadata: {
           service: product,
           nin: nin || phone,
-          shipping_address: shippingAddress,
+          delivery: needsAddress ? "deliver" : "download",
+          shipping_address: needsAddress ? formatDeliveryOneLine(address) : "",
+          shipping: needsAddress ? address : undefined,
         },
       });
       if (paystack.status !== "success") throw new Error("Payment was not completed.");
@@ -94,20 +117,17 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success") {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
-          <h1 className="text-lg font-bold">Done</h1>
+        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+          <h1 className="text-lg font-bold">Payment received</h1>
           <p className="text-sm text-muted-foreground">
             {product === "slip_pdf"
-              ? "Digital slip coming shortly."
+              ? "Your digital slip will appear under Profile → My documents when ready."
               : product === "plastic_card"
-                ? "Card is being prepared for delivery."
-                : "NIN lookup is processing."}
+                ? "Your card is being prepared. We’ll notify you when it’s out for delivery."
+                : "Your NIN lookup is processing. Check notifications when ready."}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
-          <Button
-            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
-            onClick={() => navigate({ to: "/home" })}
-          >
+          <Button className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold" onClick={() => navigate({ to: "/home" })}>
             <Home className="mr-2 size-4" /> Home
           </Button>
         </div>
@@ -119,7 +139,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
     <AppShell>
       <PageHeader title="NIN" backTo="/services" />
       <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
-        <PayStepper steps={STEPS} current={stepIndex} />
+        <PayStepper steps={steps} current={Math.min(stepIndex, steps.length - 1)} />
 
         {step === "choose" ? (
           <section className="space-y-2">
@@ -129,21 +149,21 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                   id: "retrieve" as const,
                   Icon: Search,
                   title: "Retrieve NIN",
-                  sub: "Get your 11-digit number",
+                  sub: "11-digit number · digital",
                   price: priceRetrieve,
                 },
                 {
                   id: "slip_pdf" as const,
                   Icon: FileText,
                   title: "NIN slip (PDF)",
-                  sub: "Download on your phone",
+                  sub: "Download when ready",
                   price: priceSlip,
                 },
                 {
                   id: "plastic_card" as const,
                   Icon: CreditCard,
                   title: "Plastic ID card",
-                  sub: "Print + delivery",
+                  sub: "Print + home delivery",
                   price: priceCard + priceCourier,
                 },
               ] as const
@@ -174,19 +194,13 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
         {step === "details" && product ? (
           <section className="space-y-3">
-            <h2 className="text-base font-bold">Details</h2>
             {product === "retrieve" ? (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <Label>Phone on NIN</Label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 rounded-xl"
-                  inputMode="tel"
-                />
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 rounded-xl" inputMode="tel" />
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <Label>NIN (11 digits)</Label>
                 <Input
                   value={nin}
@@ -196,21 +210,38 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 />
               </div>
             )}
-            {product === "plastic_card" ? (
-              <div className="space-y-1.5">
-                <Label>Delivery address</Label>
-                <Input
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Street, city, state"
-                  className="h-11 rounded-xl"
-                />
-              </div>
-            ) : null}
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("confirm")}
+                onClick={() => {
+                  if (product === "retrieve" && phone.replace(/\D/g, "").length < 10) {
+                    toast.error("Enter the phone linked to your NIN.");
+                    return;
+                  }
+                  if (product !== "retrieve" && nin.length !== 11) {
+                    toast.error("Enter a valid 11-digit NIN.");
+                    return;
+                  }
+                  setStep(needsAddress ? "address" : "confirm");
+                }}
+              >
+                Continue
+              </Button>
+            </PayActionBar>
+          </section>
+        ) : null}
+
+        {step === "address" && product === "plastic_card" ? (
+          <section className="space-y-3">
+            <DeliveryAddressFields value={address} onChange={setAddress} />
+            <PayActionBar>
+              <Button
+                className="h-12 w-full rounded-xl font-semibold"
+                onClick={() => {
+                  const err = validateDeliveryAddress(address);
+                  if (err) toast.error(err);
+                  else setStep("confirm");
+                }}
               >
                 Continue
               </Button>
@@ -220,31 +251,30 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
         {step === "confirm" && product ? (
           <section className="space-y-3">
-            <h2 className="text-base font-bold">Pay</h2>
-            <div className="rounded-2xl border border-border/70 bg-card p-4 text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground">Service</span>
-                <span className="text-right font-semibold">
-                  {product === "retrieve"
-                    ? "Retrieve NIN"
-                    : product === "slip_pdf"
-                      ? "NIN slip PDF"
-                      : "Plastic ID card"}
-                </span>
-              </div>
-              <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-base font-bold">
-                <span>Total</span>
-                <span className="tabular-nums text-primary">
-                  {formatNaira(checkoutTotal, false)}
-                </span>
-              </div>
-            </div>
+            <PayBreakdown
+              lines={
+                product === "plastic_card"
+                  ? [
+                      { label: "Plastic ID card", amount: priceCard },
+                      { label: "Delivery", amount: priceCourier },
+                    ]
+                  : [
+                      {
+                        label:
+                          product === "retrieve"
+                            ? "Retrieve NIN"
+                            : "NIN slip (PDF)",
+                        amount: checkoutTotal,
+                      },
+                    ]
+              }
+              total={checkoutTotal}
+            />
+            {needsAddress ? (
+              <p className="text-[11px] text-muted-foreground">Deliver to: {formatDeliveryOneLine(address)}</p>
+            ) : null}
             <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
-                onClick={() => void onPay()}
-              >
+              <Button className="h-12 w-full rounded-xl font-semibold" disabled={paying} onClick={() => void onPay()}>
                 {paying ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
