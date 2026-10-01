@@ -226,8 +226,11 @@
 }
 
 @utility payment-flow-page {
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--primary-soft) 72%, transparent) 0%, transparent 15rem);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--primary-soft) 72%, transparent) 0%,
+    transparent 15rem
+  );
 }
 
 @utility payment-summary {

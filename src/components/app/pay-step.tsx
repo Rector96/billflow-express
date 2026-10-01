@@ -33,7 +33,12 @@ export function PayStepper({
   const active = steps[idx];
 
   return (
-    <div className={cn("rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft", className)}>
+    <div
+      className={cn(
+        "rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft",
+        className,
+      )}
+    >
       <div className="flex items-center gap-1.5">
         {steps.map((s, i) => {
           const done = i < idx;
@@ -43,7 +48,11 @@ export function PayStepper({
               key={s.key}
               className={cn(
                 "h-1.5 flex-1 rounded-full transition-all duration-300",
-                done ? "bg-primary" : isNow ? "bg-primary shadow-[0_0_0_3px_var(--color-primary-soft)]" : "bg-muted",
+                done
+                  ? "bg-primary"
+                  : isNow
+                    ? "bg-primary shadow-[0_0_0_3px_var(--color-primary-soft)]"
+                    : "bg-muted",
               )}
             />
           );
@@ -53,7 +62,9 @@ export function PayStepper({
         <span>
           Step {idx + 1} of {steps.length}
         </span>
-        <span className="rounded-md bg-primary-soft px-2 py-1 font-bold text-primary">{active?.label}</span>
+        <span className="rounded-md bg-primary-soft px-2 py-1 font-bold text-primary">
+          {active?.label}
+        </span>
       </div>
     </div>
   );

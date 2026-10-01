@@ -150,9 +150,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
             <p className="truncate text-[11px] font-semibold uppercase opacity-70">
               {networkLabel || "Network"}
             </p>
-            <p className="truncate text-base font-bold tabular-nums">
-              {phoneLabel || "—"}
-            </p>
+            <p className="truncate text-base font-bold tabular-nums">{phoneLabel || "—"}</p>
           </div>
         </div>
       )}

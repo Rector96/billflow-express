@@ -613,7 +613,13 @@ export function RockPayBillFlow() {
     return (
       <AppShell>
         <div className="payment-flow-page mx-auto min-h-[calc(100dvh-6rem)] w-full max-w-md space-y-4 px-4 py-7">
-          <div className={cn("rounded-2xl border bg-card p-5 text-center shadow-float", outcome === "successful" && "border-success/25", outcome === "failed" && "border-destructive/25")}>
+          <div
+            className={cn(
+              "rounded-2xl border bg-card p-5 text-center shadow-float",
+              outcome === "successful" && "border-success/25",
+              outcome === "failed" && "border-destructive/25",
+            )}
+          >
             <span
               className={cn(
                 "relative mx-auto grid size-16 place-items-center rounded-full",
@@ -721,20 +727,28 @@ export function RockPayBillFlow() {
   if (step === "pin")
     return (
       <AppShell>
-        <PageHeader title="Authorize payment" subtitle="Secure wallet payment" onBack={() => setStep("confirm")} />
+        <PageHeader
+          title="Authorize payment"
+          subtitle="Secure wallet payment"
+          onBack={() => setStep("confirm")}
+        />
         <div className="payment-flow-page mx-auto min-h-[calc(100dvh-10rem)] w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-float">
             <div className="payment-summary flex items-center justify-between rounded-xl px-4 py-3.5">
               <div>
-                <span className="block text-[10px] font-semibold uppercase opacity-70">Total to authorize</span>
+                <span className="block text-[10px] font-semibold uppercase opacity-70">
+                  Total to authorize
+                </span>
                 <span className="mt-0.5 block text-xl font-black">{formatNaira(total, false)}</span>
               </div>
               <ShieldCheck className="size-6 opacity-80" />
             </div>
             <div className="my-5 text-center">
               <h2 className="text-base font-extrabold">Enter your 4-digit PIN</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Your PIN is encrypted and never shared with the provider.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your PIN is encrypted and never shared with the provider.
+              </p>
             </div>
             <PinPad value={pin} onChange={setPin} />
             <PayActionBar>
@@ -759,7 +773,11 @@ export function RockPayBillFlow() {
     const insufficient = total > balance;
     return (
       <AppShell>
-        <PageHeader title="Confirm payment" subtitle="Review your details before you pay" onBack={() => setStep("amount")} />
+        <PageHeader
+          title="Confirm payment"
+          subtitle="Review your details before you pay"
+          onBack={() => setStep("amount")}
+        />
         <div className="payment-flow-page mx-auto min-h-[calc(100dvh-10rem)] w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           <div className="payment-summary rounded-2xl p-5">
@@ -777,9 +795,7 @@ export function RockPayBillFlow() {
                 Includes RockPay fee of {formatNaira(rockpayFee, false)}. You pay this total.
               </p>
             ) : (
-              <p className="mt-2 text-xs opacity-75">
-                Amount calculated for your wallet debit.
-              </p>
+              <p className="mt-2 text-xs opacity-75">Amount calculated for your wallet debit.</p>
             )}
           </div>
           <div className="divide-y rounded-2xl border border-border/70 bg-card px-4 shadow-soft">

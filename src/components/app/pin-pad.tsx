@@ -64,7 +64,7 @@ export function PinPad({
           variant="ghost"
           aria-label="Delete last digit"
           onClick={() => onChange(value.slice(0, -1))}
-        className="press h-13 rounded-xl text-muted-foreground"
+          className="press h-13 rounded-xl text-muted-foreground"
         >
           <Delete className="size-5" />
         </Button>
