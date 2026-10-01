@@ -1,6 +1,6 @@
 /**
  * NIN — retrieve / slip (download) / plastic card (deliver + address).
- * On pay: writes hub_orders (pending) for admin queue.
+ * On pay: Paystack Inline → submitNinOrder with paymentReference → hub_orders.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -95,11 +95,20 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
     setPaying(true);
     try {
       const email = profile.email?.trim() || "customer@rockpay.app";
+      const serviceSlug =
+        product === "retrieve"
+          ? "nin_retrieve"
+          : product === "slip_pdf"
+            ? "nin_slip"
+            : "nin_card_print";
       const paystack = await simulatePaystackInline({
         email,
         amountNaira: checkoutTotal,
         metadata: {
-          service: product,
+          channel: "hub",
+          service: serviceSlug,
+          service_type: serviceSlug,
+          product,
           nin: nin || phone,
           delivery: needsAddress ? "deliver" : "download",
           shipping_address: needsAddress ? formatDeliveryOneLine(address) : "",
