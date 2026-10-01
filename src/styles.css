@@ -61,8 +61,11 @@
   --shadow-float: 0 10px 25px -5px rgba(79, 70, 229, 0.18), 0 8px 10px -6px rgba(79, 70, 229, 0.1);
   --shadow-soft: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
   --shadow-pill: 0 2px 8px -2px rgba(0, 0, 0, 0.06);
-  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: "Space Grotesk", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans:
+    "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display:
+    "Space Grotesk", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 }
 
 :root {
@@ -114,7 +117,12 @@
   --wallet-surface: linear-gradient(135deg, #17113f 0%, #4b2fc9 58%, #7c5cfc 100%);
   --wallet-glow: rgba(255, 255, 255, 0.16);
   --page-wash: linear-gradient(180deg, #f4f1ff 0%, #f8fafc 42%, #f8fafc 100%);
-  --splash-surface: linear-gradient(155deg, var(--primary-deep) 0%, var(--primary) 52%, #6d28d9 100%);
+  --splash-surface: linear-gradient(
+    155deg,
+    var(--primary-deep) 0%,
+    var(--primary) 52%,
+    #6d28d9 100%
+  );
   --splash-grid: color-mix(in oklch, var(--primary-foreground) 20%, transparent);
 }
 
@@ -250,13 +258,24 @@
 }
 
 @keyframes splash-breathe {
-  0%, 100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.4; }
-  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.8; }
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 0.8;
+  }
 }
 
 @keyframes splash-load {
-  from { transform: translateX(-110%); }
-  to { transform: translateX(210%); }
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(210%);
+  }
 }
 
 @utility plan-enter {
