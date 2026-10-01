@@ -3,12 +3,10 @@
  *
  * Airtime & Data are fully removed from the customer product.
  * Remaining live bills: electricity, cable.
- * Hub: CAC, NIN, TIN, Documents, Vehicle, Education (demo UI).
+ * Hub: CAC, NIN, TIN, Documents, Vehicle, Education (ops desk; preview until live APIs).
  */
 export const BILLS_FOCUS = false;
 export const DIRECT_PAY = true;
-
-const FORCE_HUB_UI = true;
 
 /** Permanently hidden from Home, Services, search, and pay entry. */
 export const REMOVED_SERVICE_SLUGS = new Set(["airtime", "data"]);
@@ -56,7 +54,12 @@ function readEnvFlag(key: string, defaultValue: boolean): boolean {
   }
 }
 
-export const HUB_PREVIEW_FLOWS = FORCE_HUB_UI || readEnvFlag("VITE_HUB_PREVIEW_FLOWS", true);
+/**
+ * Client-side hub preview.
+ * Production: set VITE_HUB_PREVIEW_FLOWS=false so hub is not labeled open without ops readiness.
+ * Default true so CAC/NIN flows remain reachable during rollout.
+ */
+export const HUB_PREVIEW_FLOWS = readEnvFlag("VITE_HUB_PREVIEW_FLOWS", true);
 
 export function homeServiceSlugs(): readonly string[] {
   return BILLS_FOCUS ? HOME_BILL_SLUGS : HOME_CLASSIC_SLUGS;
@@ -80,7 +83,6 @@ export function isHubDemoOnly(slug: string): boolean {
 export function isServiceFlowOpen(slug: string): boolean {
   if (REMOVED_SERVICE_SLUGS.has(slug)) return false;
   if (isBillLive(slug)) return true;
-  if (FORCE_HUB_UI && HUB_PREVIEW_SLUGS.has(slug)) return true;
   if (HUB_PREVIEW_FLOWS && HUB_PREVIEW_SLUGS.has(slug)) return true;
   return false;
 }
@@ -88,6 +90,7 @@ export function isServiceFlowOpen(slug: string): boolean {
 export function serviceAvailabilityLabel(slug: string, short: string): string {
   if (REMOVED_SERVICE_SLUGS.has(slug)) return `${short} · Removed`;
   if (isBillLive(slug)) return short;
-  if (isHubDemoOnly(slug)) return `${short} · Demo`;
+  if (isHubDemoOnly(slug) && HUB_PREVIEW_FLOWS) return `${short} · Demo`;
+  if (HUB_PREVIEW_SLUGS.has(slug)) return short;
   return `${short} · Soon`;
 }
