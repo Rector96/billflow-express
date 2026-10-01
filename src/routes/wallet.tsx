@@ -54,34 +54,34 @@ function WalletPage() {
           <span className="wallet-glow pointer-events-none absolute -right-10 -top-12 size-40 rounded-full blur-2xl" />
           <span className="wallet-glow pointer-events-none absolute -bottom-16 -left-10 size-32 rounded-full blur-2xl" />
           <div className="relative">
-          <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/12 px-2.5 py-1 text-xs font-medium text-primary-foreground/80">
-              <span className="size-1.5 rounded-full bg-success" />
-              Available Balance
-            </span>
-            <button
-              type="button"
-              onClick={toggleBalance}
-              aria-label={hideBalance ? "Show balance" : "Hide balance"}
-              className="press grid size-8 place-items-center rounded-full bg-primary-foreground/12 text-primary-foreground transition-colors hover:bg-primary-foreground/20"
-            >
-              {hideBalance ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/12 px-2.5 py-1 text-xs font-medium text-primary-foreground/80">
+                <span className="size-1.5 rounded-full bg-success" />
+                Available Balance
+              </span>
+              <button
+                type="button"
+                onClick={toggleBalance}
+                aria-label={hideBalance ? "Show balance" : "Hide balance"}
+                className="press grid size-8 place-items-center rounded-full bg-primary-foreground/12 text-primary-foreground transition-colors hover:bg-primary-foreground/20"
+              >
+                {hideBalance ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
 
-          <p className="mt-3.5 text-3xl font-bold tabular-nums text-primary-foreground">
-            {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
-          </p>
+            <p className="mt-3.5 text-3xl font-bold tabular-nums text-primary-foreground">
+              {hideBalance ? "₦ • • • • • •" : formatNaira(balance)}
+            </p>
 
-          <div className="mt-5 flex gap-2.5">
-            <Link
-              to="/wallet/fund"
-              search={{}}
-              className="press flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-foreground text-xs font-semibold text-primary shadow-sm hover:bg-primary-foreground/90"
-            >
-              <Plus className="size-4 stroke-[2.2]" /> Fund Wallet
-            </Link>
-          </div>
+            <div className="mt-5 flex gap-2.5">
+              <Link
+                to="/wallet/fund"
+                search={{}}
+                className="press flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-foreground text-xs font-semibold text-primary shadow-sm hover:bg-primary-foreground/90"
+              >
+                <Plus className="size-4 stroke-[2.2]" /> Fund Wallet
+              </Link>
+            </div>
           </div>
         </section>
 

@@ -34,21 +34,21 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     title: "Pay Your Bills Easily",
     body: "Electricity, cable TV, education and more — all in one place.",
     image:
-      "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1600&q=90",
     imageAlt: "Person paying with a phone",
   },
   {
     title: "One Wallet. Everything You Need.",
     body: "Fund once and pay anytime — airtime, data, power and cable.",
     image:
-      "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1600&q=90",
     imageAlt: "Person using mobile banking on a phone",
   },
   {
     title: "Fast & Secure",
     body: "Your PIN protects every payment. Transactions are recorded safely.",
     image:
-      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1600&q=90",
     imageAlt: "Secure mobile payment experience",
   },
 ];

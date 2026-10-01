@@ -1,16 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Bell, ChevronRight, HeartHandshake } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, Briefcase, HeartHandshake, Search } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { HomePromos } from "@/components/app/home-promos";
 import { BuyAgainRail } from "@/components/app/buy-again-rail";
 import { SectionTitle, ServiceTile, TransactionRow } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useApp } from "@/lib/app-store";
 import { buildBuyAgain } from "@/lib/buy-again";
 import { BRAND } from "@/lib/brand";
+import { readContinueDrafts, type ContinueDraft } from "@/lib/continue-draft";
 import { MoreIcon, getService, greeting, initialsOf } from "@/lib/mock-data";
+import { REMOVED_SERVICE_SLUGS } from "@/lib/product-mode";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/home")({
@@ -19,28 +22,66 @@ export const Route = createFileRoute("/home")({
       { title: `Home — ${BRAND.name}` },
       {
         name: "description",
-        content: "Your wallet balance, quick bill payments and recent transactions at a glance.",
+        content: "Everyday payments, official services and recent activity in one place.",
       },
       { property: "og:title", content: `Home — ${BRAND.name}` },
-      { property: "og:description", content: "See your balance and pay a bill in two taps." },
+      {
+        property: "og:description",
+        content: "What do you need today? Pay bills or continue applications.",
+      },
     ],
   }),
   component: HomePage,
 });
 
-const HOME_SERVICES = ["electricity", "cable", "education", "airtime", "data"] as const;
+/** Quick grid: hub + education (exam pins under Services). */
+const HOME_SERVICES = [
+  "education",
+  "exam-pins",
+  "cac",
+  "nin",
+  "tin",
+  "documents",
+  "vehicle",
+  "electricity",
+] as const;
+
+function serviceHref(slug: string): { to: string; params?: { slug: string } } {
+  if (slug === "cac") return { to: "/cac" };
+  if (slug === "nin") return { to: "/nin" };
+  if (slug === "tin") return { to: "/tin" };
+  if (slug === "documents") return { to: "/documents" };
+  if (slug === "vehicle") return { to: "/vehicle" };
+  return { to: "/pay/$slug", params: { slug } };
+}
 
 function HomePage() {
   const navigate = useNavigate();
   const { profile, transactions, saved, unreadCount } = useApp();
   const firstName = (profile.name.split(" ")[0] || "there").trim();
+  const [serviceQuery, setServiceQuery] = useState("");
+  const [drafts, setDrafts] = useState<ContinueDraft[]>([]);
 
-  const buyAgain = useMemo(() => buildBuyAgain(transactions, saved, 3), [transactions, saved]);
+  useEffect(() => {
+    const load = () => setDrafts(readContinueDrafts());
+    load();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const buyAgain = useMemo(() => {
+    const items = buildBuyAgain(transactions, saved, 6).filter(
+      (i) => !REMOVED_SERVICE_SLUGS.has(i.serviceSlug),
+    );
+    return items.slice(0, 3);
+  }, [transactions, saved]);
 
   const savedHome = useMemo(() => {
     const seen = new Set<string>();
     const out = [];
     for (const item of saved) {
+      if (REMOVED_SERVICE_SLUGS.has(item.serviceSlug)) continue;
       const key = `${item.serviceSlug}|${item.provider}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -50,8 +91,17 @@ function HomePage() {
     return out;
   }, [saved]);
 
-  const recent = useMemo(() => transactions.slice(0, 3), [transactions]);
+  const recent = useMemo(
+    () => transactions.filter((t) => !REMOVED_SERVICE_SLUGS.has(t.serviceSlug)).slice(0, 3),
+    [transactions],
+  );
   const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
+
+  function runServiceSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = serviceQuery.trim();
+    void navigate({ to: "/services", search: q ? { q } : {} });
+  }
 
   return (
     <AppShell>
@@ -93,12 +143,25 @@ function HomePage() {
       <div className="space-y-4 px-4 pt-1 pb-6">
         <WalletCard />
 
-          <HomePromos className="mt-3" />
+        <section className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">What do you need today?</p>
+          <form onSubmit={runServiceSearch} className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={serviceQuery}
+              onChange={(e) => setServiceQuery(e.target.value)}
+              placeholder="Search education, exam pins, CAC..."
+              aria-label="Search services"
+              className="h-10.5 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
+            />
+          </form>
+        </section>
 
-        {/* Services in modern rounded surface */}
+        <HomePromos className="mt-1" />
+
         <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
           <SectionTitle title="Quick Services" action="View all" to="/services" />
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
             {serviceTiles.map((s) =>
               s ? (
                 <ServiceTile
@@ -106,8 +169,8 @@ function HomePage() {
                   label={s.short}
                   Icon={s.icon}
                   tint={s.tint}
-                  to="/pay/$slug"
-                  params={{ slug: s.slug }}
+                  to={serviceHref(s.slug).to}
+                  params={serviceHref(s.slug).params}
                 />
               ) : null,
             )}
@@ -122,7 +185,7 @@ function HomePage() {
 
         {(buyAgain.length > 0 || savedHome.length > 0) && (
           <section>
-            <SectionTitle title="Quick Pay" action="See all" to="/saved-payments" />
+            <SectionTitle title="Pay again" action="See all" to="/saved-payments" />
             <div className="space-y-2">
               <BuyAgainRail items={buyAgain} compact />
               {savedHome.map((item) => {
@@ -166,11 +229,52 @@ function HomePage() {
           </section>
         )}
 
+        {drafts.length > 0 ? (
+          <section>
+            <SectionTitle title="Continue" />
+            <div className="space-y-2">
+              {drafts.slice(0, 2).map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                    <Briefcase className="size-4.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{d.title}</p>
+                    <p className="text-xs text-muted-foreground">{d.stepLabel}</p>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{
+                          width: `${Math.min(100, Math.round((d.step / Math.max(1, d.totalSteps)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 rounded-lg px-3 text-xs font-semibold"
+                    onClick={() => {
+                      const path = (d.href || "/home").split("?")[0] as "/cac";
+                      void navigate({ to: path });
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section>
-          <SectionTitle title="Recent Activity" action="See all" to="/history" />
+          <SectionTitle title="Recent activity" action="See all" to="/history" />
           {recent.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/80 bg-card py-6 text-center text-xs text-muted-foreground">
-              Your recent payments will appear here.
+              Your recent payments and applications will appear here.
             </p>
           ) : (
             <div className="space-y-2">
@@ -189,8 +293,10 @@ function HomePage() {
             <HeartHandshake className="size-4.5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-foreground">Need help with a payment?</p>
-            <p className="text-[11px] text-muted-foreground">RockPay Support is available 24/7</p>
+            <p className="text-xs font-semibold text-foreground">Need help?</p>
+            <p className="text-[11px] text-muted-foreground">
+              Payments, applications or verification — RockPay Support
+            </p>
           </div>
           <span className="text-xs font-medium text-primary">Get help →</span>
         </Link>

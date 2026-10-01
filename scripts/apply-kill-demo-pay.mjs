@@ -57,7 +57,8 @@ function patchAppStore() {
     console.log("app-store already disabled");
     return;
   }
-  const re = /payBill:\s*async\s*\(input\)\s*=>\s*\{[\s\S]*?return row\?\.internal_reference \?\? "";\s*\},/;
+  const re =
+    /payBill:\s*async\s*\(input\)\s*=>\s*\{[\s\S]*?return row\?\.internal_reference \?\? "";\s*\},/;
   if (!re.test(c)) throw new Error("payBill block not found");
   c = c.replace(
     re,

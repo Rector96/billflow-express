@@ -202,5 +202,7 @@ function patchStore() {
 patchBills();
 patchAirtime();
 patchStore();
-console.log("OK — commit src/lib/bills.functions.ts src/lib/airtime.functions.ts src/lib/app-store.tsx");
+console.log(
+  "OK — commit src/lib/bills.functions.ts src/lib/airtime.functions.ts src/lib/app-store.tsx",
+);
 console.log("Run docs/SQL_FIX_SETTLEMENT_JWT.sql in Supabase SQL Editor.");

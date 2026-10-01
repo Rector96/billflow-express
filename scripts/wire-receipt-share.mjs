@@ -8,7 +8,7 @@ if (c.includes("ReceiptShareButton")) {
 }
 if (!c.includes('from "@/components/app/receipt-share-sheet"')) {
   c = c.replace(
-    'import { AppShell }',
+    "import { AppShell }",
     'import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";\nimport { AppShell }',
   );
 }

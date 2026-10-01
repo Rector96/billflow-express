@@ -14,10 +14,10 @@ Use after Netlify redeploys this branch.
 
 ## Smoke tests
 
-| Area | Expected |
-|------|----------|
-| Fund wallet | ₦500–20k chips; Paystack; credit after verify |
-| `/support` | FAQ + open ticket |
-| `/admin/care/$id` | Quick replies send + status |
-| Airtime/data | VTpass when keys set |
-| `/admin` | Loads for staff only |
+| Area              | Expected                                      |
+| ----------------- | --------------------------------------------- |
+| Fund wallet       | ₦500–20k chips; Paystack; credit after verify |
+| `/support`        | FAQ + open ticket                             |
+| `/admin/care/$id` | Quick replies send + status                   |
+| Airtime/data      | VTpass when keys set                          |
+| `/admin`          | Loads for staff only                          |

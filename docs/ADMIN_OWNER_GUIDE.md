@@ -2,11 +2,11 @@
 
 ## Roles (`user_roles.role`)
 
-| Role | Who | What they can do |
-|------|-----|------------------|
+| Role            | Who                   | What they can do                                            |
+| --------------- | --------------------- | ----------------------------------------------------------- |
 | **super_admin** | Owner + trusted leads | Full ops: users, wallet freeze, staff, settings, dashboards |
-| **admin** | Operations | View ops, manage users, suspend, freeze wallet |
-| **support** | Care agents | View-oriented — tickets, users read, transactions read |
+| **admin**       | Operations            | View ops, manage users, suspend, freeze wallet              |
+| **support**     | Care agents           | View-oriented — tickets, users read, transactions read      |
 
 Grant roles in Supabase (never invent passwords in SQL):
 
@@ -24,24 +24,24 @@ Then log in normally and open `/admin`.
 
 ## Daily ops
 
-| Menu | Use |
-|------|-----|
-| Users | Click row → suspend / freeze funds / close |
+| Menu         | Use                                            |
+| ------------ | ---------------------------------------------- |
+| Users        | Click row → suspend / freeze funds / close     |
 | Transactions | Search status, requery pending where available |
-| Pricing | Live `pricing_rules` markups |
-| Care | Reply → customer notification |
-| Audit Logs | Who changed account/wallet status |
+| Pricing      | Live `pricing_rules` markups                   |
+| Care         | Reply → customer notification                  |
+| Audit Logs   | Who changed account/wallet status              |
 
 ## Enforcement ladder
 
-1. Suspend account  
-2. Freeze wallet (pause funds)  
+1. Suspend account
+2. Freeze wallet (pause funds)
 3. Close account  
-Always enter a reason (audit).
+   Always enter a reason (audit).
 
 ## SQL helpers
 
-- `docs/SQL_TRANSACTION_PIN.sql` — customer PIN RPCs  
-- `docs/SQL_ADMIN_WALLET_AND_CARE.sql` — wallet freeze + pricing SELECT  
+- `docs/SQL_TRANSACTION_PIN.sql` — customer PIN RPCs
+- `docs/SQL_ADMIN_WALLET_AND_CARE.sql` — wallet freeze + pricing SELECT
 
 Full ops manual: `docs/ADMIN_MANUAL.md`.

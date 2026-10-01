@@ -8,7 +8,11 @@ const root = process.cwd();
   let c = fs.readFileSync(file, "utf8");
   const marker = "/** Map VTpass response → RockPay outcome (never trust the browser). */";
   const i = c.indexOf(marker);
-  if (i >= 0 && !c.includes("Any other provider code = failed") && !c.includes('return "failed";\n}')) {
+  if (
+    i >= 0 &&
+    !c.includes("Any other provider code = failed") &&
+    !c.includes('return "failed";\n}')
+  ) {
     const body = `${marker}\nexport function mapVtpassOutcome(result: VtpassPayResult): "successful" | "failed" | "pending" {\n  const code = String(result.code ?? "").trim();\n  const s = (result.contentStatus ?? "").toLowerCase().trim();\n  const desc = (result.responseDescription ?? "").toLowerCase().trim();\n  const blob = \`\${s} \${desc}\`;\n\n  if (code === "TIMEOUT" || code === "" || code === "099") return "pending";\n  if (FAIL_CODES.has(code)) return "failed";\n\n  if (\n    s === "failed" ||\n    s === "reversed" ||\n    s === "refunded" ||\n    s === "cancelled" ||\n    s === "canceled" ||\n    blob.includes("transaction failed") ||\n    blob.includes("purchase failed") ||\n    blob.includes("insufficient") ||\n    blob.includes("invalid") ||\n    blob.includes("not successful")\n  ) {\n    return "failed";\n  }\n\n  const successHint =\n    s === "delivered" ||\n    s === "successful" ||\n    s === "success" ||\n    s === "completed" ||\n    s === "complete" ||\n    s.includes("deliver") ||\n    (blob.includes("success") && !blob.includes("unsuccess"));\n\n  if (code === "000" || code === "00" || code === "0") {\n    if (successHint) return "successful";\n    if (result.purchasedCode && String(result.purchasedCode).trim()) return "successful";\n    return "pending";\n  }\n\n  // Unknown non-success codes are failures (do not stay pending forever)\n  return "failed";\n}\n`;
     fs.writeFileSync(file, c.slice(0, i) + body);
     console.log("vtpass outcome mapper updated");
@@ -48,4 +52,6 @@ const root = process.cwd();
   console.log("pay-flow patches", n);
 }
 
-console.log("Done. git add src/lib/vtpass.server.ts src/components/app/pay-flow.tsx && commit && push");
+console.log(
+  "Done. git add src/lib/vtpass.server.ts src/components/app/pay-flow.tsx && commit && push",
+);

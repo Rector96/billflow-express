@@ -1,7 +1,7 @@
 {
-  "name": "RockPay — Pay. Fund. Connect.",
-  "short_name": "RockPay",
-  "description": "Pay electricity, cable TV, education, airtime and data bills from one secure RockPay wallet.",
+  "name": "Rockwavehub — Pay. Fund. Connect.",
+  "short_name": "Rockwavehub",
+  "description": "Pay electricity, cable TV, education, airtime and data bills from one secure Rockwavehub wallet.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

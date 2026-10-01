@@ -16,7 +16,7 @@ export const STATUS_LABEL: Record<TicketStatus, { label: string; hint: string }>
 export const CATEGORY_OPTIONS: Array<{ key: TicketCategory; label: string }> = [
   { key: "payment_not_received", label: "Payment" },
   { key: "wrong_amount", label: "Wallet" },
-  { key: "pending_transaction", label: "Airtime & Data" },
+  { key: "pending_transaction", label: "Bills & orders" },
   { key: "token_not_received", label: "Electricity" },
   { key: "other", label: "Other" },
 ];

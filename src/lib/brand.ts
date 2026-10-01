@@ -3,7 +3,7 @@
  * artwork here and every screen, title and install manifest follows.
  */
 export const BRAND = {
-  name: "RockPay",
+  name: "Rockwavehub",
   tagline: "PAY • FUND • CONNECT",
   supportEmail: "support@rockpay.ng",
   supportPhone: "0700 123 4567",

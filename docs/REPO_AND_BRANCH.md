@@ -1,7 +1,7 @@
 # Active Git target
 
 **Repository:** `Rector96/billflow-express`  
-**Branch:** `rockPay-pricing`  
+**Branch:** `rockPay-pricing`
 
 This is the branch Lovable / Netlify should track for RockPay pricing work.
 

@@ -22,7 +22,6 @@ import { formatNaira } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { initializeWalletFunding, verifyWalletFunding } from "@/lib/paystack.functions";
-import { isSupabaseConfigured } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/wallet/fund")({
   head: () => ({
@@ -34,7 +33,6 @@ export const Route = createFileRoute("/wallet/fund")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { amount?: number; reference?: string } => {
-    // Paystack may return reference or trxref on callback
     const ref =
       typeof search["reference"] === "string"
         ? (search["reference"] as string)
@@ -76,7 +74,6 @@ function FundWallet() {
       try {
         const result = await verifyFunding({ data: { reference: ref } });
         setSettled({ reference: result.reference, amount: result.amount });
-        // Never show successful unless server verified + settled
         setStage(result.status);
         await refresh();
       } catch (err) {
@@ -98,46 +95,6 @@ function FundWallet() {
     if (starting.current || busy) return;
     if (!value || value < 100) {
       toast.error("Enter at least ₦100");
-      return;
-    }
-
-    if (!isSupabaseConfigured()) {
-      starting.current = true;
-      setBusy(true);
-      setStage("redirecting");
-      setTimeout(async () => {
-        const fakeRef = `RP-TOPUP-${Date.now().toString(36).toUpperCase()}`;
-        setSettled({ reference: fakeRef, amount: value });
-        setStage("successful");
-        setBusy(false);
-        starting.current = false;
-        try {
-          const store = JSON.parse(localStorage.getItem("rockpay_preview_store_v1") || "{}");
-          if (store.wallet) {
-            store.wallet.balance = (store.wallet.balance || 0) + value;
-            store.transactions = store.transactions || [];
-            store.transactions.unshift({
-              id: `tx-${Date.now()}`,
-              reference: fakeRef,
-              type: "deposit",
-              amount: value,
-              status: "successful",
-              description: "Wallet Top-up (Preview)",
-              metadata: {
-                title: "Wallet Top-up",
-                channel: "paystack",
-                service_slug: "wallet",
-              },
-              created_at: new Date().toISOString(),
-            });
-            localStorage.setItem("rockpay_preview_store_v1", JSON.stringify(store));
-          }
-          await refresh();
-          toast.success(`Successfully added ${formatNaira(value)} to your wallet!`);
-        } catch {
-          // ignore
-        }
-      }, 1000);
       return;
     }
 

@@ -32,7 +32,22 @@ function AdminSettings() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await (supabase as any)
+      type PricingQuery = {
+        select: (columns: string) => {
+          order: (
+            column: string,
+            options: { ascending: boolean },
+          ) => {
+            order: (
+              column: string,
+              options: { ascending: boolean },
+            ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+          };
+        };
+      };
+      const { data, error: err } = await (
+        supabase as unknown as { from: (relation: string) => PricingQuery }
+      )
         .from("pricing_rules")
         .select(
           "id, service, provider, product_code, markup_type, markup_value, min_amount, max_amount, is_active, priority",
@@ -44,7 +59,7 @@ function AdminSettings() {
         setRows([]);
         return;
       }
-      setRows((data as Rule[] | null) ?? []);
+      setRows((data as unknown as Rule[]) ?? []);
     } finally {
       setLoading(false);
     }

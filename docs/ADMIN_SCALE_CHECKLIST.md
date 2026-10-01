@@ -1,21 +1,22 @@
-# RockPay Admin and Scale Checklist
+# 100k-user admin scale checklist
 
-Before production, verify these controls with evidence rather than assumptions.
+Before production launch, verify with evidence:
 
-- Server-side pagination on customer and transaction searches.
-- Indexes for frequent customer, transaction, provider request ID, status, service, and timestamp filters.
-- Bounded dashboard queries and date windows.
-- Idempotent wallet credits and bill settlement.
-- Safe provider retries and explicit pending/requery handling.
-- Rate limiting on authentication, catalogue, verification, purchase, and support-sensitive endpoints.
-- Server-side role authorization for every privileged admin action.
-- Audit records for sensitive administrative actions.
-- No secrets or payment credentials rendered to staff unnecessarily.
-- Reconciliation checks for wallet ledger, bill transactions, provider settlement, and profit.
-- Error monitoring and alerting for provider, database, wallet, and settlement failures.
-- Database backup and restore verification.
-- Load tests representing peak concurrent purchases and admin searches.
-- Failure tests for duplicate requests, provider timeout, provider success after timeout, webhook/requery races, and database/RPC failure.
-- Capacity testing toward at least 100,000 registered users with realistic transaction volumes.
-- Production secrets separated from development/test secrets.
-- Provider sandbox/live configuration verified before launch.
+- Customer lookup uses indexed, bounded queries and pagination.
+- Transaction lookup uses indexed transaction/provider/customer/date fields.
+- No admin page loads an unbounded transaction or customer table.
+- Counts use database aggregates rather than downloading all rows.
+- Date filters are bounded and use UTC consistently.
+- Repeated provider calls are protected by timeouts and safe retry/requery semantics.
+- Financial mutations are idempotent and server-authorized.
+- Provider settlement failures cannot silently become successful payments.
+- Wallet credit/debit operations are atomic at the database boundary.
+- Profit writes are idempotent and tied to successful provider-backed transactions.
+- Rate limits and abuse controls exist on customer-facing payment and authentication surfaces.
+- Admin actions are audited.
+- Error messages do not leak provider credentials, service-role data, SQL details, or unnecessary PII.
+- Observability includes error tracking, structured logs, provider latency/failure metrics, payment-state metrics, and reconciliation alerts.
+- Load testing covers at least the expected production concurrency and transaction burst profile, not only 100k registered-user count.
+- Database backups, restore testing, migration rollback/recovery procedures, and provider incident procedures are documented.
+
+100,000 users is a capacity target, not a guarantee. The application should be declared production-ready only after these controls are measured and verified in the actual deployment environment.

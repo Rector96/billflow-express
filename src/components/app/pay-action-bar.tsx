@@ -22,7 +22,7 @@ export function PayActionBar({
           className,
         )}
       >
-        <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border/80 bg-background/98 p-3 shadow-float backdrop-blur-md">
+        <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border/80 bg-background/95 p-3 shadow-card backdrop-blur-md">
           {children}
         </div>
       </div>

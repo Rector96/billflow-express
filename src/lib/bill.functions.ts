@@ -29,7 +29,5 @@ export const secureBillPayment = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async (): Promise<SecureBillResult> => {
-    throw new Error(
-      "Demo secure_bill_payment is disabled. Use VTpass purchase server functions.",
-    );
+    throw new Error("Demo secure_bill_payment is disabled. Use VTpass purchase server functions.");
   });

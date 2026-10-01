@@ -1,67 +1,66 @@
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PayStepMeta = { key: string; label: string };
 
+function safeStepIndex(value: unknown, length: number): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || length <= 0) return 0;
+  return Math.min(Math.max(Math.floor(n), 0), length - 1);
+}
+
 /**
- * Horizontal numbered progress rail — mirrors the "1 Select Provider → 5 Confirm & Pay"
- * pattern from the product design reference.
+ * Horizontal numbered progress rail.
+ * Accepts `current` (0-based) or legacy `currentIndex` so callers never hit "Step NaN of N".
  */
 export function PayStepper({
   steps,
   current,
+  currentIndex,
   className,
 }: {
   steps: PayStepMeta[];
-  current: number;
+  /** 0-based active step */
+  current?: number;
+  /** Alias used by some flows — same as current */
+  currentIndex?: number;
   className?: string;
 }) {
   if (steps.length === 0) return null;
-  const active = steps[Math.min(Math.max(current, 0), steps.length - 1)];
+
+  const raw = current ?? currentIndex ?? 0;
+  const idx = safeStepIndex(raw, steps.length);
+  const active = steps[idx];
 
   return (
-    <div className={cn("space-y-2", className)}>
-      <div className="flex items-center gap-1.5">
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex items-center gap-1">
         {steps.map((s, i) => {
-          const done = i < current;
-          const isNow = i === current;
+          const done = i < idx;
+          const isNow = i === idx;
           return (
-            <div key={s.key} className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span
-                className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-extrabold transition-colors",
-                  done
-                    ? "bg-primary text-primary-foreground"
-                    : isNow
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary-soft"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
-              </span>
-              {i < steps.length - 1 ? (
-                <span
-                  className={cn(
-                    "h-1 min-w-0 flex-1 rounded-full transition-colors",
-                    done ? "bg-primary" : "bg-muted",
-                  )}
-                />
-              ) : null}
-            </div>
+            <div
+              key={s.key}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-all duration-200",
+                done || isNow ? "bg-primary" : "bg-muted",
+              )}
+            />
           );
         })}
       </div>
-      <p className="text-xs font-bold tracking-wide text-primary uppercase">
-        Step {Math.min(current + 1, steps.length)} of {steps.length} · {active?.label}
-      </p>
+      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+        <span>
+          Step {idx + 1} of {steps.length}
+        </span>
+        <span className="font-semibold text-foreground">{active?.label}</span>
+      </div>
     </div>
   );
 }
 
 /**
- * Vertically balanced step page: header block, breathing content area and a CTA
- * docked to the bottom of the viewport instead of everything clinging to the top.
+ * Vertically balanced step page: header, content, optional footer dock.
  */
 export function PayStepBody({
   eyebrow,
@@ -101,15 +100,13 @@ export function PayStepBody({
         </div>
       ) : null}
 
-      <div className={cn("flex-1 space-y-3", center && "flex flex-col justify-center")}>
+      <div
+        className={cn("flex flex-1 flex-col", center && "items-center justify-center text-center")}
+      >
         {children}
       </div>
 
-      {footer ? (
-        <div className="sticky bottom-0 -mx-4 mt-6 space-y-2 bg-gradient-to-t from-background via-background to-transparent px-4 pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {footer}
-        </div>
-      ) : null}
+      {footer ? <div className="mt-auto pt-4">{footer}</div> : null}
     </div>
   );
 }

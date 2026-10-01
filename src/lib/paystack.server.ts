@@ -1,28 +1,19 @@
 /**
- * Server-only Paystack helpers. The secret key never leaves this module and is
- * read inside function bodies (never at module scope).
- *
- * TEST MODE: this integration is expected to run with a Paystack test secret
- * key (sk_test_...). Live keys are rejected below.
+ * Server-only Paystack helpers. Secret never leaves this module.
+ * Accepts sk_test_ and sk_live_ (set matching public key on the client).
  */
 
 export const PAYSTACK_API = "https://api.paystack.co";
 
 export function getPaystackSecret(): string {
-  // Read per-request — never at module scope (edge/SSR inject env at request time).
   const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
   if (!key) {
     throw new Error(
-      "Paystack is not configured yet. Set PAYSTACK_SECRET_KEY (sk_test_...) in Netlify environment variables and redeploy.",
+      "Paystack is not configured. Set PAYSTACK_SECRET_KEY (sk_test_... or sk_live_...) in Netlify and redeploy.",
     );
   }
-  if (key.startsWith("sk_live_")) {
-    throw new Error(
-      "Live Paystack keys are not allowed — this build is test mode only. Use sk_test_...",
-    );
-  }
-  if (!key.startsWith("sk_test_")) {
-    throw new Error("Invalid Paystack secret key. Expected a test key starting with sk_test_...");
+  if (!key.startsWith("sk_test_") && !key.startsWith("sk_live_")) {
+    throw new Error("Invalid Paystack secret key. Expected sk_test_... or sk_live_...");
   }
   return key;
 }
@@ -62,9 +53,8 @@ export type SettleResult = {
 };
 
 /**
- * Single source of truth for turning a Paystack reference into a ledger
- * outcome. Used by both the user-facing verify call and the webhook, so the
- * idempotent crediting rules can never diverge.
+ * Wallet funding settlement only. Hub payments are not wallet_transactions rows —
+ * unknown funding reference is expected for hub-only charges.
  */
 export async function verifyAndSettle(reference: string): Promise<SettleResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -79,7 +69,6 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   const row = rows?.[0];
   if (!row) throw new Error("Unknown funding reference.");
 
-  // Already credited — return the existing outcome, never credit again.
   if (row.status === "successful") {
     return {
       status: "successful",

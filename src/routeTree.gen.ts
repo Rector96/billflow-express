@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CacRouteImport } from './routes/cac'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NinRouteImport } from './routes/nin'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as OtpRouteImport } from './routes/otp'
@@ -27,11 +30,15 @@ import { Route as SetupPinRouteImport } from './routes/setup-pin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as TinRouteImport } from './routes/tin'
+import { Route as VehicleRouteImport } from './routes/vehicle'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 import { Route as AdminAuditLogsRouteImport } from './routes/admin.audit-logs'
 import { Route as AdminCareRouteImport } from './routes/admin.care'
+import { Route as AdminDispatchRouteImport } from './routes/admin.dispatch'
+import { Route as AdminHubOrdersRouteImport } from './routes/admin.hub-orders'
 import { Route as AdminPricingRouteImport } from './routes/admin.pricing'
 import { Route as AdminReconciliationRouteImport } from './routes/admin.reconciliation'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
@@ -44,6 +51,7 @@ import { Route as AdminWalletRouteImport } from './routes/admin.wallet'
 import { Route as HistoryTxIdRouteImport } from './routes/history.$txId'
 import { Route as PaySlugRouteImport } from './routes/pay.$slug'
 import { Route as PayCompleteRouteImport } from './routes/pay.complete'
+import { Route as ProfileDocumentsRouteImport } from './routes/profile.documents'
 import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
 import { Route as ProfilePrivacyRouteImport } from './routes/profile.privacy'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
@@ -61,6 +69,16 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CacRoute = CacRouteImport.update({
+  id: '/cac',
+  path: '/cac',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -81,6 +99,11 @@ const HomeRoute = HomeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NinRoute = NinRouteImport.update({
+  id: '/nin',
+  path: '/nin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -143,6 +166,16 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TinRoute = TinRouteImport.update({
+  id: '/tin',
+  path: '/tin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VehicleRoute = VehicleRouteImport.update({
+  id: '/vehicle',
+  path: '/vehicle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
@@ -166,6 +199,16 @@ const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
 const AdminCareRoute = AdminCareRouteImport.update({
   id: '/care',
   path: '/care',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDispatchRoute = AdminDispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHubOrdersRoute = AdminHubOrdersRouteImport.update({
+  id: '/hub-orders',
+  path: '/hub-orders',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPricingRoute = AdminPricingRouteImport.update({
@@ -228,6 +271,11 @@ const PayCompleteRoute = PayCompleteRouteImport.update({
   path: '/pay/complete',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileDocumentsRoute = ProfileDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => ProfileRoute,
+} as any)
 const ProfilePersonalRoute = ProfilePersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
@@ -273,10 +321,13 @@ const ApiPublicWebhooksPaystackRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/cac': typeof CacRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRouteWithChildren
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/nin': typeof NinRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
@@ -289,10 +340,14 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
+  '/tin': typeof TinRoute
+  '/vehicle': typeof VehicleRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/dispatch': typeof AdminDispatchRoute
+  '/admin/hub-orders': typeof AdminHubOrdersRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -305,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/pay/complete': typeof PayCompleteRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -317,10 +373,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cac': typeof CacRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRouteWithChildren
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/nin': typeof NinRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
@@ -333,10 +392,14 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
+  '/tin': typeof TinRoute
+  '/vehicle': typeof VehicleRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/dispatch': typeof AdminDispatchRoute
+  '/admin/hub-orders': typeof AdminHubOrdersRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -349,6 +412,7 @@ export interface FileRoutesByTo {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/pay/complete': typeof PayCompleteRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -363,10 +427,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/cac': typeof CacRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/history': typeof HistoryRouteWithChildren
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/nin': typeof NinRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp': typeof OtpRoute
@@ -379,10 +446,14 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRouteWithChildren
   '/terms': typeof TermsRoute
+  '/tin': typeof TinRoute
+  '/vehicle': typeof VehicleRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/dispatch': typeof AdminDispatchRoute
+  '/admin/hub-orders': typeof AdminHubOrdersRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -395,6 +466,7 @@ export interface FileRoutesById {
   '/history/$txId': typeof HistoryTxIdRouteWithChildren
   '/pay/$slug': typeof PaySlugRoute
   '/pay/complete': typeof PayCompleteRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/profile/personal': typeof ProfilePersonalRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -410,10 +482,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/cac'
+    | '/documents'
     | '/forgot-password'
     | '/history'
     | '/home'
     | '/login'
+    | '/nin'
     | '/notifications'
     | '/onboarding'
     | '/otp'
@@ -426,10 +501,14 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/terms'
+    | '/tin'
+    | '/vehicle'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/dispatch'
+    | '/admin/hub-orders'
     | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
@@ -442,6 +521,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/pay/complete'
+    | '/profile/documents'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -454,10 +534,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cac'
+    | '/documents'
     | '/forgot-password'
     | '/history'
     | '/home'
     | '/login'
+    | '/nin'
     | '/notifications'
     | '/onboarding'
     | '/otp'
@@ -470,10 +553,14 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/terms'
+    | '/tin'
+    | '/vehicle'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/dispatch'
+    | '/admin/hub-orders'
     | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
@@ -486,6 +573,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/pay/complete'
+    | '/profile/documents'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -499,10 +587,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/cac'
+    | '/documents'
     | '/forgot-password'
     | '/history'
     | '/home'
     | '/login'
+    | '/nin'
     | '/notifications'
     | '/onboarding'
     | '/otp'
@@ -515,10 +606,14 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/terms'
+    | '/tin'
+    | '/vehicle'
     | '/wallet'
     | '/admin/activity'
     | '/admin/audit-logs'
     | '/admin/care'
+    | '/admin/dispatch'
+    | '/admin/hub-orders'
     | '/admin/pricing'
     | '/admin/reconciliation'
     | '/admin/reports'
@@ -531,6 +626,7 @@ export interface FileRouteTypes {
     | '/history/$txId'
     | '/pay/$slug'
     | '/pay/complete'
+    | '/profile/documents'
     | '/profile/personal'
     | '/profile/privacy'
     | '/support/$ticketId'
@@ -545,10 +641,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  CacRoute: typeof CacRoute
+  DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HistoryRoute: typeof HistoryRouteWithChildren
   HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
+  NinRoute: typeof NinRoute
   NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OtpRoute: typeof OtpRoute
@@ -561,6 +660,8 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRouteWithChildren
   TermsRoute: typeof TermsRoute
+  TinRoute: typeof TinRoute
+  VehicleRoute: typeof VehicleRoute
   WalletRoute: typeof WalletRouteWithChildren
   PaySlugRoute: typeof PaySlugRoute
   PayCompleteRoute: typeof PayCompleteRoute
@@ -581,6 +682,20 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cac': {
+      id: '/cac'
+      path: '/cac'
+      fullPath: '/cac'
+      preLoaderRoute: typeof CacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -609,6 +724,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nin': {
+      id: '/nin'
+      path: '/nin'
+      fullPath: '/nin'
+      preLoaderRoute: typeof NinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -695,6 +817,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tin': {
+      id: '/tin'
+      path: '/tin'
+      fullPath: '/tin'
+      preLoaderRoute: typeof TinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vehicle': {
+      id: '/vehicle'
+      path: '/vehicle'
+      fullPath: '/vehicle'
+      preLoaderRoute: typeof VehicleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wallet': {
       id: '/wallet'
       path: '/wallet'
@@ -728,6 +864,20 @@ declare module '@tanstack/react-router' {
       path: '/care'
       fullPath: '/admin/care'
       preLoaderRoute: typeof AdminCareRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dispatch': {
+      id: '/admin/dispatch'
+      path: '/dispatch'
+      fullPath: '/admin/dispatch'
+      preLoaderRoute: typeof AdminDispatchRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hub-orders': {
+      id: '/admin/hub-orders'
+      path: '/hub-orders'
+      fullPath: '/admin/hub-orders'
+      preLoaderRoute: typeof AdminHubOrdersRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/pricing': {
@@ -813,6 +963,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pay/complete'
       preLoaderRoute: typeof PayCompleteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/profile/documents': {
+      id: '/profile/documents'
+      path: '/documents'
+      fullPath: '/profile/documents'
+      preLoaderRoute: typeof ProfileDocumentsRouteImport
+      parentRoute: typeof ProfileRoute
     }
     '/profile/personal': {
       id: '/profile/personal'
@@ -901,6 +1058,8 @@ interface AdminRouteChildren {
   AdminActivityRoute: typeof AdminActivityRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminCareRoute: typeof AdminCareRouteWithChildren
+  AdminDispatchRoute: typeof AdminDispatchRoute
+  AdminHubOrdersRoute: typeof AdminHubOrdersRoute
   AdminPricingRoute: typeof AdminPricingRoute
   AdminReconciliationRoute: typeof AdminReconciliationRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -917,6 +1076,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminActivityRoute: AdminActivityRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminCareRoute: AdminCareRouteWithChildren,
+  AdminDispatchRoute: AdminDispatchRoute,
+  AdminHubOrdersRoute: AdminHubOrdersRoute,
   AdminPricingRoute: AdminPricingRoute,
   AdminReconciliationRoute: AdminReconciliationRoute,
   AdminReportsRoute: AdminReportsRoute,
@@ -955,11 +1116,13 @@ const HistoryRouteWithChildren =
   HistoryRoute._addFileChildren(HistoryRouteChildren)
 
 interface ProfileRouteChildren {
+  ProfileDocumentsRoute: typeof ProfileDocumentsRoute
   ProfilePersonalRoute: typeof ProfilePersonalRoute
   ProfilePrivacyRoute: typeof ProfilePrivacyRoute
 }
 
 const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfileDocumentsRoute: ProfileDocumentsRoute,
   ProfilePersonalRoute: ProfilePersonalRoute,
   ProfilePrivacyRoute: ProfilePrivacyRoute,
 }
@@ -992,10 +1155,13 @@ const WalletRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  CacRoute: CacRoute,
+  DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HistoryRoute: HistoryRouteWithChildren,
   HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
+  NinRoute: NinRoute,
   NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
   OtpRoute: OtpRoute,
@@ -1008,6 +1174,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SupportRoute: SupportRouteWithChildren,
   TermsRoute: TermsRoute,
+  TinRoute: TinRoute,
+  VehicleRoute: VehicleRoute,
   WalletRoute: WalletRouteWithChildren,
   PaySlugRoute: PaySlugRoute,
   PayCompleteRoute: PayCompleteRoute,

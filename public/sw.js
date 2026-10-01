@@ -1,4 +1,4 @@
-const CACHE_NAME = "rockpay-static-v1";
+const CACHE_NAME = "rockwavehub-static-v1";
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
   "/favicon.png",
@@ -17,7 +17,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+      ),
   );
   self.clients.claim();
 });
@@ -28,7 +30,5 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (!STATIC_ASSETS.includes(url.pathname)) return;
 
-  event.respondWith(
-    caches.match(request).then((cached) => cached ?? fetch(request)),
-  );
+  event.respondWith(caches.match(request).then((cached) => cached ?? fetch(request)));
 });
