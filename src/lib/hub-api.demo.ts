@@ -34,14 +34,22 @@ export async function simulatePaystackInline(input: {
   amountNaira: number;
   metadata?: Record<string, string>;
 }): Promise<PaystackInlineSuccess> {
+  const metadata: Record<string, string> = {
+    channel: "hub",
+    ...(input.metadata ?? {}),
+  };
+  if (!metadata.service && metadata.service_type) {
+    metadata.service = metadata.service_type;
+  }
+  const payload = { ...input, metadata };
   if (hasPaystackPublicKey()) {
     const { openPaystackInline } = await import("@/lib/paystack-inline");
-    return openPaystackInline(input);
+    return openPaystackInline(payload);
   }
   await new Promise((r) => setTimeout(r, 900));
   const reference = `PSK_DEMO_${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   if (import.meta.env.DEV) {
-    console.info("[Paystack demo — no VITE_PAYSTACK_PUBLIC_KEY]", { ...input, reference });
+    console.info("[Paystack demo — no VITE_PAYSTACK_PUBLIC_KEY]", { ...payload, reference });
   }
   return {
     reference,
@@ -58,33 +66,23 @@ function guessIdentifierType(raw: string): "nin" | "cac" {
 }
 
 export function buildRecoverTinPayload(input: {
-  identifier: string;
   fullName: string;
+  identifier: string;
   paymentReference: string;
   fee: number;
 }): RecoverTinRequest {
   return {
-    identifier: input.identifier.replace(/\s/g, "").trim(),
-    identifierType: guessIdentifierType(input.identifier),
     fullName: input.fullName.trim(),
+    identifier: input.identifier.trim(),
+    identifierType: guessIdentifierType(input.identifier),
     paymentReference: input.paymentReference,
     amount: input.fee,
     currency: "NGN",
   };
 }
 
-/** Try server recoverTin; fall back to local mock JSON for UI. */
+/** Local demo only — production uses recoverTin server fn. */
 export async function postRecoverTinDemo(payload: RecoverTinRequest): Promise<RecoverTinSuccess> {
-  try {
-    const { recoverTin } = await import("@/lib/hub.functions");
-    // Dynamic import keeps server module graph server-side when bundled correctly;
-    // client calls go through TanStack server fn RPC.
-    const { useServerFn } = await import("@tanstack/react-start");
-    void useServerFn;
-  } catch {
-    /* continue to mock */
-  }
-
   // Client path: call via fetch-less server function from component is preferred.
   // This helper remains mock-capable for unit/demo.
   await new Promise((r) => setTimeout(r, 500));
