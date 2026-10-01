@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { clearContinueDraft, saveContinueDraft } from "@/lib/continue-draft";
+import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import {
   EMPTY_DELIVERY_ADDRESS,
   formatDeliveryOneLine,
@@ -340,7 +341,7 @@ export function CacRegistrationFlow() {
     setStep(order[i - 1]!);
   };
 
-  const demoPay = useCallback(async () => {
+  const onPay = useCallback(async () => {
     if (!declare) {
       toast.error("Tick the declaration to continue.");
       return;
@@ -358,6 +359,23 @@ export function CacRegistrationFlow() {
     }
     setPaying(true);
     try {
+      const email = (ownerEmail || bizEmail || "").trim() || "customer@rockpay.app";
+      const paystack = await simulatePaystackInline({
+        email,
+        amountNaira: totalPay,
+        metadata: {
+          channel: "hub",
+          service: "cac",
+          service_type: "cac",
+          preferred_name: preferredName || name1.trim(),
+          nin,
+          delivery,
+        },
+      });
+      if (paystack.status !== "success") {
+        throw new Error("Payment was not completed.");
+      }
+
       const done = await runSubmit({
         data: {
           amount: totalPay,
@@ -380,21 +398,14 @@ export function CacRegistrationFlow() {
                   state: shipTo.state,
                 }
               : {},
+          paymentReference: paystack.reference,
         },
       });
-      setRefId(done.trackingReference);
+      setRefId(done.trackingReference || paystack.reference);
       setStep("success");
-      toast.success("Application received");
+      toast.success("Payment received — application queued");
     } catch (e) {
-      const localRef = `CAC-DEMO-${Date.now().toString(36).toUpperCase()}`;
-      setRefId(localRef);
-      setStep("success");
-      const msg = e instanceof Error ? e.message : "Demo complete";
-      if (/log in|auth|session|not available|Forbidden/i.test(msg)) {
-        toast.message(msg);
-      } else {
-        toast.success("Demo complete — flow works");
-      }
+      toast.error(e instanceof Error ? e.message : "Payment failed");
     } finally {
       setPaying(false);
     }
@@ -406,6 +417,7 @@ export function CacRegistrationFlow() {
     totalPay,
     preferredName,
     name1,
+    bizEmail,
     nature,
     fullName,
     nin,
@@ -863,7 +875,7 @@ export function CacRegistrationFlow() {
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
                 disabled={paying}
-                onClick={() => void demoPay()}
+                onClick={() => void onPay()}
               >
                 {paying ? (
                   <>
