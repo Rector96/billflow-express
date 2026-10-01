@@ -548,11 +548,11 @@ export function RockPayBillFlow() {
   if (step === "processing")
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
+        <div className="payment-flow-page mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full rounded-[30px] border border-border/70 bg-card p-6 text-center shadow-card"
+            className="w-full rounded-2xl border border-border/70 bg-card p-6 text-center shadow-float"
           >
             <div className="relative mx-auto flex size-20 items-center justify-center">
               <motion.div
@@ -574,7 +574,7 @@ export function RockPayBillFlow() {
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
               Communicating securely with {provider || service?.name || "the provider"}…
             </p>
-            <div className="mt-5 space-y-2 rounded-2xl border border-border/60 bg-secondary/40 p-3.5 text-left">
+            <div className="mt-5 space-y-2 rounded-xl border border-border/60 bg-secondary/40 p-3.5 text-left">
               <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-600">
                 <span className="grid size-4 place-items-center rounded-full bg-emerald-500 text-[10px] font-black text-white">
                   ✓
@@ -590,7 +590,7 @@ export function RockPayBillFlow() {
                 Waiting for delivery confirmation
               </div>
             </div>
-            <div className="mt-4 rounded-2xl bg-secondary/80 px-3.5 py-3">
+            <div className="mt-4 rounded-xl bg-secondary/80 px-3.5 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Payment amount
               </p>
@@ -598,7 +598,7 @@ export function RockPayBillFlow() {
                 {formatNaira(total, false)}
               </p>
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-primary-soft/60 px-3 py-2 text-primary">
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-primary-soft/60 px-3 py-2 text-primary">
               <ShieldCheck className="size-4 shrink-0" />
               <p className="text-[11px] font-bold">
                 Protected wallet debit · status confirmed by provider
@@ -612,11 +612,11 @@ export function RockPayBillFlow() {
   if (step === "result")
     return (
       <AppShell>
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
-          <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
+        <div className="payment-flow-page mx-auto min-h-[calc(100dvh-6rem)] w-full max-w-md space-y-4 px-4 py-7">
+          <div className={cn("rounded-2xl border bg-card p-5 text-center shadow-float", outcome === "successful" && "border-success/25", outcome === "failed" && "border-destructive/25")}>
             <span
               className={cn(
-                "mx-auto grid size-14 place-items-center rounded-full",
+                "relative mx-auto grid size-16 place-items-center rounded-full",
                 outcome === "successful"
                   ? "bg-success/10 text-success"
                   : outcome === "failed"
@@ -625,14 +625,14 @@ export function RockPayBillFlow() {
               )}
             >
               {outcome === "successful" ? (
-                <CheckCircle2 className="size-7" />
+                <CheckCircle2 className="result-pop size-8" />
               ) : outcome === "failed" ? (
-                <AlertCircle className="size-7" />
+                <AlertCircle className="result-shake size-8" />
               ) : (
                 <Clock3 className="size-7 animate-pulse" />
               )}
             </span>
-            <h1 className="mt-4 text-xl font-black tracking-tight">
+            <h1 className="mt-4 text-xl font-black">
               {outcome === "successful"
                 ? "Payment successful"
                 : outcome === "failed"
@@ -662,7 +662,7 @@ export function RockPayBillFlow() {
                 </Button>
               </div>
             ) : null}
-            <div className="mt-5 divide-y rounded-xl border bg-background px-3 text-left">
+            <div className="result-rise mt-5 divide-y rounded-xl border bg-background px-3 text-left">
               <InfoRow
                 label="Service"
                 value={`${provider || serviceID} ${variation?.name || service.name}`}
@@ -721,21 +721,25 @@ export function RockPayBillFlow() {
   if (step === "pin")
     return (
       <AppShell>
-        <PageHeader title="Transaction PIN" onBack={() => setStep("confirm")} />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+        <PageHeader title="Authorize payment" subtitle="Secure wallet payment" onBack={() => setStep("confirm")} />
+        <div className="payment-flow-page mx-auto min-h-[calc(100dvh-10rem)] w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
-          <div className="rounded-2xl border bg-card p-5 shadow-card">
-            <div className="flex items-center justify-between rounded-xl bg-primary-soft px-3.5 py-3">
-              <span className="text-xs font-semibold text-muted-foreground">RockPay Wallet</span>
-              <span className="text-lg font-bold">{formatNaira(total, false)}</span>
+          <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-float">
+            <div className="payment-summary flex items-center justify-between rounded-xl px-4 py-3.5">
+              <div>
+                <span className="block text-[10px] font-semibold uppercase opacity-70">Total to authorize</span>
+                <span className="mt-0.5 block text-xl font-black">{formatNaira(total, false)}</span>
+              </div>
+              <ShieldCheck className="size-6 opacity-80" />
             </div>
-            <p className="mt-4 mb-6 text-center text-xs text-muted-foreground">
-              Enter your 4-digit transaction PIN to authorize this bill payment.
-            </p>
+            <div className="my-5 text-center">
+              <h2 className="text-base font-extrabold">Enter your 4-digit PIN</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Your PIN is encrypted and never shared with the provider.</p>
+            </div>
             <PinPad value={pin} onChange={setPin} />
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-bold"
+                className="h-13 w-full rounded-xl font-bold shadow-float"
                 disabled={pin.length < 4 || payingLock.current}
                 onClick={() => {
                   const p = pin;
@@ -743,7 +747,7 @@ export function RockPayBillFlow() {
                   void runPayment(p);
                 }}
               >
-                Confirm payment
+                Pay securely · {formatNaira(total, false)}
               </Button>
             </PayActionBar>
           </div>
@@ -755,30 +759,30 @@ export function RockPayBillFlow() {
     const insufficient = total > balance;
     return (
       <AppShell>
-        <PageHeader title="Review bill" onBack={() => setStep("amount")} />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+        <PageHeader title="Confirm payment" subtitle="Review your details before you pay" onBack={() => setStep("amount")} />
+        <div className="payment-flow-page mx-auto min-h-[calc(100dvh-10rem)] w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
-          <div className="rounded-2xl border bg-card p-4 shadow-card">
+          <div className="payment-summary rounded-2xl p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase opacity-70">
                   {provider || serviceID}
                 </p>
                 <p className="text-base font-bold">{service.name}</p>
               </div>
-              <p className="text-xl font-bold">{formatNaira(total, false)}</p>
+              <p className="text-2xl font-black">{formatNaira(total, false)}</p>
             </div>
             {rockpayFee > 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs opacity-75">
                 Includes RockPay fee of {formatNaira(rockpayFee, false)}. You pay this total.
               </p>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs opacity-75">
                 Amount calculated for your wallet debit.
               </p>
             )}
           </div>
-          <div className="divide-y rounded-2xl border bg-card px-4 shadow-card">
+          <div className="divide-y rounded-2xl border border-border/70 bg-card px-4 shadow-soft">
             <InfoRow label={service.identifierLabel} value={maskTail(identifier)} />
             {verifiedName ? <InfoRow label="Customer" value={verifiedName} /> : null}
             {verifiedAddress ? <InfoRow label="Address" value={verifiedAddress} /> : null}
@@ -797,7 +801,7 @@ export function RockPayBillFlow() {
           ) : (
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-bold"
+                className="h-13 w-full rounded-xl font-bold shadow-float"
                 onClick={() => {
                   if (quotedTotal == null) {
                     void continueFromAmount();
@@ -832,7 +836,7 @@ export function RockPayBillFlow() {
           subtitle={`${provider || serviceID} · ${maskTail(identifier)}`}
           onBack={() => setStep(isProviderBill ? "verify" : "identifier")}
         />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+        <div className="payment-flow-page mx-auto w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           {variationsLoading ? (
             <div className="flex items-center justify-center gap-2 py-8 text-xs text-muted-foreground">
@@ -912,7 +916,7 @@ export function RockPayBillFlow() {
             </>
           )}
           <Button
-            className="h-12 w-full rounded-xl font-bold"
+            className="h-12 w-full rounded-xl font-bold shadow-soft"
             disabled={
               pricingLoading ||
               baseTotal < 50 ||
@@ -931,7 +935,7 @@ export function RockPayBillFlow() {
     return (
       <AppShell>
         <PageHeader title="Verify customer" onBack={() => setStep("identifier")} />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+        <div className="payment-flow-page mx-auto w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           {verifying ? (
             <div className="rounded-2xl border bg-card py-12 text-center text-xs text-muted-foreground shadow-card">
@@ -971,7 +975,7 @@ export function RockPayBillFlow() {
           subtitle={provider || serviceID}
           onBack={() => setStep(isElectricity ? "meterType" : "provider")}
         />
-        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+        <div className="payment-flow-page mx-auto w-full max-w-md space-y-4 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           <div className="rounded-2xl border bg-card p-4 shadow-card">
             <Label
@@ -1010,7 +1014,7 @@ export function RockPayBillFlow() {
           subtitle={provider || serviceID}
           onBack={() => setStep("provider")}
         />
-        <div className="mx-auto w-full max-w-md space-y-3 px-4 py-6">
+        <div className="payment-flow-page mx-auto w-full max-w-md space-y-3 px-4 py-4">
           <PayStepper steps={stepsMeta} current={currentStep} />
           {(["prepaid", "postpaid"] as const).map((type) => (
             <button
@@ -1046,7 +1050,7 @@ export function RockPayBillFlow() {
   return (
     <AppShell>
       <PageHeader title={`Pay ${service.name}`} backTo="/home" />
-      <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+      <div className="payment-flow-page mx-auto min-h-[calc(100dvh-10rem)] w-full max-w-md space-y-4 px-4 py-4">
         <PayStepper steps={stepsMeta} current={currentStep} />
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1073,7 +1077,7 @@ export function RockPayBillFlow() {
                     setStep(isElectricity ? "meterType" : "identifier");
                   }}
                   className={cn(
-                    "press flex min-h-20 items-center justify-between rounded-2xl border bg-card p-3.5 text-left shadow-card transition-colors",
+                    "press flex min-h-20 items-center justify-between rounded-xl border bg-card p-3.5 text-left shadow-soft transition-colors",
                     serviceID === item.id
                       ? "border-primary bg-primary-soft"
                       : "hover:border-border",

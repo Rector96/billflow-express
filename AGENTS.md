@@ -10,3 +10,7 @@
 > the editor, so keep the branch in a working state.
 
 <!-- LOVABLE:END -->
+
+## Architecture rules
+
+- Payment journeys share the PayStepper, PayActionBar, PinPad, and semantic payment-flow CSS utilities so every service keeps one consistent interaction model.

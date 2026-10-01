@@ -1,7 +1,7 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
-import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Check, Search, Signal, Smartphone, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatNaira } from "@/lib/mock-data";
@@ -14,7 +14,7 @@ export type DataPlanItem = {
   fixedPrice?: boolean;
 };
 
-type TabId = "popular" | "daily" | "weekly" | "monthly" | "special" | "all";
+type TabId = "best" | "daily" | "weekly" | "monthly" | "special" | "all";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "best", label: "Best Offers" },
@@ -116,32 +116,57 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
   }, [plans]);
 
   const [tab, setTab] = useState<TabId>("best");
+  const [query, setQuery] = useState("");
 
   const visible = useMemo(() => {
-    if (tab === "best") return buckets.best.length ? buckets.best : buckets.all.slice(0, 9);
-    if (tab === "daily") return buckets.daily.length ? buckets.daily : buckets.all;
-    if (tab === "weekly") return buckets.weekly.length ? buckets.weekly : buckets.all;
-    if (tab === "monthly") return buckets.monthly.length ? buckets.monthly : buckets.all;
-    return buckets.all;
-  }, [tab, buckets]);
+    const source =
+      tab === "best"
+        ? buckets.best.length
+          ? buckets.best
+          : buckets.all.slice(0, 9)
+        : tab === "daily"
+          ? buckets.daily
+          : tab === "weekly"
+            ? buckets.weekly
+            : tab === "monthly"
+              ? buckets.monthly
+              : tab === "special"
+                ? buckets.other
+                : buckets.all;
+    const needle = query.trim().toLowerCase();
+    return needle
+      ? source.filter((plan) => `${plan.name} ${plan.amount}`.toLowerCase().includes(needle))
+      : source;
+  }, [tab, buckets, query]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {(networkLabel || phoneLabel) && (
-        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-3.5 py-3 shadow-sm">
-          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-black uppercase tracking-wide text-primary">
+        <div className="flex items-center gap-3 rounded-2xl bg-primary px-4 py-3.5 text-primary-foreground shadow-float">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-foreground/15 text-xs font-black uppercase">
             {(networkLabel || "NET").slice(0, 3)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="truncate text-[11px] font-semibold uppercase opacity-70">
               {networkLabel || "Network"}
             </p>
-            <p className="truncate text-base font-bold tabular-nums tracking-tight text-foreground">
+            <p className="truncate text-base font-bold tabular-nums">
               {phoneLabel || "—"}
             </p>
           </div>
         </div>
       )}
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search plans"
+          aria-label="Search data plans"
+          className="h-11 rounded-xl border-border/70 bg-card pl-10 shadow-soft"
+        />
+      </div>
 
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5">
         {TABS.map((t) => {
@@ -151,18 +176,14 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={
-                "relative shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors duration-200 " +
-                (active ? "text-primary" : "text-muted-foreground hover:text-foreground")
-              }
+              className={cn(
+                "relative shrink-0 rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-200",
+                active
+                  ? "bg-primary-soft text-primary shadow-soft"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
             >
               {t.label}
-              <span
-                className={
-                  "absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-primary transition-opacity duration-200 " +
-                  (active ? "opacity-100" : "opacity-0")
-                }
-              />
             </button>
           );
         })}
@@ -173,7 +194,7 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
           No plans in this category.
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
           {visible.map((p, index) => {
             const selected = selectedCode === p.variationCode;
             const size = planSizeLabel(p.name);
@@ -194,42 +215,44 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
                   variant="outline"
                   onClick={() => onSelect(p)}
                   className={
-                    "flex min-h-[132px] flex-col items-stretch overflow-hidden rounded-2xl border p-3 text-left " +
+                    "relative flex min-h-[116px] flex-col items-stretch overflow-hidden rounded-xl border p-2.5 text-left " +
                     "transition-all duration-200 ease-out active:scale-[0.97] " +
                     (selected
                       ? "border-primary bg-primary/[0.08] shadow-sm ring-1 ring-primary/30"
-                      : "border-border/50 bg-[#F4F2F8] hover:border-primary/30 hover:bg-[#EEEAF6]")
+                      : "border-border/60 bg-card hover:border-primary/30 hover:bg-primary-soft/40")
                   }
                 >
-                  <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    {duration ?? "PLAN"}
-                  </p>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="truncate text-[9px] font-bold uppercase text-muted-foreground">
+                      {duration ?? "PLAN"}
+                    </p>
+                    {selected ? (
+                      <span className="grid size-4 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="size-2.5" />
+                      </span>
+                    ) : null}
+                  </div>
                   <p
                     className={
-                      "mt-1.5 truncate text-[17px] font-black leading-none tracking-tight sm:text-[18px] " +
+                      "mt-1.5 truncate text-base font-black leading-none sm:text-[17px] " +
                       (selected ? "text-primary" : "text-foreground")
                     }
                   >
                     {title}
                   </p>
                   {!size ? (
-                    <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-muted-foreground">
-                      {p.name}
+                    <p className="mt-1 line-clamp-2 text-[9px] leading-tight text-muted-foreground">
+                      {planTypeLabel(p.name)} · {p.name}
                     </p>
                   ) : (
                     <span className="mt-1 block h-0 grow" />
                   )}
                   <div className="mt-auto pt-2">
-                    <p className="truncate text-[15px] font-extrabold tabular-nums leading-none text-foreground sm:text-[16px]">
+                    <p className="truncate text-sm font-extrabold tabular-nums leading-none text-foreground sm:text-[15px]">
                       {formatNaira(p.amount, false)}
                     </p>
-                    <p
-                      className={
-                        "mt-1 text-[10px] font-bold transition-opacity duration-200 " +
-                        (selected ? "text-primary opacity-100" : "opacity-0")
-                      }
-                    >
-                      Selected
+                    <p className="mt-1 truncate text-[9px] font-semibold text-muted-foreground">
+                      {planTypeLabel(p.name)}
                     </p>
                   </div>
                 </Button>
@@ -239,7 +262,9 @@ export function DataPlanPicker({ plans, selectedCode, networkLabel, phoneLabel, 
         </div>
       )}
 
-      <p className="pt-1 text-center text-[12px] text-muted-foreground/60">— End —</p>
+      <p className="pt-1 text-center text-[11px] font-medium text-muted-foreground">
+        {visible.length} {visible.length === 1 ? "plan" : "plans"}
+      </p>
     </div>
   );
 }

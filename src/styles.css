@@ -58,7 +58,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-  --shadow-float: 0 10px 25px -5px rgba(79, 70, 229, 0.18), 0 8px 10px -6px rgba(79, 70, 229, 0.1);
+  --shadow-float: 0 14px 30px -12px color-mix(in oklab, var(--primary) 36%, transparent);
   --shadow-soft: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
   --shadow-pill: 0 2px 8px -2px rgba(0, 0, 0, 0.06);
   --font-sans:
@@ -70,26 +70,26 @@
 
 :root {
   --radius: 1rem;
-  --background: #f8fafc;
+  --background: #f8f7fc;
   --foreground: #0f172a;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #4f46e5;
+  --primary: #5b21b6;
   --primary-foreground: #ffffff;
-  --primary-deep: #3730a3;
-  --primary-soft: #eef2ff;
+  --primary-deep: #251044;
+  --primary-soft: #f2ebff;
   --secondary: #f1f5f9;
   --secondary-foreground: #1e293b;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #eef2ff;
-  --accent-foreground: #4f46e5;
+  --accent: #f2ebff;
+  --accent-foreground: #5b21b6;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --destructive-soft: #fef2f2;
-  --success: #10b981;
+  --success: #22c55e;
   --success-foreground: #ffffff;
   --success-soft: #ecfdf5;
   --warning: #f59e0b;
@@ -100,23 +100,23 @@
   --info-soft: #f0f9ff;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #4f46e5;
-  --chart-1: #4f46e5;
-  --chart-2: #818cf8;
-  --chart-3: #10b981;
+  --ring: #8b5cf6;
+  --chart-1: #5b21b6;
+  --chart-2: #8b5cf6;
+  --chart-3: #22c55e;
   --chart-4: #f59e0b;
   --chart-5: #ef4444;
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
-  --sidebar-primary: #4f46e5;
+  --sidebar-primary: #5b21b6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
-  --sidebar-accent-foreground: #4f46e5;
+  --sidebar-accent: #f2ebff;
+  --sidebar-accent-foreground: #5b21b6;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #4f46e5;
+  --sidebar-ring: #8b5cf6;
   --wallet-surface: linear-gradient(135deg, #17113f 0%, #4b2fc9 58%, #7c5cfc 100%);
   --wallet-glow: rgba(255, 255, 255, 0.16);
-  --page-wash: linear-gradient(180deg, #f4f1ff 0%, #f8fafc 42%, #f8fafc 100%);
+  --page-wash: linear-gradient(180deg, #f2ebff 0%, #f8f7fc 42%, #f8f7fc 100%);
   --splash-surface: linear-gradient(
     155deg,
     var(--primary-deep) 0%,
@@ -133,10 +133,10 @@
   --card-foreground: #f8fafc;
   --popover: #111827;
   --popover-foreground: #f8fafc;
-  --primary: #6366f1;
+  --primary: #8b5cf6;
   --primary-foreground: #ffffff;
-  --primary-deep: #4338ca;
-  --primary-soft: #1e1b4b;
+  --primary-deep: #251044;
+  --primary-soft: #2d1650;
   --secondary: #1f2937;
   --secondary-foreground: #f8fafc;
   --muted: #1f2937;
@@ -157,10 +157,10 @@
   --info-soft: #0c4a6e;
   --border: #1f2937;
   --input: #1f2937;
-  --ring: #6366f1;
+  --ring: #8b5cf6;
   --sidebar: #0f172a;
   --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #8b5cf6;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1e1b4b;
   --sidebar-accent-foreground: #818cf8;
@@ -189,7 +189,7 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-family:
-      "Plus Jakarta Sans",
+      "DM Sans",
       -apple-system,
       BlinkMacSystemFont,
       "Segoe UI",
@@ -208,7 +208,7 @@
   h6,
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 
   :focus-visible {
@@ -222,7 +222,18 @@
 }
 
 @utility brand-gradient {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  background: linear-gradient(135deg, var(--primary-deep) 0%, var(--primary) 72%, #8b5cf6 100%);
+}
+
+@utility payment-flow-page {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--primary-soft) 72%, transparent) 0%, transparent 15rem);
+}
+
+@utility payment-summary {
+  background: linear-gradient(135deg, var(--primary-deep) 0%, var(--primary) 72%, #8b5cf6 100%);
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-float);
 }
 
 @utility wallet-surface {
