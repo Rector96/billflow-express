@@ -7,7 +7,9 @@
  */
 function readEnvFlag(key: string, defaultValue: boolean): boolean {
   try {
-    const raw = String(process.env[key] ?? "").trim().toLowerCase();
+    const raw = String(process.env[key] ?? "")
+      .trim()
+      .toLowerCase();
     if (!raw) return defaultValue;
     if (["0", "false", "no", "off"].includes(raw)) return false;
     if (["1", "true", "yes", "on"].includes(raw)) return true;

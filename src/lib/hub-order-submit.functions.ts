@@ -12,10 +12,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyStaffNewHubOrder } from "@/lib/hub-documents.functions";
 import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { notifyUser } from "@/lib/hub-notify.server";
-import {
-  isHubPreviewServerEnabled,
-  isHubUnverifiedPayAllowed,
-} from "@/lib/hub-preview.server";
+import { isHubPreviewServerEnabled, isHubUnverifiedPayAllowed } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
 
@@ -58,10 +55,9 @@ async function assertHubPayment(
     );
   }
 
-  const res = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
-    { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" } },
-  );
+  const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
+    headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" },
+  });
   const json = (await res.json()) as {
     status?: boolean;
     data?: { status?: string; amount?: number };
@@ -198,8 +194,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
 
     const trackingReference = uid("CAC");
     const paymentReference =
-      data.paymentReference ||
-      (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
+      data.paymentReference || (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
 
     const { demo } = await assertHubPayment(paymentReference, data.amount);
 
@@ -306,8 +301,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
 
     const trackingReference = uid("NIN");
     const paymentReference =
-      data.paymentReference ||
-      (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
+      data.paymentReference || (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
     const needsDeliver = data.product === "plastic_card";
 
     const { demo } = await assertHubPayment(paymentReference, data.amount);
