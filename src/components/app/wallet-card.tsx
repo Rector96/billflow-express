@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { Link } from "@tanstack/react-router";
 import { Eye, EyeOff, Plus } from "lucide-react";
 import { useApp } from "@/lib/app-store";

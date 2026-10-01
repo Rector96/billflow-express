@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 /**
  * Resend mail transport (server only).
  * If RESEND_API_KEY is missing, send is a no-op (in-app notifications still work).

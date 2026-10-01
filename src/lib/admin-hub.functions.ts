@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 /**
  * Staff hub orders — bank-grade detail, agent desk, care call, fulfillment.
  * Document attach → customer notified to login & download (My documents).

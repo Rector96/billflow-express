@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 /**
  * Hub payment + API bridge.
  * - Prefer real Paystack Inline when VITE_PAYSTACK_PUBLIC_KEY is set

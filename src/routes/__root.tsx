@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
