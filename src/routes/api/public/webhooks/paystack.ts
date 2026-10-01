@@ -232,6 +232,7 @@ async function recordHubOrderFromCharge(data: PaystackChargeData) {
   }
 
   const tracking = trackingSlug(service);
+  const nowIso = new Date().toISOString();
   const { error } = await supabaseAdmin.from("hub_orders").insert({
     user_id: userId,
     service,
@@ -240,9 +241,13 @@ async function recordHubOrderFromCharge(data: PaystackChargeData) {
     payment_reference: reference,
     tracking_reference: tracking,
     customer_identifier: plate || email || null,
+    fulfillment_status: "paid",
+    paid_at: nowIso,
     metadata: {
       channel: "hub",
       source: "paystack_webhook",
+      demo: false,
+      fulfillment_status: "paid",
       customer_email: email || null,
       paystack_currency: data.currency ?? "NGN",
       ...meta,
