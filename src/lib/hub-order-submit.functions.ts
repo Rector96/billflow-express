@@ -1,18 +1,84 @@
 /**
- * Demo / preview: record CAC & NIN applications into hub_orders
- * so admin queue + My documents + notifications + Resend work end-to-end.
+ * CAC & NIN applications → hub_orders + staff/user notify + Resend.
+ *
+ * Payment rules:
+ * - If PAYSTACK_SECRET_KEY is set: require a real Paystack reference and verify it.
+ * - Demo refs (PSK_DEMO_*) only when HUB_ALLOW_UNVERIFIED_PAY=true or
+ *   HUB_PREVIEW_FLOWS allows unverified pay (see hub-preview.server).
+ * - Webhook path remains the secondary recorder (idempotent on payment_reference).
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyStaffNewHubOrder } from "@/lib/hub-documents.functions";
 import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { notifyUser } from "@/lib/hub-notify.server";
-import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
+import {
+  isHubPreviewServerEnabled,
+  isHubUnverifiedPayAllowed,
+} from "@/lib/hub-preview.server";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+}
+
+function paystackSecret(): string {
+  return String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+}
+
+/**
+ * Verify Paystack charge when secret is configured.
+ * Demo references only when unverified pay is explicitly allowed.
+ */
+async function assertHubPayment(
+  reference: string,
+  expectedNaira: number,
+): Promise<{ demo: boolean }> {
+  const ref = String(reference ?? "").trim();
+  if (!ref) {
+    throw new Error("Payment reference is required. Complete Paystack checkout first.");
+  }
+
+  const secret = paystackSecret();
+  const allowDemo = isHubUnverifiedPayAllowed();
+  const isDemoRef = ref.startsWith("PSK_DEMO_");
+
+  if (!secret) {
+    if (allowDemo || isDemoRef) return { demo: true };
+    throw new Error(
+      "PAYSTACK_SECRET_KEY is not set on the server. Add it in Netlify env and redeploy.",
+    );
+  }
+
+  if (isDemoRef) {
+    if (allowDemo) return { demo: true };
+    throw new Error(
+      "Demo payment was used but Paystack is configured. Complete a real Paystack checkout.",
+    );
+  }
+
+  const res = await fetch(
+    `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
+    { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" } },
+  );
+  const json = (await res.json()) as {
+    status?: boolean;
+    data?: { status?: string; amount?: number };
+    message?: string;
+  };
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Could not verify payment with Paystack.");
+  }
+  if (String(json.data?.status).toLowerCase() !== "success") {
+    throw new Error("Payment was not successful.");
+  }
+  const kobo = Number(json.data?.amount ?? 0);
+  const expectedKobo = Math.round(expectedNaira * 100);
+  if (Number.isFinite(expectedKobo) && expectedKobo > 0 && Math.abs(kobo - expectedKobo) > 100) {
+    throw new Error("Paid amount does not match the service fee.");
+  }
+  return { demo: false };
 }
 
 async function insertHubOrder(input: {
@@ -24,9 +90,11 @@ async function insertHubOrder(input: {
   customerIdentifier: string | null;
   metadata: Record<string, unknown>;
   status?: string;
+  demo: boolean;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const status = input.status ?? "pending";
+  const now = new Date().toISOString();
 
   const { data: row, error } = await supabaseAdmin
     .from("hub_orders")
@@ -38,10 +106,13 @@ async function insertHubOrder(input: {
       payment_reference: input.paymentReference,
       tracking_reference: input.trackingReference,
       customer_identifier: input.customerIdentifier,
+      fulfillment_status: "paid",
+      paid_at: now,
       metadata: {
         channel: "hub",
-        demo: true,
+        demo: input.demo,
         fulfillment_status: "paid",
+        source: input.demo ? "hub_submit_preview" : "hub_submit_paystack",
         ...input.metadata,
       },
     } as never)
@@ -66,7 +137,7 @@ async function insertHubOrder(input: {
         title: `Hub · ${input.service}`,
         service_slug: input.service,
         payment_reference: input.paymentReference,
-        demo: true,
+        demo: input.demo,
         ...input.metadata,
       },
     } as never);
@@ -92,6 +163,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       businessAddress: string;
       shippingAddress?: string;
       shipping?: Record<string, string>;
+      paymentReference?: string;
     }) => {
       const amount = Math.round(Number(input?.amount));
       if (!Number.isFinite(amount) || amount < 1) throw new Error("Invalid amount");
@@ -115,6 +187,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
           input?.shipping && typeof input.shipping === "object"
             ? (input.shipping as Record<string, string>)
             : {},
+        paymentReference: String(input?.paymentReference ?? "").trim(),
       };
     },
   )
@@ -124,7 +197,11 @@ export const submitCacApplication = createServerFn({ method: "POST" })
     }
 
     const trackingReference = uid("CAC");
-    const paymentReference = `PSK_DEMO_${trackingReference}`;
+    const paymentReference =
+      data.paymentReference ||
+      (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
+
+    const { demo } = await assertHubPayment(paymentReference, data.amount);
 
     await insertHubOrder({
       userId: context.userId,
@@ -134,6 +211,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       trackingReference,
       customerIdentifier: data.nin,
       status: "pending",
+      demo,
       metadata: {
         preferred_name: data.preferredName,
         nature: data.nature,
@@ -178,6 +256,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       trackingReference,
       paymentReference,
       amount: data.amount,
+      demo,
     };
   });
 
@@ -226,8 +305,12 @@ export const submitNinOrder = createServerFn({ method: "POST" })
           : "nin_card_print";
 
     const trackingReference = uid("NIN");
-    const paymentReference = data.paymentReference || `PSK_DEMO_${trackingReference}`;
+    const paymentReference =
+      data.paymentReference ||
+      (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
     const needsDeliver = data.product === "plastic_card";
+
+    const { demo } = await assertHubPayment(paymentReference, data.amount);
 
     await insertHubOrder({
       userId: context.userId,
@@ -237,6 +320,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
       trackingReference,
       customerIdentifier: data.nin || data.phone || null,
       status: "pending",
+      demo,
       metadata: {
         product: data.product,
         phone: data.phone || null,
@@ -277,6 +361,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
       paymentReference,
       service,
       amount: data.amount,
+      demo,
     };
   });
 
