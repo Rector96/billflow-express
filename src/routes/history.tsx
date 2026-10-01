@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
@@ -11,6 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
+import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, StatusBadge } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/lib/app-store";
