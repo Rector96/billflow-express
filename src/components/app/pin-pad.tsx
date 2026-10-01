@@ -34,9 +34,9 @@ export function PinPad({
   };
 
   return (
-    <div className="mx-auto w-full max-w-[17rem] space-y-5">
+    <div className="mx-auto w-full max-w-[18rem] space-y-6">
       <div
-        className="flex justify-center gap-3"
+        className="flex justify-center gap-3.5"
         role="status"
         aria-label={`${value.length} of ${length} digits entered`}
       >
@@ -44,7 +44,7 @@ export function PinPad({
           <span
             key={i}
             className={cn(
-              "size-3.5 rounded-full border-2 transition-all duration-200",
+              "size-3.5 rounded-full border-2 transition-all duration-300",
               i < value.length
                 ? "scale-110 border-primary bg-primary shadow-[0_0_0_4px_var(--color-primary-soft)]"
                 : "border-border bg-muted/60",
@@ -64,7 +64,7 @@ export function PinPad({
           variant="ghost"
           aria-label="Delete last digit"
           onClick={() => onChange(value.slice(0, -1))}
-          className="press h-12 rounded-xl text-muted-foreground"
+        className="press h-13 rounded-xl text-muted-foreground"
         >
           <Delete className="size-5" />
         </Button>
@@ -79,7 +79,7 @@ function Key({ label, onClick }: { label: string; onClick: () => void }) {
       type="button"
       variant="outline"
       onClick={onClick}
-      className="press h-12 rounded-xl border-border/70 bg-card text-lg font-bold shadow-soft hover:border-primary/30 hover:bg-primary-soft"
+      className="press h-13 rounded-xl border-border/70 bg-background text-lg font-bold shadow-soft hover:border-primary/30 hover:bg-primary-soft"
     >
       {label}
     </Button>

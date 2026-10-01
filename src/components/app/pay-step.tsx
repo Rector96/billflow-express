@@ -33,8 +33,8 @@ export function PayStepper({
   const active = steps[idx];
 
   return (
-    <div className={cn("space-y-1.5", className)}>
-      <div className="flex items-center gap-1">
+    <div className={cn("rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft", className)}>
+      <div className="flex items-center gap-1.5">
         {steps.map((s, i) => {
           const done = i < idx;
           const isNow = i === idx;
@@ -42,18 +42,18 @@ export function PayStepper({
             <div
               key={s.key}
               className={cn(
-                "h-1 flex-1 rounded-full transition-all duration-200",
-                done || isNow ? "bg-primary" : "bg-muted",
+                "h-1.5 flex-1 rounded-full transition-all duration-300",
+                done ? "bg-primary" : isNow ? "bg-primary shadow-[0_0_0_3px_var(--color-primary-soft)]" : "bg-muted",
               )}
             />
           );
         })}
       </div>
-      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+      <div className="mt-2.5 flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
         <span>
           Step {idx + 1} of {steps.length}
         </span>
-        <span className="font-semibold text-foreground">{active?.label}</span>
+        <span className="rounded-md bg-primary-soft px-2 py-1 font-bold text-primary">{active?.label}</span>
       </div>
     </div>
   );
@@ -84,16 +84,16 @@ export function PayStepBody({
   return (
     <div
       className={cn(
-        "mx-auto flex min-h-[calc(100dvh-10.5rem)] w-full max-w-md flex-col px-4 pt-5 pb-4 sm:pt-6 lg:min-h-[calc(100dvh-7rem)]",
+        "payment-flow-page mx-auto flex min-h-[calc(100dvh-10.5rem)] w-full max-w-md flex-col px-4 pt-4 pb-4 sm:pt-5 lg:min-h-[calc(100dvh-7rem)]",
         className,
       )}
     >
-      {stepper ? <div className="mb-5">{stepper}</div> : null}
+      {stepper ? <div className="mb-4">{stepper}</div> : null}
 
       {title || description || eyebrow ? (
-        <div className="mb-4 space-y-1">
+        <div className="mb-4 space-y-1.5">
           {eyebrow}
-          {title ? <h2 className="text-xl font-extrabold tracking-tight">{title}</h2> : null}
+          {title ? <h2 className="text-xl font-extrabold">{title}</h2> : null}
           {description ? (
             <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
           ) : null}
