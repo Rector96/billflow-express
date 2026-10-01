@@ -4,15 +4,19 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
 
+// Public fallbacks (publishable values, safe in browser) used when build env vars are missing.
+const FALLBACK_URL = "https://jbciznaeaiktxroreyei.supabase.co";
+const FALLBACK_KEY = "sb_publishable_bTduGZ0I3joA2BpeJ1BRoQ_URGxdD_q";
+
 export function isSupabaseConfigured(): boolean {
   const url =
     (typeof import.meta !== "undefined" && import.meta.env?.["VITE_SUPABASE_URL"]) ||
     (typeof process !== "undefined" && process.env?.["SUPABASE_URL"]) ||
-    "";
+    FALLBACK_URL;
   const key =
     (typeof import.meta !== "undefined" && import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"]) ||
     (typeof process !== "undefined" && process.env?.["SUPABASE_PUBLISHABLE_KEY"]) ||
-    "";
+    FALLBACK_KEY;
 
   if (!url || !key) return false;
   if (
@@ -62,9 +66,12 @@ function createSupabaseClient() {
 
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = (import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"])!;
+  const SUPABASE_URL = (import.meta.env["VITE_SUPABASE_URL"] ||
+    (typeof process !== "undefined" ? process.env?.["SUPABASE_URL"] : undefined) ||
+    FALLBACK_URL);
   const SUPABASE_PUBLISHABLE_KEY = (import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"])!;
+    (typeof process !== "undefined" ? process.env?.["SUPABASE_PUBLISHABLE_KEY"] : undefined) ||
+    FALLBACK_KEY);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
