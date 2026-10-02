@@ -575,8 +575,8 @@ export function RockPayBillFlow() {
               Communicating securely with {provider || service?.name || "the provider"}…
             </p>
             <div className="mt-5 space-y-2 rounded-xl border border-border/60 bg-secondary/40 p-3.5 text-left">
-              <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-600">
-                <span className="grid size-4 place-items-center rounded-full bg-emerald-500 text-[10px] font-black text-white">
+              <div className="flex items-center gap-2.5 text-xs font-bold text-success">
+                <span className="grid size-4 place-items-center rounded-full bg-success text-[10px] font-black text-success-foreground">
                   ✓
                 </span>
                 Wallet balance authorized
