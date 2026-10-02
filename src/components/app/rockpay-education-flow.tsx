@@ -232,7 +232,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
             </p>
             <div className="mt-5 rounded-xl border border-border/60 bg-secondary/40 p-3.5 text-left">
               <div className="flex items-center gap-2.5 text-xs font-bold text-success">
-                <span className="grid size-4 place-items-center rounded-full bg-success text-[10px] font-black text-success-foreground">✓</span>
+                <span className="grid size-4 place-items-center rounded-full bg-success text-[10px] font-black text-success-foreground">
+                  ✓
+                </span>
                 Wallet payment authorized
               </div>
               <div className="mt-2 flex items-center gap-2.5 text-xs font-bold text-primary">
@@ -256,7 +258,13 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
     return (
       <AppShell>
         <div className="payment-flow-page mx-auto min-h-[calc(100dvh-6rem)] w-full max-w-md space-y-4 px-4 py-7">
-          <div className={cn("rounded-2xl border bg-card p-5 text-center shadow-float", resultStatus === "successful" && "border-success/25", resultStatus === "failed" && "border-destructive/25")}>
+          <div
+            className={cn(
+              "rounded-2xl border bg-card p-5 text-center shadow-float",
+              resultStatus === "successful" && "border-success/25",
+              resultStatus === "failed" && "border-destructive/25",
+            )}
+          >
             <span
               className={cn(
                 "mx-auto grid size-14 place-items-center rounded-full",
@@ -538,7 +546,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
               </div>
               <div className="payment-summary mt-5 rounded-xl px-4 py-3">
                 <p className="text-[10px] font-semibold uppercase opacity-70">Order total</p>
-                <p className="mt-0.5 text-xl font-black tabular-nums">{formatNaira(total, false)}</p>
+                <p className="mt-0.5 text-xl font-black tabular-nums">
+                  {formatNaira(total, false)}
+                </p>
               </div>
             </div>
             <Button className="h-12 w-full rounded-xl font-bold" onClick={() => setStep("confirm")}>
@@ -563,7 +573,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                 </div>
                 <p className="text-2xl font-black tabular-nums">{formatNaira(total, false)}</p>
               </div>
-              <p className="mt-2 text-xs opacity-75">{quantity} {quantity === 1 ? "PIN" : "PINs"} delivered after provider confirmation.</p>
+              <p className="mt-2 text-xs opacity-75">
+                {quantity} {quantity === 1 ? "PIN" : "PINs"} delivered after provider confirmation.
+              </p>
             </div>
             <div className="divide-y rounded-2xl border border-border/70 bg-card px-4 shadow-soft">
               <Info label="Exam" value={exam.name} />
@@ -591,14 +603,20 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
             <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-float">
               <div className="payment-summary flex items-center justify-between rounded-xl px-4 py-3.5">
                 <div>
-                  <span className="block text-[10px] font-semibold uppercase opacity-70">Total to authorize</span>
-                  <span className="mt-0.5 block text-xl font-black">{formatNaira(total, false)}</span>
+                  <span className="block text-[10px] font-semibold uppercase opacity-70">
+                    Total to authorize
+                  </span>
+                  <span className="mt-0.5 block text-xl font-black">
+                    {formatNaira(total, false)}
+                  </span>
                 </div>
                 <ShieldCheck className="size-6 opacity-80" />
               </div>
               <div className="my-5 text-center">
                 <h2 className="text-base font-extrabold">Enter your 4-digit PIN</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Your PIN is encrypted and never shared with the provider.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your PIN is encrypted and never shared with the provider.
+                </p>
               </div>
               <PinPad value={pin} onChange={setPin} />
               <PayActionBar>
