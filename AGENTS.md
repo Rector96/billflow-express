@@ -14,3 +14,4 @@
 ## Architecture rules
 
 - Payment journeys share the PayStepper, PayActionBar, PinPad, and semantic payment-flow CSS utilities so every service keeps one consistent interaction model.
+- The root and onboarding routes share WelcomeScreen so entry actions and accessible background-video behavior stay consistent.
