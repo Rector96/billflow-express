@@ -126,27 +126,69 @@
   --splash-grid: color-mix(in oklch, var(--primary-foreground) 20%, transparent);
   --welcome-background: oklch(0.12 0.008 290);
   --welcome-foreground: oklch(0.99 0 0);
-  --welcome-overlay: linear-gradient(180deg, oklch(0.12 0.008 290 / 0.16) 0%, oklch(0.12 0.008 290 / 0.02) 30%, oklch(0.12 0.008 290 / 0.72) 58%, oklch(0.12 0.008 290) 82%);
+  --welcome-overlay: linear-gradient(
+    180deg,
+    oklch(0.12 0.008 290 / 0.16) 0%,
+    oklch(0.12 0.008 290 / 0.02) 30%,
+    oklch(0.12 0.008 290 / 0.72) 58%,
+    oklch(0.12 0.008 290) 82%
+  );
 }
 
-.welcome-screen { background: var(--welcome-background); color: var(--welcome-foreground); }
-.welcome-media { object-position: center 24%; }
-.welcome-shade { background: var(--welcome-overlay); }
-.welcome-header { padding-top: max(1.5rem, env(safe-area-inset-top)); }
-.welcome-content { padding-top: 18rem; padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
-.welcome-brand-dot { color: var(--primary); }
-.welcome-motion { color: var(--welcome-foreground); background: color-mix(in oklab, var(--welcome-background) 25%, transparent); }
-.welcome-motion:hover { background: color-mix(in oklab, var(--welcome-background) 45%, transparent); }
-.welcome-start { background: var(--welcome-foreground); color: var(--welcome-background); }
-.welcome-start:hover { background: color-mix(in oklab, var(--welcome-foreground) 90%, var(--primary)); }
-.welcome-login { color: var(--welcome-foreground); }
+.welcome-screen {
+  background: var(--welcome-background);
+  color: var(--welcome-foreground);
+}
+.welcome-media {
+  object-position: center 24%;
+}
+.welcome-shade {
+  background: var(--welcome-overlay);
+}
+.welcome-header {
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+}
+.welcome-content {
+  padding-top: 18rem;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+.welcome-brand-dot {
+  color: var(--primary);
+}
+.welcome-motion {
+  color: var(--welcome-foreground);
+  background: color-mix(in oklab, var(--welcome-background) 25%, transparent);
+}
+.welcome-motion:hover {
+  background: color-mix(in oklab, var(--welcome-background) 45%, transparent);
+}
+.welcome-start {
+  background: var(--welcome-foreground);
+  color: var(--welcome-background);
+}
+.welcome-start:hover {
+  background: color-mix(in oklab, var(--welcome-foreground) 90%, var(--primary));
+}
+.welcome-login {
+  color: var(--welcome-foreground);
+}
 @media (min-width: 768px) {
-  .welcome-media { object-position: center 35%; }
-  .welcome-content { padding-top: 24rem; padding-bottom: 3rem; }
+  .welcome-media {
+    object-position: center 35%;
+  }
+  .welcome-content {
+    padding-top: 24rem;
+    padding-bottom: 3rem;
+  }
 }
 @media (max-height: 700px) {
-  .welcome-content { padding-top: 12rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
-  .welcome-content h1 { font-size: 34px; }
+  .welcome-content {
+    padding-top: 12rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .welcome-content h1 {
+    font-size: 34px;
+  }
 }
 
 .dark {
