@@ -11,6 +11,10 @@ export const Route = createFileRoute("/cac")({
     meta: [
       { title: `CAC Registration — ${BRAND.name}` },
       { name: "description", content: "CAC Business Name registration on RockPay." },
+      { property: "og:title", content: `CAC Registration — ${BRAND.name}` },
+      { property: "og:description", content: "Prepare your Business Name application with RockPay." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CacPage,
@@ -19,11 +23,6 @@ export const Route = createFileRoute("/cac")({
 function CacPage() {
   return (
     <>
-      {isHubDemoOnly("cac") ? (
-        <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
-          Demo · no real CAC filing yet
-        </p>
-      ) : null}
       <CacRegistrationFlow />
     </>
   );
