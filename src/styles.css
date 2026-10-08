@@ -550,6 +550,10 @@
 .cac-flow section {
   animation: cac-fade-in 0.2s ease-out both;
 }
+.page-fade:has(.cac-flow) {
+  animation: none;
+  transform: none;
+}
 @keyframes cac-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
