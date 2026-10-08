@@ -547,6 +547,35 @@
 }
 
 /* Comfortable tap targets on mobile */
+.cac-flow section {
+  animation: cac-fade-in 0.2s ease-out both;
+}
+.page-fade:has(.cac-flow) {
+  animation: none;
+  transform: none;
+}
+@keyframes cac-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.cac-flow .cac-form-section label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.cac-flow input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+}
+.cac-flow input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cac-flow section { animation: none; }
+}
+
 @media (max-width: 1023px) {
   .tap-target {
     min-height: 44px;

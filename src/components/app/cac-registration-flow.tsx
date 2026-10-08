@@ -16,20 +16,30 @@ import {
   IdCard,
   Loader2,
   PenLine,
+  ArrowRight,
+  FileCheck2,
+  UploadCloud,
+  Truck,
+  Download,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
-import {
-  DeliveryAddressFields,
-  DeliveryMethodCards,
-  PayBreakdown,
-} from "@/components/app/hub-delivery-ui";
+import { DeliveryAddressFields, PayBreakdown } from "@/components/app/hub-delivery-ui";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
 import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { clearContinueDraft, saveContinueDraft } from "@/lib/continue-draft";
 import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import {
@@ -60,14 +70,10 @@ type Step =
   | "success";
 
 const STEPS: PayStepMeta[] = [
-  { key: "intro", label: "Start" },
-  { key: "names", label: "Names" },
-  { key: "business", label: "Biz" },
+  { key: "names", label: "Business" },
   { key: "proprietor", label: "Owner" },
-  { key: "documents", label: "Docs" },
-  { key: "review", label: "Review" },
-  { key: "delivery", label: "Get" },
-  { key: "pay", label: "Pay" },
+  { key: "documents", label: "Documents" },
+  { key: "review", label: "Review & pay" },
 ];
 
 const NATURE_OPTIONS = [
@@ -139,11 +145,18 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+function SignaturePad({
+  onChange,
+  initial,
+}: {
+  onChange: (dataUrl: string | null) => void;
+  initial: string | null;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const getPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current!;
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     return {
       x: (e.clientX - rect.left) * (canvas.width / rect.width),
@@ -166,7 +179,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
     const { x, y } = getPos(e);
     ctx.lineWidth = 2.2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#0f172a";
+    ctx.strokeStyle = getComputedStyle(canvasRef.current).color;
     ctx.lineTo(x, y);
     ctx.stroke();
   };
@@ -179,7 +192,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = getComputedStyle(canvas).backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     onChange(null);
   };
@@ -187,8 +200,13 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = getComputedStyle(canvas).backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (initial) {
+      const image = new Image();
+      image.onload = () => ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      image.src = initial;
+    }
   }, []);
   return (
     <div className="space-y-2">
@@ -196,7 +214,8 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
         ref={canvasRef}
         width={640}
         height={180}
-        className="h-28 w-full touch-none rounded-xl border border-border/80 bg-white"
+        aria-label="Draw your signature"
+        className="h-36 w-full touch-none rounded-lg border border-border bg-card text-foreground"
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={end}
@@ -218,30 +237,55 @@ function FilePick({
   label,
   icon: Icon,
   accept,
-  valueName,
+  file,
   onPick,
 }: {
   label: string;
   icon: typeof IdCard;
   accept: string;
-  valueName: string | null;
+  file: File | null;
   onPick: (file: File | null) => void;
 }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file?.type.startsWith("image/")) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   return (
-    <label className="press flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border/80 bg-card px-3 py-3">
-      <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
-        <Icon className="size-4" />
-      </span>
+    <label
+      className={`press flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-4 transition-colors ${file ? "border-primary/40 bg-primary-soft/50" : "border-border bg-card hover:border-primary/50"}`}
+    >
+      {preview ? (
+        <img src={preview} alt={`${label} preview`} className="size-12 rounded-lg object-cover" />
+      ) : (
+        <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+          <Icon className="size-5" />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{label}</p>
-        <p className="truncate text-[11px] text-muted-foreground">
-          {valueName ? valueName : "Tap to upload"}
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {file ? file.name : accept.includes("pdf") ? "Image or PDF" : "Clear portrait photo"}
+        </p>
+        <p className="mt-1 text-[11px] text-primary">
+          {file ? `${(file.size / 1024).toFixed(0)} KB · Replace file` : "Choose file"}
         </p>
       </div>
+      {file ? (
+        <CheckCircle2 className="size-5 shrink-0 text-primary" />
+      ) : (
+        <UploadCloud className="size-5 shrink-0 text-muted-foreground" />
+      )}
       <input
+        aria-label={label}
         type="file"
         accept={accept}
-        className="hidden"
+        className="sr-only"
         onChange={(e) => onPick(e.target.files?.[0] ?? null)}
       />
     </label>
@@ -284,7 +328,7 @@ export function CacRegistrationFlow() {
 
   const stepIndex = useMemo(() => {
     const keys = STEPS.map((s) => s.key);
-    const key = step === "success" ? "pay" : step === "address" ? "delivery" : step;
+    const key = step === "success" ? "review" : step;
     return Math.max(0, keys.indexOf(key));
   }, [step]);
 
@@ -318,28 +362,15 @@ export function CacRegistrationFlow() {
     });
   }, [step, stepIndex, preferredName]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [step]);
+
   const goBack = () => {
-    const order: Step[] = [
-      "intro",
-      "names",
-      "business",
-      "proprietor",
-      "documents",
-      "review",
-      "delivery",
-      "address",
-      "pay",
-    ];
-    const i = order.indexOf(step);
-    if (i <= 0) {
-      void navigate({ to: "/services" });
-      return;
-    }
-    if (step === "pay" && delivery === "download") {
-      setStep("delivery");
-      return;
-    }
-    setStep(order[i - 1]!);
+    const order: Step[] = ["intro", "names", "proprietor", "documents", "review"];
+    const previous = order[order.indexOf(step) - 1];
+    if (previous) setStep(previous);
+    else void navigate({ to: "/services" });
   };
 
   const onPay = useCallback(async () => {
@@ -430,145 +461,205 @@ export function CacRegistrationFlow() {
     state,
   ]);
 
-  const field = "h-11 rounded-xl";
-  const card = "space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft";
+  const field =
+    "h-12 min-w-0 rounded-lg bg-card text-base transition-colors focus-visible:border-primary sm:text-sm";
+  const card = "cac-form-section space-y-4 border-b border-border/70 pb-5";
 
   return (
     <AppShell>
       <PageHeader
-        title="CAC"
-        subtitle="Business Name"
+        title="CAC registration"
+        subtitle="Business Name application"
         onBack={step === "success" ? () => void navigate({ to: "/home" }) : goBack}
       />
-      <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-1 pb-28">
-        {step !== "success" ? <PayStepper steps={STEPS} current={stepIndex} /> : null}
+      <div className="cac-flow payment-flow-page mx-auto w-full max-w-md space-y-5 px-5 pt-4 pb-28">
+        {step !== "success" && step !== "intro" ? (
+          <PayStepper steps={STEPS} current={stepIndex} className="rounded-lg" />
+        ) : null}
 
         {step === "intro" ? (
-          <section className="space-y-3">
-            <div className={card}>
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                  <Building2 className="size-5" />
-                </span>
-                <div>
-                  <h2 className="text-base font-bold">Business Name</h2>
-                  <p className="text-xs text-muted-foreground">Sole proprietor</p>
-                </div>
+          <section className="space-y-6">
+            <div className="space-y-4 pt-3">
+              <span className="grid size-14 place-items-center rounded-lg bg-primary-soft text-primary">
+                <Building2 className="size-7" />
+              </span>
+              <div>
+                <p className="mb-2 text-xs font-semibold text-primary">
+                  BUSINESS NAME · SOLE PROPRIETOR
+                </p>
+                <h2 className="text-3xl font-bold leading-tight">
+                  Your business.
+                  <br />A new beginning.
+                </h2>
               </div>
-              <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
-                {formatNaira(CAC_DEMO_PRICE)}
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Prepare your Business Name application with your business details, identification
+                and signature.
               </p>
-              <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
             </div>
+            <div className="flex items-end justify-between border-y border-border py-5">
+              <div>
+                <p className="text-xs text-muted-foreground">Registration package</p>
+                <p className="mt-1 text-3xl font-bold text-primary">
+                  {formatNaira(CAC_DEMO_PRICE)}
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">Delivery optional</span>
+            </div>
+            <div className="space-y-4">
+              {[
+                {
+                  Icon: Building2,
+                  title: "Business & owner details",
+                  detail: "Preferred names, contact and addresses",
+                },
+                {
+                  Icon: IdCard,
+                  title: "Identification & photo",
+                  detail: "Valid ID and a clear passport photograph",
+                },
+                {
+                  Icon: PenLine,
+                  title: "Your signature",
+                  detail: "Digital signature for your application",
+                },
+              ].map(({ Icon, title, detail }) => (
+                <div key={title} className="flex items-center gap-3">
+                  <Icon className="size-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold">{title}</p>
+                    <p className="text-xs text-muted-foreground">{detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="rounded-lg bg-warning-soft p-3 text-xs leading-relaxed text-warning-foreground">
+              Demo preview — no real CAC filing. Certificates are available only after processing.
+            </p>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-12 w-full rounded-lg font-semibold"
                 onClick={() => setStep("names")}
               >
-                Continue
+                Start application <ArrowRight className="ml-2 size-4" />
               </Button>
             </PayActionBar>
           </section>
         ) : null}
 
         {step === "names" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">Preferred names</h2>
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold">Business identity</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Choose your preferred name and add your business details.
+              </p>
+            </div>
             <div className={card}>
-              <div className="space-y-1">
-                <Label>1st choice *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-1">1st choice *</Label>
                 <Input
+                  id="cac-field-1"
                   value={name1}
                   onChange={(e) => setName1(e.target.value)}
                   placeholder="e.g. Brightpath Ventures"
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>2nd (optional)</Label>
-                <Input value={name2} onChange={(e) => setName2(e.target.value)} className={field} />
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-2">2nd (optional)</Label>
+                <Input
+                  id="cac-field-2"
+                  value={name2}
+                  onChange={(e) => setName2(e.target.value)}
+                  className={field}
+                />
               </div>
-              <div className="space-y-1">
-                <Label>3rd (optional)</Label>
-                <Input value={name3} onChange={(e) => setName3(e.target.value)} className={field} />
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-3">3rd (optional)</Label>
+                <Input
+                  id="cac-field-3"
+                  value={name3}
+                  onChange={(e) => setName3(e.target.value)}
+                  className={field}
+                />
               </div>
             </div>
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => {
-                  if (!name1.trim()) toast.error("Enter your first name choice.");
-                  else setStep("business");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "business" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">Business</h2>
+            <h3 className="pt-2 text-sm font-semibold">Business address & contact</h3>
             <div className={card}>
-              <div className="space-y-1">
-                <Label>Nature of business</Label>
-                <select
-                  value={nature}
-                  onChange={(e) => setNature(e.target.value)}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                >
-                  {NATURE_OPTIONS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label htmlFor="cac-nature">Nature of business</Label>
+                <Select value={nature} onValueChange={(value) => setNature(value)}>
+                  <SelectTrigger id="cac-nature" className={field}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NATURE_OPTIONS.map((o) => (
+                      <SelectItem key={o} value={o}>
+                        {o}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1">
-                <Label>Street *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-4">Street *</Label>
                 <Input
+                  id="cac-field-4"
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                   className={field}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label>City *</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} className={field} />
+                <div className="space-y-2">
+                  <Label htmlFor="cac-field-5">City *</Label>
+                  <Input
+                    id="cac-field-5"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className={field}
+                  />
                 </div>
-                <div className="space-y-1">
-                  <Label>LGA *</Label>
-                  <Input value={lga} onChange={(e) => setLga(e.target.value)} className={field} />
+                <div className="space-y-2">
+                  <Label htmlFor="cac-field-6">LGA *</Label>
+                  <Input
+                    id="cac-field-6"
+                    value={lga}
+                    onChange={(e) => setLga(e.target.value)}
+                    className={field}
+                  />
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label>State *</Label>
-                <select
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
-                >
-                  {NG_STATES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label htmlFor="cac-state">State *</Label>
+                <Select value={state} onValueChange={(value) => setState(value)}>
+                  <SelectTrigger id="cac-state" className={field}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NG_STATES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1">
-                <Label>Phone *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-7">Phone *</Label>
                 <Input
+                  id="cac-field-7"
                   value={bizPhone}
                   onChange={(e) => setBizPhone(e.target.value)}
                   inputMode="tel"
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Email *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-8">Email *</Label>
                 <Input
+                  id="cac-field-8"
                   type="email"
                   value={bizEmail}
                   onChange={(e) => setBizEmail(e.target.value)}
@@ -578,16 +669,17 @@ export function CacRegistrationFlow() {
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-12 w-full rounded-lg font-semibold"
                 onClick={() => {
                   if (
+                    !name1.trim() ||
                     !street.trim() ||
                     !city.trim() ||
                     !lga.trim() ||
                     !bizPhone.trim() ||
                     !bizEmail.trim()
                   )
-                    toast.error("Fill address, phone and email.");
+                    toast.error("Enter your preferred name, business address, phone and email.");
                   else setStep("proprietor");
                 }}
               >
@@ -598,33 +690,43 @@ export function CacRegistrationFlow() {
         ) : null}
 
         {step === "proprietor" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">Owner</h2>
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold">Meet the proprietor</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use the details shown on your identification.
+              </p>
+            </div>
             <div className={card}>
-              <div className="space-y-1">
-                <Label>Full name *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-9">Full name *</Label>
                 <Input
+                  id="cac-field-9"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className={field}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label>Gender *</Label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")}
-                    className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                <div className="space-y-2">
+                  <Label htmlFor="cac-gender">Gender *</Label>
+                  <Select
+                    value={gender || undefined}
+                    onValueChange={(value) => setGender(value as "Male" | "Female")}
                   >
-                    <option value="">Select</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+                    <SelectTrigger id="cac-gender" className={field}>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-1">
-                  <Label>Date of birth *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="cac-field-10">Date of birth *</Label>
                   <Input
+                    id="cac-field-10"
                     type="date"
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
@@ -632,74 +734,101 @@ export function CacRegistrationFlow() {
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label>Nationality</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-11">Nationality</Label>
                 <Input
+                  id="cac-field-11"
                   value={nationality}
                   onChange={(e) => setNationality(e.target.value)}
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Occupation</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-12">Occupation</Label>
                 <Input
+                  id="cac-field-12"
                   value={occupation}
                   onChange={(e) => setOccupation(e.target.value)}
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Phone *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-13">Phone *</Label>
                 <Input
+                  id="cac-field-13"
                   value={ownerPhone}
                   onChange={(e) => setOwnerPhone(e.target.value)}
                   inputMode="tel"
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Email *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-14">Email *</Label>
                 <Input
+                  id="cac-field-14"
                   type="email"
                   value={ownerEmail}
                   onChange={(e) => setOwnerEmail(e.target.value)}
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>NIN *</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="cac-nin">NIN *</Label>
+                  <span
+                    className={`text-xs tabular-nums ${nin.length === 11 ? "text-primary" : "text-muted-foreground"}`}
+                  >
+                    {nin.length}/11 digits
+                  </span>
+                </div>
                 <Input
+                  id="cac-nin"
                   value={nin}
                   onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
                   inputMode="numeric"
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>ID type</Label>
-                <select
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-15">ID type</Label>
+                <Select
                   value={idType}
-                  onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])}
-                  className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                  onValueChange={(value) => setIdType(value as (typeof ID_TYPES)[number])}
                 >
-                  {ID_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="cac-field-15" className={field}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ID_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="space-y-1">
-                <Label>ID number *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-field-16">ID number *</Label>
                 <Input
+                  id="cac-field-16"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Residential address *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="cac-residential">Residential address *</Label>
+                <label className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                  <Checkbox
+                    checked={resAddress === `${street}, ${city}, ${lga}, ${state}`}
+                    onCheckedChange={(checked) =>
+                      setResAddress(checked ? `${street}, ${city}, ${lga}, ${state}` : "")
+                    }
+                  />
+                  Same as business address
+                </label>
                 <Input
+                  id="cac-residential"
                   value={resAddress}
                   onChange={(e) => setResAddress(e.target.value)}
                   className={field}
@@ -708,7 +837,7 @@ export function CacRegistrationFlow() {
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-12 w-full rounded-lg font-semibold"
                 onClick={() => {
                   if (
                     !fullName.trim() ||
@@ -731,33 +860,38 @@ export function CacRegistrationFlow() {
         ) : null}
 
         {step === "documents" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">Documents</h2>
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold">Documents & signature</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add clear, readable copies for your application.
+              </p>
+            </div>
             <div className="space-y-2">
               <FilePick
                 label="Valid ID"
                 icon={IdCard}
                 accept="image/*,application/pdf"
-                valueName={idFile?.name ?? null}
+                file={idFile}
                 onPick={setIdFile}
               />
               <FilePick
                 label="Passport photo"
                 icon={Camera}
                 accept="image/*"
-                valueName={photoFile?.name ?? null}
+                file={photoFile}
                 onPick={setPhotoFile}
               />
               <div className={card}>
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <PenLine className="size-4 text-primary" /> Signature
                 </p>
-                <SignaturePad onChange={setSignature} />
+                <SignaturePad onChange={setSignature} initial={signature} />
               </div>
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-12 w-full rounded-lg font-semibold"
                 onClick={() => {
                   if (!idFile || !photoFile || !signature)
                     toast.error("Upload ID, photo and sign.");
@@ -771,78 +905,106 @@ export function CacRegistrationFlow() {
         ) : null}
 
         {step === "review" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">Review</h2>
-            <div className={card}>
-              <Row label="1st name" value={name1} />
-              <Row label="2nd name" value={name2} />
-              <Row label="Nature" value={nature} />
-              <Row label="Address" value={`${street}, ${city}, ${lga}, ${state}`} />
-              <Row label="Owner" value={fullName} />
-              <Row label="NIN" value={nin} />
+          <section className="space-y-5">
+            <div>
+              <h2 className="text-2xl font-bold">Review your application</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Check your details and choose how to receive your certificate.
+              </p>
             </div>
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("delivery")}
-              >
-                Continue
+            <div className={card}>
+              <div className="flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Building2 className="size-4 text-primary" /> Business details
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setStep("names")}>
+                  <Pencil className="mr-1 size-3" />
+                  Edit
+                </Button>
+              </div>
+              <Row label="First choice" value={name1} />
+              <Row label="Second choice" value={name2} />
+              <Row label="Third choice" value={name3} />
+              <Row label="Nature of business" value={nature} />
+              <Row label="Address" value={`${street}, ${city}, ${lga}, ${state}`} />
+              <Row label="Phone" value={bizPhone} />
+              <Row label="Email" value={bizEmail} />
+            </div>
+            <div className={card}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Proprietor details</h3>
+                <Button variant="ghost" size="sm" onClick={() => setStep("proprietor")}>
+                  <Pencil className="mr-1 size-3" />
+                  Edit
+                </Button>
+              </div>
+              <Row label="Full name" value={fullName} />
+              <Row label="Gender" value={gender} />
+              <Row label="Date of birth" value={dob} />
+              <Row label="Nationality" value={nationality} />
+              <Row label="Occupation" value={occupation} />
+              <Row label="Phone" value={ownerPhone} />
+              <Row label="Email" value={ownerEmail} />
+              <Row label="NIN" value={nin} />
+              <Row label={idType} value={idNumber} />
+              <Row label="Residential address" value={resAddress} />
+            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <FileCheck2 className="size-4 text-primary" /> Documents attached
+                </p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  {idFile?.name} · {photoFile?.name}
+                </p>
+                <p className="text-xs text-muted-foreground">Signature included</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setStep("documents")}>
+                Edit
               </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "delivery" ? (
-          <section className="space-y-3">
-            <h2 className="text-base font-bold">How do you want it?</h2>
-            <DeliveryMethodCards
-              method={delivery}
-              onChange={setDelivery}
-              downloadLabel="Download certificate"
-              downloadSub="PDF when ready"
-              downloadPrice={CAC_DEMO_PRICE}
-              deliverLabel="Print + deliver"
-              deliverSub="Printed pack to your address"
-              deliverPrice={CAC_DEMO_PRICE + CAC_COURIER_PRICE}
-            />
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => {
-                  if (!delivery) {
-                    toast.error("Choose download or delivery.");
-                    return;
-                  }
-                  if (delivery === "deliver") setStep("address");
-                  else setStep("pay");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "address" ? (
-          <section className="space-y-3">
-            <DeliveryAddressFields value={shipTo} onChange={setShipTo} />
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => {
-                  const err = validateDeliveryAddress(shipTo);
-                  if (err) toast.error(err);
-                  else setStep("pay");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "pay" ? (
-          <section className="space-y-3">
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Receive your certificate</h3>
+              {[
+                {
+                  method: "download",
+                  Icon: Download,
+                  title: "Digital certificate",
+                  detail: "PDF in My documents when ready",
+                  price: CAC_DEMO_PRICE,
+                },
+                {
+                  method: "deliver",
+                  Icon: Truck,
+                  title: "Print & delivery",
+                  detail: "Printed pack sent after processing",
+                  price: CAC_DEMO_PRICE + CAC_COURIER_PRICE,
+                },
+              ].map(({ method, Icon, title, detail, price }) => (
+                <Button
+                  key={method}
+                  type="button"
+                  variant="outline"
+                  aria-pressed={delivery === method}
+                  onClick={() => setDelivery(method as DeliveryMethod)}
+                  className={`h-auto w-full justify-start gap-3 whitespace-normal rounded-lg p-3 text-left ${delivery === method ? "border-primary bg-primary-soft" : "bg-card"}`}
+                >
+                  <Icon className="size-5 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{title}</span>
+                    <span className="block text-[11px] font-normal text-muted-foreground">
+                      {detail}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-primary">
+                    {formatNaira(price)}
+                  </span>
+                </Button>
+              ))}
+            </div>
+            {delivery === "deliver" ? (
+              <DeliveryAddressFields value={shipTo} onChange={setShipTo} />
+            ) : null}
             <PayBreakdown
               lines={
                 delivery === "deliver"
@@ -854,33 +1016,26 @@ export function CacRegistrationFlow() {
               }
               total={totalPay}
             />
-            {delivery === "deliver" ? (
-              <p className="text-[11px] text-muted-foreground">
-                Deliver to: {formatDeliveryOneLine(shipTo)}
-              </p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                Certificate will be in My documents when ready.
-              </p>
-            )}
-            <label className="flex items-start gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
+            <label className="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+              <Checkbox
                 checked={declare}
-                onChange={(e) => setDeclare(e.target.checked)}
-                className="mt-0.5"
+                onCheckedChange={(checked) => setDeclare(checked === true)}
+                className="mt-1"
               />
-              <span>I confirm these details are correct (demo).</span>
+              <span>
+                I confirm that the details provided are correct. This is a demo application.
+              </span>
             </label>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-12 w-full rounded-lg font-semibold"
                 disabled={paying}
                 onClick={() => void onPay()}
               >
                 {paying ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Please wait…
                   </>
                 ) : (
                   `Pay ${formatNaira(totalPay)}`
@@ -892,7 +1047,7 @@ export function CacRegistrationFlow() {
 
         {step === "success" ? (
           <section className="flex min-h-[55dvh] flex-col items-center justify-center gap-3 text-center">
-            <span className="grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+            <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success result-pop">
               <CheckCircle2 className="size-7" />
             </span>
             <h2 className="text-lg font-bold">Application received</h2>
@@ -913,7 +1068,7 @@ export function CacRegistrationFlow() {
               <Copy className="mr-1.5 size-3.5" /> Copy ref
             </Button>
             <Button
-              className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+              className="mt-2 h-12 w-full max-w-xs rounded-lg font-semibold"
               onClick={() => void navigate({ to: "/home" })}
             >
               <Home className="mr-2 size-4" /> Home
