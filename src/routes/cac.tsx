@@ -4,7 +4,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CacRegistrationFlow } from "@/components/app/cac-registration-flow";
 import { BRAND } from "@/lib/brand";
-import { isHubDemoOnly } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/cac")({
   head: () => ({

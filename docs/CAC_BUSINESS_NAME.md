@@ -20,7 +20,7 @@ RockPay is expanding beyond VTU into high-ticket assisted services.
 ## User flow
 
 ```
-intro → names → business → proprietor → documents → review → pay → success
+intro → business identity → proprietor → documents & signature → review, delivery & payment → success
 ```
 
 ## Fields (Business Name MVP)
@@ -29,6 +29,8 @@ intro → names → business → proprietor → documents → review → pay →
 - Business: nature, street, city, LGA, state, phone, email, start date
 - Proprietor: full name, gender, DOB, nationality, occupation, NIN, ID type/number, phone, email, residential address
 - Documents: ID image, passport photo, canvas signature
+
+The four-stage form includes document previews, an editable application summary, and optional printed-pack delivery. Digital certificates are available only after processing; the redesign does not change prices, demo mode or payment handling.
 
 ## Code map
 
