@@ -11,7 +11,10 @@ export const Route = createFileRoute("/cac")({
       { title: `CAC Registration — ${BRAND.name}` },
       { name: "description", content: "CAC Business Name registration on RockPay." },
       { property: "og:title", content: `CAC Registration — ${BRAND.name}` },
-      { property: "og:description", content: "Prepare your Business Name application with RockPay." },
+      {
+        property: "og:description",
+        content: "Prepare your Business Name application with RockPay.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

@@ -555,8 +555,12 @@
   transform: none;
 }
 @keyframes cac-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .cac-flow .cac-form-section label {
   font-size: 12px;
@@ -573,7 +577,9 @@
   min-width: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  .cac-flow section { animation: none; }
+  .cac-flow section {
+    animation: none;
+  }
 }
 
 @media (max-width: 1023px) {
