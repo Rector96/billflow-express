@@ -588,3 +588,29 @@
     min-width: 44px;
   }
 }
+
+.auth-screen {
+  background: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--primary-soft) 72%, var(--background)) 0%,
+    var(--background) 42%,
+    color-mix(in oklab, var(--success-soft) 38%, var(--background)) 100%
+  );
+}
+.auth-container {
+  min-height: calc(100dvh - max(1.25rem, env(safe-area-inset-top)) - max(1.5rem, env(safe-area-inset-bottom)));
+}
+.auth-mark {
+  border: 1px solid color-mix(in oklab, var(--primary) 16%, transparent);
+  background: color-mix(in oklab, var(--primary-soft) 72%, var(--card));
+}
+.auth-panel {
+  box-shadow: 0 16px 42px -30px color-mix(in oklab, var(--primary-deep) 38%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

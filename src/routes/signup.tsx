@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Mail, Phone, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
 import { BrandLogo } from "@/components/app/app-shell";
-import { PageHeader } from "@/components/app/page-header";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/signup")({
@@ -20,6 +20,8 @@ export const Route = createFileRoute("/signup")({
       },
       { property: "og:title", content: `Create your account — ${BRAND.name}` },
       { property: "og:description", content: "It takes less than a minute to get started." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SignupPage,
@@ -37,6 +39,7 @@ function SignupPage() {
     confirm: "",
   });
   const [agree, setAgree] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof Fields | "agree", string>>>({});
   const [loading, setLoading] = useState(false);
 
@@ -85,91 +88,124 @@ function SignupPage() {
   };
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md pb-10">
-      <PageHeader title="Create your account" />
-      <div className="flex justify-center pt-1 pb-2">
-        <BrandLogo className="h-[clamp(3rem,14vw,4.5rem)]" />
-      </div>
-
-      <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
-        <Field
-          label="Full Name"
-          id="name"
-          value={f.name}
-          onChange={set("name")}
-          error={errors.name}
-          placeholder="Your full name"
-        />
-        <Field
-          label="Phone Number"
-          id="phone"
-          value={f.phone}
-          onChange={set("phone")}
-          error={errors.phone}
-          placeholder="080 0000 0000"
-          inputMode="numeric"
-        />
-        <Field
-          label="Email"
-          id="email"
-          value={f.email}
-          onChange={set("email")}
-          error={errors.email}
-          placeholder="you@email.com"
-          type="email"
-        />
-        <Field
-          label="Password"
-          id="password"
-          value={f.password}
-          onChange={set("password")}
-          error={errors.password}
-          placeholder="Create a password"
-          type="password"
-        />
-        <Field
-          label="Confirm Password"
-          id="confirm"
-          value={f.confirm}
-          onChange={set("confirm")}
-          error={errors.confirm}
-          placeholder="Repeat your password"
-          type="password"
-        />
-
-        <div className="flex items-start gap-3 rounded-2xl border bg-card p-3">
-          <Checkbox
-            id="agree"
-            checked={agree}
-            onCheckedChange={(v) => setAgree(v === true)}
-            className="mt-0.5"
-          />
-          <Label
-            htmlFor="agree"
-            className="text-xs leading-relaxed font-medium text-muted-foreground"
+    <main className="auth-screen flex min-h-dvh flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="auth-container mx-auto flex w-full max-w-md flex-1 flex-col">
+        <header className="flex items-center justify-between">
+          <Link
+            to="/"
+            aria-label="Back to welcome"
+            className="grid size-10 place-items-center rounded-xl border border-border/70 bg-card text-foreground shadow-soft transition-colors hover:bg-accent"
           >
-            I agree to the Terms & Conditions and Privacy Policy.
-          </Label>
-        </div>
-        {errors.agree ? (
-          <p className="text-xs font-medium text-destructive">{errors.agree}</p>
-        ) : null}
+            <ArrowLeft className="size-5" />
+          </Link>
+          <BrandLogo className="h-12" />
+          <span className="size-10" aria-hidden="true" />
+        </header>
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="h-13 w-full rounded-2xl text-base font-bold"
-        >
-          {loading ? "Creating account…" : "Create Account"}
-        </Button>
+        <section className="auth-intro mt-6 sm:mt-8">
+          <p className="text-xs font-semibold uppercase text-primary">{BRAND.tagline}</p>
+          <h1 className="mt-2 font-display text-3xl font-bold">Create your account</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Your bills, all in one place.
+          </p>
+        </section>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <form onSubmit={(e) => void submit(e)} className="auth-panel mt-5 space-y-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6" noValidate>
+          <Field
+            label="Full name"
+            id="name"
+            icon={<UserRound aria-hidden="true" />}
+            value={f.name}
+            onChange={set("name")}
+            error={errors.name}
+            placeholder="Your full name"
+            autoComplete="name"
+          />
+          <Field
+            label="Phone number"
+            id="phone"
+            icon={<Phone aria-hidden="true" />}
+            value={f.phone}
+            onChange={set("phone")}
+            error={errors.phone}
+            placeholder="080 0000 0000"
+            inputMode="numeric"
+            autoComplete="tel-national"
+          />
+          <Field
+            label="Email address"
+            id="email"
+            icon={<Mail aria-hidden="true" />}
+            value={f.email}
+            onChange={set("email")}
+            error={errors.email}
+            placeholder="you@email.com"
+            type="email"
+            autoComplete="email"
+          />
+          <Field
+            label="Password"
+            id="password"
+            value={f.password}
+            onChange={set("password")}
+            error={errors.password}
+            placeholder="Create a password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            trailing={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-muted-foreground"
+              >
+                {showPassword ? <EyeOff /> : <Eye />}
+              </Button>
+            }
+          />
+          <Field
+            label="Confirm password"
+            id="confirm"
+            value={f.confirm}
+            onChange={set("confirm")}
+            error={errors.confirm}
+            placeholder="Repeat your password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+          />
+
+          <div className="flex items-start gap-3 rounded-xl bg-muted/70 p-3">
+            <Checkbox
+              id="agree"
+              checked={agree}
+              onCheckedChange={(v) => setAgree(v === true)}
+              className="mt-0.5"
+            />
+            <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-muted-foreground">
+              I agree to the <Link to="/terms" className="font-semibold text-primary underline-offset-2 hover:underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold text-primary underline-offset-2 hover:underline">Privacy Policy</Link>.
+            </Label>
+          </div>
+          {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-13 w-full rounded-xl text-base font-bold"
+          >
+            {loading ? "Creating account…" : "Create account"}
+            {!loading ? <ArrowRight className="ml-1" /> : null}
+          </Button>
+        </form>
+
+        <p className="mt-auto pt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link to="/login" className="font-bold text-primary">
-            Login
+            Log in
           </Link>
         </p>
-      </form>
+      </div>
     </main>
   );
 }
@@ -178,12 +214,33 @@ function Field({
   label,
   id,
   error,
+  icon,
+  trailing,
   ...props
-}: React.ComponentProps<typeof Input> & { label: string; id: string; error?: string | undefined }) {
+}: React.ComponentProps<typeof Input> & {
+  label: string;
+  id: string;
+  error?: string | undefined;
+  icon?: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} className="h-13 rounded-xl bg-card" aria-invalid={Boolean(error)} {...props} />
+      <Label htmlFor={id} className="text-sm font-semibold">{label}</Label>
+      <div className="relative">
+        {icon ? (
+          <span className="pointer-events-none absolute inset-y-0 left-3.5 z-10 grid place-items-center text-muted-foreground [&_svg]:size-[18px]">
+            {icon}
+          </span>
+        ) : null}
+        <Input
+          id={id}
+          className={icon ? "h-13 rounded-xl bg-background pl-11 pr-12" : "h-13 rounded-xl bg-background pr-12"}
+          aria-invalid={Boolean(error)}
+          {...props}
+        />
+        {trailing}
+      </div>
       {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
     </div>
   );
