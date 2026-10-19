@@ -598,7 +598,9 @@
   );
 }
 .auth-container {
-  min-height: calc(100dvh - max(1.25rem, env(safe-area-inset-top)) - max(1.5rem, env(safe-area-inset-bottom)));
+  min-height: calc(
+    100dvh - max(1.25rem, env(safe-area-inset-top)) - max(1.5rem, env(safe-area-inset-bottom))
+  );
 }
 .auth-mark {
   border: 1px solid color-mix(in oklab, var(--primary) 16%, transparent);

@@ -110,7 +110,11 @@ function SignupPage() {
           </p>
         </section>
 
-        <form onSubmit={(e) => void submit(e)} className="auth-panel mt-5 space-y-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6" noValidate>
+        <form
+          onSubmit={(e) => void submit(e)}
+          className="auth-panel mt-5 space-y-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6"
+          noValidate
+        >
           <Field
             label="Full name"
             id="name"
@@ -183,11 +187,30 @@ function SignupPage() {
               onCheckedChange={(v) => setAgree(v === true)}
               className="mt-0.5"
             />
-            <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-muted-foreground">
-              I agree to the <Link to="/terms" className="font-semibold text-primary underline-offset-2 hover:underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold text-primary underline-offset-2 hover:underline">Privacy Policy</Link>.
+            <Label
+              htmlFor="agree"
+              className="text-xs leading-relaxed font-medium text-muted-foreground"
+            >
+              I agree to the{" "}
+              <Link
+                to="/terms"
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                to="/privacy"
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
             </Label>
           </div>
-          {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
+          {errors.agree ? (
+            <p className="text-xs font-medium text-destructive">{errors.agree}</p>
+          ) : null}
 
           <Button
             type="submit"
@@ -226,7 +249,9 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={id} className="text-sm font-semibold">{label}</Label>
+      <Label htmlFor={id} className="text-sm font-semibold">
+        {label}
+      </Label>
       <div className="relative">
         {icon ? (
           <span className="pointer-events-none absolute inset-y-0 left-3.5 z-10 grid place-items-center text-muted-foreground [&_svg]:size-[18px]">
@@ -235,7 +260,11 @@ function Field({
         ) : null}
         <Input
           id={id}
-          className={icon ? "h-13 rounded-xl bg-background pl-11 pr-12" : "h-13 rounded-xl bg-background pr-12"}
+          className={
+            icon
+              ? "h-13 rounded-xl bg-background pl-11 pr-12"
+              : "h-13 rounded-xl bg-background pr-12"
+          }
           aria-invalid={Boolean(error)}
           {...props}
         />
