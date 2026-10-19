@@ -453,7 +453,6 @@
   }
 }
 
-/* ---- Payment result animations ---- */
 @utility result-pop {
   animation: result-pop 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
@@ -546,7 +545,6 @@
   }
 }
 
-/* Comfortable tap targets on mobile */
 .cac-flow section {
   animation: cac-fade-in 0.2s ease-out both;
 }
@@ -589,27 +587,57 @@
   }
 }
 
+/* RockPay auth screens — soft lavender mockup */
 .auth-screen {
-  background: linear-gradient(
-    165deg,
-    color-mix(in oklab, var(--primary-soft) 72%, var(--background)) 0%,
-    var(--background) 42%,
-    color-mix(in oklab, var(--success-soft) 38%, var(--background)) 100%
-  );
+  background:
+    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(196, 181, 253, 0.55), transparent 55%),
+    radial-gradient(ellipse 70% 45% at -10% 110%, rgba(221, 214, 254, 0.5), transparent 50%),
+    linear-gradient(165deg, #f5f3ff 0%, #faf8ff 45%, #f8f7fc 100%);
+}
+.auth-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(40px);
+  pointer-events: none;
+}
+.auth-blob--a {
+  top: -8%;
+  right: -18%;
+  width: 280px;
+  height: 280px;
+  background: rgba(167, 139, 250, 0.28);
+}
+.auth-blob--b {
+  bottom: -12%;
+  left: -20%;
+  width: 320px;
+  height: 320px;
+  background: rgba(196, 181, 253, 0.22);
 }
 .auth-container {
   min-height: calc(
     100dvh - max(1.25rem, env(safe-area-inset-top)) - max(1.5rem, env(safe-area-inset-bottom))
   );
 }
-.auth-mark {
-  border: 1px solid color-mix(in oklab, var(--primary) 16%, transparent);
-  background: color-mix(in oklab, var(--primary-soft) 72%, var(--card));
+.auth-card-float {
+  animation: auth-float 4.5s ease-in-out infinite;
 }
-.auth-panel {
-  box-shadow: 0 16px 42px -30px color-mix(in oklab, var(--primary-deep) 38%, transparent);
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.auth-field {
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 @media (prefers-reduced-motion: reduce) {
+  .auth-card-float {
+    animation: none;
+  }
   .auth-screen * {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
