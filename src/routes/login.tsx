@@ -17,8 +17,8 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: `Log in to your ${BRAND.name} wallet to pay bills fast.` },
       { property: "og:title", content: `Log in — ${BRAND.name}` },
       { property: "og:description", content: "Welcome back. Your bills are one tap away." },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LoginPage,
@@ -172,7 +172,7 @@ function AuthField({
   id: string;
   label: string;
   icon: React.ReactNode;
-  error?: string;
+  error?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
