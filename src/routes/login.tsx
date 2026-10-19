@@ -172,7 +172,7 @@ function AuthField({
   id: string;
   label: string;
   icon: React.ReactNode;
-  error?: string;
+  error?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
