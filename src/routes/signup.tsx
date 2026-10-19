@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Mail, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
-import { BrandLogo } from "@/components/app/app-shell";
+import { BrandMark } from "@/components/app/app-shell";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/signup")({
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/signup")({
   component: SignupPage,
 });
 
-type Fields = { name: string; phone: string; email: string; password: string; confirm: string };
+type Fields = { name: string; phone: string; email: string; password: string };
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -36,7 +36,6 @@ function SignupPage() {
     phone: "",
     email: "",
     password: "",
-    confirm: "",
   });
   const [agree, setAgree] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -49,21 +48,27 @@ function SignupPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
+    const phoneDigits = f.phone.replace(/\D/g, "");
     if (f.name.trim().length < 3) next.name = "Enter your full name";
-    if (!/^0\d{10}$/.test(f.phone.replace(/\s/g, ""))) next.phone = "Enter a valid 11-digit number";
+    if (!(phoneDigits.length === 10 || phoneDigits.length === 11)) {
+      next.phone = "Enter a valid Nigerian phone number";
+    }
     if (!/^\S+@\S+\.\S+$/.test(f.email)) next.email = "Enter a valid email address";
     if (f.password.length < 6) next.password = "Use at least 6 characters";
-    if (f.confirm !== f.password) next.confirm = "Passwords do not match";
     if (!agree) next.agree = "Please accept the terms to continue";
     setErrors(next);
     if (Object.keys(next).length) return;
+
+    const normalizedPhone =
+      phoneDigits.length === 10 ? `0${phoneDigits}` : phoneDigits.startsWith("0") ? phoneDigits : `0${phoneDigits.slice(-10)}`;
+
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: f.email.trim().toLowerCase(),
       password: f.password,
       options: {
         emailRedirectTo: `${window.location.origin}/setup-pin`,
-        data: { full_name: f.name.trim(), phone: f.phone.replace(/\s/g, "") },
+        data: { full_name: f.name.trim(), phone: normalizedPhone },
       },
     });
     setLoading(false);
@@ -88,189 +93,183 @@ function SignupPage() {
   };
 
   return (
-    <main className="auth-screen flex min-h-dvh flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <div className="auth-container mx-auto flex w-full max-w-md flex-1 flex-col">
-        <header className="flex items-center justify-between">
+    <main className="auth-screen relative flex min-h-dvh flex-col overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="auth-blob auth-blob--a" aria-hidden="true" />
+      <div className="auth-blob auth-blob--b" aria-hidden="true" />
+
+      <div className="auth-container relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col">
+        <header className="relative flex items-center justify-center">
           <Link
             to="/"
             aria-label="Back to welcome"
-            className="grid size-10 place-items-center rounded-xl border border-border/70 bg-card text-foreground shadow-soft transition-colors hover:bg-accent"
+            className="absolute left-0 grid size-10 place-items-center rounded-full text-slate-600 transition-colors hover:bg-white/60"
           >
             <ArrowLeft className="size-5" />
           </Link>
-          <BrandLogo className="h-12" />
-          <span className="size-10" aria-hidden="true" />
+          <div className="flex items-center gap-2">
+            <BrandMark className="size-8 rounded-xl" />
+            <span className="font-display text-lg font-bold tracking-tight text-[#1e1b4b]">RockPay</span>
+          </div>
         </header>
 
-        <section className="auth-intro mt-6 sm:mt-8">
-          <p className="text-xs font-semibold uppercase text-primary">{BRAND.tagline}</p>
-          <h1 className="mt-2 font-display text-3xl font-bold">Create your account</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your bills, all in one place.
-          </p>
+        <section className="mt-8 sm:mt-10">
+          <h1 className="font-display text-[1.85rem] font-bold leading-tight tracking-tight text-[#0f172a] sm:text-[2rem]">
+            Create your account
+          </h1>
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-slate-500">Your bills, all in one place.</p>
         </section>
 
-        <form
-          onSubmit={(e) => void submit(e)}
-          className="auth-panel mt-5 space-y-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6"
-          noValidate
-        >
-          <Field
-            label="Full name"
-            id="name"
-            icon={<UserRound aria-hidden="true" />}
-            value={f.name}
-            onChange={set("name")}
-            error={errors.name}
-            placeholder="Your full name"
-            autoComplete="name"
-          />
-          <Field
-            label="Phone number"
-            id="phone"
-            icon={<Phone aria-hidden="true" />}
-            value={f.phone}
-            onChange={set("phone")}
-            error={errors.phone}
-            placeholder="080 0000 0000"
-            inputMode="numeric"
-            autoComplete="tel-national"
-          />
-          <Field
-            label="Email address"
-            id="email"
-            icon={<Mail aria-hidden="true" />}
-            value={f.email}
-            onChange={set("email")}
-            error={errors.email}
-            placeholder="you@email.com"
-            type="email"
-            autoComplete="email"
-          />
-          <Field
-            label="Password"
-            id="password"
-            value={f.password}
-            onChange={set("password")}
-            error={errors.password}
-            placeholder="Create a password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            trailing={
+        <form onSubmit={(e) => void submit(e)} className="mt-7 space-y-4" noValidate>
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-[0.8rem] font-semibold text-slate-700">
+              Full name
+            </Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+                <UserRound aria-hidden="true" />
+              </span>
+              <Input
+                id="name"
+                value={f.name}
+                onChange={set("name")}
+                className="auth-field h-13 rounded-2xl border-0 bg-white/90 pl-11 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+                placeholder="e.g. Adaora Nwankwo"
+                autoComplete="name"
+                aria-invalid={Boolean(errors.name)}
+              />
+            </div>
+            {errors.name ? <p className="text-xs font-medium text-destructive">{errors.name}</p> : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="phone" className="text-[0.8rem] font-semibold text-slate-700">
+              Phone number
+            </Label>
+            <div className="flex gap-2">
+              <div className="flex h-13 shrink-0 items-center gap-1.5 rounded-2xl bg-white/90 px-3 shadow-sm ring-1 ring-slate-200/80">
+                <span className="text-base leading-none" aria-hidden="true">
+                  🇳🇬
+                </span>
+                <span className="text-sm font-semibold text-slate-700">+234</span>
+              </div>
+              <div className="relative min-w-0 flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+                  <Phone aria-hidden="true" />
+                </span>
+                <Input
+                  id="phone"
+                  value={f.phone}
+                  onChange={set("phone")}
+                  className="auth-field h-13 rounded-2xl border-0 bg-white/90 pl-11 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+                  placeholder="801 234 5678"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  aria-invalid={Boolean(errors.phone)}
+                />
+              </div>
+            </div>
+            {errors.phone ? <p className="text-xs font-medium text-destructive">{errors.phone}</p> : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-[0.8rem] font-semibold text-slate-700">
+              Email address
+            </Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+                <Mail aria-hidden="true" />
+              </span>
+              <Input
+                id="email"
+                type="email"
+                value={f.email}
+                onChange={set("email")}
+                className="auth-field h-13 rounded-2xl border-0 bg-white/90 pl-11 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+                placeholder="you@example.com"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
+              />
+            </div>
+            {errors.email ? <p className="text-xs font-medium text-destructive">{errors.email}</p> : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-[0.8rem] font-semibold text-slate-700">
+              Password
+            </Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+                <LockKeyhole aria-hidden="true" />
+              </span>
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={f.password}
+                onChange={set("password")}
+                className="auth-field h-13 rounded-2xl border-0 bg-white/90 px-11 pr-12 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+                placeholder="Create a password"
+                autoComplete="new-password"
+                aria-invalid={Boolean(errors.password)}
+              />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 onClick={() => setShowPassword((visible) => !visible)}
-                className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-muted-foreground"
+                className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff /> : <Eye />}
               </Button>
-            }
-          />
-          <Field
-            label="Confirm password"
-            id="confirm"
-            value={f.confirm}
-            onChange={set("confirm")}
-            error={errors.confirm}
-            placeholder="Repeat your password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-          />
+            </div>
+            {errors.password ? (
+              <p className="text-xs font-medium text-destructive">{errors.password}</p>
+            ) : null}
+          </div>
 
-          <div className="flex items-start gap-3 rounded-xl bg-muted/70 p-3">
+          <div className="flex items-start gap-3 pt-1">
             <Checkbox
               id="agree"
               checked={agree}
               onCheckedChange={(v) => setAgree(v === true)}
-              className="mt-0.5"
+              className="mt-0.5 border-slate-300 data-[state=checked]:border-violet-600 data-[state=checked]:bg-violet-600"
             />
-            <Label
-              htmlFor="agree"
-              className="text-xs leading-relaxed font-medium text-muted-foreground"
-            >
+            <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-slate-500">
               I agree to the{" "}
-              <Link
-                to="/terms"
-                className="font-semibold text-primary underline-offset-2 hover:underline"
-              >
+              <Link to="/terms" className="font-semibold text-violet-600 underline-offset-2 hover:underline">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link
-                to="/privacy"
-                className="font-semibold text-primary underline-offset-2 hover:underline"
-              >
+              <Link to="/privacy" className="font-semibold text-violet-600 underline-offset-2 hover:underline">
                 Privacy Policy
               </Link>
-              .
             </Label>
           </div>
-          {errors.agree ? (
-            <p className="text-xs font-medium text-destructive">{errors.agree}</p>
-          ) : null}
+          {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
 
           <Button
             type="submit"
             disabled={loading}
-            className="h-13 w-full rounded-xl text-base font-bold"
+            className="mt-2 h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white shadow-lg shadow-violet-500/25 hover:bg-violet-700"
           >
             {loading ? "Creating account…" : "Create account"}
-            {!loading ? <ArrowRight className="ml-1" /> : null}
+            {!loading ? <ArrowRight className="ml-1 size-5" /> : null}
           </Button>
         </form>
 
-        <p className="mt-auto pt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-8 text-center text-sm text-slate-500">
           Already have an account?{" "}
-          <Link to="/login" className="font-bold text-primary">
+          <Link to="/login" className="font-bold text-violet-600">
             Log in
           </Link>
         </p>
+
+        <p className="mt-auto pt-8 text-center text-xs leading-relaxed text-slate-400">
+          Simple bills
+          <br />
+          a brighter you.
+        </p>
       </div>
     </main>
-  );
-}
-
-function Field({
-  label,
-  id,
-  error,
-  icon,
-  trailing,
-  ...props
-}: React.ComponentProps<typeof Input> & {
-  label: string;
-  id: string;
-  error?: string | undefined;
-  icon?: React.ReactNode;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="text-sm font-semibold">
-        {label}
-      </Label>
-      <div className="relative">
-        {icon ? (
-          <span className="pointer-events-none absolute inset-y-0 left-3.5 z-10 grid place-items-center text-muted-foreground [&_svg]:size-[18px]">
-            {icon}
-          </span>
-        ) : null}
-        <Input
-          id={id}
-          className={
-            icon
-              ? "h-13 rounded-xl bg-background pl-11 pr-12"
-              : "h-13 rounded-xl bg-background pr-12"
-          }
-          aria-invalid={Boolean(error)}
-          {...props}
-        />
-        {trailing}
-      </div>
-      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
-    </div>
   );
 }
