@@ -1,6 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  Phone,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +69,11 @@ function SignupPage() {
     if (Object.keys(next).length) return;
 
     const normalizedPhone =
-      phoneDigits.length === 10 ? `0${phoneDigits}` : phoneDigits.startsWith("0") ? phoneDigits : `0${phoneDigits.slice(-10)}`;
+      phoneDigits.length === 10
+        ? `0${phoneDigits}`
+        : phoneDigits.startsWith("0")
+          ? phoneDigits
+          : `0${phoneDigits.slice(-10)}`;
 
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
@@ -108,7 +121,9 @@ function SignupPage() {
           </Link>
           <div className="flex items-center gap-2">
             <BrandMark className="size-8 rounded-xl" />
-            <span className="font-display text-lg font-bold tracking-tight text-[#1e1b4b]">RockPay</span>
+            <span className="font-display text-lg font-bold tracking-tight text-[#1e1b4b]">
+              RockPay
+            </span>
           </div>
         </header>
 
@@ -116,7 +131,9 @@ function SignupPage() {
           <h1 className="font-display text-[1.85rem] font-bold leading-tight tracking-tight text-[#0f172a] sm:text-[2rem]">
             Create your account
           </h1>
-          <p className="mt-2 text-[0.95rem] leading-relaxed text-slate-500">Your bills, all in one place.</p>
+          <p className="mt-2 text-[0.95rem] leading-relaxed text-slate-500">
+            Your bills, all in one place.
+          </p>
         </section>
 
         <form onSubmit={(e) => void submit(e)} className="mt-7 space-y-4" noValidate>
@@ -138,7 +155,9 @@ function SignupPage() {
                 aria-invalid={Boolean(errors.name)}
               />
             </div>
-            {errors.name ? <p className="text-xs font-medium text-destructive">{errors.name}</p> : null}
+            {errors.name ? (
+              <p className="text-xs font-medium text-destructive">{errors.name}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
@@ -168,7 +187,9 @@ function SignupPage() {
                 />
               </div>
             </div>
-            {errors.phone ? <p className="text-xs font-medium text-destructive">{errors.phone}</p> : null}
+            {errors.phone ? (
+              <p className="text-xs font-medium text-destructive">{errors.phone}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
@@ -190,7 +211,9 @@ function SignupPage() {
                 aria-invalid={Boolean(errors.email)}
               />
             </div>
-            {errors.email ? <p className="text-xs font-medium text-destructive">{errors.email}</p> : null}
+            {errors.email ? (
+              <p className="text-xs font-medium text-destructive">{errors.email}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
@@ -236,16 +259,24 @@ function SignupPage() {
             />
             <Label htmlFor="agree" className="text-xs leading-relaxed font-medium text-slate-500">
               I agree to the{" "}
-              <Link to="/terms" className="font-semibold text-violet-600 underline-offset-2 hover:underline">
+              <Link
+                to="/terms"
+                className="font-semibold text-violet-600 underline-offset-2 hover:underline"
+              >
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link to="/privacy" className="font-semibold text-violet-600 underline-offset-2 hover:underline">
+              <Link
+                to="/privacy"
+                className="font-semibold text-violet-600 underline-offset-2 hover:underline"
+              >
                 Privacy Policy
               </Link>
             </Label>
           </div>
-          {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
+          {errors.agree ? (
+            <p className="text-xs font-medium text-destructive">{errors.agree}</p>
+          ) : null}
 
           <Button
             type="submit"
@@ -266,8 +297,7 @@ function SignupPage() {
 
         <p className="mt-auto pt-8 text-center text-xs leading-relaxed text-slate-400">
           Simple bills
-          <br />
-          a brighter you.
+          <br />a brighter you.
         </p>
       </div>
     </main>

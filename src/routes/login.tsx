@@ -101,7 +101,13 @@ function LoginPage() {
                 <CreditCard className="size-8 text-white sm:size-9" strokeWidth={1.75} />
               </div>
               <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border-[3px] border-[#f5f3ff] bg-emerald-500 text-white shadow-md">
-                <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="3">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
                   <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
