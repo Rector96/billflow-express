@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandLogo } from "@/components/app/app-shell";
+import { BrandLogo, BrandMark } from "@/components/app/app-shell";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -17,6 +17,8 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: `Log in to your ${BRAND.name} wallet to pay bills fast.` },
       { property: "og:title", content: `Log in — ${BRAND.name}` },
       { property: "og:description", content: "Welcome back. Your bills are one tap away." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
     ],
   }),
   component: LoginPage,
@@ -58,80 +60,133 @@ function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-10">
-      <BrandLogo className="h-[clamp(3.25rem,16vw,5.5rem)] self-start" />
-      <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Welcome Back 👋</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Log in to continue paying your bills with {BRAND.name}.
-      </p>
+    <main className="auth-screen flex min-h-dvh flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="auth-container mx-auto flex w-full max-w-md flex-1 flex-col">
+        <header className="flex items-center justify-between">
+          <BrandLogo className="h-12" />
+          <span className="auth-mark grid size-10 place-items-center rounded-xl">
+            <BrandMark className="size-7 rounded-lg ring-0" />
+          </span>
+        </header>
 
-      <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="identifier">Email</Label>
-          <Input
-            id="identifier"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            className="h-13 rounded-xl bg-card"
-            placeholder="you@email.com"
-            aria-invalid={Boolean(errors.id)}
-            autoComplete="email"
-          />
-          {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}
-        </div>
+        <section className="auth-intro mt-9 sm:mt-12">
+          <p className="text-xs font-semibold uppercase text-primary">{BRAND.tagline}</p>
+          <h1 className="mt-2 font-display text-3xl font-bold">Welcome back</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Log in to manage your bills, anytime, anywhere.
+          </p>
+        </section>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={show ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-13 rounded-xl bg-card pr-12"
-              placeholder="Enter your password"
-              aria-invalid={Boolean(errors.password)}
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              aria-label={show ? "Hide password" : "Show password"}
-              onClick={() => setShow((v) => !v)}
-              className="absolute inset-y-0 right-3 grid place-items-center text-muted-foreground"
+        <section className="auth-panel mt-7 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6">
+          <form onSubmit={submit} className="space-y-5" noValidate>
+            <AuthField
+              id="identifier"
+              label="Email address"
+              icon={<Mail aria-hidden="true" />}
+              error={errors.id}
             >
-              {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-            </button>
-          </div>
-          {errors.password ? (
-            <p className="text-xs font-medium text-destructive">{errors.password}</p>
-          ) : null}
+              <Input
+                id="identifier"
+                type="email"
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                className="h-13 rounded-xl bg-background pl-11"
+                placeholder="you@email.com"
+                aria-invalid={Boolean(errors.id)}
+                autoComplete="email"
+              />
+            </AuthField>
+
+            <AuthField
+              id="password"
+              label="Password"
+              icon={<LockKeyhole aria-hidden="true" />}
+              error={errors.password}
+            >
+              <Input
+                id="password"
+                type={show ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-13 rounded-xl bg-background px-11 pr-12"
+                placeholder="Enter your password"
+                aria-invalid={Boolean(errors.password)}
+                autoComplete="current-password"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={show ? "Hide password" : "Show password"}
+                onClick={() => setShow((v) => !v)}
+                className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-muted-foreground"
+              >
+                {show ? <EyeOff /> : <Eye />}
+              </Button>
+            </AuthField>
+
+            <div className="flex justify-end pt-0.5">
+              <Link
+                to="/forgot-password"
+                search={{ step: "request" }}
+                className="min-h-11 content-center text-sm font-semibold text-primary"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-13 w-full rounded-xl text-base font-bold"
+            >
+              {loading ? "Logging in…" : "Log in"}
+              {!loading ? <ArrowRight className="ml-1" /> : null}
+            </Button>
+          </form>
+        </section>
+
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="size-4 text-success" />
+          <span>Protected sign in</span>
         </div>
 
-        <div className="flex justify-end">
-          <Link
-            to="/forgot-password"
-            search={{ step: "request" }}
-            className="text-sm font-semibold text-primary"
-          >
-            Forgot Password?
+        <p className="mt-auto pt-10 text-center text-sm text-muted-foreground">
+          New to {BRAND.name}?{" "}
+          <Link to="/signup" className="font-bold text-primary">
+            Create account
           </Link>
-        </div>
-
-        <Button
-          type="submit"
-          disabled={loading}
-          className="h-13 w-full rounded-2xl text-base font-bold"
-        >
-          {loading ? "Logging in…" : "Login"}
-        </Button>
-      </form>
-
-      <p className="mt-auto pt-10 text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
-        <Link to="/signup" className="font-bold text-primary">
-          Sign Up
-        </Link>
-      </p>
+        </p>
+      </div>
     </main>
+  );
+}
+
+function AuthField({
+  id,
+  label,
+  icon,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-sm font-semibold">
+        {label}
+      </Label>
+      <div className="relative">
+        <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-muted-foreground [&_svg]:size-[18px]">
+          {icon}
+        </span>
+        {children}
+      </div>
+      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+    </div>
   );
 }
