@@ -2,10 +2,12 @@
  * Route: /tin — always opens TIN flow on this branch.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/app/app-shell";
+import { PageHeader } from "@/components/app/page-header";
 import { TinJtbFlow } from "@/components/app/tin-jtb-flow";
 import { BRAND } from "@/lib/brand";
 import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
-import { isHubDemoOnly } from "@/lib/product-mode";
+import { isHubDemoOnly, isServiceVisible } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/tin")({
   head: () => ({
@@ -26,6 +28,18 @@ export const Route = createFileRoute("/tin")({
 });
 
 function TinPage() {
+  if (!isServiceVisible("tin")) {
+    return (
+      <AppShell>
+        <PageHeader title="TIN Retrieval" backTo="/services" />
+        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+          <h1 className="text-xl font-extrabold">Coming soon</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">This service is temporarily unavailable while we complete and verify its provider integration.</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   const { fees } = Route.useLoaderData();
   return (
     <>
