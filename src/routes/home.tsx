@@ -39,10 +39,7 @@ const HOME_SERVICES = [
   "education",
   "exam-pins",
   "cac",
-  "nin",
-  "tin",
   "documents",
-  "vehicle",
   "electricity",
 ] as const;
 
