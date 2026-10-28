@@ -11,6 +11,9 @@ export const DIRECT_PAY = true;
 /** Permanently hidden from Home, Services, search, and pay entry. */
 export const REMOVED_SERVICE_SLUGS = new Set(["airtime", "data"]);
 
+/** Temporarily hidden until their real provider workflows are ready. */
+export const PAUSED_SERVICE_SLUGS = new Set(["nin", "tin", "vehicle"]);
+
 export const HOME_BILL_SLUGS = ["electricity", "cable", "education", "exam-pins"] as const;
 
 export const HOME_CLASSIC_SLUGS = [
@@ -66,7 +69,7 @@ export function homeServiceSlugs(): readonly string[] {
 }
 
 export function isServiceVisible(slug: string): boolean {
-  if (REMOVED_SERVICE_SLUGS.has(slug)) return false;
+  if (REMOVED_SERVICE_SLUGS.has(slug) || PAUSED_SERVICE_SLUGS.has(slug)) return false;
   if (!BILLS_FOCUS) return true;
   return !HIDDEN_WHEN_BILLS_FOCUS.has(slug);
 }
@@ -89,6 +92,7 @@ export function isServiceFlowOpen(slug: string): boolean {
 
 export function serviceAvailabilityLabel(slug: string, short: string): string {
   if (REMOVED_SERVICE_SLUGS.has(slug)) return `${short} · Removed`;
+  if (PAUSED_SERVICE_SLUGS.has(slug)) return `${short} · Coming soon`;
   if (isBillLive(slug)) return short;
   if (isHubDemoOnly(slug) && HUB_PREVIEW_FLOWS) return `${short} · Demo`;
   if (HUB_PREVIEW_SLUGS.has(slug)) return short;
