@@ -28,19 +28,23 @@ export const Route = createFileRoute("/tin")({
 });
 
 function TinPage() {
+  const { fees } = Route.useLoaderData();
+
   if (!isServiceVisible("tin")) {
     return (
       <AppShell>
         <PageHeader title="TIN Retrieval" backTo="/services" />
         <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
           <h1 className="text-xl font-extrabold">Coming soon</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">This service is temporarily unavailable while we complete and verify its provider integration.</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This service is temporarily unavailable while we complete and verify its provider
+            integration.
+          </p>
         </div>
       </AppShell>
     );
   }
 
-  const { fees } = Route.useLoaderData();
   return (
     <>
       {isHubDemoOnly("tin") ? (
