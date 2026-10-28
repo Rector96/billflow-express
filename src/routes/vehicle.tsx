@@ -28,19 +28,23 @@ export const Route = createFileRoute("/vehicle")({
 });
 
 function VehiclePage() {
+  const { fees } = Route.useLoaderData();
+
   if (!isServiceVisible("vehicle")) {
     return (
       <AppShell>
         <PageHeader title="Vehicle papers" backTo="/services" />
         <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
           <h1 className="text-xl font-extrabold">Coming soon</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">This service is temporarily unavailable while we complete and verify its provider integration.</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This service is temporarily unavailable while we complete and verify its provider
+            integration.
+          </p>
         </div>
       </AppShell>
     );
   }
 
-  const { fees } = Route.useLoaderData();
   return (
     <>
       {isHubDemoOnly("vehicle") ? (
