@@ -58,6 +58,9 @@ BEGIN
   IF tx.status <> 'failed' THEN
     RAISE EXCEPTION 'transaction is not failed';
   END IF;
+  IF tx.type <> 'deposit' THEN
+    RAISE EXCEPTION 'only wallet deposits can be recovered';
+  END IF;
   IF COALESCE(tx.metadata->'paystack'->>'reason', '') <> 'validation_mismatch' THEN
     RAISE EXCEPTION 'transaction is not an eligible validation-mismatch recovery';
   END IF;
@@ -67,7 +70,9 @@ BEGIN
 
   SELECT * INTO w FROM public.wallets WHERE id = tx.wallet_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'wallet not found'; END IF;
+  IF w.user_id <> tx.user_id THEN RAISE EXCEPTION 'wallet owner mismatch'; END IF;
   IF w.status <> 'active' THEN RAISE EXCEPTION 'wallet not active'; END IF;
+  IF w.currency <> 'NGN' THEN RAISE EXCEPTION 'wallet currency mismatch'; END IF;
 
   before_balance := w.balance;
   after_balance := before_balance + round(tx.amount, 2);
