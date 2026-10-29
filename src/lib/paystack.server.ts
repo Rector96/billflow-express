@@ -23,6 +23,8 @@ type PaystackVerifyData = {
   status?: string;
   reference?: string;
   amount?: number;
+  requested_amount?: number;
+  fees?: number;
   currency?: string;
   gateway_response?: string;
   paid_at?: string | null;
@@ -84,18 +86,49 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   }
 
   const expectedSubunits = Math.round(Number(row.amount) * 100);
+  const actualSubunits = Number(data.amount);
+  const requestedSubunits = Number(data.requested_amount);
+  const feeSubunits = Number(data.fees);
   const gatewayStatus = String(data.status ?? "").toLowerCase();
+
+  // Paystack fee pass-through can make the customer's total (amount) greater
+  // than the intended deposit. Accept that only when Paystack explicitly
+  // reports the expected requested_amount and the total exactly equals
+  // requested_amount + fees. Never credit the fee to the wallet.
+  const exactAmountMatch = actualSubunits === expectedSubunits;
+  const verifiedFeePassThroughMatch =
+    requestedSubunits === expectedSubunits &&
+    Number.isFinite(feeSubunits) &&
+    feeSubunits >= 0 &&
+    actualSubunits === requestedSubunits + feeSubunits;
 
   if (gatewayStatus === "success") {
     if (
       data.currency !== "NGN" ||
-      Number(data.amount) !== expectedSubunits ||
+      (!exactAmountMatch && !verifiedFeePassThroughMatch) ||
       data.reference !== reference
     ) {
+      console.error("[paystack] wallet funding validation mismatch", {
+        reference,
+        expectedSubunits,
+        actualSubunits: Number.isFinite(actualSubunits) ? actualSubunits : null,
+        requestedSubunits: Number.isFinite(requestedSubunits) ? requestedSubunits : null,
+        feeSubunits: Number.isFinite(feeSubunits) ? feeSubunits : null,
+        currency: data.currency ?? null,
+        referenceMatches: data.reference === reference,
+      });
       const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
         _reference: reference,
         _status: "failed",
-        _payload: { reason: "validation_mismatch", gateway_status: gatewayStatus },
+        _payload: {
+          reason: "validation_mismatch",
+          gateway_status: gatewayStatus,
+          expected_subunits: expectedSubunits,
+          actual_subunits: Number.isFinite(actualSubunits) ? actualSubunits : null,
+          requested_subunits: Number.isFinite(requestedSubunits) ? requestedSubunits : null,
+          fee_subunits: Number.isFinite(feeSubunits) ? feeSubunits : null,
+          currency: data.currency ?? null,
+        },
       });
       if (error) throw new Error(error.message);
       return { status: "failed", amount: Number(row.amount), balanceAfter: null, credited: false };
@@ -109,6 +142,9 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
         channel: data.channel ?? null,
         paid_at: data.paid_at ?? null,
         gateway_response: data.gateway_response ?? null,
+        requested_amount_subunits: Number.isFinite(requestedSubunits) ? requestedSubunits : null,
+        charged_amount_subunits: Number.isFinite(actualSubunits) ? actualSubunits : null,
+        fee_subunits: Number.isFinite(feeSubunits) ? feeSubunits : null,
       },
     });
     if (error) throw new Error(error.message);
