@@ -2,13 +2,9 @@ name: Phase 9 verification
 
 # Production verification for deployable branches.
 #
-# The workflow also performs the repository's existing Prettier normalization
-# and the small React-hook ordering maintenance check before linting. This is
-# deliberately limited to deterministic formatting/maintenance changes; it
-# does not change business logic, pricing, providers, payment amounts, or DB
-# data. If normalization changes files, CI commits only those mechanical
-# changes back to the same feature branch so the repository stays clean for
-# the next developer/audit. Main is never modified by this job directly.
+# Normalize files before validation. Only push-triggered runs may commit
+# mechanical formatting changes; pull-request runs must never try to push from
+# GitHub's detached checkout, so tests/build/lint can always run on the PR.
 on:
   push:
     branches:
@@ -44,6 +40,7 @@ jobs:
           bun run format
 
       - name: Commit mechanical normalization
+        if: github.event_name != 'pull_request'
         run: |
           if git diff --quiet; then
             echo "No normalization changes required."
