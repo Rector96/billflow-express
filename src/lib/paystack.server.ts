@@ -84,7 +84,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
 
   const { data: rows, error: rowError } = await supabaseAdmin
     .from("wallet_transactions")
-    .select("reference, amount, status, balance_after")
+    .select("reference, amount, status, balance_after, metadata")
     .eq("provider", "paystack")
     .eq("provider_reference", reference)
     .limit(1);
@@ -155,10 +155,56 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       return { status: "failed", amount: Number(row.amount), balanceAfter: null, credited: false };
     }
 
+    const providerTransactionId = data.id ? String(data.id) : "";
+    const wasValidationMismatch =
+      row.status === "failed" &&
+      (row.metadata as Record<string, unknown> | null)?.paystack &&
+      ((row.metadata as Record<string, any>).paystack?.reason === "validation_mismatch");
+
+    if (wasValidationMismatch) {
+      // Recover only the previously rejected fee-inclusive case. A fresh
+      // Paystack verification above must prove the reference, NGN currency,
+      // requested deposit and exact fee-inclusive charged total.
+      const verifiedFeeInclusive =
+        Boolean(providerTransactionId) &&
+        requestedSubunits === expectedSubunits &&
+        Number.isFinite(feeSubunits) &&
+        feeSubunits >= 0 &&
+        actualSubunits === requestedSubunits + feeSubunits;
+
+      if (!verifiedFeeInclusive) {
+        throw new Error("Previously failed funding requires a verified fee-inclusive Paystack amount breakdown.");
+      }
+
+      const { data: recovered, error: recoveryError } = await supabaseAdmin.rpc("recover_paystack_funding", {
+        _reference: reference,
+        _requested_subunits: requestedSubunits,
+        _charged_subunits: actualSubunits,
+        _fee_subunits: feeSubunits,
+        _provider_transaction_id: providerTransactionId,
+        _payload: {
+          gateway_status: gatewayStatus,
+          currency: data.currency,
+          reference_match: data.reference === reference,
+          channel: data.channel ?? null,
+          paid_at: data.paid_at ?? null,
+          gateway_response: data.gateway_response ?? null,
+        },
+      });
+      if (recoveryError) throw new Error(recoveryError.message);
+      const recoveredRow = Array.isArray(recovered) ? recovered[0] : recovered;
+      return {
+        status: "successful",
+        amount: Number(row.amount),
+        balanceAfter: recoveredRow?.balance_after != null ? Number(recoveredRow.balance_after) : null,
+        credited: Boolean(recoveredRow?.credited),
+      };
+    }
+
     const { data: credit, error } = await supabaseAdmin.rpc("complete_paystack_funding", {
       _reference: reference,
       _paid_amount: Number(row.amount),
-      _provider_transaction_id: data.id ? String(data.id) : "",
+      _provider_transaction_id: providerTransactionId,
       _payload: {
         channel: data.channel ?? null,
         paid_at: data.paid_at ?? null,
