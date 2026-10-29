@@ -156,10 +156,10 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     }
 
     const providerTransactionId = data.id ? String(data.id) : "";
+    const paystackMetadata = (row.metadata as { paystack?: { reason?: string } } | null)?.paystack;
     const wasValidationMismatch =
       row.status === "failed" &&
-      (row.metadata as Record<string, unknown> | null)?.paystack &&
-      ((row.metadata as Record<string, any>).paystack?.reason === "validation_mismatch");
+      paystackMetadata?.reason === "validation_mismatch";
 
     if (wasValidationMismatch) {
       // Recover only the previously rejected fee-inclusive case. A fresh
