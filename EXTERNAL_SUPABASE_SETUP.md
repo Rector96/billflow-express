@@ -124,7 +124,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_or_sb_secret_key
 SUPABASE_PROJECT_ID=YOUR_PROJECT_REF
 
 # Paystack TEST secret only (sk_test_...)
-PAYSTACK_SECRET_KEY=sk_test_xxxxxxxx
+PAYSTACK_SECRET_KEY=your_test_secret_key_here
 ```
 
 Use the **same** URL and publishable key for both `VITE_*` and non-prefixed server vars.
