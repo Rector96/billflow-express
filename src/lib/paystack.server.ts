@@ -54,6 +54,27 @@ export type SettleResult = {
   credited: boolean;
 };
 
+/** Validate the deposit amount separately from a Paystack fee passed to the payer. */
+export function matchesPaystackFundingAmount(input: {
+  expectedSubunits: number;
+  actualSubunits: number;
+  requestedSubunits?: number;
+  feeSubunits?: number;
+}): boolean {
+  const { expectedSubunits, actualSubunits } = input;
+  const requestedSubunits = Number(input.requestedSubunits);
+  const feeSubunits = Number(input.feeSubunits);
+
+  if (actualSubunits === expectedSubunits) return true;
+
+  return (
+    requestedSubunits === expectedSubunits &&
+    Number.isFinite(feeSubunits) &&
+    feeSubunits >= 0 &&
+    actualSubunits === requestedSubunits + feeSubunits
+  );
+}
+
 /**
  * Wallet funding settlement only. Hub payments are not wallet_transactions rows —
  * unknown funding reference is expected for hub-only charges.
@@ -95,17 +116,17 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   // than the intended deposit. Accept that only when Paystack explicitly
   // reports the expected requested_amount and the total exactly equals
   // requested_amount + fees. Never credit the fee to the wallet.
-  const exactAmountMatch = actualSubunits === expectedSubunits;
-  const verifiedFeePassThroughMatch =
-    requestedSubunits === expectedSubunits &&
-    Number.isFinite(feeSubunits) &&
-    feeSubunits >= 0 &&
-    actualSubunits === requestedSubunits + feeSubunits;
+  const amountMatches = matchesPaystackFundingAmount({
+    expectedSubunits,
+    actualSubunits,
+    requestedSubunits,
+    feeSubunits,
+  });
 
   if (gatewayStatus === "success") {
     if (
       data.currency !== "NGN" ||
-      (!exactAmountMatch && !verifiedFeePassThroughMatch) ||
+      !amountMatches ||
       data.reference !== reference
     ) {
       console.error("[paystack] wallet funding validation mismatch", {
