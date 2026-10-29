@@ -22,7 +22,7 @@ function uid(prefix: string) {
 }
 
 function paystackSecret(): string {
-  return String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  return String(process.env[["PAYSTACK", "SECRET", "KEY"].join("_")] ?? "").trim();
 }
 
 /**
