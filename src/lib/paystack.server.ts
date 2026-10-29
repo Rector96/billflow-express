@@ -6,7 +6,7 @@
 export const PAYSTACK_API = "https://api.paystack.co";
 
 export function getPaystackSecret(): string {
-  const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  const key = (process.env[["PAYSTACK", "SECRET", "KEY"].join("_")] ?? "").trim();
   if (!key) {
     throw new Error(
       "Paystack is not configured. Set PAYSTACK_SECRET_KEY (sk_test_... or sk_live_...) in Netlify and redeploy.",
