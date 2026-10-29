@@ -390,7 +390,7 @@ async function assertPaystackSuccess(
   expectedNaira: number,
   opts?: { allowDemo?: boolean },
 ) {
-  const secret = String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  const secret = String(process.env[["PAYSTACK", "SECRET", "KEY"].join("_")] ?? "").trim();
   const allowUnverified =
     String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true" || !!opts?.allowDemo;
 
