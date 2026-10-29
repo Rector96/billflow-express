@@ -14,7 +14,6 @@ export function WelcomeScreen() {
     if (hydrated && authed) void navigate({ to: "/home" });
   }, [hydrated, authed, navigate]);
 
-
   function start(to: "/signup" | "/login") {
     completeOnboarding();
     void navigate({ to });
