@@ -25,7 +25,8 @@ export function RockPayBillEntry() {
           </span>
           <p className="mt-4 text-lg font-extrabold tracking-tight">Coming soon</p>
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            This bill service is not enabled yet. We will open it when the provider path is verified.
+            This bill service is not enabled yet. We will open it when the provider path is
+            verified.
           </p>
           <Button className="mt-6 h-11 rounded-xl font-semibold" asChild>
             <Link to="/services">Back to services</Link>
