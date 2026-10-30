@@ -52,8 +52,14 @@ export function AuthShell({ children, title, subtitle }: AuthShellProps) {
 
       {/* Right form panel */}
       <section className="auth-panel-form relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-        <div className="auth-blob auth-blob--a pointer-events-none opacity-60 lg:opacity-40" aria-hidden="true" />
-        <div className="auth-blob auth-blob--b pointer-events-none opacity-60 lg:opacity-40" aria-hidden="true" />
+        <div
+          className="auth-blob auth-blob--a pointer-events-none opacity-60 lg:opacity-40"
+          aria-hidden="true"
+        />
+        <div
+          className="auth-blob auth-blob--b pointer-events-none opacity-60 lg:opacity-40"
+          aria-hidden="true"
+        />
 
         <div className="relative z-10 mx-auto flex h-full w-full max-w-md flex-col px-6 py-6 sm:px-8 lg:max-w-lg lg:px-12 lg:py-10">
           {/* Mobile brand */}
