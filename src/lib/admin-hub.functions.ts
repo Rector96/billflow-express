@@ -815,10 +815,16 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
       throw new Error("Only CAC payment intents are supported by this recheck.");
     }
     if (intent.status === "paid") {
-      return { status: "already_paid" as const, message: "This intent is already paid. Refresh the order list." };
+      return {
+        status: "already_paid" as const,
+        message: "This intent is already paid. Refresh the order list.",
+      };
     }
     if (!["pending", "expired"].includes(String(intent.status))) {
-      return { status: "not_eligible" as const, message: "This payment intent is not eligible for rechecking." };
+      return {
+        status: "not_eligible" as const,
+        message: "This payment intent is not eligible for rechecking.",
+      };
     }
 
     const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
@@ -828,11 +834,17 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
     if (intent.paystack_domain !== domain) throw new Error("Paystack environment mismatch.");
     const transaction = await paystackVerify(String(intent.payment_reference));
     if (!transaction) {
-      return { status: "pending" as const, message: "Paystack verification is unavailable. Try again shortly." };
+      return {
+        status: "pending" as const,
+        message: "Paystack verification is unavailable. Try again shortly.",
+      };
     }
     const gatewayStatus = String(transaction.status ?? "").toLowerCase();
     if (gatewayStatus !== "success") {
-      return { status: "pending" as const, message: "Paystack has not confirmed a successful payment." };
+      return {
+        status: "pending" as const,
+        message: "Paystack has not confirmed a successful payment.",
+      };
     }
     if (transaction.domain && transaction.domain !== domain) {
       throw new Error("Paystack transaction domain mismatch.");
@@ -842,14 +854,22 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
       throw new Error("Saved checkout amount is invalid.");
     }
     const classification = classifyPaystackFunding(
-      transaction, String(intent.payment_reference), expectedKobo,
+      transaction,
+      String(intent.payment_reference),
+      expectedKobo,
     );
     if (classification.kind === "mismatch") {
-      return { status: "mismatch" as const, message: "Paystack transaction details do not match this checkout. No order was created." };
+      return {
+        status: "mismatch" as const,
+        message: "Paystack transaction details do not match this checkout. No order was created.",
+      };
     }
     const paidAtRaw = transaction.paid_at ?? transaction.paidAt;
     if (!paidAtRaw || !Number.isFinite(Date.parse(paidAtRaw))) {
-      return { status: "timestamp_missing" as const, message: "Paystack did not return a valid payment timestamp. No order was created." };
+      return {
+        status: "timestamp_missing" as const,
+        message: "Paystack did not return a valid payment timestamp. No order was created.",
+      };
     }
     const transactionId = Number(classification.providerTransactionId);
     if (!Number.isSafeInteger(transactionId) || transactionId <= 0) {
@@ -862,7 +882,11 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
     });
     if (settleError) {
       if (/outside.*validity|not eligible|expired/i.test(settleError.message)) {
-        return { status: "outside_window" as const, message: "Payment was verified, but Paystack's timestamp falls outside the original checkout window. No order was created." };
+        return {
+          status: "outside_window" as const,
+          message:
+            "Payment was verified, but Paystack's timestamp falls outside the original checkout window. No order was created.",
+        };
       }
       throw new Error(settleError.message);
     }
