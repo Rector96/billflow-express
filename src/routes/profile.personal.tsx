@@ -30,7 +30,7 @@ function PersonalInfo() {
     <AppShell>
       <PageHeader title="Personal Information" backTo="/profile" />
       <form
-        className="space-y-5 px-4 pt-2 pb-6"
+        className="mx-auto w-full max-w-md space-y-5 px-4 pt-2 pb-8 lg:max-w-2xl lg:px-0"
         onSubmit={(e) => {
           e.preventDefault();
           setSaving(true);
