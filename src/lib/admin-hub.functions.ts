@@ -582,6 +582,7 @@ export const notifyCustomerToDownload = createServerFn({ method: "POST" })
     void sendHubLifecycleEmail({
       userId: row.user_id,
       event: "digital_ready",
+      eventKey: `hub-order:${data.orderId}:digital_ready:email`,
       service: row.service,
       trackingReference: row.tracking_reference,
       amount: row.amount,
@@ -727,7 +728,19 @@ export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
     limit: Math.min(Math.max(Math.trunc(Number(input?.limit ?? 20)), 1), 100),
   }))
   .handler(async ({ data, context }) => {
-    await assertStaff(context.userId);
+    const admin = await assertStaff(context.userId);
+    const { error } = await admin
+      .from("hub_email_outbox")
+      .update({
+        status: "pending",
+        attempts: 0,
+        next_attempt_at: new Date().toISOString(),
+        locked_at: null,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("status", "failed");
+    if (error) throw new Error(error.message);
     return processHubEmailOutbox(data.limit);
   });
 
