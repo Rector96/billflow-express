@@ -220,7 +220,10 @@ function FundWallet() {
                 <RefreshCw className="mr-2 size-4" /> Refresh status
               </Button>
             ) : null}
-            <Button className="h-13 w-full rounded-2xl font-bold" onClick={() => navigate({ to: "/wallet" })}>
+            <Button
+              className="h-13 w-full rounded-2xl font-bold"
+              onClick={() => navigate({ to: "/wallet" })}
+            >
               <Wallet className="mr-2 size-4" /> Back to Wallet
             </Button>
             <Button
