@@ -16,6 +16,7 @@ import {
   assignHubAgent,
   getHubOrderDetail,
   getHubEmailOutboxSummary,
+  getHubPaymentIntentSummary,
   listHubOrders,
   notifyCustomerToDownload,
   retryHubLifecycleEmails,
@@ -116,6 +117,7 @@ function AdminHubOrders() {
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
   const runRetryEmails = useServerFn(retryHubLifecycleEmails);
   const runEmailSummary = useServerFn(getHubEmailOutboxSummary);
+  const runPaymentSummary = useServerFn(getHubPaymentIntentSummary);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -134,6 +136,8 @@ function AdminHubOrders() {
     ReturnType<typeof getHubEmailOutboxSummary>
   > | null>(null);
   const [emailSummaryError, setEmailSummaryError] = useState<string | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<Awaited<ReturnType<typeof getHubPaymentIntentSummary>> | null>(null);
+  const [paymentSummaryError, setPaymentSummaryError] = useState<string | null>(null);
   const prevCount = useRef<number | null>(null);
 
   const load = useCallback(
@@ -174,18 +178,30 @@ function AdminHubOrders() {
     }
   }, [runEmailSummary]);
 
+  const loadPaymentSummary = useCallback(async () => {
+    try {
+      const summary = await runPaymentSummary();
+      setPaymentSummary(summary);
+      setPaymentSummaryError(null);
+    } catch (e) {
+      setPaymentSummaryError(e instanceof Error ? e.message : "Could not load payment intents");
+    }
+  }, [runPaymentSummary]);
+
   useEffect(() => {
     void load();
     void loadEmailSummary();
-  }, [load, loadEmailSummary]);
+    void loadPaymentSummary();
+  }, [load, loadEmailSummary, loadPaymentSummary]);
 
   useEffect(() => {
     const t = window.setInterval(() => {
       void load(true);
       void loadEmailSummary();
+      void loadPaymentSummary();
     }, 30_000);
     return () => window.clearInterval(t);
-  }, [load, loadEmailSummary]);
+  }, [load, loadEmailSummary, loadPaymentSummary]);
 
   const openDetail = async (o: HubOrderRow) => {
     setDetailLoading(true);
@@ -397,6 +413,40 @@ function AdminHubOrders() {
         </div>
       }
     >
+      <section className="mb-4 rounded-2xl border bg-card p-3.5 shadow-card" aria-label="Hub payment reconciliation overview">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold">Hub payment reconciliation</p>
+            <p className="text-[10px] text-muted-foreground">Checkout intent status · customer details remain private</p>
+          </div>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void loadPaymentSummary()}>
+            <RefreshCw className="mr-1.5 size-3.5" /> Refresh
+          </Button>
+        </div>
+        {paymentSummaryError ? <p className="mb-2 text-xs text-destructive">{paymentSummaryError}</p> : null}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["pending", "paid", "failed", "expired"] as const).map((status) => (
+            <div key={status} className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{status}</p>
+              <p className="text-xl font-extrabold tabular-nums">{paymentSummary?.counts[status] ?? "—"}</p>
+            </div>
+          ))}
+        </div>
+        {paymentSummary?.recent.length ? (
+          <div className="mt-3 divide-y divide-border/60">
+            {paymentSummary.recent.slice(0, 6).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{item.service.replace(/_/g, " ")} · ₦{item.amountNaira.toLocaleString("en-NG")}</p>
+                  <p className="text-[10px] text-muted-foreground">Ref …{item.referenceSuffix} · {new Date(item.createdAt).toLocaleString("en-NG")}</p>
+                </div>
+                <StatusBadge status={item.status} />
+              </div>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-xs text-muted-foreground">No payment intents recorded yet.</p>}
+      </section>
+
       <section
         className="mb-4 rounded-2xl border bg-card p-3.5 shadow-card"
         aria-label="Lifecycle email queue"
