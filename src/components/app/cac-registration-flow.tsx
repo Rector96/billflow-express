@@ -452,6 +452,7 @@ export function CacRegistrationFlow() {
             ownerPhone,
             ownerEmail,
             applicationFiles,
+            declarationAccepted: declare,
             businessAddress: `${street}, ${city}, ${lga}, ${state}`,
             delivery,
             shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
