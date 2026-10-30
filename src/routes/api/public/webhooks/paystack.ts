@@ -176,12 +176,13 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   const userId = String(order.user_id);
   const trackingReference = String(order.tracking_reference);
   const eventKey = `hub-payment:${reference}:paid`;
-  const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
-    await Promise.all([
+  const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] = await Promise.all(
+    [
       import("@/lib/hub-documents.functions"),
       import("@/lib/hub-notify.server"),
       import("@/lib/hub-email.server"),
-    ]);
+    ],
+  );
 
   const [staffNotice, customerNotice] = await Promise.all([
     notifyStaffNewHubOrder({
@@ -207,7 +208,9 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
       `Payment notification delivery failed: ${[
         !staffNotice.ok ? staffNotice.error : null,
         !customerNotice.ok ? customerNotice.error : null,
-      ].filter(Boolean).join("; ")}`,
+      ]
+        .filter(Boolean)
+        .join("; ")}`,
     );
   }
 
