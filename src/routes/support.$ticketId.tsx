@@ -133,7 +133,7 @@ function TicketThread() {
     return (
       <AppShell>
         <PageHeader title="RockPay Care" backTo="/support" />
-        <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="mx-auto max-w-md px-4 py-10 text-center text-sm text-muted-foreground lg:max-w-lg lg:px-0">
           Request not found.{" "}
           <Link to="/support" className="font-bold text-primary">
             Back to Care
@@ -152,7 +152,7 @@ function TicketThread() {
         {...(ticket.subject ? { subtitle: ticket.subject } : {})}
         backTo="/support"
       />
-      <div className="flex min-h-[70dvh] flex-col px-4 pb-4">
+      <div className="mx-auto flex min-h-[70dvh] w-full max-w-md flex-col px-4 pb-4 lg:max-w-2xl lg:px-0">
         <div className="mb-3 flex items-start justify-between gap-2 rounded-xl border border-border/70 bg-card px-3 py-2">
           <div className="min-w-0">
             <span
