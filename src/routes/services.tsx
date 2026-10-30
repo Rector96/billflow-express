@@ -48,7 +48,7 @@ type Category = { id: string; label: string; slugs: string[] };
 
 const CATEGORIES: Category[] = [
   { id: "all", label: "All", slugs: [] },
-  { id: "bills", label: "Bills", slugs: ["electricity", "cable"] },
+  { id: "bills", label: "Bills", slugs: ["electricity", "cable", "airtime", "data"] },
   { id: "education", label: "Education", slugs: ["education", "exam-pins"] },
   { id: "government", label: "Government", slugs: ["cac", "tin"] },
   { id: "identity", label: "Identity", slugs: ["nin"] },
@@ -56,7 +56,7 @@ const CATEGORIES: Category[] = [
   { id: "vehicle", label: "Vehicle", slugs: ["vehicle"] },
 ];
 
-const FEATURED_SLUGS = ["electricity", "cable"] as const;
+const FEATURED_SLUGS = ["electricity", "cable", "airtime", "data"] as const;
 const BANNER_SLUGS = ["education", "exam-pins"] as const;
 
 const GRID_GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
@@ -82,7 +82,6 @@ function statusChip(slug: string): { label: string; cls: string } | null {
   return null;
 }
 
-/** Large gradient bento card for the high-frequency bill services. */
 function FeaturedCard({ service }: { service: ServiceConfig }) {
   const path = servicePath(service.slug);
   const chip = statusChip(service.slug);
@@ -91,7 +90,7 @@ function FeaturedCard({ service }: { service: ServiceConfig }) {
     <Link
       to={path.to}
       {...(path.params ? { params: path.params } : {})}
-      className="press group relative flex min-h-[8.5rem] flex-col justify-between overflow-hidden rounded-3xl brand-gradient p-4 text-primary-foreground shadow-float"
+      className="press group relative flex min-h-[8.5rem] flex-col justify-between overflow-hidden rounded-2xl brand-gradient p-4 text-primary-foreground shadow-float lg:min-h-[9.5rem] lg:rounded-3xl lg:p-5"
     >
       <div
         aria-hidden
@@ -102,12 +101,7 @@ function FeaturedCard({ service }: { service: ServiceConfig }) {
           <Icon className="size-5" strokeWidth={1.9} />
         </span>
         {chip ? (
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-              "border border-white/25 bg-white/15 text-primary-foreground",
-            )}
-          >
+          <span className="rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
             {chip.label}
           </span>
         ) : null}
@@ -123,7 +117,6 @@ function FeaturedCard({ service }: { service: ServiceConfig }) {
   );
 }
 
-/** Full-width banner card for education & exam pins. */
 function EducationBanner({ services }: { services: ServiceConfig[] }) {
   const primary = services[0];
   if (!primary) return null;
@@ -133,7 +126,7 @@ function EducationBanner({ services }: { services: ServiceConfig[] }) {
     <Link
       to={path.to}
       {...(path.params ? { params: path.params } : {})}
-      className="press group relative flex items-center gap-4 overflow-hidden rounded-3xl border border-emerald-500/25 bg-emerald-500/10 p-4 shadow-card"
+      className="press group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 shadow-card lg:rounded-3xl lg:p-5"
     >
       <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
         <Icon className="size-6" strokeWidth={1.8} />
@@ -147,7 +140,7 @@ function EducationBanner({ services }: { services: ServiceConfig[] }) {
         </p>
       </div>
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-300">
-        <Zap className="size-3" />
+        <Zap className="size-3" strokeWidth={2} />
         Instant
       </span>
     </Link>
@@ -187,9 +180,8 @@ function ServicesPage() {
   return (
     <AppShell>
       <PageHeader title="All Services" backTo="/home" />
-      <div className="space-y-4 px-4 pt-2 pb-6">
-        {/* Search */}
-        <div className="relative">
+      <div className="space-y-4 px-4 pt-2 pb-8 lg:px-0 lg:space-y-5">
+        <div className="relative max-w-xl">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -200,9 +192,8 @@ function ServicesPage() {
           />
         </div>
 
-        {/* Category chips */}
         <div
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Service categories"
         >
@@ -229,15 +220,14 @@ function ServicesPage() {
         </div>
 
         {hasResults ? (
-          <div className="space-y-4">
-            {/* Featured bento cards */}
+          <div className="space-y-5">
             {featured.length > 0 ? (
               <section aria-label="Everyday bills">
-                <p className="mb-2 flex items-center gap-1.5 px-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  <Sparkles className="size-3" />
+                <p className="mb-2.5 flex items-center gap-1.5 px-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <Sparkles className="size-3" strokeWidth={2} />
                   Everyday bills
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
                   {featured.map((s) => (
                     <FeaturedCard key={s.slug} service={s} />
                   ))}
@@ -245,12 +235,11 @@ function ServicesPage() {
               </section>
             ) : null}
 
-            {/* Education banner */}
             {banner.length > 0 && !searching ? <EducationBanner services={banner} /> : null}
             {banner.length > 0 && searching ? (
               <section aria-label="Education and exam pins">
-                <div className="rounded-3xl border border-border/80 bg-card p-3.5 shadow-card">
-                  <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card lg:rounded-3xl lg:p-4">
+                  <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4 lg:grid-cols-6">
                     {banner.map((s) => {
                       const path = servicePath(s.slug);
                       return (
@@ -269,14 +258,13 @@ function ServicesPage() {
               </section>
             ) : null}
 
-            {/* Remaining groups */}
             {groups.map((g) => (
               <section key={g.id} aria-label={g.title}>
-                <p className="mb-2 px-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <p className="mb-2.5 px-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                   {g.title}
                 </p>
-                <div className="rounded-3xl border border-border/80 bg-card p-3.5 shadow-card">
-                  <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-card lg:rounded-3xl lg:p-4">
+                  <div className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4 lg:grid-cols-6">
                     {g.items.map((s) => {
                       const path = servicePath(s.slug);
                       return (
@@ -305,7 +293,7 @@ function ServicesPage() {
 
         <div className="pt-2 text-center">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.8} />
             Protected by bank-grade encryption
           </p>
         </div>
