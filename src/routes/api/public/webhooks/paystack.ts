@@ -167,28 +167,30 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
     throw new Error("Hub payment was finalized but the order details were not returned.");
   }
 
-  // The webhook may be the first path to record this payment. Notify only on
-  // the first successful finalization; retries must not send duplicate notices.
-  if (!order.was_existing) {
-    const payload = (order.order_payload ?? {}) as Record<string, unknown>;
-    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
-    const preferredName = String(payload.preferredName ?? "CAC application");
-    const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
-    const userId = String(order.user_id);
-    const trackingReference = String(order.tracking_reference);
-    const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
-      await Promise.all([
-        import("@/lib/hub-documents.functions"),
-        import("@/lib/hub-notify.server"),
-        import("@/lib/hub-email.server"),
-      ]);
+  // Always attempt the idempotent notifications, including when a previous
+  // webhook already finalized the payment. This recovers transient insert failures.
+  const payload = (order.order_payload ?? {}) as Record<string, unknown>;
+  const delivery = payload.delivery === "deliver" ? "deliver" : "download";
+  const preferredName = String(payload.preferredName ?? "CAC application");
+  const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
+  const userId = String(order.user_id);
+  const trackingReference = String(order.tracking_reference);
+  const eventKey = `hub-payment:${reference}:paid`;
+  const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
+    await Promise.all([
+      import("@/lib/hub-documents.functions"),
+      import("@/lib/hub-notify.server"),
+      import("@/lib/hub-email.server"),
+    ]);
 
-    await notifyStaffNewHubOrder({
+  const [staffNotice, customerNotice] = await Promise.all([
+    notifyStaffNewHubOrder({
       service: "cac",
       amount,
       orderHint: preferredName,
-    });
-    await notifyUser({
+      eventKey: `${eventKey}:staff`,
+    }),
+    notifyUser({
       userId,
       title: "CAC application received",
       message:
@@ -196,15 +198,30 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
           ? "We received your application. We’ll process it and deliver the printed pack to your address."
           : "We received your application. You’ll be notified when the certificate is ready to download.",
       type: "success",
-    });
-    void sendHubLifecycleEmail({
-      userId,
-      event: "paid",
-      service: "cac",
-      trackingReference,
-      amount,
-    });
+      eventKey: `${eventKey}:customer:${userId}`,
+    }),
+  ]);
+
+  if (!staffNotice.ok || !customerNotice.ok) {
+    throw new Error(
+      `Payment notification delivery failed: ${[
+        !staffNotice.ok ? staffNotice.error : null,
+        !customerNotice.ok ? customerNotice.error : null,
+      ].filter(Boolean).join("; ")}`,
+    );
   }
+
+  // Email delivery is independent of in-app notifications; it must never
+  // affect the already-committed payment or prevent its webhook acknowledgement.
+  void sendHubLifecycleEmail({
+    userId,
+    event: "paid",
+    service: "cac",
+    trackingReference,
+    amount,
+  }).catch((error) => {
+    console.warn("[paystack-webhook] paid email delivery failed", error);
+  });
 
   console.info("[paystack-webhook] Hub payment intent finalized", {
     reference,
