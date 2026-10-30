@@ -1,6 +1,6 @@
 # CAC Business Name (RockPay) — product & engineering reference
 
-**Status:** Demo UI only (`CAC_DEMO_MODE = true`)  
+**Status:** Manual-assisted CAC Business Name processing with verified Paystack checkout  
 **Package price:** ₦27,500 — "Start Business" (Business Name)  
 **Route:** `/cac`  
 **Primary component:** `src/components/app/cac-registration-flow.tsx`  
@@ -15,7 +15,7 @@ RockPay is expanding beyond VTU into high-ticket assisted services.
 | First product | **CAC Business Name** (not Ltd first)                     |
 | User price    | **₦27,500**                                               |
 | TIN           | Later — after CAC exists                                  |
-| Automation    | No public CAC register API; assisted demo until connected |
+| Fulfillment    | RockPay operations team manually submits applications and delivers the certificate |
 
 ## User flow
 
@@ -28,25 +28,26 @@ intro → names → business → proprietor → documents → review → pay →
 - Names: 1–3 preferred names
 - Business: nature, street, city, LGA, state, phone, email, start date
 - Proprietor: full name, gender, DOB, nationality, occupation, NIN, ID type/number, phone, email, residential address
-- Documents: ID image, passport photo, canvas signature
+- Documents: private ID image/PDF, passport photo, uploaded PNG signature
 
 ## Code map
 
 | Path                                           | Role               |
 | ---------------------------------------------- | ------------------ |
-| `src/components/app/cac-registration-flow.tsx` | Demo wizard        |
+| `src/components/app/cac-registration-flow.tsx` | Customer application wizard |
 | `src/routes/cac.tsx`                           | Route `/cac`       |
 | `src/lib/mock-data.ts`                         | Service slug `cac` |
 | `src/lib/product-mode.ts`                      | Visibility / home  |
 | `docs/CAC_BUSINESS_NAME.md`                    | This reference     |
 
-## Going live (remaining)
+## Manual fulfillment
 
-1. Persist applications + file storage
-2. Wallet / transfer payment
-3. Admin queue + certificate upload
-4. Email / notifications
-5. User download when ready
-6. Optional partner CAC APIs
+- Customer completes the full application and uploads ID, passport photo and signature.
+- Files are stored in the private `cac-applications` Supabase Storage bucket under the authenticated user ID.
+- The server validates the upload paths, MIME types and size before creating a payment intent.
+- Paystack is verified server-side; the webhook and checkout confirmation use the same idempotent finalization RPC.
+- Staff review the complete application in `/admin/hub-orders`. Staff-only signed file links expire after five minutes.
+- Staff manually submit the application through the authorized CAC process, then attach the resulting certificate or arrange print-and-delivery.
+- No CAC API integration is claimed. Live checkout is only appropriate while RockPay has staff capacity and a real manual fulfillment process.
 
-Keep `CAC_DEMO_MODE = true` until then.
+Apply `supabase/migrations/20261030240000_cac_private_application_documents.sql` before enabling the new upload workflow.
