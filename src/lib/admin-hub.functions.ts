@@ -171,7 +171,18 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       }
     }
 
-    return { order: { ...row, profile } };
+    let applicationFiles: Record<string, string> = {};
+    if (row.service === "cac") {
+      const meta = asMeta(row.metadata);
+      const files = asMeta(meta["application_files"]);
+      const bucket = admin.storage.from("cac-applications");
+      for (const [key, path] of Object.entries(files)) {
+        if (typeof path !== "string" || !path.startsWith(`${row.user_id}/`) || path.includes("..")) continue;
+        const { data: signed } = await bucket.createSignedUrl(path, 300);
+        if (signed?.signedUrl) applicationFiles[key] = signed.signedUrl;
+      }
+    }
+    return { order: { ...row, profile, applicationFiles } };
   });
 
 export const listDispatchQueue = createServerFn({ method: "GET" })
