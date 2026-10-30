@@ -47,7 +47,7 @@ function SavedPaymentsPage() {
   return (
     <AppShell>
       <PageHeader title="Saved Payments" backTo="/profile" />
-      <div className="space-y-3 px-4 pt-2 pb-6">
+      <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-2 pb-8 lg:max-w-2xl lg:px-0">
         {saved.map((item) => {
           const svc = getService(item.serviceSlug)!;
           return (
