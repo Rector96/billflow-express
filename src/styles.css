@@ -298,9 +298,10 @@
   );
 }
 
-/* Desktop: service payment steps use a wider, calmer reading width */
+/* Desktop: service payment + hub application steps use a wider, calmer reading width */
 @media (min-width: 1024px) {
-  .payment-flow-page {
+  .payment-flow-page,
+  .hub-flow-page {
     max-width: 42rem !important; /* ~max-w-2xl */
     padding-left: 0 !important;
     padding-right: 0 !important;
