@@ -285,8 +285,15 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     if (!row) throw new Error("Order not found");
 
     const statusChanged = row.status !== data.status;
+    const currentMeta = asMeta(row.metadata);
+    const eventKey = statusChanged
+      ? `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`
+      : typeof currentMeta["status_event_key"] === "string"
+        ? currentMeta["status_event_key"]
+        : `hub-order:${data.orderId}:status:${data.status}:legacy`;
+
     if (statusChanged) {
-      const prevMeta = asMeta(row.metadata);
+      const prevMeta = currentMeta;
       const history = Array.isArray(prevMeta["status_history"])
         ? [...(prevMeta["status_history"] as unknown[])]
         : [];
@@ -301,7 +308,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       const nextMeta = {
         ...prevMeta,
         status_history: history,
-        status_event_key: `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`,
+        status_event_key: eventKey,
       };
       if (data.status === "successful") {
         nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
@@ -322,14 +329,6 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     // Attempt these on every request, not only on the transition. If one
     // insert failed after the status was saved, staff can retry the same
     // status and the unique event keys recover only the missing notice.
-    const currentMeta = asMeta(row.metadata);
-    const storedEventKey =
-      typeof currentMeta["status_event_key"] === "string"
-        ? currentMeta["status_event_key"]
-        : `hub-order:${data.orderId}:status:${data.status}:legacy`;
-    const eventKey = statusChanged
-      ? `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`
-      : storedEventKey;
     const [customerNotice, staffNotice] = await Promise.all([
       notifyCustomerHubStatus({
         userId: row.user_id,
