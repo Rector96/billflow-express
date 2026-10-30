@@ -17,6 +17,7 @@ import {
   getHubOrderDetail,
   getHubEmailOutboxSummary,
   getHubPaymentIntentSummary,
+  recheckHubPaymentIntent,
   listHubOrders,
   notifyCustomerToDownload,
   retryHubLifecycleEmails,
@@ -118,6 +119,7 @@ function AdminHubOrders() {
   const runRetryEmails = useServerFn(retryHubLifecycleEmails);
   const runEmailSummary = useServerFn(getHubEmailOutboxSummary);
   const runPaymentSummary = useServerFn(getHubPaymentIntentSummary);
+  const runPaymentRecheck = useServerFn(recheckHubPaymentIntent);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -140,6 +142,7 @@ function AdminHubOrders() {
     ReturnType<typeof getHubPaymentIntentSummary>
   > | null>(null);
   const [paymentSummaryError, setPaymentSummaryError] = useState<string | null>(null);
+  const [recheckingIntentId, setRecheckingIntentId] = useState<string | null>(null);
   const prevCount = useRef<number | null>(null);
 
   const load = useCallback(
@@ -180,6 +183,19 @@ function AdminHubOrders() {
     }
   }, [runEmailSummary]);
 
+  const recheckPayment = async (intentId: string) => {
+    setRecheckingIntentId(intentId);
+    try {
+      const result = await runPaymentRecheck({ data: { intentId } });
+      if (result.status === "paid") toast.success(result.message);
+      else toast.message(result.message);
+      await Promise.all([loadPaymentSummary(), load(true)]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Payment recheck failed");
+    } finally {
+      setRecheckingIntentId(null);
+    }
+  };
   const loadPaymentSummary = useCallback(async () => {
     try {
       const summary = await runPaymentSummary();
@@ -463,7 +479,20 @@ function AdminHubOrders() {
                     Ref …{item.referenceSuffix} · {new Date(item.createdAt).toLocaleString("en-NG")}
                   </p>
                 </div>
-                <StatusBadge status={item.status} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge status={item.status} />
+                  {["pending", "expired"].includes(item.status) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy || recheckingIntentId !== null}
+                      onClick={() => void recheckPayment(item.id)}
+                    >
+                      {recheckingIntentId === item.id ? "Checking…" : "Recheck"}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
