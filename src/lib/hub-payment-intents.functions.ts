@@ -174,7 +174,6 @@ async function resolveHubAmount(
   return Math.round(amount * 100) / 100;
 }
 
-
 export const getCacPriceQuote = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { delivery: string }) => {

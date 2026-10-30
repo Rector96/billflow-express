@@ -255,7 +255,12 @@ export function CacRegistrationFlow() {
   const runGetPriceQuote = useServerFn(getCacPriceQuote);
   const [step, setStep] = useState<Step>("intro");
   const [paying, setPaying] = useState(false);
-  const [priceQuote, setPriceQuote] = useState<{ registration: number; courier: number; total: number; live: boolean } | null>(null);
+  const [priceQuote, setPriceQuote] = useState<{
+    registration: number;
+    courier: number;
+    total: number;
+    live: boolean;
+  } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [refId, setRefId] = useState("");
@@ -307,13 +312,17 @@ export function CacRegistrationFlow() {
       .catch((error) => {
         if (active) {
           setPriceQuote(null);
-          setQuoteError(error instanceof Error ? error.message : "Could not load the current CAC price.");
+          setQuoteError(
+            error instanceof Error ? error.message : "Could not load the current CAC price.",
+          );
         }
       })
       .finally(() => {
         if (active) setQuoteLoading(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [delivery, runGetPriceQuote]);
 
   useEffect(() => {
@@ -486,7 +495,11 @@ export function CacRegistrationFlow() {
                 </div>
               </div>
               <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
-                {priceQuote ? formatNaira(priceQuote.registration) : quoteLoading ? "Loading price…" : "Price unavailable"}
+                {priceQuote
+                  ? formatNaira(priceQuote.registration)
+                  : quoteLoading
+                    ? "Loading price…"
+                    : "Price unavailable"}
               </p>
               <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
             </div>
@@ -893,8 +906,16 @@ export function CacRegistrationFlow() {
                 Certificate will be in My documents when ready.
               </p>
             )}
-            {quoteError ? <p role="alert" className="text-xs text-destructive">{quoteError}</p> : null}
-            {!quoteError && priceQuote && !priceQuote.live ? <p className="text-xs text-amber-700">Preview pricing only. CAC checkout is not yet accepting live payments.</p> : null}
+            {quoteError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {quoteError}
+              </p>
+            ) : null}
+            {!quoteError && priceQuote && !priceQuote.live ? (
+              <p className="text-xs text-amber-700">
+                Preview pricing only. CAC checkout is not yet accepting live payments.
+              </p>
+            ) : null}
             <label className="flex items-start gap-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
