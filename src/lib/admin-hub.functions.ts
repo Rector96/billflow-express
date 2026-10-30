@@ -36,6 +36,7 @@ export type HubCustomerProfile = {
 
 export type HubOrderDetail = HubOrderRow & {
   profile: HubCustomerProfile | null;
+  applicationFiles?: Record<string, string>;
 };
 
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
