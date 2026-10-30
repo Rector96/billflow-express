@@ -73,8 +73,7 @@ export function classifyPaystackFunding(
     return { kind: "mismatch", reason: "invalid_charged_amount" };
   }
 
-  const requested =
-    data.requested_amount == null ? null : Number(data.requested_amount);
+  const requested = data.requested_amount == null ? null : Number(data.requested_amount);
   const fees = data.fees == null ? null : Number(data.fees);
 
   // Normal Paystack charge: the transaction amount equals the wallet amount.
@@ -217,8 +216,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       return {
         status: "successful",
         amount,
-        balanceAfter:
-          result?.["balance_after"] != null ? Number(result["balance_after"]) : null,
+        balanceAfter: result?.["balance_after"] != null ? Number(result["balance_after"]) : null,
         credited: Boolean(result?.["credited"]),
       };
     }
@@ -273,8 +271,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     return {
       status: "successful",
       amount: result["amount"] != null ? Number(result["amount"]) : amount,
-      balanceAfter:
-        result["balance_after"] != null ? Number(result["balance_after"]) : null,
+      balanceAfter: result["balance_after"] != null ? Number(result["balance_after"]) : null,
       credited: Boolean(result["credited"]),
     };
   }

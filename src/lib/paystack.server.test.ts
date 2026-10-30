@@ -45,11 +45,7 @@ describe("classifyPaystackFunding", () => {
   });
 
   it("rejects a different reference", () => {
-    const result = classifyPaystackFunding(
-      { ...base, amount: 500000 },
-      "WAL-OTHER",
-      500000,
-    );
+    const result = classifyPaystackFunding({ ...base, amount: 500000 }, "WAL-OTHER", 500000);
     assert.deepEqual(result, { kind: "mismatch", reason: "reference_mismatch" });
   });
 
