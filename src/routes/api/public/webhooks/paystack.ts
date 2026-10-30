@@ -142,17 +142,65 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
     throw new Error("Invalid Paystack transaction identifier.");
   }
 
-  const { error: finalizeError } = await admin.rpc("finalize_hub_payment_intent", {
+  const { data: finalized, error: finalizeError } = await admin.rpc("finalize_hub_payment_intent", {
     _payment_reference: reference,
     _provider_transaction_id: providerTransactionId,
     _paid_at: transaction.paid_at ?? transaction.paidAt ?? new Date().toISOString(),
   });
   if (finalizeError) throw new Error(`Hub payment finalization failed: ${finalizeError.message}`);
 
+  const order = Array.isArray(finalized) ? finalized[0] : finalized;
+  if (!order?.tracking_reference || !order?.user_id) {
+    throw new Error("Hub payment was finalized but the order details were not returned.");
+  }
+
+  // The webhook may be the first path to record this payment. Notify only on
+  // the first successful finalization; retries must not send duplicate notices.
+  if (!order.was_existing) {
+    const payload = (order.order_payload ?? {}) as Record<string, unknown>;
+    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
+    const preferredName = String(payload.preferredName ?? "CAC application");
+    const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
+    const userId = String(order.user_id);
+    const trackingReference = String(order.tracking_reference);
+    const [
+      { notifyStaffNewHubOrder },
+      { notifyUser },
+      { sendHubLifecycleEmail },
+    ] = await Promise.all([
+      import("@/lib/hub-documents.functions"),
+      import("@/lib/hub-notify.server"),
+      import("@/lib/hub-email.server"),
+    ]);
+
+    await notifyStaffNewHubOrder({
+      service: "cac",
+      amount,
+      orderHint: preferredName,
+    });
+    await notifyUser({
+      userId,
+      title: "CAC application received",
+      message:
+        delivery === "deliver"
+          ? "We received your application. We’ll process it and deliver the printed pack to your address."
+          : "We received your application. You’ll be notified when the certificate is ready to download.",
+      type: "success",
+    });
+    void sendHubLifecycleEmail({
+      userId,
+      event: "paid",
+      service: "cac",
+      trackingReference,
+      amount,
+    });
+  }
+
   console.info("[paystack-webhook] Hub payment intent finalized", {
     reference,
     service: intent.service,
     transactionId: providerTransactionId,
+    wasExisting: Boolean(order.was_existing),
   });
   return true;
 }
