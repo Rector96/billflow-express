@@ -1,5 +1,6 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { Link, useParams } from "@tanstack/react-router";
+import { ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,15 @@ export function RockPayBillEntry() {
     return (
       <AppShell>
         <PageHeader title={service?.name ?? "Coming soon"} backTo="/services" />
-        <div className="mx-auto max-w-md px-4 py-10 text-center">
-          <p className="text-sm font-bold">Coming soon</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            This RockPay bill service is not enabled yet.
+        <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-12 text-center lg:max-w-lg lg:px-0 lg:py-16">
+          <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
+            <ShieldCheck className="size-7" strokeWidth={1.8} />
+          </span>
+          <p className="mt-4 text-lg font-extrabold tracking-tight">Coming soon</p>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            This bill service is not enabled yet. We will open it when the provider path is verified.
           </p>
-          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
+          <Button className="mt-6 h-11 rounded-xl font-semibold" asChild>
             <Link to="/services">Back to services</Link>
           </Button>
         </div>
@@ -35,8 +39,15 @@ export function RockPayBillEntry() {
     return (
       <AppShell>
         <PageHeader title="Service unavailable" backTo="/services" />
-        <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-          We could not find that service.
+        <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-12 text-center lg:max-w-lg lg:px-0">
+          <span className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
+            <ShieldCheck className="size-7" strokeWidth={1.8} />
+          </span>
+          <p className="mt-4 text-lg font-extrabold tracking-tight">Service unavailable</p>
+          <p className="mt-2 text-sm text-muted-foreground">We could not find that service.</p>
+          <Button className="mt-6 h-11 rounded-xl font-semibold" asChild>
+            <Link to="/services">Back to services</Link>
+          </Button>
         </div>
       </AppShell>
     );
