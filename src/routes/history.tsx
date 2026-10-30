@@ -1,12 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  ReceiptText,
-  Search,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ReceiptText, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, StatusBadge } from "@/components/app/ui-bits";
@@ -246,7 +240,11 @@ function HistoryPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {ACTIVITY_TABS.map((t) => (
-              <Chip key={t.key} active={activityTab === t.key} onClick={() => setActivityTab(t.key)}>
+              <Chip
+                key={t.key}
+                active={activityTab === t.key}
+                onClick={() => setActivityTab(t.key)}
+              >
                 {t.label}
               </Chip>
             ))}
