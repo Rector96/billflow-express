@@ -94,8 +94,16 @@ BEGIN
     RAISE EXCEPTION 'Paid Hub intent is missing its order record';
   END IF;
 
-  IF v_intent.status <> 'pending' OR v_intent.expires_at < now() THEN
-    RAISE EXCEPTION 'Hub payment intent is not pending or has expired';
+  IF coalesce(_paid_at, now()) > now() + interval '5 minutes' THEN
+    RAISE EXCEPTION 'Paystack payment timestamp is invalid';
+  END IF;
+
+  -- A webhook may arrive after intent expiry. Accept it only when Paystack's
+  -- verified paid_at proves the charge occurred while the intent was valid.
+  IF v_intent.status <> 'pending'
+     OR coalesce(_paid_at, now()) < v_intent.created_at - interval '5 minutes'
+     OR coalesce(_paid_at, now()) > v_intent.expires_at THEN
+    RAISE EXCEPTION 'Hub payment intent is not pending or payment occurred outside its validity window';
   END IF;
 
   IF jsonb_typeof(v_intent.order_payload->'applicationFiles') <> 'object'
