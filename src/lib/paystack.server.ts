@@ -184,6 +184,20 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     const classification = classifyPaystackFunding(data, reference, expectedSubunits);
 
     if (classification.kind === "mismatch") {
+      // Safe diagnostics only: never log the secret, customer data, or card details.
+      console.error("[paystack] successful transaction rejected by funding validation", {
+        reference,
+        channel: data.channel ?? null,
+        transactionId: data.id ?? null,
+        currency: data.currency ?? null,
+        chargedAmount: data.amount ?? null,
+        requestedAmount: data.requested_amount ?? null,
+        fees: data.fees ?? null,
+        chargedAmountType: typeof data.amount,
+        requestedAmountType: typeof data.requested_amount,
+        feesType: typeof data.fees,
+        validationReason: classification.reason,
+      });
       const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
         _reference: reference,
         _status: "failed",
