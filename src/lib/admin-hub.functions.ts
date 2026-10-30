@@ -750,11 +750,24 @@ export const getHubEmailOutboxSummary = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const admin = await assertStaff(context.userId);
     const [pending, processing, sent, failed, recent] = await Promise.all([
-      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "processing"),
-      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "sent"),
-      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "failed"),
-      admin.from("hub_email_outbox")
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "processing"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "sent"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
+      admin
+        .from("hub_email_outbox")
         .select("id,event,status,attempts,created_at,sent_at,last_error")
         .order("created_at", { ascending: false })
         .limit(12),
