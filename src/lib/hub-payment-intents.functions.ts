@@ -296,12 +296,16 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
       if (storageError) throw new Error("Could not verify uploaded CAC documents.");
       const objects = new Map((stored ?? []).map((item) => [item.name, item]));
       const idMeta = objects.get("id-document")?.metadata as Record<string, unknown> | undefined;
-      const photoMeta = objects.get("passport-photo")?.metadata as Record<string, unknown> | undefined;
-      const signatureMeta = objects.get("signature.png")?.metadata as Record<string, unknown> | undefined;
+      const photoMeta = objects.get("passport-photo")?.metadata as
+        Record<string, unknown> | undefined;
+      const signatureMeta = objects.get("signature.png")?.metadata as
+        Record<string, unknown> | undefined;
       const idMime = String(idMeta?.mimetype ?? "");
       const photoMime = String(photoMeta?.mimetype ?? "");
       if (
-        !idMeta || !photoMeta || !signatureMeta ||
+        !idMeta ||
+        !photoMeta ||
+        !signatureMeta ||
         !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(idMime) ||
         !["image/jpeg", "image/png", "image/webp"].includes(photoMime) ||
         String(signatureMeta.mimetype ?? "") !== "image/png" ||
