@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
+import { isBillLive } from "@/lib/product-mode";
 
 // Only CAC is enabled for secure intents until each other Hub service has
 // its matching server-side settlement and reconciliation flow.
@@ -186,6 +187,13 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }) => {
+    // Preview-only services must never open a real Paystack checkout. Keep
+    // existing saved intents redeemable, but block creation of new chargeable
+    // intents until operations explicitly marks CAC as live.
+    if (!isBillLive(data.service)) {
+      throw new Error("CAC checkout is currently in preview mode and cannot accept live payments.");
+    }
+
     const email = cleanText((context.claims as Record<string, unknown>)?.email, 254).toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Your account email is unavailable. Please sign in again.");
