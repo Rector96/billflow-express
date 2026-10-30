@@ -132,7 +132,10 @@ function PayCompletePage() {
           <p className="max-w-sm text-sm text-muted-foreground">
             Open this page from your payment return link so we can confirm the bill.
           </p>
-          <Button className="mt-2 h-12 rounded-2xl font-bold" onClick={() => navigate({ to: "/home" })}>
+          <Button
+            className="mt-2 h-12 rounded-2xl font-bold"
+            onClick={() => navigate({ to: "/home" })}
+          >
             <Home className="mr-2 size-4" strokeWidth={1.8} /> Go to Home
           </Button>
         </div>
