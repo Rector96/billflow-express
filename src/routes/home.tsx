@@ -50,13 +50,48 @@ export const Route = createFileRoute("/home")({
 
 /** Primary bill services for the desktop quick grid */
 const PRIMARY_SERVICES = [
-  { slug: "electricity", label: "Electricity", Icon: Zap, tint: "text-[#D97706] bg-[#FEF3C7] border border-[#FDE68A]/60" },
-  { slug: "cable", label: "Cable TV", Icon: Tv, tint: "text-[#0D9488] bg-[#CCFBF1] border border-[#99F6E4]/60" },
-  { slug: "airtime", label: "Airtime", Icon: Smartphone, tint: "text-[#DB2777] bg-[#FCE7F3] border border-[#FBCFE8]/60" },
-  { slug: "data", label: "Data", Icon: Wifi, tint: "text-[#2563EB] bg-[#DBEAFE] border border-[#BFDBFE]/60" },
-  { slug: "education", label: "Education", Icon: GraduationCap, tint: "text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE]/60" },
-  { slug: "documents", label: "Docs", Icon: FileText, tint: "text-[#475569] bg-[#F1F5F9] border border-[#E2E8F0]/80" },
-  { slug: "vehicle", label: "Vehicle", Icon: Car, tint: "text-[#0369A1] bg-[#E0F2FE] border border-[#BAE6FD]/60" },
+  {
+    slug: "electricity",
+    label: "Electricity",
+    Icon: Zap,
+    tint: "text-[#D97706] bg-[#FEF3C7] border border-[#FDE68A]/60",
+  },
+  {
+    slug: "cable",
+    label: "Cable TV",
+    Icon: Tv,
+    tint: "text-[#0D9488] bg-[#CCFBF1] border border-[#99F6E4]/60",
+  },
+  {
+    slug: "airtime",
+    label: "Airtime",
+    Icon: Smartphone,
+    tint: "text-[#DB2777] bg-[#FCE7F3] border border-[#FBCFE8]/60",
+  },
+  {
+    slug: "data",
+    label: "Data",
+    Icon: Wifi,
+    tint: "text-[#2563EB] bg-[#DBEAFE] border border-[#BFDBFE]/60",
+  },
+  {
+    slug: "education",
+    label: "Education",
+    Icon: GraduationCap,
+    tint: "text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE]/60",
+  },
+  {
+    slug: "documents",
+    label: "Docs",
+    Icon: FileText,
+    tint: "text-[#475569] bg-[#F1F5F9] border border-[#E2E8F0]/80",
+  },
+  {
+    slug: "vehicle",
+    label: "Vehicle",
+    Icon: Car,
+    tint: "text-[#0369A1] bg-[#E0F2FE] border border-[#BAE6FD]/60",
+  },
 ] as const;
 
 /** Extra hub services shown on mobile / secondary grid */
@@ -151,10 +186,7 @@ function HomePage() {
           </div>
 
           {/* Desktop search sits in the header */}
-          <form
-            onSubmit={runServiceSearch}
-            className="relative hidden max-w-md flex-1 lg:block"
-          >
+          <form onSubmit={runServiceSearch} className="relative hidden max-w-md flex-1 lg:block">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={serviceQuery}
