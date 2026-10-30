@@ -185,10 +185,12 @@ export async function notifyStaffNewHubOrder(input: {
   service: string;
   amount: number;
   orderHint: string;
+  eventKey?: string;
 }) {
-  await notifyStaff({
+  return notifyStaff({
     title: "New hub order",
     message: `${input.service.replace(/_/g, " ")} · ₦${Math.round(input.amount).toLocaleString("en-NG")} · ${input.orderHint}`,
     type: "pending",
+    eventKey: input.eventKey,
   });
 }
