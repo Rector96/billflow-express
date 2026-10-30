@@ -163,15 +163,12 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
     const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
     const userId = String(order.user_id);
     const trackingReference = String(order.tracking_reference);
-    const [
-      { notifyStaffNewHubOrder },
-      { notifyUser },
-      { sendHubLifecycleEmail },
-    ] = await Promise.all([
-      import("@/lib/hub-documents.functions"),
-      import("@/lib/hub-notify.server"),
-      import("@/lib/hub-email.server"),
-    ]);
+    const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
+      await Promise.all([
+        import("@/lib/hub-documents.functions"),
+        import("@/lib/hub-notify.server"),
+        import("@/lib/hub-email.server"),
+      ]);
 
     await notifyStaffNewHubOrder({
       service: "cac",
