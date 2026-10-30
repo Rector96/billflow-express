@@ -307,6 +307,18 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
       if (draftIds.length !== 1 || !/^[0-9a-f-]{36}$/i.test(draftIds[0]!)) {
         throw new Error("CAC document upload reference is invalid.");
       }
+
+      // Bind each evidence field to its one canonical object path. Merely
+      // sharing a UID/draft folder is not enough: reject path substitution.
+      const uploadFolder = `${context.userId}/${draftIds[0]}`;
+      if (
+        files.idDocument !== `${uploadFolder}/id-document` ||
+        files.passportPhoto !== `${uploadFolder}/passport-photo` ||
+        files.signature !== `${uploadFolder}/signature.png`
+      ) {
+        throw new Error("CAC document paths do not match the expected uploads.");
+      }
+
       const { data: stored, error: storageError } = await supabaseAdmin.storage
         .from("cac-applications")
         .list(`${context.userId}/${draftIds[0]}`, { limit: 20 });
