@@ -66,10 +66,10 @@ function ProfilePage() {
 
   return (
     <AppShell>
-      <header className="px-4 pt-5 pb-4">
-        <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-card">
-          <div className="h-20 bg-gradient-to-br from-primary-soft via-card to-secondary" />
-          <div className="-mt-10 flex flex-col items-center px-5 pb-5 text-center">
+      <header className="px-4 pt-5 pb-4 lg:px-0 lg:pt-6">
+        <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-card lg:rounded-3xl">
+          <div className="h-20 bg-gradient-to-br from-primary-soft via-card to-secondary lg:h-24" />
+          <div className="-mt-10 flex flex-col items-center px-5 pb-5 text-center lg:-mt-12 lg:flex-row lg:items-end lg:gap-5 lg:px-8 lg:pb-6 lg:text-left">
             <div className="rounded-full bg-card p-1.5 shadow-lg">
               <UserAvatar
                 name={profile.name}
@@ -77,42 +77,45 @@ function ProfilePage() {
                 size="lg"
               />
             </div>
-            <p className="mt-3 text-lg font-extrabold tracking-tight text-foreground">
-              {profile.name || "Your account"}
-            </p>
-            {profile.email ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">{profile.email}</p>
-            ) : null}
-            <p className="mt-3 rounded-full bg-success-soft px-3 py-1 text-[11px] font-bold text-success">
-              Account active
-            </p>
+            <div className="mt-3 min-w-0 lg:mt-0 lg:pb-1">
+              <p className="text-lg font-extrabold tracking-tight text-foreground">
+                {profile.name || "Your account"}
+              </p>
+              {profile.email ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">{profile.email}</p>
+              ) : null}
+              <p className="mt-2 inline-flex rounded-full bg-success-soft px-3 py-1 text-[11px] font-bold text-success">
+                Account active
+              </p>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Menu card overlapping the gradient */}
-      <div className="relative -mt-8 space-y-2 rounded-t-3xl bg-gradient-to-b from-violet-50 via-background to-background px-4 pt-6 pb-6">
-        {items.map((item) => (
-          <Link
-            key={item.label}
-            to={item.to}
-            className="press flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3.5 shadow-soft transition-colors hover:border-border hover:bg-muted/40"
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-foreground">
-              <item.icon className="size-4 stroke-[2]" />
-            </span>
-            <span className="flex-1 text-sm font-semibold text-foreground">{item.label}</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
-          </Link>
-        ))}
+      <div className="space-y-2 px-4 pt-1 pb-8 lg:px-0">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <Link
+              key={item.label}
+              to={item.to}
+              className="press flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-3.5 py-3.5 shadow-soft transition-colors hover:border-border hover:bg-muted/40"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-foreground">
+                <item.icon className="size-4" strokeWidth={1.8} />
+              </span>
+              <span className="flex-1 text-sm font-semibold text-foreground">{item.label}</span>
+              <ChevronRight className="size-4 text-muted-foreground" strokeWidth={1.8} />
+            </Link>
+          ))}
+        </div>
 
         <AlertDialog>
-          <AlertDialogTrigger className="press mt-2 flex w-full items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive-soft/50 px-3.5 py-3.5 text-left shadow-soft hover:bg-destructive-soft transition-colors">
+          <AlertDialogTrigger className="press mt-2 flex w-full items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive-soft/50 px-3.5 py-3.5 text-left shadow-soft transition-colors hover:bg-destructive-soft sm:max-w-sm">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-destructive text-destructive-foreground">
-              <LogOut className="size-4" />
+              <LogOut className="size-4" strokeWidth={1.8} />
             </span>
             <span className="flex-1 text-sm font-semibold text-destructive">Logout</span>
-            <ChevronRight className="size-4 text-destructive/60" />
+            <ChevronRight className="size-4 text-destructive/60" strokeWidth={1.8} />
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-2xl">
             <AlertDialogHeader>
@@ -137,7 +140,7 @@ function ProfilePage() {
 
         <Link
           to="/admin"
-          className="press mt-3 block rounded-2xl border border-dashed border-border/80 p-3 text-center text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          className="press mt-3 block rounded-2xl border border-dashed border-border/80 p-3 text-center text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground sm:max-w-sm"
         >
           Admin Dashboard
         </Link>
