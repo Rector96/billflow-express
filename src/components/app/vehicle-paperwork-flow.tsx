@@ -153,7 +153,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "done" && vehicle && choice) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+        <div className="mx-auto flex min-h-[60dvh] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
           <h1 className="text-lg font-bold">Order received</h1>
           <p className="text-sm text-muted-foreground">
             {choice === "third_party_insurance"
@@ -182,7 +182,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Vehicle" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-28 pt-1 lg:max-w-2xl lg:px-0 lg:pb-12">
         <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "lookup" ? (
