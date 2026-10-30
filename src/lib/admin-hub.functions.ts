@@ -177,7 +177,8 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       const files = asMeta(meta["application_files"]);
       const bucket = admin.storage.from("cac-applications");
       for (const [key, path] of Object.entries(files)) {
-        if (typeof path !== "string" || !path.startsWith(`${row.user_id}/`) || path.includes("..")) continue;
+        if (typeof path !== "string" || !path.startsWith(`${row.user_id}/`) || path.includes(".."))
+          continue;
         const { data: signed } = await bucket.createSignedUrl(path, 300);
         if (signed?.signedUrl) applicationFiles[key] = signed.signedUrl;
       }

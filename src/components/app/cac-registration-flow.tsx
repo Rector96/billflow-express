@@ -410,18 +410,14 @@ export function CacRegistrationFlow() {
           supabase.storage
             .from("cac-applications")
             .upload(`${base}/id-document`, idFile, { upsert: false, contentType: idFile.type }),
-          supabase.storage
-            .from("cac-applications")
-            .upload(`${base}/passport-photo`, photoFile, {
-              upsert: false,
-              contentType: photoFile.type,
-            }),
-          supabase.storage
-            .from("cac-applications")
-            .upload(`${base}/signature.png`, signatureBlob, {
-              upsert: false,
-              contentType: "image/png",
-            }),
+          supabase.storage.from("cac-applications").upload(`${base}/passport-photo`, photoFile, {
+            upsert: false,
+            contentType: photoFile.type,
+          }),
+          supabase.storage.from("cac-applications").upload(`${base}/signature.png`, signatureBlob, {
+            upsert: false,
+            contentType: "image/png",
+          }),
         ]);
         const failed = uploads.find((u) => u.error);
         if (failed?.error)
