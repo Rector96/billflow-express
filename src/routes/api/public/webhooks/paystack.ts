@@ -113,7 +113,8 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   }
 
   const transaction = await paystackVerify(reference);
-  if (!transaction) throw new Error("Paystack transaction verification is temporarily unavailable.");
+  if (!transaction)
+    throw new Error("Paystack transaction verification is temporarily unavailable.");
   if (String(transaction.status ?? "").toLowerCase() !== "success") {
     // A signed event alone is not proof of a successful charge.
     return true;
