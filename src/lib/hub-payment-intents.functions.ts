@@ -23,7 +23,9 @@ const HUB_SERVICES = [
 type HubService = (typeof HUB_SERVICES)[number];
 
 function cleanText(value: unknown, max = 500): string {
-  return String(value ?? "").trim().slice(0, max);
+  return String(value ?? "")
+    .trim()
+    .slice(0, max);
 }
 
 function requiredText(value: unknown, label: string, max = 500): string {
@@ -82,7 +84,12 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
     const shippingAddress = cleanText(input.shippingAddress, 500);
     if (delivery && !shippingAddress) throw new Error("A delivery address is required.");
     return {
-      product: service === "nin_retrieve" ? "retrieve" : service === "nin_slip" ? "slip_pdf" : "plastic_card",
+      product:
+        service === "nin_retrieve"
+          ? "retrieve"
+          : service === "nin_slip"
+            ? "slip_pdf"
+            : "plastic_card",
       nin,
       phone,
       delivery: delivery ? "deliver" : "download",
@@ -107,10 +114,23 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
   }
 
   if (service === "documents") {
-    const documentType = input.documentType === "constitution" ? "constitution" : input.documentType === "tenancy" ? "tenancy" : null;
+    const documentType =
+      input.documentType === "constitution"
+        ? "constitution"
+        : input.documentType === "tenancy"
+          ? "tenancy"
+          : null;
     if (!documentType) throw new Error("Choose a supported document type.");
-    const partyA = requiredText(input.partyA, documentType === "tenancy" ? "Landlord name" : "Business name", 160);
-    const partyB = requiredText(input.partyB, documentType === "tenancy" ? "Tenant name" : "Manager name", 160);
+    const partyA = requiredText(
+      input.partyA,
+      documentType === "tenancy" ? "Landlord name" : "Business name",
+      160,
+    );
+    const partyB = requiredText(
+      input.partyB,
+      documentType === "tenancy" ? "Tenant name" : "Manager name",
+      160,
+    );
     const address = requiredText(input.address, "Address", 500);
     return {
       documentType,
@@ -126,7 +146,10 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
   throw new Error("Unsupported Hub service.");
 }
 
-async function resolveHubAmount(service: HubService, payload: Record<string, unknown>): Promise<number> {
+async function resolveHubAmount(
+  service: HubService,
+  payload: Record<string, unknown>,
+): Promise<number> {
   const fees = await loadHubFeesFromSupabase();
   let amount = 0;
   switch (service) {
