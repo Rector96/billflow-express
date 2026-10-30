@@ -174,7 +174,9 @@ function TransactionDetails() {
           />
           <StatusBadge status={status as "successful" | "pending" | "failed"} />
           <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
-          <p className="text-3xl font-extrabold tabular-nums">{formatNaira(Math.abs(Number(amount) || 0))}</p>
+          <p className="text-3xl font-extrabold tabular-nums">
+            {formatNaira(Math.abs(Number(amount) || 0))}
+          </p>
         </div>
 
         <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
