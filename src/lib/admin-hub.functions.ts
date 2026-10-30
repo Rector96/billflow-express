@@ -177,10 +177,35 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       const meta = asMeta(row.metadata);
       const files = asMeta(meta["application_files"]);
       const bucket = admin.storage.from("cac-applications");
-      for (const [key, path] of Object.entries(files)) {
-        if (typeof path !== "string" || !path.startsWith(`${row.user_id}/`) || path.includes(".."))
+      const expectedFiles = {
+        idDocument: "id-document",
+        passportPhoto: "passport-photo",
+        signature: "signature.png",
+      } as const;
+
+      // Only sign the three canonical CAC evidence objects. Metadata is
+      // database content, not permission to expose arbitrary user files.
+      for (const [key, filename] of Object.entries(expectedFiles)) {
+        const path = files[key];
+        if (typeof path !== "string") continue;
+        const match = path.match(
+          /^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\/(id-document|passport-photo|signature\\.png)$/i,
+        );
+        if (!match || match[2] !== filename) continue;
+        const canonicalPath = `${row.user_id}/${match[1]}/${filename}`;
+        if (path !== canonicalPath) continue;
+
+        const { data: signed, error: signedError } = await bucket.createSignedUrl(
+          canonicalPath,
+          300,
+        );
+        if (signedError) {
+          console.warn("[hub-admin] CAC evidence signing failed", {
+            orderId: row.id,
+            file: key,
+          });
           continue;
-        const { data: signed } = await bucket.createSignedUrl(path, 300);
+        }
         if (signed?.signedUrl) applicationFiles[key] = signed.signedUrl;
       }
     }
