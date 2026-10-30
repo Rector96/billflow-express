@@ -45,7 +45,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const CAC_COURIER_PRICE = SERVICE_PRICES.cac_courier;
 
-
 type Step =
   | "intro"
   | "names"
@@ -394,23 +393,39 @@ export function CacRegistrationFlow() {
     setPaying(true);
     try {
       const email = (ownerEmail || bizEmail || "").trim();
-      if (!idFile || !photoFile || !signature) throw new Error("Upload your ID, passport photo and signature before payment.");
+      if (!idFile || !photoFile || !signature)
+        throw new Error("Upload your ID, passport photo and signature before payment.");
       const allowedId = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
       const allowedImage = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowedId.includes(idFile.type) || idFile.size > 10 * 1024 * 1024) throw new Error("ID must be a JPG, PNG, WEBP or PDF up to 10 MB.");
-      if (!allowedImage.includes(photoFile.type) || photoFile.size > 5 * 1024 * 1024) throw new Error("Passport photo must be JPG, PNG or WEBP up to 5 MB.");
+      if (!allowedId.includes(idFile.type) || idFile.size > 10 * 1024 * 1024)
+        throw new Error("ID must be a JPG, PNG, WEBP or PDF up to 10 MB.");
+      if (!allowedImage.includes(photoFile.type) || photoFile.size > 5 * 1024 * 1024)
+        throw new Error("Passport photo must be JPG, PNG or WEBP up to 5 MB.");
       const signatureBlob = await (await fetch(signature)).blob();
       if (signatureBlob.size > 2 * 1024 * 1024) throw new Error("Signature image is too large.");
       const draftId = crypto.randomUUID();
       const base = `${(await supabase.auth.getUser()).data.user?.id}/${draftId}`;
       if (!base.startsWith("undefined/") && !base.includes("null/")) {
         const uploads = await Promise.all([
-          supabase.storage.from("cac-applications").upload(`${base}/id-document`, idFile, { upsert: false, contentType: idFile.type }),
-          supabase.storage.from("cac-applications").upload(`${base}/passport-photo`, photoFile, { upsert: false, contentType: photoFile.type }),
-          supabase.storage.from("cac-applications").upload(`${base}/signature.png`, signatureBlob, { upsert: false, contentType: "image/png" }),
+          supabase.storage
+            .from("cac-applications")
+            .upload(`${base}/id-document`, idFile, { upsert: false, contentType: idFile.type }),
+          supabase.storage
+            .from("cac-applications")
+            .upload(`${base}/passport-photo`, photoFile, {
+              upsert: false,
+              contentType: photoFile.type,
+            }),
+          supabase.storage
+            .from("cac-applications")
+            .upload(`${base}/signature.png`, signatureBlob, {
+              upsert: false,
+              contentType: "image/png",
+            }),
         ]);
         const failed = uploads.find((u) => u.error);
-        if (failed?.error) throw new Error("Could not securely upload CAC documents. Please retry.");
+        if (failed?.error)
+          throw new Error("Could not securely upload CAC documents. Please retry.");
       } else {
         throw new Error("Your sign-in session has expired. Sign in again before continuing.");
       }

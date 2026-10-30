@@ -55,22 +55,27 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
     if (delivery === "deliver" && !shippingAddress) {
       throw new Error("A delivery address is required.");
     }
-    const files = input.applicationFiles && typeof input.applicationFiles === "object"
-      ? (input.applicationFiles as Record<string, unknown>)
-      : {};
+    const files =
+      input.applicationFiles && typeof input.applicationFiles === "object"
+        ? (input.applicationFiles as Record<string, unknown>)
+        : {};
     const applicationFiles = {
       idDocument: requiredText(files.idDocument, "Uploaded ID document", 500),
       passportPhoto: requiredText(files.passportPhoto, "Uploaded passport photo", 500),
       signature: requiredText(files.signature, "Uploaded signature", 500),
     };
     const ownerEmail = requiredText(input.ownerEmail, "Owner email", 254).toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(ownerEmail)) throw new Error("Enter a valid owner email.");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(ownerEmail))
+      throw new Error("Enter a valid owner email.");
     const idType = requiredText(input.idType, "ID type", 80);
-    if (!["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"].includes(idType)) {
+    if (
+      !["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"].includes(idType)
+    ) {
       throw new Error("Choose a supported ID type.");
     }
     const dob = requiredText(input.dob, "Date of birth", 20);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dob) || Number.isNaN(Date.parse(dob))) throw new Error("Enter a valid date of birth.");
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dob) || Number.isNaN(Date.parse(dob)))
+      throw new Error("Enter a valid date of birth.");
     return {
       preferredName: requiredText(input.preferredName, "First business name choice", 160),
       nameChoices: [input.preferredName, input.name2, input.name3].map((v) => cleanText(v, 160)),
@@ -267,11 +272,21 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
     if (data.service === "cac") {
       const files = orderPayload.applicationFiles as Record<string, string>;
       const prefix = `${context.userId}/`;
-      if (Object.values(files).some((path) => !path.startsWith(prefix) || path.includes("..") || path.startsWith("/"))) {
+      if (
+        Object.values(files).some(
+          (path) => !path.startsWith(prefix) || path.includes("..") || path.startsWith("/"),
+        )
+      ) {
         throw new Error("Uploaded CAC documents do not belong to your account.");
       }
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const draftIds = [...new Set(Object.values(files).map((path) => path.split("/")[1]).filter(Boolean))];
+      const draftIds = [
+        ...new Set(
+          Object.values(files)
+            .map((path) => path.split("/")[1])
+            .filter(Boolean),
+        ),
+      ];
       if (draftIds.length !== 1 || !/^[0-9a-f-]{36}$/i.test(draftIds[0]!)) {
         throw new Error("CAC document upload reference is invalid.");
       }
@@ -280,7 +295,11 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
         .list(`${context.userId}/${draftIds[0]}`, { limit: 20 });
       if (storageError) throw new Error("Could not verify uploaded CAC documents.");
       const names = new Set((stored ?? []).map((item) => item.name));
-      if (!names.has("id-document") || !names.has("passport-photo") || !names.has("signature.png")) {
+      if (
+        !names.has("id-document") ||
+        !names.has("passport-photo") ||
+        !names.has("signature.png")
+      ) {
         throw new Error("Upload your ID, passport photo and signature before payment.");
       }
     }
