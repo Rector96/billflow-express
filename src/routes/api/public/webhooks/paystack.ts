@@ -115,7 +115,20 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   const transaction = await paystackVerify(reference);
   if (!transaction)
     throw new Error("Paystack transaction verification is temporarily unavailable.");
-  if (String(transaction.status ?? "").toLowerCase() !== "success") {
+  const verifiedStatus = String(transaction.status ?? "").toLowerCase();
+  if (verifiedStatus !== "success") {
+    // Only mark a payment failed when Paystack's verification endpoint confirms
+    // a terminal failed/abandoned state. Pending states remain retryable.
+    if (verifiedStatus === "failed" || verifiedStatus === "abandoned") {
+      const { error: updateError } = await admin
+        .from("hub_payment_intents")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("id", intent.id)
+        .eq("status", "pending");
+      if (updateError) {
+        throw new Error(`Could not record verified Hub payment failure: ${updateError.message}`);
+      }
+    }
     // A signed event alone is not proof of a successful charge.
     return true;
   }
