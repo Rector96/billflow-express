@@ -63,9 +63,7 @@ function NotificationsPage() {
                   <p className="text-sm font-bold">{n.title}</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{n.body}</p>
                 </div>
-                {!n.read ? (
-                  <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
-                ) : null}
+                {!n.read ? <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" /> : null}
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">{n.time}</p>
             </button>
