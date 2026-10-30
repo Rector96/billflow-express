@@ -146,112 +146,165 @@ async function insertHubOrder(input: {
 
 export const submitCacApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: {
-      amount: number;
-      delivery: "download" | "deliver";
-      preferredName: string;
-      nature: string;
-      ownerName: string;
-      nin: string;
-      ownerPhone: string;
-      ownerEmail: string;
-      businessAddress: string;
-      shippingAddress?: string;
-      shipping?: Record<string, string>;
-      paymentReference?: string;
-    }) => {
-      const amount = Math.round(Number(input?.amount));
-      if (!Number.isFinite(amount) || amount < 1) throw new Error("Invalid amount");
-      const delivery = input?.delivery === "deliver" ? "deliver" : "download";
-      const preferredName = String(input?.preferredName ?? "").trim();
-      if (!preferredName) throw new Error("Business name is required");
-      const nin = String(input?.nin ?? "").replace(/\D/g, "");
-      if (nin.length !== 11) throw new Error("Valid 11-digit NIN required");
-      return {
-        amount,
-        delivery,
-        preferredName,
-        nature: String(input?.nature ?? "").trim(),
-        ownerName: String(input?.ownerName ?? "").trim(),
-        nin,
-        ownerPhone: String(input?.ownerPhone ?? "").trim(),
-        ownerEmail: String(input?.ownerEmail ?? "").trim(),
-        businessAddress: String(input?.businessAddress ?? "").trim(),
-        shippingAddress: String(input?.shippingAddress ?? "").trim(),
-        shipping:
-          input?.shipping && typeof input.shipping === "object"
-            ? (input.shipping as Record<string, string>)
-            : {},
-        paymentReference: String(input?.paymentReference ?? "").trim(),
-      };
-    },
-  )
+  .inputValidator((input: { paymentReference: string }) => {
+    const paymentReference = String(input?.paymentReference ?? "").trim();
+    if (!/^RP-HUB-[A-F0-9]{32}$/.test(paymentReference)) {
+      throw new Error("A valid RockPay payment reference is required.");
+    }
+    return { paymentReference };
+  })
   .handler(async ({ data, context }) => {
     if (!isBillLive("cac") && !isHubPreviewServerEnabled()) {
       throw new Error("CAC registration is not available right now.");
     }
 
-    const trackingReference = uid("CAC");
-    const paymentReference =
-      data.paymentReference || (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hub_payment_intents is not yet in generated Supabase types.
+    const admin = supabaseAdmin as any;
+    const { data: intent, error: intentError } = await admin
+      .from("hub_payment_intents")
+      .select("id,user_id,service,amount_kobo,currency,payment_reference,paystack_domain,status,order_payload,provider_transaction_id")
+      .eq("payment_reference", data.paymentReference)
+      .maybeSingle();
 
-    const { demo } = await assertHubPayment(paymentReference, data.amount);
+    if (intentError || !intent) throw new Error("The payment request could not be found.");
+    if (intent.user_id !== context.userId || intent.service !== "cac") {
+      throw new Error("This payment request does not belong to your CAC application.");
+    }
+
+    const payload = intent.order_payload as Record<string, unknown>;
+    const expectedKobo = Number(intent.amount_kobo);
+    if (!Number.isSafeInteger(expectedKobo) || expectedKobo <= 0 || intent.currency !== "NGN") {
+      throw new Error("The saved CAC payment amount is invalid.");
+    }
+
+    const secret = paystackSecret();
+    const expectedPrefix = intent.paystack_domain === "test" ? "sk_test_" : "sk_live_";
+    if (!secret.startsWith(expectedPrefix)) {
+      throw new Error("The Paystack environment does not match this payment request.");
+    }
+
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.paymentReference)}`,
+      { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" } },
+    );
+    const verified = (await response.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: {
+        id?: number;
+        reference?: string;
+        status?: string;
+        amount?: number;
+        currency?: string;
+      };
+    };
+    const transaction = verified.data;
+    if (!response.ok || !verified.status || !transaction) {
+      throw new Error(verified.message || "Could not verify CAC payment with Paystack.");
+    }
+    if (
+      transaction.status !== "success" ||
+      transaction.reference !== data.paymentReference ||
+      transaction.currency !== "NGN" ||
+      Number(transaction.amount) !== expectedKobo ||
+      !Number.isSafeInteger(Number(transaction.id)) ||
+      Number(transaction.id) <= 0
+    ) {
+      throw new Error("Paystack payment details do not match the saved CAC payment request.");
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from("hub_orders")
+      .select("tracking_reference")
+      .eq("payment_reference", data.paymentReference)
+      .maybeSingle();
+    if (existing?.tracking_reference) {
+      return {
+        ok: true as const,
+        trackingReference: String(existing.tracking_reference),
+        paymentReference: data.paymentReference,
+        amount: expectedKobo / 100,
+        demo: false,
+      };
+    }
+
+    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
+    const preferredName = String(payload.preferredName ?? "");
+    const nin = String(payload.nin ?? "");
+    const trackingReference = uid("CAC");
+    const amount = expectedKobo / 100;
 
     await insertHubOrder({
       userId: context.userId,
       service: "cac",
-      amount: data.amount,
-      paymentReference,
+      amount,
+      paymentReference: data.paymentReference,
       trackingReference,
-      customerIdentifier: data.nin,
+      customerIdentifier: nin,
       status: "pending",
-      demo,
+      demo: false,
       metadata: {
-        preferred_name: data.preferredName,
-        nature: data.nature,
-        owner_name: data.ownerName,
-        nin: data.nin,
-        owner_phone: data.ownerPhone,
-        owner_email: data.ownerEmail,
-        business_address: data.businessAddress,
-        delivery: data.delivery,
-        shipping_address: data.delivery === "deliver" ? data.shippingAddress : null,
-        shipping: data.delivery === "deliver" ? data.shipping : null,
+        preferred_name: preferredName,
+        nature: String(payload.nature ?? ""),
+        owner_name: String(payload.ownerName ?? ""),
+        nin,
+        owner_phone: String(payload.ownerPhone ?? ""),
+        owner_email: String(payload.ownerEmail ?? ""),
+        business_address: String(payload.businessAddress ?? ""),
+        delivery,
+        shipping_address: delivery === "deliver" ? String(payload.shippingAddress ?? "") : null,
+        shipping: delivery === "deliver" ? payload.shipping ?? null : null,
         fulfillment_status: "paid",
+        provider_transaction_id: Number(transaction.id),
+        payment_intent_id: String(intent.id),
       },
     });
 
+    const { error: updateError } = await admin
+      .from("hub_payment_intents")
+      .update({
+        status: "paid",
+        provider_transaction_id: Number(transaction.id),
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", intent.id)
+      .eq("user_id", context.userId)
+      .eq("status", "pending");
+    if (updateError) {
+      console.error("[hub-cac] intent settlement update failed", updateError.message);
+      throw new Error("Payment was verified, but the application confirmation is still processing. Please contact support with your payment reference.");
+    }
+
     await notifyStaffNewHubOrder({
       service: "cac",
-      amount: data.amount,
-      orderHint: data.preferredName,
+      amount,
+      orderHint: preferredName,
     });
-
     await notifyUser({
       userId: context.userId,
       title: "CAC application received",
       message:
-        data.delivery === "deliver"
+        delivery === "deliver"
           ? "We received your application. We’ll process it and deliver the printed pack to your address."
           : "We received your application. You’ll be notified when the certificate is ready to download.",
       type: "success",
     });
-
     void sendHubLifecycleEmail({
       userId: context.userId,
       event: "paid",
       service: "cac",
       trackingReference,
-      amount: data.amount,
+      amount,
     });
 
     return {
       ok: true as const,
       trackingReference,
-      paymentReference,
-      amount: data.amount,
-      demo,
+      paymentReference: data.paymentReference,
+      amount,
+      demo: false,
     };
   });
 
