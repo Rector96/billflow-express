@@ -163,7 +163,9 @@ export const submitCacApplication = createServerFn({ method: "POST" })
     const admin = supabaseAdmin as any;
     const { data: intent, error: intentError } = await admin
       .from("hub_payment_intents")
-      .select("id,user_id,service,amount_kobo,currency,payment_reference,paystack_domain,status,order_payload,provider_transaction_id")
+      .select(
+        "id,user_id,service,amount_kobo,currency,payment_reference,paystack_domain,status,order_payload,provider_transaction_id",
+      )
       .eq("payment_reference", data.paymentReference)
       .maybeSingle();
 
@@ -254,7 +256,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
         business_address: String(payload.businessAddress ?? ""),
         delivery,
         shipping_address: delivery === "deliver" ? String(payload.shippingAddress ?? "") : null,
-        shipping: delivery === "deliver" ? payload.shipping ?? null : null,
+        shipping: delivery === "deliver" ? (payload.shipping ?? null) : null,
         fulfillment_status: "paid",
         provider_transaction_id: Number(transaction.id),
         payment_intent_id: String(intent.id),
@@ -274,7 +276,9 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       .eq("status", "pending");
     if (updateError) {
       console.error("[hub-cac] intent settlement update failed", updateError.message);
-      throw new Error("Payment was verified, but the application confirmation is still processing. Please contact support with your payment reference.");
+      throw new Error(
+        "Payment was verified, but the application confirmation is still processing. Please contact support with your payment reference.",
+      );
     }
 
     await notifyStaffNewHubOrder({
