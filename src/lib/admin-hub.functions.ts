@@ -284,54 +284,75 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       | undefined;
     if (!row) throw new Error("Order not found");
 
-    const prevMeta = asMeta(row.metadata);
-    const history = Array.isArray(prevMeta["status_history"])
-      ? [...(prevMeta["status_history"] as unknown[])]
-      : [];
-    history.push({
-      from: row.status,
-      to: data.status,
-      at: new Date().toISOString(),
-      by: context.userId,
-      note: data.note || null,
-    });
+    const statusChanged = row.status !== data.status;
+    if (statusChanged) {
+      const prevMeta = asMeta(row.metadata);
+      const history = Array.isArray(prevMeta["status_history"])
+        ? [...(prevMeta["status_history"] as unknown[])]
+        : [];
+      history.push({
+        from: row.status,
+        to: data.status,
+        at: new Date().toISOString(),
+        by: context.userId,
+        note: data.note || null,
+      });
 
-    const nextMeta = { ...prevMeta, status_history: history };
-    if (data.status === "successful") {
-      nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
+      const nextMeta = { ...prevMeta, status_history: history };
+      if (data.status === "successful") {
+        nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
+      }
+
+      const { error } = await admin
+        .from("hub_orders")
+        .update({
+          status: data.status,
+          metadata: nextMeta,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", data.orderId);
+
+      if (error) throw new Error(error.message);
     }
 
-    const { error } = await admin
-      .from("hub_orders")
-      .update({
-        status: data.status,
-        metadata: nextMeta,
-        updated_at: new Date().toISOString(),
-      } as never)
-      .eq("id", data.orderId);
-
-    if (error) throw new Error(error.message);
-
-    if (row.status !== data.status) {
-      await notifyCustomerHubStatus({
+    // Attempt these on every request, not only on the transition. If one
+    // insert failed after the status was saved, staff can retry the same
+    // status and the unique event keys recover only the missing notice.
+    const eventKey = `hub-order:${data.orderId}:status:${data.status}`;
+    const [customerNotice, staffNotice] = await Promise.all([
+      notifyCustomerHubStatus({
         userId: row.user_id,
         service: row.service,
         status: data.status,
-      });
-      await notifyStaff({
+        eventKey: `${eventKey}:customer:${row.user_id}`,
+      }),
+      notifyStaff({
         title: "Hub order updated",
         message: `${row.service} → ${data.status.replace(/_/g, " ")} (${data.orderId.slice(0, 8)}…)`,
         type: "information",
+        eventKey: `${eventKey}:staff`,
+      }),
+    ]);
+
+    if (!customerNotice.ok || !staffNotice.ok) {
+      throw new Error(
+        `Order status notification failed: ${[
+          !customerNotice.ok ? customerNotice.error : null,
+          !staffNotice.ok ? staffNotice.error : null,
+        ]
+          .filter(Boolean)
+          .join("; ")}`,
+      );
+    }
+
+    if (statusChanged && data.status === "successful") {
+      void sendHubLifecycleEmail({
+        userId: row.user_id,
+        event: "digital_ready",
+        service: row.service,
+        trackingReference: row.tracking_reference,
+        amount: row.amount,
       });
-      if (data.status === "successful") {
-        void sendHubLifecycleEmail({
-          userId: row.user_id,
-          event: "digital_ready",
-          service: row.service,
-          trackingReference: row.tracking_reference,
-          amount: row.amount,
-        });
-      }
     }
 
     return { ok: true as const, status: data.status };
