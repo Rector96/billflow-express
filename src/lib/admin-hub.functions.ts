@@ -744,6 +744,43 @@ export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
     return processHubEmailOutbox(data.limit);
   });
 
+/** Staff-only, PII-minimised email outbox overview. */
+export const getHubEmailOutboxSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await assertStaff(context.userId);
+    const [pending, processing, sent, failed, recent] = await Promise.all([
+      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "processing"),
+      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "sent"),
+      admin.from("hub_email_outbox").select("id", { count: "exact", head: true }).eq("status", "failed"),
+      admin.from("hub_email_outbox")
+        .select("id,event,status,attempts,created_at,sent_at,last_error")
+        .order("created_at", { ascending: false })
+        .limit(12),
+    ]);
+    for (const result of [pending, processing, sent, failed, recent]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    return {
+      counts: {
+        pending: pending.count ?? 0,
+        processing: processing.count ?? 0,
+        sent: sent.count ?? 0,
+        failed: failed.count ?? 0,
+      },
+      recent: (recent.data ?? []).map((row) => ({
+        id: row.id,
+        event: row.event,
+        status: row.status,
+        attempts: row.attempts,
+        createdAt: row.created_at,
+        sentAt: row.sent_at,
+        lastError: row.last_error ? String(row.last_error).slice(0, 180) : null,
+      })),
+    };
+  });
+
 export const listHubCatalogFees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
