@@ -39,7 +39,7 @@ import {
   type DeliveryMethod,
 } from "@/lib/hub-delivery";
 import { submitCacApplication } from "@/lib/hub-order-submit.functions";
-import { createHubPaymentIntent } from "@/lib/hub-payment-intents.functions";
+import { createHubPaymentIntent, getCacPriceQuote } from "@/lib/hub-payment-intents.functions";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { formatNaira } from "@/lib/mock-data";
 
@@ -252,8 +252,12 @@ export function CacRegistrationFlow() {
   const navigate = useNavigate();
   const runSubmit = useServerFn(submitCacApplication);
   const runCreateIntent = useServerFn(createHubPaymentIntent);
+  const runGetPriceQuote = useServerFn(getCacPriceQuote);
   const [step, setStep] = useState<Step>("intro");
   const [paying, setPaying] = useState(false);
+  const [priceQuote, setPriceQuote] = useState<{ registration: number; courier: number; total: number; live: boolean } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [refId, setRefId] = useState("");
   const [name1, setName1] = useState("");
   const [name2, setName2] = useState("");
@@ -290,7 +294,27 @@ export function CacRegistrationFlow() {
   }, [step]);
 
   const preferredName = name1.trim() || name2.trim() || name3.trim();
-  const totalPay = CAC_DEMO_PRICE + (delivery === "deliver" ? CAC_COURIER_PRICE : 0);
+  const totalPay = priceQuote?.total ?? 0;
+
+  useEffect(() => {
+    let active = true;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    void runGetPriceQuote({ data: { delivery: delivery === "deliver" ? "deliver" : "download" } })
+      .then((quote) => {
+        if (active) setPriceQuote(quote);
+      })
+      .catch((error) => {
+        if (active) {
+          setPriceQuote(null);
+          setQuoteError(error instanceof Error ? error.message : "Could not load the current CAC price.");
+        }
+      })
+      .finally(() => {
+        if (active) setQuoteLoading(false);
+      });
+    return () => { active = false; };
+  }, [delivery, runGetPriceQuote]);
 
   useEffect(() => {
     if (step === "success") {
@@ -462,7 +486,7 @@ export function CacRegistrationFlow() {
                 </div>
               </div>
               <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
-                {formatNaira(CAC_DEMO_PRICE)}
+                {priceQuote ? formatNaira(priceQuote.registration) : quoteLoading ? "Loading price…" : "Price unavailable"}
               </p>
               <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
             </div>
@@ -806,10 +830,10 @@ export function CacRegistrationFlow() {
               onChange={setDelivery}
               downloadLabel="Download certificate"
               downloadSub="PDF when ready"
-              downloadPrice={CAC_DEMO_PRICE}
+              downloadPrice={priceQuote?.registration ?? 0}
               deliverLabel="Print + deliver"
               deliverSub="Printed pack to your address"
-              deliverPrice={CAC_DEMO_PRICE + CAC_COURIER_PRICE}
+              deliverPrice={priceQuote ? priceQuote.registration + priceQuote.courier : 0}
             />
             <PayActionBar>
               <Button
@@ -853,10 +877,10 @@ export function CacRegistrationFlow() {
               lines={
                 delivery === "deliver"
                   ? [
-                      { label: "CAC registration", amount: CAC_DEMO_PRICE },
-                      { label: "Print + delivery", amount: CAC_COURIER_PRICE },
+                      { label: "CAC registration", amount: priceQuote?.registration ?? 0 },
+                      { label: "Print + delivery", amount: priceQuote?.courier ?? 0 },
                     ]
-                  : [{ label: "CAC registration", amount: CAC_DEMO_PRICE }]
+                  : [{ label: "CAC registration", amount: priceQuote?.registration ?? 0 }]
               }
               total={totalPay}
             />
@@ -869,6 +893,8 @@ export function CacRegistrationFlow() {
                 Certificate will be in My documents when ready.
               </p>
             )}
+            {quoteError ? <p role="alert" className="text-xs text-destructive">{quoteError}</p> : null}
+            {!quoteError && priceQuote && !priceQuote.live ? <p className="text-xs text-amber-700">Preview pricing only. CAC checkout is not yet accepting live payments.</p> : null}
             <label className="flex items-start gap-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
@@ -881,7 +907,7 @@ export function CacRegistrationFlow() {
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
+                disabled={paying || quoteLoading || !priceQuote || !!quoteError || !priceQuote.live}
                 onClick={() => void onPay()}
               >
                 {paying ? (
