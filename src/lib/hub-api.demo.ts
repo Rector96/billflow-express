@@ -33,6 +33,7 @@ export async function simulatePaystackInline(input: {
   email: string;
   amountNaira: number;
   metadata?: Record<string, string>;
+  reference?: string;
 }): Promise<PaystackInlineSuccess> {
   const metadata: Record<string, string> = {
     channel: "hub",
@@ -47,7 +48,7 @@ export async function simulatePaystackInline(input: {
     return openPaystackInline(payload);
   }
   await new Promise((r) => setTimeout(r, 900));
-  const reference = `PSK_DEMO_${Date.now()}${Math.floor(Math.random() * 1e4)}`;
+  const reference = input.reference || `PSK_DEMO_${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   if (import.meta.env.DEV) {
     console.info("[Paystack demo — no VITE_PAYSTACK_PUBLIC_KEY]", { ...payload, reference });
   }
