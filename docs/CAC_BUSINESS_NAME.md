@@ -10,12 +10,12 @@
 
 RockPay is expanding beyond VTU into high-ticket assisted services.
 
-| Decision      | Choice                                                    |
-| ------------- | --------------------------------------------------------- |
-| First product | **CAC Business Name** (not Ltd first)                     |
-| User price    | **₦27,500**                                               |
-| TIN           | Later — after CAC exists                                  |
-| Fulfillment    | RockPay operations team manually submits applications and delivers the certificate |
+| Decision      | Choice                                                                             |
+| ------------- | ---------------------------------------------------------------------------------- |
+| First product | **CAC Business Name** (not Ltd first)                                              |
+| User price    | **₦27,500**                                                                        |
+| TIN           | Later — after CAC exists                                                           |
+| Fulfillment   | RockPay operations team manually submits applications and delivers the certificate |
 
 ## User flow
 
@@ -32,13 +32,13 @@ intro → names → business → proprietor → documents → review → pay →
 
 ## Code map
 
-| Path                                           | Role               |
-| ---------------------------------------------- | ------------------ |
+| Path                                           | Role                        |
+| ---------------------------------------------- | --------------------------- |
 | `src/components/app/cac-registration-flow.tsx` | Customer application wizard |
-| `src/routes/cac.tsx`                           | Route `/cac`       |
-| `src/lib/mock-data.ts`                         | Service slug `cac` |
-| `src/lib/product-mode.ts`                      | Visibility / home  |
-| `docs/CAC_BUSINESS_NAME.md`                    | This reference     |
+| `src/routes/cac.tsx`                           | Route `/cac`                |
+| `src/lib/mock-data.ts`                         | Service slug `cac`          |
+| `src/lib/product-mode.ts`                      | Visibility / home           |
+| `docs/CAC_BUSINESS_NAME.md`                    | This reference              |
 
 ## Manual fulfillment
 

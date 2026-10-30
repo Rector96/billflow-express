@@ -16,18 +16,18 @@ A price in `pricing_rules` does **not** make a service available by itself.
 
 ## Current service status
 
-| Service     | Status      | Reason                                                        |
-| ----------- | ----------- | ------------------------------------------------------------- |
-| Airtime     | AVAILABLE   | VTpass production path                                        |
-| Data        | AVAILABLE   | VTpass production path                                        |
-| Electricity | AVAILABLE   | VTpass production path + settlement                           |
-| Cable       | AVAILABLE   | VTpass production path + settlement                           |
-| Exam PINs   | CONTROLLED  | Depends on the selected VTpass product                        |
+| Service     | Status      | Reason                                                                             |
+| ----------- | ----------- | ---------------------------------------------------------------------------------- |
+| Airtime     | AVAILABLE   | VTpass production path                                                             |
+| Data        | AVAILABLE   | VTpass production path                                                             |
+| Electricity | AVAILABLE   | VTpass production path + settlement                                                |
+| Cable       | AVAILABLE   | VTpass production path + settlement                                                |
+| Exam PINs   | CONTROLLED  | Depends on the selected VTpass product                                             |
 | CAC         | MANUAL_LIVE | Verified Paystack checkout + staff-led application filing and certificate delivery |
-| NIN         | COMING_SOON | No authorized NIN fulfillment provider connected              |
-| TIN         | COMING_SOON | Dojah/TIN provider access not configured                      |
-| Vehicle     | COMING_SOON | Verified registry/issuance provider access not configured     |
-| Documents   | COMING_SOON | Secure payment + real PDF delivery path still being finalized |
+| NIN         | COMING_SOON | No authorized NIN fulfillment provider connected                                   |
+| TIN         | COMING_SOON | Dojah/TIN provider access not configured                                           |
+| Vehicle     | COMING_SOON | Verified registry/issuance provider access not configured                          |
+| Documents   | COMING_SOON | Secure payment + real PDF delivery path still being finalized                      |
 
 `src/lib/product-mode.ts` is the central payment gate. A service that is not in
 `LIVE_BILL_SLUGS` must not accept customer payment.
