@@ -404,26 +404,49 @@ export function CacRegistrationFlow() {
       const signatureBlob = await (await fetch(signature)).blob();
       if (signatureBlob.size > 2 * 1024 * 1024) throw new Error("Signature image is too large.");
       const draftId = crypto.randomUUID();
-      const base = `${(await supabase.auth.getUser()).data.user?.id}/${draftId}`;
-      if (!base.startsWith("undefined/") && !base.includes("null/")) {
-        const uploads = await Promise.all([
-          supabase.storage
-            .from("cac-applications")
-            .upload(`${base}/id-document`, idFile, { upsert: false, contentType: idFile.type }),
-          supabase.storage.from("cac-applications").upload(`${base}/passport-photo`, photoFile, {
-            upsert: false,
-            contentType: photoFile.type,
-          }),
-          supabase.storage.from("cac-applications").upload(`${base}/signature.png`, signatureBlob, {
-            upsert: false,
-            contentType: "image/png",
-          }),
-        ]);
-        const failed = uploads.find((u) => u.error);
-        if (failed?.error)
-          throw new Error("Could not securely upload CAC documents. Please retry.");
-      } else {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
         throw new Error("Your sign-in session has expired. Sign in again before continuing.");
+      }
+
+      const base = `${user.id}/${draftId}`;
+      const uploadedPaths: string[] = [];
+      const storage = supabase.storage.from("cac-applications");
+      try {
+        const idPath = `${base}/id-document`;
+        const idUpload = await storage.upload(idPath, idFile, {
+          upsert: false,
+          contentType: idFile.type,
+        });
+        if (idUpload.error) throw idUpload.error;
+        uploadedPaths.push(idPath);
+
+        const photoPath = `${base}/passport-photo`;
+        const photoUpload = await storage.upload(photoPath, photoFile, {
+          upsert: false,
+          contentType: photoFile.type,
+        });
+        if (photoUpload.error) throw photoUpload.error;
+        uploadedPaths.push(photoPath);
+
+        const signaturePath = `${base}/signature.png`;
+        const signatureUpload = await storage.upload(signaturePath, signatureBlob, {
+          upsert: false,
+          contentType: "image/png",
+        });
+        if (signatureUpload.error) throw signatureUpload.error;
+        uploadedPaths.push(signaturePath);
+      } catch {
+        if (uploadedPaths.length > 0) {
+          const { error: cleanupError } = await storage.remove(uploadedPaths);
+          if (cleanupError) {
+            console.warn("CAC partial-upload cleanup failed.");
+          }
+        }
+        throw new Error("Could not securely upload all CAC documents. Please retry.");
       }
       const applicationFiles = {
         idDocument: `${base}/id-document`,
