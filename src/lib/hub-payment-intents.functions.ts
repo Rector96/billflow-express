@@ -10,15 +10,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
 
-const HUB_SERVICES = [
-  "cac",
-  "nin_retrieve",
-  "nin_slip",
-  "nin_card_print",
-  "vehicle_license_sticker",
-  "vehicle_third_party_insurance",
-  "documents",
-] as const;
+// Only CAC is enabled for secure intents until each other Hub service has
+// its matching server-side settlement and reconciliation flow.
+const HUB_SERVICES = ["cac"] as const;
 
 type HubService = (typeof HUB_SERVICES)[number];
 
