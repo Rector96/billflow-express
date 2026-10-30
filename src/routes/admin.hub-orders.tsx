@@ -6,7 +6,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, X, Phone, User, MapPin, FileText, Bell } from "lucide-react";
+import { RefreshCw, X, Phone, User, MapPin, FileText, Bell, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   getHubOrderDetail,
   listHubOrders,
   notifyCustomerToDownload,
+  retryHubLifecycleEmails,
   updateHubCareCall,
   updateHubFulfillment,
   updateHubOrderStatus,
@@ -112,6 +113,7 @@ function AdminHubOrders() {
   const runAgent = useServerFn(assignHubAgent);
   const runCare = useServerFn(updateHubCareCall);
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
+  const runRetryEmails = useServerFn(retryHubLifecycleEmails);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -204,6 +206,22 @@ function AdminHubOrders() {
     if (!detail) return;
     await openDetail(detail);
     await load(true);
+  };
+
+  const retryEmails = async () => {
+    setBusy(true);
+    try {
+      const result = await runRetryEmails({ data: { limit: 50 } });
+      if (result.failed > 0) {
+        toast.warning("Email retry finished: " + result.sent + " sent, " + result.failed + " failed");
+      } else {
+        toast.success("Email queue checked: " + result.sent + " sent");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not retry email queue");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const meta = useMemo(() => {
@@ -334,14 +352,26 @@ function AdminHubOrders() {
       title="Hub orders"
       subtitle="Full customer profile · agent · care call · documents"
       actions={
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="press flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-bold"
-        >
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void retryEmails()}
+            className="h-10 rounded-xl px-3 text-xs font-bold"
+          >
+            <Mail className="mr-2 size-4" />
+            Retry email queue
+          </Button>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="press flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-bold"
+          >
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+            Refresh
+          </button>
+        </div>
       }
     >
       <div className="mb-3 flex flex-wrap gap-2">
