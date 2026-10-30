@@ -5,7 +5,7 @@ Use this when promoting work so **one uniform RockPay** ships (no parallel UIs o
 ## Principles
 
 1. **One design system** — same AppShell, PayStepper, cards, primary buttons, Plus Jakarta / existing tokens. New flows (`/cac`, `/nin`) already follow bill-pay patterns.
-2. **Demos stay gated** — `CAC_DEMO_MODE` and `NIN_DEMO_MODE` must remain `true` until backend is live. Never present demo as paid production on `main` without the flag.
+2. **Service readiness** — CAC is manual-assisted and can be live only with the private application-storage migration applied, verified Paystack configuration, and staffed manual fulfillment. NIN remains gated until its authorized fulfillment path is ready.
 3. **No second pricing engine** — keep `pricing.server.ts` + admin rules; don’t reintroduce mock package prices as the live data path.
 4. **Route tree** — after merge, run `npm run build` (or TanStack generate) so `/cac` and `/nin` exist in `routeTree.gen.ts`.
 5. **Netlify** — point production at the branch you merged; env: `VTPASS_MODE=live`, real keys only on production context.
