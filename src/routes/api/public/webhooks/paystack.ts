@@ -227,12 +227,19 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   void sendHubLifecycleEmail({
     userId,
     event: "paid",
+    eventKey: `hub-payment:${reference}:paid:email`,
     service: "cac",
     trackingReference,
     amount,
-  }).catch((error) => {
-    console.warn("[paystack-webhook] paid email delivery failed", error);
-  });
+  })
+    .then((result) => {
+      if (!result.queued) {
+        console.warn("[paystack-webhook] paid email was not queued", result.error ?? "unknown error");
+      }
+    })
+    .catch((error) => {
+      console.warn("[paystack-webhook] paid email enqueue failed", error);
+    });
 
   console.info("[paystack-webhook] Hub payment intent finalized", {
     reference,
