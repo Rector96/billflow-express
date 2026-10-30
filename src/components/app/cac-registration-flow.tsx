@@ -523,9 +523,10 @@ export function CacRegistrationFlow() {
       const message = e instanceof Error ? e.message : "";
       // Never remove evidence after a successful Paystack callback: the server
       // may still be reconciling the verified payment or allowing a retry.
-      const safeToClean =
-        !paymentConfirmed &&
-        (!paymentIntentCreated || message === "Payment window closed before completion.");
+      // Once an intent exists, retain its evidence. Closing Paystack or losing
+      // the callback cannot prove that a charge did not succeed; the webhook
+      // may still reconcile it. Only clean files when intent creation failed.
+      const safeToClean = !paymentIntentCreated && !paymentConfirmed;
       if (safeToClean && uploadedPaths.length > 0) {
         const { error: cleanupError } = await supabase.storage
           .from("cac-applications")
