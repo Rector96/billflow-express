@@ -35,7 +35,7 @@ export function PayStepper({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft",
+        "rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft lg:px-4 lg:py-3.5",
         className,
       )}
     >
@@ -72,6 +72,7 @@ export function PayStepper({
 
 /**
  * Vertically balanced step page: header, content, optional footer dock.
+ * Mobile stays compact; desktop uses a wider, calmer reading width.
  */
 export function PayStepBody({
   eyebrow,
@@ -95,29 +96,37 @@ export function PayStepBody({
   return (
     <div
       className={cn(
-        "payment-flow-page mx-auto flex min-h-[calc(100dvh-10.5rem)] w-full max-w-md flex-col px-4 pt-4 pb-4 sm:pt-5 lg:min-h-[calc(100dvh-7rem)]",
+        "payment-flow-page mx-auto flex min-h-[calc(100dvh-10.5rem)] w-full max-w-md flex-col px-4 pt-4 pb-4 sm:pt-5",
+        "lg:min-h-[calc(100dvh-7rem)] lg:max-w-2xl lg:px-0 lg:pt-2",
         className,
       )}
     >
-      {stepper ? <div className="mb-4">{stepper}</div> : null}
+      {stepper ? <div className="mb-4 lg:mb-5">{stepper}</div> : null}
 
       {title || description || eyebrow ? (
-        <div className="mb-4 space-y-1.5">
+        <div className="mb-4 space-y-1.5 lg:mb-5">
           {eyebrow}
-          {title ? <h2 className="text-xl font-extrabold">{title}</h2> : null}
+          {title ? (
+            <h2 className="text-xl font-extrabold tracking-tight lg:text-2xl">{title}</h2>
+          ) : null}
           {description ? (
-            <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground lg:text-[15px]">
+              {description}
+            </p>
           ) : null}
         </div>
       ) : null}
 
       <div
-        className={cn("flex flex-1 flex-col", center && "items-center justify-center text-center")}
+        className={cn(
+          "flex flex-1 flex-col",
+          center && "items-center justify-center text-center",
+        )}
       >
         {children}
       </div>
 
-      {footer ? <div className="mt-auto pt-4">{footer}</div> : null}
+      {footer ? <div className="mt-auto pt-4 lg:pt-6">{footer}</div> : null}
     </div>
   );
 }
