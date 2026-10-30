@@ -171,13 +171,15 @@ export async function notifyCustomerHubStatus(input: {
   userId: string;
   service: string;
   status: string;
+  eventKey?: string;
 }) {
   const copy = customerCopyForStatus(input.service, input.status);
-  await notifyUser({
+  return notifyUser({
     userId: input.userId,
     title: copy.title,
     message: copy.message,
     type: copy.type,
+    eventKey: input.eventKey,
   });
 }
 
