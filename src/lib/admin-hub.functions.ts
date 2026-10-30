@@ -189,7 +189,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
         const path = files[key];
         if (typeof path !== "string") continue;
         const match = path.match(
-          /^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\/(id-document|passport-photo|signature\\.png)$/i,
+          /^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(id-document|passport-photo|signature\.png)$/i,
         );
         if (!match || match[2] !== filename) continue;
         const canonicalPath = `${row.user_id}/${match[1]}/${filename}`;
