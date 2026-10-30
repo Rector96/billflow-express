@@ -70,11 +70,19 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
         } catch (err) {
           const message = (err as Error).message ?? "";
           if (message.includes("Unknown funding reference")) {
-            const handled = await reconcileHubPayment(reference);
-            if (!handled) {
-              console.info("[paystack-webhook] no wallet or Hub payment intent", reference);
+            try {
+              const handled = await reconcileHubPayment(reference);
+              if (!handled) {
+                console.info("[paystack-webhook] no wallet or Hub payment intent", reference);
+              }
+              return new Response("ok", { status: 200 });
+            } catch (hubError) {
+              const hubMessage =
+                hubError instanceof Error ? hubError.message : "Hub payment reconciliation failed";
+              console.error("[paystack-webhook] Hub reconciliation failed", hubMessage);
+              // A 5xx response lets Paystack retry notification delivery and reconciliation.
+              return new Response("Retry Hub reconciliation", { status: 503 });
             }
-            return new Response("ok", { status: 200 });
           }
 
           console.error("[paystack-webhook] wallet settlement failed", message);
