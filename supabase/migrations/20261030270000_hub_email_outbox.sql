@@ -28,6 +28,7 @@ GRANT ALL ON public.hub_email_outbox TO service_role;
 CREATE OR REPLACE FUNCTION public.claim_hub_email_outbox(_batch_size integer DEFAULT 10)
 RETURNS TABLE (
   id uuid,
+  event_key text,
   user_id uuid,
   event text,
   payload jsonb,
@@ -65,9 +66,9 @@ BEGIN
         updated_at = now()
     FROM candidates c
     WHERE o.id = c.id
-    RETURNING o.id, o.user_id, o.event, o.payload, o.attempts
+    RETURNING o.id, o.event_key, o.user_id, o.event, o.payload, o.attempts
   )
-  SELECT claimed.id, claimed.user_id, claimed.event, claimed.payload, claimed.attempts
+  SELECT claimed.id, claimed.event_key, claimed.user_id, claimed.event, claimed.payload, claimed.attempts
   FROM claimed;
 END;
 $$;
