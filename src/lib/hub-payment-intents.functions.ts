@@ -213,6 +213,7 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
     const paymentReference = `RP-HUB-${randomUUID().replace(/-/g, "").toUpperCase()}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hub_payment_intents is a new table not yet present in generated Supabase types.
     const { data: inserted, error } = await (supabaseAdmin as any)
       .from("hub_payment_intents")
       .insert({
