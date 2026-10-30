@@ -35,32 +35,32 @@ export function PageHeader({
       type="button"
       aria-label="Go back"
       onClick={() => (onBack ? onBack() : router.history.back())}
-      className={backClass}
+      className={cn(backClass, "lg:invisible")}
     >
-      <ChevronLeft className="size-5" />
+      <ChevronLeft className="size-5" strokeWidth={1.8} />
     </button>
   );
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3",
+        "sticky top-0 z-30 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 lg:px-0 lg:pt-6",
         brand
           ? "brand-gradient text-primary-foreground"
-          : "border-b border-border/60 bg-background/90 backdrop-blur-md",
+          : "border-b border-border/60 bg-background/90 backdrop-blur-md lg:border-0 lg:bg-transparent lg:backdrop-blur-none",
         className,
       )}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
         {backTo ? (
-          <Link to={backTo} aria-label="Go back" className={backClass}>
-            <ChevronLeft className="size-5" />
+          <Link to={backTo} aria-label="Go back" className={cn(backClass, "lg:hidden")}>
+            <ChevronLeft className="size-5" strokeWidth={1.8} />
           </Link>
         ) : (
           back
         )}
-        <div className="min-w-0 text-center">
-          <h1 className="truncate text-[15px] font-extrabold tracking-tight sm:text-base">
+        <div className="min-w-0 text-center lg:text-left">
+          <h1 className="truncate text-[15px] font-extrabold tracking-tight sm:text-base lg:text-lg">
             {title}
           </h1>
           {subtitle ? (
