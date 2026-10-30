@@ -294,13 +294,22 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
         .from("cac-applications")
         .list(`${context.userId}/${draftIds[0]}`, { limit: 20 });
       if (storageError) throw new Error("Could not verify uploaded CAC documents.");
-      const names = new Set((stored ?? []).map((item) => item.name));
+      const objects = new Map((stored ?? []).map((item) => [item.name, item]));
+      const idMeta = objects.get("id-document")?.metadata as Record<string, unknown> | undefined;
+      const photoMeta = objects.get("passport-photo")?.metadata as Record<string, unknown> | undefined;
+      const signatureMeta = objects.get("signature.png")?.metadata as Record<string, unknown> | undefined;
+      const idMime = String(idMeta?.mimetype ?? "");
+      const photoMime = String(photoMeta?.mimetype ?? "");
       if (
-        !names.has("id-document") ||
-        !names.has("passport-photo") ||
-        !names.has("signature.png")
+        !idMeta || !photoMeta || !signatureMeta ||
+        !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(idMime) ||
+        !["image/jpeg", "image/png", "image/webp"].includes(photoMime) ||
+        String(signatureMeta.mimetype ?? "") !== "image/png" ||
+        Number(idMeta.size ?? 0) > 10 * 1024 * 1024 ||
+        Number(photoMeta.size ?? 0) > 5 * 1024 * 1024 ||
+        Number(signatureMeta.size ?? 0) > 2 * 1024 * 1024
       ) {
-        throw new Error("Upload your ID, passport photo and signature before payment.");
+        throw new Error("CAC document uploads are missing or have invalid file types or sizes.");
       }
     }
     const amountNaira = await resolveHubAmount(data.service, orderPayload);
