@@ -40,12 +40,11 @@ import {
 } from "@/lib/hub-delivery";
 import { submitCacApplication } from "@/lib/hub-order-submit.functions";
 import { createHubPaymentIntent, getCacPriceQuote } from "@/lib/hub-payment-intents.functions";
-import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { formatNaira } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
 
-export const CAC_DEMO_PRICE = SERVICE_PRICES.cac_registration;
 export const CAC_COURIER_PRICE = SERVICE_PRICES.cac_courier;
-export const CAC_DEMO_MODE = true;
+
 
 type Step =
   | "intro"
@@ -395,16 +394,53 @@ export function CacRegistrationFlow() {
     setPaying(true);
     try {
       const email = (ownerEmail || bizEmail || "").trim();
+      if (!idFile || !photoFile || !signature) throw new Error("Upload your ID, passport photo and signature before payment.");
+      const allowedId = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      const allowedImage = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedId.includes(idFile.type) || idFile.size > 10 * 1024 * 1024) throw new Error("ID must be a JPG, PNG, WEBP or PDF up to 10 MB.");
+      if (!allowedImage.includes(photoFile.type) || photoFile.size > 5 * 1024 * 1024) throw new Error("Passport photo must be JPG, PNG or WEBP up to 5 MB.");
+      const signatureBlob = await (await fetch(signature)).blob();
+      if (signatureBlob.size > 2 * 1024 * 1024) throw new Error("Signature image is too large.");
+      const draftId = crypto.randomUUID();
+      const base = `${(await supabase.auth.getUser()).data.user?.id}/${draftId}`;
+      if (!base.startsWith("undefined/") && !base.includes("null/")) {
+        const uploads = await Promise.all([
+          supabase.storage.from("cac-applications").upload(`${base}/id-document`, idFile, { upsert: false, contentType: idFile.type }),
+          supabase.storage.from("cac-applications").upload(`${base}/passport-photo`, photoFile, { upsert: false, contentType: photoFile.type }),
+          supabase.storage.from("cac-applications").upload(`${base}/signature.png`, signatureBlob, { upsert: false, contentType: "image/png" }),
+        ]);
+        const failed = uploads.find((u) => u.error);
+        if (failed?.error) throw new Error("Could not securely upload CAC documents. Please retry.");
+      } else {
+        throw new Error("Your sign-in session has expired. Sign in again before continuing.");
+      }
+      const applicationFiles = {
+        idDocument: `${base}/id-document`,
+        passportPhoto: `${base}/passport-photo`,
+        signature: `${base}/signature.png`,
+      };
       const intent = await runCreateIntent({
         data: {
           service: "cac",
           orderDetails: {
-            preferredName: preferredName || name1.trim(),
+            preferredName: name1.trim(),
+            name2: name2.trim(),
+            name3: name3.trim(),
             nature,
+            businessPhone: bizPhone,
+            businessEmail: bizEmail,
             ownerName: fullName,
+            gender,
+            dob,
+            nationality,
+            occupation,
             nin,
+            idType,
+            idNumber,
+            residentialAddress: resAddress,
             ownerPhone,
             ownerEmail,
+            applicationFiles,
             businessAddress: `${street}, ${city}, ${lga}, ${state}`,
             delivery,
             shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
@@ -914,7 +950,7 @@ export function CacRegistrationFlow() {
             ) : null}
             {!quoteError && priceQuote && !priceQuote.live ? (
               <p className="text-xs text-amber-700">
-                Preview pricing only. CAC checkout is not yet accepting live payments.
+                Your application will be reviewed and processed manually by the RockPay CAC desk.
               </p>
             ) : null}
             <label className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -924,7 +960,7 @@ export function CacRegistrationFlow() {
                 onChange={(e) => setDeclare(e.target.checked)}
                 className="mt-0.5"
               />
-              <span>I confirm these details are correct (demo).</span>
+              <span>I confirm these details and uploaded documents are correct.</span>
             </label>
             <PayActionBar>
               <Button
