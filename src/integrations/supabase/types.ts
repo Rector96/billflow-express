@@ -118,11 +118,63 @@ export type Database = {
           },
         ];
       };
+      hub_email_outbox: {
+        Row: {
+          attempts: number;
+          created_at: string;
+          event: string;
+          event_key: string;
+          id: string;
+          last_error: string | null;
+          locked_at: string | null;
+          next_attempt_at: string;
+          payload: Json;
+          provider_message_id: string | null;
+          sent_at: string | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          attempts?: number;
+          created_at?: string;
+          event: string;
+          event_key: string;
+          id?: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          next_attempt_at?: string;
+          payload?: Json;
+          provider_message_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          attempts?: number;
+          created_at?: string;
+          event?: string;
+          event_key?: string;
+          id?: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          next_attempt_at?: string;
+          payload?: Json;
+          provider_message_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       notifications: {
         Row: {
           created_at: string;
           id: string;
           message: string;
+          notification_key: string | null;
           metadata: Json;
           read: boolean;
           title: string;
@@ -133,6 +185,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           message?: string;
+          notification_key?: string | null;
           metadata?: Json;
           read?: boolean;
           title: string;
@@ -143,6 +196,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           message?: string;
+          notification_key?: string | null;
           metadata?: Json;
           read?: boolean;
           title?: string;
@@ -465,6 +519,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      claim_hub_email_outbox: {
+        Args: { _batch_size?: number };
+        Returns: {
+          attempts: number;
+          event: string;
+          event_key: string;
+          id: string;
+          payload: Json;
+          user_id: string;
+        }[];
+      };
       __apply_migration: { Args: { sql: string }; Returns: undefined };
       _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean };
       admin_care_stats: { Args: never; Returns: Json };
