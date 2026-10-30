@@ -30,16 +30,6 @@ USING (
 );
 
 DROP POLICY IF EXISTS "CAC applicants update own files" ON storage.objects;
-CREATE POLICY "CAC applicants update own files"
-ON storage.objects FOR UPDATE TO authenticated
-USING (
-  bucket_id = 'cac-applications'
-  AND (storage.foldername(name))[1] = auth.uid()::text
-)
-WITH CHECK (
-  bucket_id = 'cac-applications'
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
 
 CREATE OR REPLACE FUNCTION public.finalize_hub_payment_intent(
   _payment_reference text,
