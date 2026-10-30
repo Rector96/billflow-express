@@ -213,7 +213,9 @@ function AdminHubOrders() {
     try {
       const result = await runRetryEmails({ data: { limit: 50 } });
       if (result.failed > 0) {
-        toast.warning("Email retry finished: " + result.sent + " sent, " + result.failed + " failed");
+        toast.warning(
+          "Email retry finished: " + result.sent + " sent, " + result.failed + " failed",
+        );
       } else {
         toast.success("Email queue checked: " + result.sent + " sent");
       }
