@@ -6,8 +6,6 @@ import {
   ReceiptText,
   Search,
   SlidersHorizontal,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -228,17 +226,6 @@ function HistoryPage() {
     });
   }, [transactions, activityTab, status, category, dateKey, q]);
 
-  const totals = useMemo(() => {
-    let inn = 0;
-    let out = 0;
-    for (const t of list) {
-      if (t.status !== "successful") continue;
-      if (t.direction === "in") inn += t.amount;
-      else out += t.amount;
-    }
-    return { inn, out };
-  }, [list]);
-
   const groups = useMemo(() => {
     const map = new Map<string, Transaction[]>();
     for (const tx of list) {
@@ -255,24 +242,26 @@ function HistoryPage() {
   return (
     <AppShell>
       <PageHeader title="Activity" backTo="/home" />
-      <div className="space-y-3 px-4 pt-1 pb-6">
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {ACTIVITY_TABS.map((t) => (
-            <Chip key={t.key} active={activityTab === t.key} onClick={() => setActivityTab(t.key)}>
-              {t.label}
-            </Chip>
-          ))}
-        </div>
+      <div className="space-y-3 px-4 pt-1 pb-8 lg:px-0 lg:space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {ACTIVITY_TABS.map((t) => (
+              <Chip key={t.key} active={activityTab === t.key} onClick={() => setActivityTab(t.key)}>
+                {t.label}
+              </Chip>
+            ))}
+          </div>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, reference or amount..."
-            aria-label="Search activity"
-            className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
-          />
+          <div className="relative w-full max-w-md lg:w-80">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name, reference or amount..."
+              aria-label="Search activity"
+              className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -295,12 +284,12 @@ function HistoryPage() {
                 : "border-border/80 bg-card text-muted-foreground hover:bg-secondary",
             )}
           >
-            <SlidersHorizontal className="size-3.5" />
+            <SlidersHorizontal className="size-3.5" strokeWidth={1.8} />
           </button>
         </div>
 
         {moreOpen ? (
-          <div className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
+          <div className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card lg:max-w-2xl">
             <div>
               <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Service
@@ -328,7 +317,7 @@ function HistoryPage() {
             {extraActive ? (
               <button
                 type="button"
-                className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
+                className="text-xs font-medium text-primary transition-colors hover:text-primary-deep"
                 onClick={() => {
                   setCategory("all");
                   setDateKey("all");
