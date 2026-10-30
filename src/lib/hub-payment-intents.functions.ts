@@ -66,22 +66,31 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
     };
     const ownerEmail = requiredText(input.ownerEmail, "Owner email", 254).toLowerCase();
     const businessEmail = requiredText(input.businessEmail, "Business email", 254).toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail) ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail)) {
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail)
+    ) {
       throw new Error("Enter valid owner and business email addresses.");
     }
     const idType = requiredText(input.idType, "ID type", 80);
-    if (!["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"].includes(idType)) {
+    if (
+      !["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"].includes(idType)
+    ) {
       throw new Error("Choose a supported ID type.");
     }
     const dob = requiredText(input.dob, "Date of birth", 20);
     const parsedDob = new Date(`${dob}T00:00:00.000Z`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(parsedDob.getTime()) || parsedDob.toISOString().slice(0, 10) !== dob) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(dob) ||
+      Number.isNaN(parsedDob.getTime()) ||
+      parsedDob.toISOString().slice(0, 10) !== dob
+    ) {
       throw new Error("Enter a valid date of birth.");
     }
     const gender = requiredText(input.gender, "Gender", 20);
     if (gender !== "Male" && gender !== "Female") throw new Error("Choose a valid gender.");
-    if (input.declarationAccepted !== true) throw new Error("Confirm the application declaration before payment.");
+    if (input.declarationAccepted !== true)
+      throw new Error("Confirm the application declaration before payment.");
     return {
       preferredName: requiredText(input.preferredName, "First business name choice", 160),
       nameChoices: [input.preferredName, input.name2, input.name3].map((v) => cleanText(v, 160)),
