@@ -54,13 +54,13 @@ function PaySlugPage() {
     return (
       <AppShell>
         <PageHeader title={service?.name ?? "Service"} backTo="/services" />
-        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-14 text-center lg:max-w-lg lg:px-0 lg:py-16">
           <span className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
-            <ShieldCheck className="size-7" />
+            <ShieldCheck className="size-7" strokeWidth={1.8} />
           </span>
-          <h1 className="mt-4 text-xl font-extrabold">Service not available</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            This product is no longer offered on RockPay.
+          <h1 className="mt-4 text-xl font-extrabold tracking-tight">Service not available</h1>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            This product is no longer offered on {BRAND.name}.
           </p>
         </div>
       </AppShell>
@@ -71,12 +71,12 @@ function PaySlugPage() {
     return (
       <AppShell>
         <PageHeader title={service?.name ?? "Service"} backTo="/services" />
-        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-14 text-center lg:max-w-lg lg:px-0 lg:py-16">
           <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
-            <ShieldCheck className="size-7" />
+            <ShieldCheck className="size-7" strokeWidth={1.8} />
           </span>
-          <h1 className="mt-4 text-xl font-extrabold">Service is coming soon</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          <h1 className="mt-4 text-xl font-extrabold tracking-tight">Service is coming soon</h1>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
             We will open this when the provider path is verified end-to-end.
           </p>
         </div>
@@ -87,7 +87,7 @@ function PaySlugPage() {
   return (
     <>
       {isHubDemoOnly(slug) ? (
-        <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
+        <p className="mx-4 mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-center text-[10px] font-medium text-amber-900 lg:mx-auto lg:max-w-2xl dark:border-amber-800/40 dark:bg-amber-950/50 dark:text-amber-100">
           Demo · exam/education flow for UX — not live VTpass purchase yet
         </p>
       ) : null}
