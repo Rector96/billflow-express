@@ -90,7 +90,9 @@ function buildEmail(input: HubLifecycleEmailInput, to: string) {
       lines = [
         `Your <strong>${escapeHtml(service)}</strong> file is ready.`,
         "Open the app → <strong>Profile → My documents</strong> to download.",
-        origin ? `Or sign in: <a href="${escapeHtml(origin)}/profile">${escapeHtml(docsLink)}</a>` : "",
+        origin
+          ? `Or sign in: <a href="${escapeHtml(origin)}/profile">${escapeHtml(docsLink)}</a>`
+          : "",
         `Reference: <strong>${escapeHtml(ref)}</strong>`,
       ];
       break;
@@ -114,14 +116,20 @@ function buildEmail(input: HubLifecycleEmailInput, to: string) {
       ];
       break;
   }
-  const bodyHtml = lines.filter(Boolean)
-    .map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#334155;">${p}</p>`)
+  const bodyHtml = lines
+    .filter(Boolean)
+    .map(
+      (p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#334155;">${p}</p>`,
+    )
     .join("");
   return {
     to,
     subject,
     html: layout(title, bodyHtml),
-    text: lines.filter(Boolean).map((line) => line.replace(/<[^>]+>/g, "")).join("\n"),
+    text: lines
+      .filter(Boolean)
+      .map((line) => line.replace(/<[^>]+>/g, ""))
+      .join("\n"),
   };
 }
 
@@ -174,10 +182,9 @@ export async function processHubEmailOutbox(
 ): Promise<{ claimed: number; sent: number; failed: number; errors: string[] }> {
   if (!isResendConfigured()) return { claimed: 0, sent: 0, failed: 0, errors: [] };
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: jobs, error: claimError } = await supabaseAdmin.rpc(
-    "claim_hub_email_outbox",
-    { _batch_size: Math.min(Math.max(Math.trunc(batchSize), 1), 100) },
-  );
+  const { data: jobs, error: claimError } = await supabaseAdmin.rpc("claim_hub_email_outbox", {
+    _batch_size: Math.min(Math.max(Math.trunc(batchSize), 1), 100),
+  });
   if (claimError) {
     console.warn("[hub-email] claim failed", claimError.message);
     return { claimed: 0, sent: 0, failed: 0, errors: [claimError.message] };
