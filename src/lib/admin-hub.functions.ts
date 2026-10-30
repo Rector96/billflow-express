@@ -920,9 +920,10 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
       notifyUser({
         userId,
         title: "CAC application received",
-        message: delivery === "deliver"
-          ? "We received your application. We’ll process it and deliver the printed pack to your address."
-          : "We received your application. You’ll be notified when the certificate is ready to download.",
+        message:
+          delivery === "deliver"
+            ? "We received your application. We’ll process it and deliver the printed pack to your address."
+            : "We received your application. You’ll be notified when the certificate is ready to download.",
         type: "success",
         eventKey: `${eventKey}:customer:${userId}`,
       }),
