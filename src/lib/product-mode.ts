@@ -2,7 +2,7 @@
  * Product/service availability — ONE control surface.
  *
  * Airtime & Data are fully removed from the customer product.
- * Remaining live bills: electricity, cable.
+ * Remaining live bills: electricity, cable; CAC manual processing is live.
  * Hub: CAC, NIN, TIN, Documents, Vehicle, Education (ops desk; preview until live APIs).
  */
 export const BILLS_FOCUS = false;
@@ -17,7 +17,6 @@ export const HOME_CLASSIC_SLUGS = [
   "electricity",
   "cable",
   "education",
-  "cac",
   "nin",
   "tin",
   "documents",
@@ -27,7 +26,7 @@ export const HOME_CLASSIC_SLUGS = [
 export const HIDDEN_WHEN_BILLS_FOCUS = new Set(["internet", "water", "insurance"]);
 
 /** Live bill fulfillment only (no airtime/data). */
-export const LIVE_BILL_SLUGS = new Set(["electricity", "cable"]);
+export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "cac"]);
 
 export const HUB_PREVIEW_SLUGS = new Set([
   "cac",
