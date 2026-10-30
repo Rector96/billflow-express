@@ -70,12 +70,10 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
         } catch (err) {
           const message = (err as Error).message ?? "";
           if (message.includes("Unknown funding reference")) {
-            // Hub orders are handled by authenticated server functions. We do
-            // not infer the customer or order amount from checkout metadata.
-            console.info(
-              "[paystack-webhook] no wallet funding row; hub order requires authenticated server verification",
-              reference,
-            );
+            const handled = await reconcileHubPayment(reference);
+            if (!handled) {
+              console.info("[paystack-webhook] no wallet or Hub payment intent", reference);
+            }
             return new Response("ok", { status: 200 });
           }
 
@@ -89,6 +87,74 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
     },
   },
 });
+
+async function reconcileHubPayment(reference: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payment intent table is newly migrated.
+  const admin = supabaseAdmin as any;
+  const { data: intent, error } = await admin
+    .from("hub_payment_intents")
+    .select("id,service,amount_kobo,currency,paystack_domain,status,provider_transaction_id")
+    .eq("payment_reference", reference)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load Hub payment intent: ${error.message}`);
+  if (!intent) return false;
+  if (intent.service !== "cac" || intent.currency !== "NGN") {
+    throw new Error("Unsupported Hub payment intent service or currency.");
+  }
+
+  const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
+    await import("@/lib/paystack.server");
+  const secret = getPaystackSecret();
+  const expectedDomain = secret.startsWith("sk_test_") ? "test" : "live";
+  if (intent.paystack_domain !== expectedDomain) {
+    throw new Error("Hub payment intent environment does not match Paystack secret.");
+  }
+
+  const transaction = await paystackVerify(reference);
+  if (!transaction) throw new Error("Paystack transaction verification is temporarily unavailable.");
+  if (String(transaction.status ?? "").toLowerCase() !== "success") {
+    // A signed event alone is not proof of a successful charge.
+    return true;
+  }
+  if (transaction.domain && transaction.domain !== expectedDomain) {
+    throw new Error("Paystack transaction domain mismatch.");
+  }
+
+  const classification = classifyPaystackFunding(
+    transaction,
+    reference,
+    Number(intent.amount_kobo),
+  );
+  if (classification.kind === "mismatch") {
+    console.error("[paystack-webhook] Hub payment rejected", {
+      reference,
+      transactionId: transaction.id ?? null,
+      reason: classification.reason,
+    });
+    return true;
+  }
+
+  const providerTransactionId = Number(classification.providerTransactionId);
+  if (!Number.isSafeInteger(providerTransactionId) || providerTransactionId <= 0) {
+    throw new Error("Invalid Paystack transaction identifier.");
+  }
+
+  const { error: finalizeError } = await admin.rpc("finalize_hub_payment_intent", {
+    _payment_reference: reference,
+    _provider_transaction_id: providerTransactionId,
+    _paid_at: transaction.paid_at ?? transaction.paidAt ?? new Date().toISOString(),
+  });
+  if (finalizeError) throw new Error(`Hub payment finalization failed: ${finalizeError.message}`);
+
+  console.info("[paystack-webhook] Hub payment intent finalized", {
+    reference,
+    service: intent.service,
+    transactionId: providerTransactionId,
+  });
+  return true;
+}
 
 type PaystackWebhookEvent = {
   event?: string;
