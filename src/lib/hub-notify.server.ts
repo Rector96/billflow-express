@@ -1,33 +1,53 @@
 /**
- * Insert in-app notifications for hub order lifecycle.
- * Uses public.notifications (user_id, title, message, type, read).
+ * Idempotent in-app notifications for Hub order lifecycle.
  * Email is handled separately via hub-email.server (Resend).
  */
 type NotifType = "success" | "warning" | "information" | "pending" | "security";
+
+type NotificationResult = { ok: true } | { ok: false; error: string };
 
 export async function notifyUser(input: {
   userId: string;
   title: string;
   message: string;
   type?: NotifType;
-}) {
+  eventKey?: string;
+}): Promise<NotificationResult> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("notifications").insert({
+    const row = {
       user_id: input.userId,
       title: input.title,
       message: input.message,
       type: input.type ?? "information",
       read: false,
-    } as never);
-    if (error) console.warn("[hub-notify] user", error.message);
+      ...(input.eventKey ? { notification_key: input.eventKey } : {}),
+    };
+    const { error } = input.eventKey
+      ? await supabaseAdmin.from("notifications").upsert(row as never, {
+          onConflict: "notification_key",
+          ignoreDuplicates: true,
+        })
+      : await supabaseAdmin.from("notifications").insert(row as never);
+    if (error) {
+      console.warn("[hub-notify] user", error.message);
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
   } catch (e) {
-    console.warn("[hub-notify] user failed", e);
+    const message = e instanceof Error ? e.message : "Notification insert failed";
+    console.warn("[hub-notify] user failed", message);
+    return { ok: false, error: message };
   }
 }
 
 /** Notify all staff role holders (admin / super_admin / support). */
-export async function notifyStaff(input: { title: string; message: string; type?: NotifType }) {
+export async function notifyStaff(input: {
+  title: string;
+  message: string;
+  type?: NotifType;
+  eventKey?: string;
+}): Promise<NotificationResult> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roles, error } = await supabaseAdmin
@@ -36,21 +56,33 @@ export async function notifyStaff(input: { title: string; message: string; type?
       .in("role", ["admin", "super_admin", "support"]);
     if (error) {
       console.warn("[hub-notify] staff roles", error.message);
-      return;
+      return { ok: false, error: error.message };
     }
     const ids = [...new Set((roles ?? []).map((r) => String((r as { user_id: string }).user_id)))];
-    if (!ids.length) return;
+    if (!ids.length) return { ok: true };
     const rows = ids.map((user_id) => ({
       user_id,
       title: input.title,
       message: input.message,
       type: input.type ?? "information",
       read: false,
+      ...(input.eventKey ? { notification_key: `${input.eventKey}:${user_id}` } : {}),
     }));
-    const { error: insErr } = await supabaseAdmin.from("notifications").insert(rows as never);
-    if (insErr) console.warn("[hub-notify] staff insert", insErr.message);
+    const { error: insErr } = input.eventKey
+      ? await supabaseAdmin.from("notifications").upsert(rows as never, {
+          onConflict: "notification_key",
+          ignoreDuplicates: true,
+        })
+      : await supabaseAdmin.from("notifications").insert(rows as never);
+    if (insErr) {
+      console.warn("[hub-notify] staff insert", insErr.message);
+      return { ok: false, error: insErr.message };
+    }
+    return { ok: true };
   } catch (e) {
-    console.warn("[hub-notify] staff failed", e);
+    const message = e instanceof Error ? e.message : "Staff notification insert failed";
+    console.warn("[hub-notify] staff failed", message);
+    return { ok: false, error: message };
   }
 }
 
