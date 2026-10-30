@@ -70,16 +70,14 @@ function ForgotPassword() {
             if (pw !== confirm) return setError("Passwords do not match");
             setError("");
             setLoading(true);
-            void supabase.auth
-              .updateUser({ password: pw })
-              .then(({ error: err }) => {
-                setLoading(false);
-                if (err) {
-                  setError(err.message);
-                  return;
-                }
-                void navigate({ to: "/forgot-password", search: { step: "done" } });
-              });
+            void supabase.auth.updateUser({ password: pw }).then(({ error: err }) => {
+              setLoading(false);
+              if (err) {
+                setError(err.message);
+                return;
+              }
+              void navigate({ to: "/forgot-password", search: { step: "done" } });
+            });
           }}
           noValidate
         >
