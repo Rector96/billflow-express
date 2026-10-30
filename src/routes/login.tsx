@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, CreditCard, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandMark } from "@/components/app/app-shell";
+import { AuthShell } from "@/components/app/auth-shell";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -75,154 +75,111 @@ function LoginPage() {
   };
 
   return (
-    <main className="auth-screen relative flex min-h-dvh flex-col overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
-      <div className="auth-blob auth-blob--a" aria-hidden="true" />
-      <div className="auth-blob auth-blob--b" aria-hidden="true" />
-
-      <div className="auth-container relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col">
-        <header className="flex items-center gap-2.5">
-          <BrandMark className="size-9 rounded-xl" />
-          <span className="font-display text-xl font-bold tracking-tight text-[#1e1b4b]">
-            RockPay
-          </span>
-        </header>
-
-        <section className="relative mt-8 sm:mt-10">
-          <h1 className="font-display text-[1.85rem] font-bold leading-tight tracking-tight text-[#0f172a] sm:text-[2rem]">
-            Welcome back
-          </h1>
-          <p className="mt-2 max-w-[16rem] text-[0.95rem] leading-relaxed text-slate-500">
-            Log in to manage your bills, anytime, anywhere.
-          </p>
-
-          <div className="auth-card-float absolute -right-1 top-0 sm:right-2" aria-hidden="true">
-            <div className="relative">
-              <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-[#7c3aed] to-[#5b21b6] shadow-lg shadow-violet-500/30 sm:size-[4.5rem]">
-                <CreditCard className="size-8 text-white sm:size-9" strokeWidth={1.75} />
-              </div>
-              <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border-[3px] border-[#f5f3ff] bg-emerald-500 text-white shadow-md">
-                <svg
-                  viewBox="0 0 24 24"
-                  className="size-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                >
-                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </div>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Log in to manage your bills, anytime, anywhere."
+    >
+      <form onSubmit={submit} className="space-y-3.5" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="identifier" className="text-[0.8rem] font-semibold text-slate-700">
+            Email address
+          </Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+              <Mail aria-hidden="true" />
+            </span>
+            <Input
+              id="identifier"
+              type="email"
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              className="auth-field h-13 rounded-2xl border-0 bg-white/90 pl-11 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+              placeholder="you@example.com"
+              aria-invalid={Boolean(errors.id)}
+              autoComplete="email"
+            />
           </div>
-        </section>
+          {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}
+        </div>
 
-        <form onSubmit={submit} className="mt-8 space-y-4" noValidate>
-          <div className="space-y-1.5">
-            <Label htmlFor="identifier" className="text-[0.8rem] font-semibold text-slate-700">
-              Email address
-            </Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
-                <Mail aria-hidden="true" />
-              </span>
-              <Input
-                id="identifier"
-                type="email"
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                className="auth-field h-13 rounded-2xl border-0 bg-white/90 pl-11 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
-                placeholder="you@example.com"
-                aria-invalid={Boolean(errors.id)}
-                autoComplete="email"
-              />
-            </div>
-            {errors.id ? <p className="text-xs font-medium text-destructive">{errors.id}</p> : null}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-[0.8rem] font-semibold text-slate-700">
-              Password
-            </Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
-                <LockKeyhole aria-hidden="true" />
-              </span>
-              <Input
-                id="password"
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="auth-field h-13 rounded-2xl border-0 bg-white/90 px-11 pr-12 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
-                placeholder="Enter your password"
-                aria-invalid={Boolean(errors.password)}
-                autoComplete="current-password"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={show ? "Hide password" : "Show password"}
-                onClick={() => setShow((v) => !v)}
-                className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {show ? <EyeOff /> : <Eye />}
-              </Button>
-            </div>
-            {errors.password ? (
-              <p className="text-xs font-medium text-destructive">{errors.password}</p>
-            ) : null}
-          </div>
-
-          <div className="flex justify-end">
-            <Link
-              to="/forgot-password"
-              search={{ step: "request" }}
-              className="min-h-10 content-center text-sm font-semibold text-violet-600"
+        <div className="space-y-1.5">
+          <Label htmlFor="password" className="text-[0.8rem] font-semibold text-slate-700">
+            Password
+          </Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400 [&_svg]:size-[18px]">
+              <LockKeyhole aria-hidden="true" />
+            </span>
+            <Input
+              id="password"
+              type={show ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="auth-field h-13 rounded-2xl border-0 bg-white/90 px-11 pr-12 shadow-sm ring-1 ring-slate-200/80 focus-visible:ring-2 focus-visible:ring-violet-500"
+              placeholder="Enter your password"
+              aria-invalid={Boolean(errors.password)}
+              autoComplete="current-password"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={show ? "Hide password" : "Show password"}
+              onClick={() => setShow((v) => !v)}
+              className="absolute right-1 top-1/2 size-10 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
-              Forgot password?
-            </Link>
+              {show ? <EyeOff /> : <Eye />}
+            </Button>
           </div>
+          {errors.password ? (
+            <p className="text-xs font-medium text-destructive">{errors.password}</p>
+          ) : null}
+        </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white shadow-lg shadow-violet-500/25 hover:bg-violet-700"
+        <div className="flex justify-end">
+          <Link
+            to="/forgot-password"
+            search={{ step: "request" }}
+            className="min-h-10 content-center text-sm font-semibold text-violet-600"
           >
-            {loading ? "Logging in…" : "Log in"}
-            {!loading ? <ArrowRight className="ml-1 size-5" /> : null}
-          </Button>
-        </form>
-
-        <div className="mt-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium text-slate-400">or continue with</span>
-          <div className="h-px flex-1 bg-slate-200" />
+            Forgot password?
+          </Link>
         </div>
 
         <Button
-          type="button"
-          variant="outline"
-          disabled={googleLoading}
-          onClick={() => void continueWithGoogle()}
-          className="mt-4 h-13 w-full rounded-full border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          type="submit"
+          disabled={loading}
+          className="h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white shadow-lg shadow-violet-500/25 hover:bg-violet-700"
         >
-          <GoogleIcon />
-          {googleLoading ? "Connecting…" : "Continue with Google"}
+          {loading ? "Logging in…" : "Log in"}
+          {!loading ? <ArrowRight className="ml-1 size-5" /> : null}
         </Button>
+      </form>
 
-        <p className="mt-8 text-center text-sm text-slate-500">
-          New to RockPay?{" "}
-          <Link to="/signup" className="font-bold text-violet-600">
-            Create account
-          </Link>
-        </p>
-
-        <p className="mt-auto pt-10 text-center text-xs leading-relaxed text-slate-400">
-          Everyday payments
-          <br />
-          for a brighter tomorrow.
-        </p>
+      <div className="mt-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-medium text-slate-400">or continue with</span>
+        <div className="h-px flex-1 bg-slate-200" />
       </div>
-    </main>
+
+      <Button
+        type="button"
+        variant="outline"
+        disabled={googleLoading}
+        onClick={() => void continueWithGoogle()}
+        className="mt-4 h-13 w-full rounded-full border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+      >
+        <GoogleIcon />
+        {googleLoading ? "Connecting…" : "Continue with Google"}
+      </Button>
+
+      <p className="mt-8 text-center text-sm text-slate-500">
+        New to RockPay?{" "}
+        <Link to="/signup" className="font-bold text-violet-600">
+          Create account
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
 
