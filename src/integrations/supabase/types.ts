@@ -624,6 +624,22 @@ export type Database = {
           status: Database["public"]["Enums"]["tx_status"];
         }[];
       };
+      recover_paystack_funding: {
+        Args: {
+          _charged_subunits: number;
+          _fee_subunits: number;
+          _payload?: Json;
+          _provider_transaction_id: string;
+          _reference: string;
+          _requested_subunits: number;
+        };
+        Returns: {
+          amount: number;
+          balance_after: number;
+          credited: boolean;
+          status: Database["public"]["Enums"]["tx_status"];
+        }[];
+      };
       create_care_ticket: {
         Args: {
           _category: Database["public"]["Enums"]["ticket_category"];
