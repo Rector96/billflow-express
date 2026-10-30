@@ -800,29 +800,45 @@ export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const admin = (await assertStaff(context.userId)) as any;
     const statuses = ["pending", "paid", "failed", "expired"] as const;
-    const countResults = await Promise.all(statuses.map((status) =>
-      admin.from("hub_payment_intents").select("id", { count: "exact", head: true }).eq("status", status)
-    ));
+    const countResults = await Promise.all(
+      statuses.map((status) =>
+        admin
+          .from("hub_payment_intents")
+          .select("id", { count: "exact", head: true })
+          .eq("status", status),
+      ),
+    );
     for (const result of countResults) {
       if (result.error) throw new Error(result.error.message);
     }
-    const { data, error } = await admin.from("hub_payment_intents")
+    const { data, error } = await admin
+      .from("hub_payment_intents")
       .select("id,service,amount_kobo,status,payment_reference,created_at")
-      .order("created_at", { ascending: false }).limit(10);
+      .order("created_at", { ascending: false })
+      .limit(10);
     if (error) throw new Error(error.message);
-    const counts = Object.fromEntries(statuses.map((status, index) =>
-      [status, countResults[index]?.count ?? 0]
-    )) as Record<(typeof statuses)[number], number>;
+    const counts = Object.fromEntries(
+      statuses.map((status, index) => [status, countResults[index]?.count ?? 0]),
+    ) as Record<(typeof statuses)[number], number>;
     return {
       counts,
-      recent: (data ?? []).map((row: {
-        id: string; service: string; amount_kobo: number; status: string;
-        payment_reference: string; created_at: string;
-      }) => ({
-        id: row.id, service: row.service, amountNaira: Number(row.amount_kobo) / 100,
-        status: row.status, referenceSuffix: String(row.payment_reference).slice(-8),
-        createdAt: row.created_at,
-      })),
+      recent: (data ?? []).map(
+        (row: {
+          id: string;
+          service: string;
+          amount_kobo: number;
+          status: string;
+          payment_reference: string;
+          created_at: string;
+        }) => ({
+          id: row.id,
+          service: row.service,
+          amountNaira: Number(row.amount_kobo) / 100,
+          status: row.status,
+          referenceSuffix: String(row.payment_reference).slice(-8),
+          createdAt: row.created_at,
+        }),
+      ),
     };
   });
 
