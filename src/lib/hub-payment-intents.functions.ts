@@ -174,6 +174,34 @@ async function resolveHubAmount(
   return Math.round(amount * 100) / 100;
 }
 
+
+export const getCacPriceQuote = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { delivery: string }) => {
+    const delivery = input?.delivery === "deliver" ? "deliver" : "download";
+    return { delivery };
+  })
+  .handler(async ({ data }) => {
+    const fees = await loadHubFeesFromSupabase();
+    const registration = Number(fees.cac || 0);
+    const courier = Number(fees.cac_courier || 0);
+    if (!Number.isFinite(registration) || registration <= 0) {
+      throw new Error("The CAC registration price is currently unavailable.");
+    }
+    if (data.delivery === "deliver" && (!Number.isFinite(courier) || courier < 0)) {
+      throw new Error("The CAC delivery price is currently unavailable.");
+    }
+    const deliveryFee = data.delivery === "deliver" ? courier : 0;
+    const total = Math.round((registration + deliveryFee) * 100) / 100;
+    return {
+      registration: Math.round(registration * 100) / 100,
+      courier: Math.round(courier * 100) / 100,
+      total,
+      currency: "NGN" as const,
+      live: isBillLive("cac"),
+    };
+  });
+
 export const createHubPaymentIntent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { service: string; orderDetails: Record<string, unknown> }) => {
