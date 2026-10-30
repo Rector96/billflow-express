@@ -75,10 +75,7 @@ function LoginPage() {
   };
 
   return (
-    <AuthShell
-      title="Welcome back"
-      subtitle="Log in to manage your bills, anytime, anywhere."
-    >
+    <AuthShell title="Welcome back" subtitle="Log in to manage your bills, anytime, anywhere.">
       <form onSubmit={submit} className="space-y-3.5" noValidate>
         <div className="space-y-1.5">
           <Label htmlFor="identifier" className="text-[0.8rem] font-semibold text-slate-700">
