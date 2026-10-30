@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/app/page-header";
+import { AuthShell } from "@/components/app/auth-shell";
 import { BRAND } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,44 +40,46 @@ function ForgotPassword() {
 
   if (step === "done") {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
-          <CheckCircle2 className="size-10" />
-        </span>
-        <h1 className="text-2xl font-extrabold">Password Reset</h1>
-        <p className="text-sm text-muted-foreground">
-          Your password has been changed. You can now log in with your new password.
-        </p>
-        <Button
-          className="mt-4 h-13 w-full rounded-2xl text-base font-bold"
-          onClick={() => navigate({ to: "/login" })}
-        >
-          Back to Login
-        </Button>
-      </main>
+      <AuthShell title="Password reset" subtitle="You're all set.">
+        <div className="flex flex-col items-center gap-4 py-6 text-center">
+          <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
+            <CheckCircle2 className="size-10" />
+          </span>
+          <p className="text-sm text-muted-foreground">
+            Your password has been changed. You can now log in with your new password.
+          </p>
+          <Button
+            className="mt-2 h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white hover:bg-violet-700"
+            onClick={() => navigate({ to: "/login" })}
+          >
+            Back to Login
+          </Button>
+        </div>
+      </AuthShell>
     );
   }
 
   if (step === "password") {
     return (
-      <main className="mx-auto min-h-dvh max-w-md pb-10">
-        <PageHeader title="Set new password" />
+      <AuthShell title="Set new password" subtitle="Choose a strong password for your account.">
         <form
-          className="space-y-5 px-6 pt-4"
+          className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (pw.length < 6) return setError("Use at least 6 characters");
+            if (pw.length < 8) return setError("Password must be at least 8 characters");
             if (pw !== confirm) return setError("Passwords do not match");
             setError("");
             setLoading(true);
-            void supabase.auth.updateUser({ password: pw }).then(({ error: err }) => {
-              setLoading(false);
-              if (err) {
-                setError("We couldn't update your password. Open the reset link again.");
-                return;
-              }
-              navigate({ to: "/forgot-password", search: { step: "done" } });
-            });
+            void supabase.auth
+              .updateUser({ password: pw })
+              .then(({ error: err }) => {
+                setLoading(false);
+                if (err) {
+                  setError(err.message);
+                  return;
+                }
+                void navigate({ to: "/forgot-password", search: { step: "done" } });
+              });
           }}
           noValidate
         >
@@ -88,7 +90,7 @@ function ForgotPassword() {
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
-              className="h-13 rounded-xl bg-card"
+              className="auth-field h-13 rounded-2xl border-0 bg-white/90 shadow-sm ring-1 ring-slate-200/80"
               placeholder="Enter new password"
             />
           </div>
@@ -99,7 +101,7 @@ function ForgotPassword() {
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="h-13 rounded-xl bg-card"
+              className="auth-field h-13 rounded-2xl border-0 bg-white/90 shadow-sm ring-1 ring-slate-200/80"
               placeholder="Repeat new password"
             />
           </div>
@@ -107,20 +109,27 @@ function ForgotPassword() {
           <Button
             type="submit"
             disabled={loading}
-            className="h-13 w-full rounded-2xl text-base font-bold"
+            className="h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white hover:bg-violet-700"
           >
             {loading ? "Saving…" : "Reset Password"}
           </Button>
+          <p className="pt-2 text-center text-sm text-slate-500">
+            <Link to="/login" className="font-bold text-violet-600">
+              Back to login
+            </Link>
+          </p>
         </form>
-      </main>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md pb-10">
-      <PageHeader title="Forgot Password" />
+    <AuthShell
+      title="Forgot password"
+      subtitle="Enter the email linked to your account and we'll send a secure reset link."
+    >
       <form
-        className="space-y-5 px-6 pt-4"
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!/^\S+@\S+\.\S+$/.test(contact.trim()))
@@ -138,16 +147,13 @@ function ForgotPassword() {
         }}
         noValidate
       >
-        <p className="text-sm text-muted-foreground">
-          Enter the email linked to your account and we'll send you a secure reset link.
-        </p>
         <div className="space-y-2">
           <Label htmlFor="contact">Email</Label>
           <Input
             id="contact"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
-            className="h-13 rounded-xl bg-card"
+            className="auth-field h-13 rounded-2xl border-0 bg-white/90 shadow-sm ring-1 ring-slate-200/80"
             placeholder="you@email.com"
           />
         </div>
@@ -155,11 +161,17 @@ function ForgotPassword() {
         <Button
           type="submit"
           disabled={loading}
-          className="h-13 w-full rounded-2xl text-base font-bold"
+          className="h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white hover:bg-violet-700"
         >
           {loading ? "Sending…" : "Send Reset Link"}
         </Button>
+        <p className="pt-2 text-center text-sm text-slate-500">
+          Remembered it?{" "}
+          <Link to="/login" className="font-bold text-violet-600">
+            Log in
+          </Link>
+        </p>
       </form>
-    </main>
+    </AuthShell>
   );
 }
