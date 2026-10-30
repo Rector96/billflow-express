@@ -39,6 +39,7 @@ import {
   type DeliveryMethod,
 } from "@/lib/hub-delivery";
 import { submitCacApplication } from "@/lib/hub-order-submit.functions";
+import { createHubPaymentIntent } from "@/lib/hub-payment-intents.functions";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { formatNaira } from "@/lib/mock-data";
 
@@ -250,6 +251,7 @@ function FilePick({
 export function CacRegistrationFlow() {
   const navigate = useNavigate();
   const runSubmit = useServerFn(submitCacApplication);
+  const runCreateIntent = useServerFn(createHubPaymentIntent);
   const [step, setStep] = useState<Step>("intro");
   const [paying, setPaying] = useState(false);
   const [refId, setRefId] = useState("");
@@ -359,17 +361,42 @@ export function CacRegistrationFlow() {
     }
     setPaying(true);
     try {
-      const email = (ownerEmail || bizEmail || "").trim() || "customer@rockpay.app";
+      const email = (ownerEmail || bizEmail || "").trim();
+      const intent = await runCreateIntent({
+        data: {
+          service: "cac",
+          orderDetails: {
+            preferredName: preferredName || name1.trim(),
+            nature,
+            ownerName: fullName,
+            nin,
+            ownerPhone,
+            ownerEmail,
+            businessAddress: `${street}, ${city}, ${lga}, ${state}`,
+            delivery,
+            shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
+            shipping:
+              delivery === "deliver"
+                ? {
+                    phone: shipTo.phone,
+                    street: shipTo.street,
+                    area: shipTo.area,
+                    lga: shipTo.lga,
+                    state: shipTo.state,
+                  }
+                : {},
+          },
+        },
+      });
       const paystack = await simulatePaystackInline({
-        email,
-        amountNaira: totalPay,
+        email: intent.email || email,
+        amountNaira: intent.amountNaira,
+        reference: intent.reference,
         metadata: {
           channel: "hub",
           service: "cac",
           service_type: "cac",
-          preferred_name: preferredName || name1.trim(),
-          nin,
-          delivery,
+          intent_id: intent.intentId,
         },
       });
       if (paystack.status !== "success") {
@@ -378,7 +405,7 @@ export function CacRegistrationFlow() {
 
       const done = await runSubmit({
         data: {
-          amount: totalPay,
+          amount: intent.amountNaira,
           delivery,
           preferredName: preferredName || name1.trim(),
           nature,
