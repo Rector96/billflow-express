@@ -98,7 +98,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success" && result) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+        <div className="mx-auto flex min-h-[60dvh] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
           <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success">
             <CheckCircle2 className="size-7" />
           </span>
@@ -131,7 +131,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="TIN" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-28 pt-1 lg:max-w-2xl lg:px-0 lg:pb-12">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "input" ? (
           <section className="space-y-3">
