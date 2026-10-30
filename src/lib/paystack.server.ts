@@ -176,8 +176,8 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   if (gatewayStatus === "success") {
     const key = getPaystackSecret();
     const expectedDomain = key.startsWith("sk_test_") ? "test" : "live";
-    if (data.domain && data.domain !== expectedDomain) {
-      throw new Error("Paystack transaction domain does not match the configured secret key.");
+    if (data.domain !== expectedDomain) {
+      throw new Error("Paystack transaction domain is missing or does not match the configured secret key.");
     }
 
     const expectedSubunits = Math.round(amount * 100);
