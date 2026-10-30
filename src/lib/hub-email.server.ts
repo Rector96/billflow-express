@@ -197,6 +197,7 @@ export async function processHubEmailOutbox(
   for (const raw of jobs ?? []) {
     const job = raw as {
       id: string;
+      event_key: string;
       user_id: string;
       event: HubEmailEvent;
       payload: EmailPayload;
@@ -208,7 +209,7 @@ export async function processHubEmailOutbox(
       const input = {
         userId: job.user_id,
         event: job.event,
-        eventKey: "",
+        eventKey: job.event_key,
         ...job.payload,
       } as HubLifecycleEmailInput;
       const result = await sendEmail(buildEmail(input, to));
