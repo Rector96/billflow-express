@@ -1,14 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  ArrowRight,
-  Eye,
-  EyeOff,
-  LockKeyhole,
-  Mail,
-  Phone,
-  UserRound,
-} from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +117,9 @@ function SignupPage() {
               aria-invalid={Boolean(errors.name)}
             />
           </div>
-          {errors.name ? <p className="text-xs font-medium text-destructive">{errors.name}</p> : null}
+          {errors.name ? (
+            <p className="text-xs font-medium text-destructive">{errors.name}</p>
+          ) : null}
         </div>
 
         <div className="space-y-1.5">
@@ -242,7 +236,9 @@ function SignupPage() {
             </Link>
           </Label>
         </div>
-        {errors.agree ? <p className="text-xs font-medium text-destructive">{errors.agree}</p> : null}
+        {errors.agree ? (
+          <p className="text-xs font-medium text-destructive">{errors.agree}</p>
+        ) : null}
 
         <Button
           type="submit"
