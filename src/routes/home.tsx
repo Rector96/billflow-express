@@ -1,7 +1,20 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Briefcase, HeartHandshake, Search } from "lucide-react";
+import {
+  Bell,
+  Briefcase,
+  HeartHandshake,
+  Search,
+  Zap,
+  Tv,
+  Smartphone,
+  Wifi,
+  GraduationCap,
+  FileText,
+  Car,
+  LayoutGrid,
+} from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { WalletCard } from "@/components/app/wallet-card";
 import { HomePromos } from "@/components/app/home-promos";
@@ -35,7 +48,18 @@ export const Route = createFileRoute("/home")({
   component: HomePage,
 });
 
-/** Quick grid: hub + education (exam pins under Services). */
+/** Primary bill services for the desktop quick grid */
+const PRIMARY_SERVICES = [
+  { slug: "electricity", label: "Electricity", Icon: Zap, tint: "text-[#D97706] bg-[#FEF3C7] border border-[#FDE68A]/60" },
+  { slug: "cable", label: "Cable TV", Icon: Tv, tint: "text-[#0D9488] bg-[#CCFBF1] border border-[#99F6E4]/60" },
+  { slug: "airtime", label: "Airtime", Icon: Smartphone, tint: "text-[#DB2777] bg-[#FCE7F3] border border-[#FBCFE8]/60" },
+  { slug: "data", label: "Data", Icon: Wifi, tint: "text-[#2563EB] bg-[#DBEAFE] border border-[#BFDBFE]/60" },
+  { slug: "education", label: "Education", Icon: GraduationCap, tint: "text-[#7C3AED] bg-[#EDE9FE] border border-[#DDD6FE]/60" },
+  { slug: "documents", label: "Docs", Icon: FileText, tint: "text-[#475569] bg-[#F1F5F9] border border-[#E2E8F0]/80" },
+  { slug: "vehicle", label: "Vehicle", Icon: Car, tint: "text-[#0369A1] bg-[#E0F2FE] border border-[#BAE6FD]/60" },
+] as const;
+
+/** Extra hub services shown on mobile / secondary grid */
 const HOME_SERVICES = [
   "education",
   "exam-pins",
@@ -93,9 +117,10 @@ function HomePage() {
   }, [saved]);
 
   const recent = useMemo(
-    () => transactions.filter((t) => !REMOVED_SERVICE_SLUGS.has(t.serviceSlug)).slice(0, 3),
+    () => transactions.filter((t) => !REMOVED_SERVICE_SLUGS.has(t.serviceSlug)).slice(0, 4),
     [transactions],
   );
+
   const serviceTiles = HOME_SERVICES.map((slug) => getService(slug)).filter(Boolean);
 
   function runServiceSearch(e: React.FormEvent) {
@@ -106,23 +131,39 @@ function HomePage() {
 
   return (
     <AppShell>
-      <header className="px-4 pt-5 pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header className="px-4 pt-5 pb-3 lg:px-0 lg:pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/profile"
               aria-label="Your profile"
-              className="press grid size-10 place-items-center rounded-full border border-border/80 bg-primary-soft text-xs font-bold text-primary shadow-sm"
+              className="press grid size-10 place-items-center rounded-full border border-border/80 bg-primary-soft text-xs font-bold text-primary shadow-sm shrink-0"
             >
               {initialsOf(profile.name || "U")}
             </Link>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground">{greeting()},</p>
-              <h1 className="text-base font-semibold tracking-tight text-foreground">
+              <h1 className="text-base font-semibold tracking-tight text-foreground truncate lg:text-lg">
                 {firstName}
               </h1>
             </div>
           </div>
+
+          {/* Desktop search sits in the header */}
+          <form
+            onSubmit={runServiceSearch}
+            className="relative hidden max-w-md flex-1 lg:block"
+          >
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={serviceQuery}
+              onChange={(e) => setServiceQuery(e.target.value)}
+              placeholder="Search electricity, data, CAC, NIN..."
+              aria-label="Search services"
+              className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
+            />
+          </form>
 
           <div className="flex shrink-0 items-center gap-2">
             <Link
@@ -132,7 +173,7 @@ function HomePage() {
               }
               className="press relative grid size-9 place-items-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
             >
-              <Bell className="size-4" />
+              <Bell className="size-4" strokeWidth={1.8} />
               {unreadCount > 0 ? (
                 <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-rose-500" />
               ) : null}
@@ -141,10 +182,9 @@ function HomePage() {
         </div>
       </header>
 
-      <div className="space-y-4 px-4 pt-1 pb-6">
-        <WalletCard />
-
-        <section className="space-y-2">
+      <div className="space-y-5 px-4 pt-1 pb-8 lg:px-0 lg:space-y-6">
+        {/* Mobile-only search */}
+        <section className="space-y-2 lg:hidden">
           <p className="text-sm font-semibold text-foreground">What do you need today?</p>
           <form onSubmit={runServiceSearch} className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -158,89 +198,141 @@ function HomePage() {
           </form>
         </section>
 
-        <HomePromos className="mt-1" />
+        {/* ── Top row: Wallet + Quick Services (desktop side-by-side) ── */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
+          <WalletCard />
 
-        <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card">
-          <SectionTitle title="Quick Services" action="View all" to="/services" />
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
-            {serviceTiles.map((s) =>
-              s ? (
-                <ServiceTile
-                  key={s.slug}
-                  label={s.short}
-                  Icon={s.icon}
-                  tint={s.tint}
-                  to={serviceHref(s.slug).to}
-                  params={serviceHref(s.slug).params}
-                />
-              ) : null,
-            )}
-            <ServiceTile
-              label="More"
-              Icon={MoreIcon}
-              tint="bg-secondary text-muted-foreground border border-border/70"
-              to="/services"
-            />
-          </div>
-        </section>
+          {/* Quick Services card */}
+          <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-card lg:p-5">
+            <SectionTitle title="Quick Services" action="View all" to="/services" />
 
-        {(buyAgain.length > 0 || savedHome.length > 0) && (
-          <section>
-            <SectionTitle title="Pay again" action="See all" to="/saved-payments" />
-            <div className="space-y-2">
-              <BuyAgainRail items={buyAgain} compact />
-              {savedHome.map((item) => {
-                const svc = getService(item.serviceSlug);
+            {/* Desktop: primary bill services with real icons */}
+            <div className="hidden lg:grid grid-cols-4 gap-3">
+              {PRIMARY_SERVICES.map((s) => {
+                const href = serviceHref(s.slug);
                 return (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-2.5 shadow-soft"
-                  >
-                    <span
-                      className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-full",
-                        svc?.tint ?? "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {svc ? <svc.icon className="size-4" strokeWidth={1.8} /> : null}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{item.label}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.provider} · {item.masked}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="h-7.5 shrink-0 rounded-lg px-3 text-xs font-semibold"
-                      onClick={() =>
-                        navigate({
-                          to: "/pay/$slug",
-                          params: { slug: item.serviceSlug },
-                          search: { saved: item.id },
-                        })
-                      }
-                    >
-                      Pay
-                    </Button>
-                  </div>
+                  <ServiceTile
+                    key={s.slug}
+                    label={s.label}
+                    Icon={s.Icon}
+                    tint={s.tint}
+                    to={href.to}
+                    params={href.params}
+                  />
                 );
               })}
+              <ServiceTile
+                label="More"
+                Icon={LayoutGrid}
+                tint="bg-secondary text-muted-foreground border border-border/70"
+                to="/services"
+              />
+            </div>
+
+            {/* Mobile: original hub-focused grid */}
+            <div className="grid grid-cols-4 gap-2 lg:hidden">
+              {serviceTiles.map((s) =>
+                s ? (
+                  <ServiceTile
+                    key={s.slug}
+                    label={s.short}
+                    Icon={s.icon}
+                    tint={s.tint}
+                    to={serviceHref(s.slug).to}
+                    params={serviceHref(s.slug).params}
+                  />
+                ) : null,
+              )}
+              <ServiceTile
+                label="More"
+                Icon={MoreIcon}
+                tint="bg-secondary text-muted-foreground border border-border/70"
+                to="/services"
+              />
             </div>
           </section>
-        )}
+        </div>
 
+        <HomePromos className="mt-0" />
+
+        {/* ── Second row: Pay again + Recent activity ── */}
+        <div className="grid gap-5 lg:grid-cols-2 lg:gap-5">
+          {/* Pay again */}
+          {(buyAgain.length > 0 || savedHome.length > 0) && (
+            <section>
+              <SectionTitle title="Pay again" action="See all" to="/saved-payments" />
+              <div className="space-y-2">
+                <BuyAgainRail items={buyAgain} compact />
+                {savedHome.map((item) => {
+                  const svc = getService(item.serviceSlug);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-2.5 shadow-soft"
+                    >
+                      <span
+                        className={cn(
+                          "grid size-9 shrink-0 place-items-center rounded-full",
+                          svc?.tint ?? "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {svc ? <svc.icon className="size-4" strokeWidth={1.8} /> : null}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{item.label}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.provider} · {item.masked}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-7.5 shrink-0 rounded-lg px-3 text-xs font-semibold"
+                        onClick={() =>
+                          navigate({
+                            to: "/pay/$slug",
+                            params: { slug: item.serviceSlug },
+                            search: { saved: item.id },
+                          })
+                        }
+                      >
+                        Pay
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Recent activity */}
+          <section>
+            <SectionTitle title="Recent activity" action="See all" to="/history" />
+            {recent.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border/80 bg-card py-8 text-center text-xs text-muted-foreground">
+                Your recent payments and applications will appear here.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {recent.map((tx) => (
+                  <TransactionRow key={tx.id} tx={tx} compact />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Continue drafts */}
         {drafts.length > 0 ? (
           <section>
             <SectionTitle title="Continue" />
-            <div className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {drafts.slice(0, 2).map((d) => (
                 <div
                   key={d.id}
                   className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 shadow-soft"
                 >
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                    <Briefcase className="size-4.5" />
+                    <Briefcase className="size-4.5" strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{d.title}</p>
@@ -271,32 +363,18 @@ function HomePage() {
           </section>
         ) : null}
 
-        <section>
-          <SectionTitle title="Recent activity" action="See all" to="/history" />
-          {recent.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border/80 bg-card py-6 text-center text-xs text-muted-foreground">
-              Your recent payments and applications will appear here.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {recent.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} compact />
-              ))}
-            </div>
-          )}
-        </section>
-
+        {/* Support CTA */}
         <Link
           to="/support"
           className="press flex items-center gap-3 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card transition-colors hover:border-primary/40"
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-            <HeartHandshake className="size-4.5" />
+            <HeartHandshake className="size-4.5" strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-foreground">Need help?</p>
             <p className="text-[11px] text-muted-foreground">
-              Payments, applications or verification — RockPay Support
+              Payments, applications or verification — {BRAND.name} Support
             </p>
           </div>
           <span className="text-xs font-medium text-primary">Get help →</span>
