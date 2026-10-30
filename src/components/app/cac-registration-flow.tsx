@@ -515,6 +515,19 @@ export function CacRegistrationFlow() {
     city,
     lga,
     state,
+    bizPhone,
+    dob,
+    gender,
+    idFile,
+    idNumber,
+    idType,
+    name2,
+    name3,
+    nationality,
+    occupation,
+    photoFile,
+    resAddress,
+    signature,
   ]);
 
   const field = "h-11 rounded-xl";
