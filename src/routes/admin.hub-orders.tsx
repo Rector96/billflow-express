@@ -15,6 +15,7 @@ import {
   addHubStaffNote,
   assignHubAgent,
   getHubOrderDetail,
+  getHubEmailOutboxSummary,
   listHubOrders,
   notifyCustomerToDownload,
   retryHubLifecycleEmails,
@@ -114,6 +115,7 @@ function AdminHubOrders() {
   const runCare = useServerFn(updateHubCareCall);
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
   const runRetryEmails = useServerFn(retryHubLifecycleEmails);
+  const runEmailSummary = useServerFn(getHubEmailOutboxSummary);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -128,6 +130,8 @@ function AdminHubOrders() {
   const [agentName, setAgentName] = useState("");
   const [agentDesk, setAgentDesk] = useState("nin");
   const [careNote, setCareNote] = useState("");
+  const [emailSummary, setEmailSummary] = useState<Awaited<ReturnType<typeof getHubEmailOutboxSummary>> | null>(null);
+  const [emailSummaryError, setEmailSummaryError] = useState<string | null>(null);
   const prevCount = useRef<number | null>(null);
 
   const load = useCallback(
@@ -158,14 +162,28 @@ function AdminHubOrders() {
     [runList, filterService, filterStatus],
   );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const loadEmailSummary = useCallback(async () => {
+    try {
+      const summary = await runEmailSummary();
+      setEmailSummary(summary);
+      setEmailSummaryError(null);
+    } catch (e) {
+      setEmailSummaryError(e instanceof Error ? e.message : "Could not load email queue");
+    }
+  }, [runEmailSummary]);
 
   useEffect(() => {
-    const t = window.setInterval(() => void load(true), 20_000);
+    void load();
+    void loadEmailSummary();
+  }, [load, loadEmailSummary]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      void load(true);
+      void loadEmailSummary();
+    }, 30_000);
     return () => window.clearInterval(t);
-  }, [load]);
+  }, [load, loadEmailSummary]);
 
   const openDetail = async (o: HubOrderRow) => {
     setDetailLoading(true);
@@ -212,6 +230,7 @@ function AdminHubOrders() {
     setBusy(true);
     try {
       const result = await runRetryEmails({ data: { limit: 50 } });
+      await loadEmailSummary();
       if (result.failed > 0) {
         toast.warning(
           "Email retry finished: " + result.sent + " sent, " + result.failed + " failed",
@@ -376,6 +395,43 @@ function AdminHubOrders() {
         </div>
       }
     >
+      <section className="mb-4 rounded-2xl border bg-card p-3.5 shadow-card" aria-label="Lifecycle email queue">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold">Lifecycle email queue</p>
+            <p className="text-[10px] text-muted-foreground">Private delivery status · refreshes every 30 seconds</p>
+          </div>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void loadEmailSummary()}>
+            <RefreshCw className="mr-1.5 size-3.5" /> Refresh
+          </Button>
+        </div>
+        {emailSummaryError ? <p className="mb-2 text-xs text-destructive">{emailSummaryError}</p> : null}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["pending", "processing", "sent", "failed"] as const).map((status) => (
+            <div key={status} className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{status}</p>
+              <p className="text-xl font-extrabold tabular-nums">{emailSummary?.counts[status] ?? "—"}</p>
+            </div>
+          ))}
+        </div>
+        {emailSummary?.recent.length ? (
+          <div className="mt-3 divide-y divide-border/60">
+            {emailSummary.recent.slice(0, 6).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{item.event.replace(/_/g, " ")}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(item.createdAt).toLocaleString("en-NG")} · {item.attempts} attempt{item.attempts === 1 ? "" : "s"}
+                  </p>
+                  {item.lastError ? <p className="truncate text-[10px] text-destructive">{item.lastError}</p> : null}
+                </div>
+                <StatusBadge status={item.status} />
+              </div>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-xs text-muted-foreground">No lifecycle email events recorded yet.</p>}
+      </section>
+
       <div className="mb-3 flex flex-wrap gap-2">
         <select
           value={filterService}
