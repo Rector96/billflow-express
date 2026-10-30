@@ -794,6 +794,89 @@ export const getHubEmailOutboxSummary = createServerFn({ method: "GET" })
     };
   });
 
+/** Staff-only recheck. Paystack and the atomic settlement RPC remain authoritative. */
+export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { intentId: string }) => {
+    const intentId = String(input?.intentId ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(intentId)) throw new Error("Invalid intent ID.");
+    return { intentId };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = (await assertStaff(context.userId)) as any;
+    const { data: intent, error } = await admin
+      .from("hub_payment_intents")
+      .select("id,service,amount_kobo,currency,payment_reference,paystack_domain,status")
+      .eq("id", data.intentId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!intent) throw new Error("Payment intent not found.");
+    if (intent.service !== "cac" || intent.currency !== "NGN") {
+      throw new Error("Only CAC payment intents are supported by this recheck.");
+    }
+    if (intent.status === "paid") {
+      return { status: "already_paid" as const, message: "This intent is already paid. Refresh the order list." };
+    }
+    if (!["pending", "expired"].includes(String(intent.status))) {
+      return { status: "not_eligible" as const, message: "This payment intent is not eligible for rechecking." };
+    }
+
+    const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
+      await import("@/lib/paystack.server");
+    const secret = getPaystackSecret();
+    const domain = secret.startsWith("sk_test_") ? "test" : "live";
+    if (intent.paystack_domain !== domain) throw new Error("Paystack environment mismatch.");
+    const transaction = await paystackVerify(String(intent.payment_reference));
+    if (!transaction) {
+      return { status: "pending" as const, message: "Paystack verification is unavailable. Try again shortly." };
+    }
+    const gatewayStatus = String(transaction.status ?? "").toLowerCase();
+    if (gatewayStatus !== "success") {
+      return { status: "pending" as const, message: "Paystack has not confirmed a successful payment." };
+    }
+    if (transaction.domain && transaction.domain !== domain) {
+      throw new Error("Paystack transaction domain mismatch.");
+    }
+    const expectedKobo = Number(intent.amount_kobo);
+    if (!Number.isSafeInteger(expectedKobo) || expectedKobo <= 0) {
+      throw new Error("Saved checkout amount is invalid.");
+    }
+    const classification = classifyPaystackFunding(
+      transaction, String(intent.payment_reference), expectedKobo,
+    );
+    if (classification.kind === "mismatch") {
+      return { status: "mismatch" as const, message: "Paystack transaction details do not match this checkout. No order was created." };
+    }
+    const paidAtRaw = transaction.paid_at ?? transaction.paidAt;
+    if (!paidAtRaw || !Number.isFinite(Date.parse(paidAtRaw))) {
+      return { status: "timestamp_missing" as const, message: "Paystack did not return a valid payment timestamp. No order was created." };
+    }
+    const transactionId = Number(classification.providerTransactionId);
+    if (!Number.isSafeInteger(transactionId) || transactionId <= 0) {
+      throw new Error("Invalid Paystack transaction ID.");
+    }
+    const { data: result, error: settleError } = await admin.rpc("finalize_hub_payment_intent", {
+      _payment_reference: intent.payment_reference,
+      _provider_transaction_id: transactionId,
+      _paid_at: new Date(paidAtRaw).toISOString(),
+    });
+    if (settleError) {
+      if (/outside.*validity|not eligible|expired/i.test(settleError.message)) {
+        return { status: "outside_window" as const, message: "Payment was verified, but Paystack's timestamp falls outside the original checkout window. No order was created." };
+      }
+      throw new Error(settleError.message);
+    }
+    const order = Array.isArray(result) ? result[0] : result;
+    if (!order?.order_id) throw new Error("Settlement did not return an order ID.");
+    return {
+      status: "paid" as const,
+      message: order.was_existing
+        ? "The payment was already reconciled. No duplicate order was created."
+        : "Payment verified and the CAC order was created.",
+      orderId: String(order.order_id),
+    };
+  });
+
 /** Staff-only overview of Hub checkout intents; excludes customer application payloads. */
 export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
