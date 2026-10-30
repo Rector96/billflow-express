@@ -391,6 +391,9 @@ export function CacRegistrationFlow() {
       }
     }
     setPaying(true);
+    let uploadedPaths: string[] = [];
+    let paymentIntentCreated = false;
+    let paymentConfirmed = false;
     try {
       const email = (ownerEmail || bizEmail || "").trim();
       if (!idFile || !photoFile || !signature)
@@ -413,7 +416,6 @@ export function CacRegistrationFlow() {
       }
 
       const base = `${user.id}/${draftId}`;
-      const uploadedPaths: string[] = [];
       const storage = supabase.storage.from("cac-applications");
       try {
         const idPath = `${base}/id-document`;
@@ -492,6 +494,7 @@ export function CacRegistrationFlow() {
           },
         },
       });
+      paymentIntentCreated = true;
       const paystack = await openPaystackInline({
         email: intent.email || email,
         amountNaira: intent.amountNaira,
@@ -506,6 +509,7 @@ export function CacRegistrationFlow() {
       if (paystack.status !== "success") {
         throw new Error("Payment was not completed.");
       }
+      paymentConfirmed = true;
 
       const done = await runSubmit({
         data: {
@@ -516,7 +520,19 @@ export function CacRegistrationFlow() {
       setStep("success");
       toast.success("Payment received — application queued");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment failed");
+      const message = e instanceof Error ? e.message : "";
+      // Never remove evidence after a successful Paystack callback: the server
+      // may still be reconciling the verified payment or allowing a retry.
+      const safeToClean =
+        !paymentConfirmed &&
+        (!paymentIntentCreated || message === "Payment window closed before completion.");
+      if (safeToClean && uploadedPaths.length > 0) {
+        const { error: cleanupError } = await supabase.storage
+          .from("cac-applications")
+          .remove(uploadedPaths);
+        if (cleanupError) console.warn("CAC abandoned-upload cleanup failed.");
+      }
+      toast.error(message || "Payment failed");
     } finally {
       setPaying(false);
     }
