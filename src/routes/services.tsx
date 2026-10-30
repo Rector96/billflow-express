@@ -293,7 +293,10 @@ function ServicesPage() {
 
         <div className="pt-2 text-center">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={1.8} />
+            <ShieldCheck
+              className="size-3.5 text-emerald-600 dark:text-emerald-400"
+              strokeWidth={1.8}
+            />
             Protected by bank-grade encryption
           </p>
         </div>
