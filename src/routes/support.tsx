@@ -156,7 +156,7 @@ function CareHub() {
   return (
     <AppShell>
       <PageHeader title="RockPay Care" backTo="/home" />
-      <div className="space-y-4 px-4 pt-1 pb-6">
+      <div className="mx-auto w-full max-w-md space-y-4 px-4 pt-1 pb-8 lg:max-w-2xl lg:px-0">
         {step === "home" ? (
           <>
             <div className="flex items-center gap-2.5">
