@@ -252,6 +252,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       void sendHubLifecycleEmail({
         userId: context.userId,
         event: "paid",
+        eventKey: `hub-payment:${data.paymentReference}:paid:email`,
         service: "cac",
         trackingReference,
         amount,
@@ -356,6 +357,7 @@ export const submitNinOrder = createServerFn({ method: "POST" })
     void sendHubLifecycleEmail({
       userId: context.userId,
       event: "paid",
+      eventKey: `hub-payment:${paymentReference}:paid:email`,
       service,
       trackingReference,
       amount: data.amount,
