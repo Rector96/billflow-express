@@ -84,13 +84,13 @@ export function ReceiptShareButton({ payload, className }: Props) {
         className={cn("h-12 w-full rounded-2xl font-bold", className)}
         onClick={() => setOpen(true)}
       >
-        <Share2 className="size-4" />
+        <Share2 className="size-4" strokeWidth={1.8} />
         Share receipt
       </Button>
 
       {open ? (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center px-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-4 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[70] flex items-end justify-center px-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-4 sm:items-center sm:p-4 lg:pb-6"
           role="dialog"
           aria-modal="true"
           aria-label="Share receipt"
@@ -101,7 +101,7 @@ export function ReceiptShareButton({ payload, className }: Props) {
             aria-label="Close"
             onClick={() => !busy && setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-md max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-3xl border bg-card p-5 shadow-xl sm:max-h-none">
+          <div className="relative z-10 w-full max-w-md max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-3xl border bg-card p-5 shadow-xl sm:max-h-none lg:max-w-lg lg:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-extrabold tracking-tight">Share receipt</p>
@@ -113,10 +113,10 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 type="button"
                 disabled={!!busy}
                 onClick={() => setOpen(false)}
-                className="grid size-9 place-items-center rounded-full border text-muted-foreground"
+                className="grid size-9 place-items-center rounded-full border text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
                 aria-label="Close"
               >
-                <X className="size-4" />
+                <X className="size-4" strokeWidth={1.8} />
               </button>
             </div>
 
@@ -131,7 +131,7 @@ export function ReceiptShareButton({ payload, className }: Props) {
                   {busy === "image" ? (
                     <Loader2 className="size-5 animate-spin" />
                   ) : (
-                    <FileImage className="size-5" />
+                    <FileImage className="size-5" strokeWidth={1.8} />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export function ReceiptShareButton({ payload, className }: Props) {
                   {busy === "pdf" ? (
                     <Loader2 className="size-5 animate-spin" />
                   ) : (
-                    <FileText className="size-5" />
+                    <FileText className="size-5" strokeWidth={1.8} />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -163,6 +163,10 @@ export function ReceiptShareButton({ payload, className }: Props) {
                 </span>
               </button>
             </div>
+
+            <p className="mt-4 text-center text-[11px] text-muted-foreground">
+              On desktop, your receipt downloads if the system share sheet is unavailable.
+            </p>
           </div>
         </div>
       ) : null}
