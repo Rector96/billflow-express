@@ -405,27 +405,7 @@ export function CacRegistrationFlow() {
 
       const done = await runSubmit({
         data: {
-          amount: intent.amountNaira,
-          delivery,
-          preferredName: preferredName || name1.trim(),
-          nature,
-          ownerName: fullName,
-          nin,
-          ownerPhone,
-          ownerEmail,
-          businessAddress: `${street}, ${city}, ${lga}, ${state}`,
-          shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
-          shipping:
-            delivery === "deliver"
-              ? {
-                  phone: shipTo.phone,
-                  street: shipTo.street,
-                  area: shipTo.area,
-                  lga: shipTo.lga,
-                  state: shipTo.state,
-                }
-              : {},
-          paymentReference: paystack.reference,
+          paymentReference: intent.reference,
         },
       });
       setRefId(done.trackingReference || paystack.reference);
