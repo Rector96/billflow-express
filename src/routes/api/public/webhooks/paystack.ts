@@ -234,7 +234,10 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   })
     .then((result) => {
       if (!result.queued) {
-        console.warn("[paystack-webhook] paid email was not queued", result.error ?? "unknown error");
+        console.warn(
+          "[paystack-webhook] paid email was not queued",
+          result.error ?? "unknown error",
+        );
       }
     })
     .catch((error) => {
