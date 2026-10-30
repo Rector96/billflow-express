@@ -28,9 +28,7 @@ export const HIDDEN_WHEN_BILLS_FOCUS = new Set(["internet", "water", "insurance"
 /** Live bill fulfillment only (no airtime/data). */
 export const LIVE_BILL_SLUGS = new Set(["electricity", "cable", "cac"]);
 
-export const HUB_PREVIEW_SLUGS = new Set([
-  "cac",
-  "nin",
+export const HUB_PREVIEW_SLUGS = new Set([  "nin",
   "tin",
   "documents",
   "vehicle",
