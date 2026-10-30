@@ -216,92 +216,56 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       throw new Error("Paystack payment details do not match the saved CAC payment request.");
     }
 
-    const { data: existing } = await supabaseAdmin
-      .from("hub_orders")
-      .select("tracking_reference")
-      .eq("payment_reference", data.paymentReference)
-      .maybeSingle();
-    if (existing?.tracking_reference) {
-      return {
-        ok: true as const,
-        trackingReference: String(existing.tracking_reference),
-        paymentReference: data.paymentReference,
-        amount: expectedKobo / 100,
-        demo: false,
-      };
-    }
-
-    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
-    const preferredName = String(payload.preferredName ?? "");
-    const nin = String(payload.nin ?? "");
-    const trackingReference = uid("CAC");
-    const amount = expectedKobo / 100;
-
-    await insertHubOrder({
-      userId: context.userId,
-      service: "cac",
-      amount,
-      paymentReference: data.paymentReference,
-      trackingReference,
-      customerIdentifier: nin,
-      status: "pending",
-      demo: false,
-      metadata: {
-        preferred_name: preferredName,
-        nature: String(payload.nature ?? ""),
-        owner_name: String(payload.ownerName ?? ""),
-        nin,
-        owner_phone: String(payload.ownerPhone ?? ""),
-        owner_email: String(payload.ownerEmail ?? ""),
-        business_address: String(payload.businessAddress ?? ""),
-        delivery,
-        shipping_address: delivery === "deliver" ? String(payload.shippingAddress ?? "") : null,
-        shipping: delivery === "deliver" ? (payload.shipping ?? null) : null,
-        fulfillment_status: "paid",
-        provider_transaction_id: Number(transaction.id),
-        payment_intent_id: String(intent.id),
+    const { data: finalized, error: finalizeError } = await admin.rpc(
+      "finalize_hub_payment_intent",
+      {
+        _payment_reference: data.paymentReference,
+        _provider_transaction_id: Number(transaction.id),
+        _paid_at: new Date().toISOString(),
       },
-    });
-
-    const { error: updateError } = await admin
-      .from("hub_payment_intents")
-      .update({
-        status: "paid",
-        provider_transaction_id: Number(transaction.id),
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", intent.id)
-      .eq("user_id", context.userId)
-      .eq("status", "pending");
-    if (updateError) {
-      console.error("[hub-cac] intent settlement update failed", updateError.message);
+    );
+    if (finalizeError) {
+      console.error("[hub-cac] atomic payment finalization failed", finalizeError.message);
       throw new Error(
         "Payment was verified, but the application confirmation is still processing. Please contact support with your payment reference.",
       );
     }
 
-    await notifyStaffNewHubOrder({
-      service: "cac",
-      amount,
-      orderHint: preferredName,
-    });
-    await notifyUser({
-      userId: context.userId,
-      title: "CAC application received",
-      message:
-        delivery === "deliver"
-          ? "We received your application. We’ll process it and deliver the printed pack to your address."
-          : "We received your application. You’ll be notified when the certificate is ready to download.",
-      type: "success",
-    });
-    void sendHubLifecycleEmail({
-      userId: context.userId,
-      event: "paid",
-      service: "cac",
-      trackingReference,
-      amount,
-    });
+    const finalRow = Array.isArray(finalized) ? finalized[0] : finalized;
+    if (!finalRow?.tracking_reference) {
+      throw new Error("Payment was verified, but the application order could not be confirmed.");
+    }
+
+    const finalPayload = (finalRow.order_payload ?? payload) as Record<string, unknown>;
+    const delivery = finalPayload.delivery === "deliver" ? "deliver" : "download";
+    const preferredName = String(finalPayload.preferredName ?? "");
+    const trackingReference = String(finalRow.tracking_reference);
+    const amount = Number(finalRow.amount ?? expectedKobo / 100);
+    const wasExisting = Boolean(finalRow.was_existing);
+
+    if (!wasExisting) {
+      await notifyStaffNewHubOrder({
+        service: "cac",
+        amount,
+        orderHint: preferredName,
+      });
+      await notifyUser({
+        userId: context.userId,
+        title: "CAC application received",
+        message:
+          delivery === "deliver"
+            ? "We received your application. We’ll process it and deliver the printed pack to your address."
+            : "We received your application. You’ll be notified when the certificate is ready to download.",
+        type: "success",
+      });
+      void sendHubLifecycleEmail({
+        userId: context.userId,
+        event: "paid",
+        service: "cac",
+        trackingReference,
+        amount,
+      });
+    }
 
     return {
       ok: true as const,
