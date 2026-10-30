@@ -891,7 +891,56 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
       throw new Error(settleError.message);
     }
     const order = Array.isArray(result) ? result[0] : result;
-    if (!order?.order_id) throw new Error("Settlement did not return an order ID.");
+    if (!order?.tracking_reference || !order?.user_id) {
+      throw new Error("Settlement did not return the reconciled order details.");
+    }
+
+    // Recover notifications with the same stable event keys used by the webhook.
+    const payload = (order.order_payload ?? {}) as Record<string, unknown>;
+    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
+    const userId = String(order.user_id);
+    const reference = String(intent.payment_reference);
+    const amount = Number(order.amount ?? expectedKobo / 100);
+    const trackingReference = String(order.tracking_reference);
+    const preferredName = String(payload.preferredName ?? "CAC application");
+    const eventKey = `hub-payment:${reference}:paid`;
+    const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
+      await Promise.all([
+        import("@/lib/hub-documents.functions"),
+        import("@/lib/hub-notify.server"),
+        import("@/lib/hub-email.server"),
+      ]);
+    const [staffNotice, customerNotice] = await Promise.all([
+      notifyStaffNewHubOrder({
+        service: "cac",
+        amount,
+        orderHint: preferredName,
+        eventKey: `${eventKey}:staff`,
+      }),
+      notifyUser({
+        userId,
+        title: "CAC application received",
+        message: delivery === "deliver"
+          ? "We received your application. We’ll process it and deliver the printed pack to your address."
+          : "We received your application. You’ll be notified when the certificate is ready to download.",
+        type: "success",
+        eventKey: `${eventKey}:customer:${userId}`,
+      }),
+    ]);
+    if (!staffNotice.ok || !customerNotice.ok) {
+      throw new Error("Payment is settled, but one or more in-app notifications need retry.");
+    }
+    void sendHubLifecycleEmail({
+      userId,
+      event: "paid",
+      eventKey: `${eventKey}:email`,
+      service: "cac",
+      trackingReference,
+      amount,
+    }).catch((emailError) => {
+      console.warn("[admin-payment-recheck] paid email enqueue failed", emailError);
+    });
+
     return {
       status: "paid" as const,
       message: order.was_existing
