@@ -739,7 +739,7 @@ export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
         last_error: null,
         updated_at: new Date().toISOString(),
       } as never)
-      .eq("status", "failed");
+      .in("status", ["pending", "failed"]);
     if (error) throw new Error(error.message);
     return processHubEmailOutbox(data.limit);
   });
