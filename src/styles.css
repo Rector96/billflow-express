@@ -298,6 +298,15 @@
   );
 }
 
+/* Desktop: service payment steps use a wider, calmer reading width */
+@media (min-width: 1024px) {
+  .payment-flow-page {
+    max-width: 42rem !important; /* ~max-w-2xl */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 @utility payment-summary {
   background: linear-gradient(135deg, var(--primary-deep) 0%, var(--primary) 72%, #8b5cf6 100%);
   color: var(--primary-foreground);
