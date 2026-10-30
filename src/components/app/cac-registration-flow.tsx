@@ -1,6 +1,6 @@
 /**
- * CAC Business Name — demo UI (compact RockPay steps)
- * Pay writes hub_orders when server allows; otherwise local demo success.
+ * CAC Business Name registration flow.
+ * Checkout is preview-gated and uses real Paystack Inline only when enabled.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { clearContinueDraft, saveContinueDraft } from "@/lib/continue-draft";
-import { simulatePaystackInline } from "@/lib/hub-api.demo";
+import { openPaystackInline } from "@/lib/paystack-inline";
 import {
   EMPTY_DELIVERY_ADDRESS,
   formatDeliveryOneLine,
@@ -421,7 +421,7 @@ export function CacRegistrationFlow() {
           },
         },
       });
-      const paystack = await simulatePaystackInline({
+      const paystack = await openPaystackInline({
         email: intent.email || email,
         amountNaira: intent.amountNaira,
         reference: intent.reference,
@@ -454,6 +454,7 @@ export function CacRegistrationFlow() {
     delivery,
     shipTo,
     runSubmit,
+    runCreateIntent,
     totalPay,
     preferredName,
     name1,
