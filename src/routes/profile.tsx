@@ -66,7 +66,7 @@ function ProfilePage() {
 
   return (
     <AppShell>
-      <header className="px-4 pt-5 pb-4 lg:px-0 lg:pt-6">
+      <header className="mx-auto w-full max-w-md px-4 pt-5 pb-4 lg:max-w-2xl lg:px-0 lg:pt-6">
         <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-card lg:rounded-3xl">
           <div className="h-20 bg-gradient-to-br from-primary-soft via-card to-secondary lg:h-24" />
           <div className="-mt-10 flex flex-col items-center px-5 pb-5 text-center lg:-mt-12 lg:flex-row lg:items-end lg:gap-5 lg:px-8 lg:pb-6 lg:text-left">
@@ -92,7 +92,7 @@ function ProfilePage() {
         </div>
       </header>
 
-      <div className="space-y-2 px-4 pt-1 pb-8 lg:px-0">
+      <div className="mx-auto w-full max-w-md space-y-2 px-4 pt-1 pb-8 lg:max-w-2xl lg:px-0">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <Link

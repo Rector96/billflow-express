@@ -59,7 +59,7 @@ function MyDocumentsPage() {
   return (
     <AppShell>
       <PageHeader title="My documents" backTo="/profile" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-8 pt-1">
+      <div className="mx-auto w-full max-w-md space-y-3 px-4 pb-8 pt-1 lg:max-w-2xl lg:px-0">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">CAC, NIN, vehicle & more</p>
           <button
