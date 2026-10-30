@@ -6,7 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyCustomerHubStatus } from "@/lib/hub-documents.functions";
-import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
+import { processHubEmailOutbox, sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import {
   FULFILLMENT_STATUSES,
   type FulfillmentStatus,
@@ -718,6 +718,17 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     }
 
     return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
+  });
+
+/** Staff-triggered retry for queued Hub lifecycle emails. */
+export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { limit?: number } | undefined) => ({
+    limit: Math.min(Math.max(Math.trunc(Number(input?.limit ?? 20)), 1), 100),
+  }))
+  .handler(async ({ data, context }) => {
+    await assertStaff(context.userId);
+    return processHubEmailOutbox(data.limit);
   });
 
 export const listHubCatalogFees = createServerFn({ method: "GET" })
