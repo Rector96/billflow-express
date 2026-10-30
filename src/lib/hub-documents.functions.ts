@@ -158,6 +158,7 @@ export const attachHubDocument = createServerFn({ method: "POST" })
       void sendHubLifecycleEmail({
         userId: row.user_id,
         event: "digital_ready",
+        eventKey: `hub-order:${data.orderId}:digital_ready:email`,
         service: row.service,
         trackingReference: row.tracking_reference,
         amount: row.amount,
