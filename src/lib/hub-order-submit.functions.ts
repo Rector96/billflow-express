@@ -186,42 +186,33 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       throw new Error("The Paystack environment does not match this payment request.");
     }
 
-    const response = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.paymentReference)}`,
-      { headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" } },
-    );
-    const verified = (await response.json()) as {
-      status?: boolean;
-      message?: string;
-      data?: {
-        id?: number;
-        reference?: string;
-        status?: string;
-        amount?: number;
-        currency?: string;
-      };
-    };
-    const transaction = verified.data;
-    if (!response.ok || !verified.status || !transaction) {
-      throw new Error(verified.message || "Could not verify CAC payment with Paystack.");
+    const { paystackVerify, classifyPaystackFunding } = await import("@/lib/paystack.server");
+    const transaction = await paystackVerify(data.paymentReference);
+    if (!transaction || String(transaction.status ?? "").toLowerCase() !== "success") {
+      throw new Error("Could not verify a successful CAC payment with Paystack.");
     }
-    if (
-      transaction.status !== "success" ||
-      transaction.reference !== data.paymentReference ||
-      transaction.currency !== "NGN" ||
-      Number(transaction.amount) !== expectedKobo ||
-      !Number.isSafeInteger(Number(transaction.id)) ||
-      Number(transaction.id) <= 0
-    ) {
+    if (transaction.domain && transaction.domain !== intent.paystack_domain) {
+      throw new Error("The Paystack transaction environment does not match this payment request.");
+    }
+    const classification = classifyPaystackFunding(
+      transaction,
+      data.paymentReference,
+      expectedKobo,
+    );
+    if (classification.kind === "mismatch") {
       throw new Error("Paystack payment details do not match the saved CAC payment request.");
+    }
+    const providerTransactionId = Number(classification.providerTransactionId);
+    if (!Number.isSafeInteger(providerTransactionId) || providerTransactionId <= 0) {
+      throw new Error("Paystack returned an invalid transaction identifier.");
     }
 
     const { data: finalized, error: finalizeError } = await admin.rpc(
       "finalize_hub_payment_intent",
       {
         _payment_reference: data.paymentReference,
-        _provider_transaction_id: Number(transaction.id),
-        _paid_at: new Date().toISOString(),
+        _provider_transaction_id: providerTransactionId,
+        _paid_at: transaction.paid_at ?? transaction.paidAt ?? new Date().toISOString(),
       },
     );
     if (finalizeError) {
