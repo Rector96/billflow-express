@@ -172,7 +172,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       }
     }
 
-    let applicationFiles: Record<string, string> = {};
+    const applicationFiles: Record<string, string> = {};
     if (row.service === "cac") {
       const meta = asMeta(row.metadata);
       const files = asMeta(meta["application_files"]);
