@@ -13,6 +13,7 @@ export type SendEmailInput = {
   subject: string;
   html: string;
   text?: string;
+  idempotencyKey?: string;
 };
 
 export type SendEmailResult =
@@ -56,12 +57,15 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     if (input.text) body.text = input.text;
     if (replyTo) body.reply_to = replyTo;
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (input.idempotencyKey) headers["Idempotency-Key"] = input.idempotencyKey;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
