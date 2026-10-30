@@ -130,6 +130,7 @@ function buildEmail(input: HubLifecycleEmailInput, to: string) {
       .filter(Boolean)
       .map((line) => line.replace(/<[^>]+>/g, ""))
       .join("\n"),
+    idempotencyKey: input.eventKey,
   };
 }
 
