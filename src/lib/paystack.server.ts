@@ -137,6 +137,8 @@ export type SettleResult = {
     feeSubunits: number | null;
     validationReason: string | null;
     domain: string | null;
+    gatewayResponse: string | null;
+    paidAt: string | null;
   };
 };
 
@@ -199,6 +201,8 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       data.fees != null && Number.isSafeInteger(Number(data.fees)) ? Number(data.fees) : null,
     validationReason: null as string | null,
     domain: data.domain ?? null,
+    gatewayResponse: data.gateway_response ?? null,
+    paidAt: data.paid_at ?? data.paidAt ?? null,
   };
   if (gatewayStatus === "success") {
     const key = getPaystackSecret();
