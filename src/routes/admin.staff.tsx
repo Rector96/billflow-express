@@ -31,7 +31,9 @@ function AdminStaff() {
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role");
-      setIsSuperAdmin((roles ?? []).some((r) => r.user_id === current.user?.id && r.role === "super_admin"));
+      setIsSuperAdmin(
+        (roles ?? []).some((r) => r.user_id === current.user?.id && r.role === "super_admin"),
+      );
       if (rolesError) throw rolesError;
       const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
       const { data: profiles, error: profilesError } = ids.length
@@ -69,8 +71,18 @@ function AdminStaff() {
     <AdminShell title="Staff" subtitle="Roles from user_roles (super_admin, admin, support)">
       {isSuperAdmin ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <div><p className="text-sm font-extrabold">Owner controls</p><p className="mt-1 text-xs text-muted-foreground">Manage staff access and review privileged controls in the Super Admin centre.</p></div>
-          <Link to="/admin/super-admin" className="rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground">Open Super Admin</Link>
+          <div>
+            <p className="text-sm font-extrabold">Owner controls</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Manage staff access and review privileged controls in the Super Admin centre.
+            </p>
+          </div>
+          <Link
+            to="/admin/super-admin"
+            className="rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground"
+          >
+            Open Super Admin
+          </Link>
         </div>
       ) : null}
       {error ? (
@@ -80,7 +92,9 @@ function AdminStaff() {
       ) : null}
       <p className="mb-4 text-xs text-muted-foreground">
         Finance / Operations roles from the product brief are not in the database enum yet. Current
-        roles: <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Role changes are available only in the Super Admin centre. Super Admin access itself remains protected and cannot be granted from this screen.
+        roles: <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Role
+        changes are available only in the Super Admin centre. Super Admin access itself remains
+        protected and cannot be granted from this screen.
       </p>
       {loading ? (
         <AdminLoading />
