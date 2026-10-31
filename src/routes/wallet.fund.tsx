@@ -102,8 +102,15 @@ function FundWallet() {
     setBusy(true);
     setStage("redirecting");
     try {
-      const { authorizationUrl } = await initFunding({ data: { amount: value } });
-      window.location.href = authorizationUrl;
+      const result = await initFunding({ data: { amount: value } });
+      if (result.status === "pending") {
+        setSettled({ reference: result.reference, amount: result.amount });
+        setStage("pending");
+        toast.error(result.message);
+        await refresh();
+        return;
+      }
+      window.location.href = result.authorizationUrl;
     } catch (err) {
       starting.current = false;
       setBusy(false);
