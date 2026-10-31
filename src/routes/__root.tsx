@@ -86,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         name: "description",
-        content: `${BRAND.name} lets you pay electricity, cable TV, education, airtime and data bills from one secure wallet.`,
+        content: `${BRAND.name} lets you pay electricity, cable TV, education and official services from one secure wallet.`,
       },
       { property: "og:title", content: `${BRAND.name} — Pay. Fund. Connect.` },
       {
