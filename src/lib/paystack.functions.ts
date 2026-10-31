@@ -166,7 +166,7 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
     }
     return { reference };
   })
-  .handler(async ({ data, context }): Promise<FundingStatus & { credited: boolean }> => {
+  .handler(async ({ data, context }): Promise<FundingStatus & { credited: boolean; auditId?: string }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Reconciliation can result in a wallet credit, so enforce the existing
