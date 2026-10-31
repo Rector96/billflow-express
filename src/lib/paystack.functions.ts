@@ -166,152 +166,155 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
     }
     return { reference };
   })
-  .handler(async ({ data, context }): Promise<FundingStatus & { credited: boolean; auditId?: string }> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(
+    async ({ data, context }): Promise<FundingStatus & { credited: boolean; auditId?: string }> => {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Reconciliation can result in a wallet credit, so enforce the existing
-    // wallet-adjustment privilege boundary rather than allowing view-only support staff.
-    const { data: roles, error: roleError } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (roleError) throw new Error("Could not verify staff permissions.");
-    if (!(roles ?? []).some((entry) => entry.role === "super_admin")) {
-      throw new Error("Forbidden: super admin access required for wallet funding rechecks.");
-    }
+      // Reconciliation can result in a wallet credit, so enforce the existing
+      // wallet-adjustment privilege boundary rather than allowing view-only support staff.
+      const { data: roles, error: roleError } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId);
+      if (roleError) throw new Error("Could not verify staff permissions.");
+      if (!(roles ?? []).some((entry) => entry.role === "super_admin")) {
+        throw new Error("Forbidden: super admin access required for wallet funding rechecks.");
+      }
 
-    const { data: rows, error } = await supabaseAdmin
-      .from("wallet_transactions")
-      .select("reference, amount, status, type, provider")
-      .eq("reference", data.reference)
-      .eq("provider", "paystack")
-      .eq("provider_reference", data.reference)
-      .limit(1);
-    if (error) throw new Error(error.message);
-    const row = rows?.[0];
-    if (!row || row.type !== "deposit") throw new Error("Paystack wallet deposit not found.");
+      const { data: rows, error } = await supabaseAdmin
+        .from("wallet_transactions")
+        .select("reference, amount, status, type, provider")
+        .eq("reference", data.reference)
+        .eq("provider", "paystack")
+        .eq("provider_reference", data.reference)
+        .limit(1);
+      if (error) throw new Error(error.message);
+      const row = rows?.[0];
+      if (!row || row.type !== "deposit") throw new Error("Paystack wallet deposit not found.");
 
-    const amount = Number(row.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      throw new Error("Stored wallet deposit amount is invalid.");
-    }
+      const amount = Number(row.amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error("Stored wallet deposit amount is invalid.");
+      }
 
-    if (row.status === "successful") {
-      return { reference: data.reference, status: "successful", amount, credited: false };
-    }
-    if (row.status !== "pending" && row.status !== "failed") {
-      throw new Error("This wallet transaction is not eligible for recheck.");
-    }
+      if (row.status === "successful") {
+        return { reference: data.reference, status: "successful", amount, credited: false };
+      }
+      if (row.status !== "pending" && row.status !== "failed") {
+        throw new Error("This wallet transaction is not eligible for recheck.");
+      }
 
-    // Create the audit record before calling Paystack. If the audit store is
-    // unavailable, fail closed and do not perform a money-affecting recheck.
-    const { data: actorResult } = await supabaseAdmin.auth.admin.getUserById(context.userId);
-    const actorEmail = actorResult.user?.email ?? null;
-    const { data: audit, error: auditError } = await supabaseAdmin
-      .from("admin_audit_logs")
-      .insert({
-        actor_user_id: context.userId,
-        action: "wallet_funding_recheck",
-        target_type: "wallet_transaction",
-        target_id: data.reference,
-        description: "Paystack wallet funding recheck started",
-        metadata: {
-          outcome: "started",
-          actor_email: actorEmail,
-          provider: "paystack",
-          wallet_amount_ngn: amount,
-        },
-      })
-      .select("id")
-      .single();
-    if (auditError || !audit?.id) {
-      throw new Error("Could not create the required wallet recheck audit record.");
-    }
-
-    let settlementCompleted = false;
-    let settledResult: {
-      status: "successful" | "pending" | "failed";
-      amount: number;
-      credited: boolean;
-      paystack?: Record<string, unknown>;
-    } | null = null;
-    try {
-      // This function verifies Paystack and invokes only the established
-      // complete_paystack_funding / recover_paystack_funding settlement RPCs.
-      const { verifyAndSettle } = await import("./paystack.server");
-      const result = await verifyAndSettle(data.reference);
-      settlementCompleted = true;
-      settledResult = result;
-      const auditMetadata = {
-        outcome: result.status,
-        credited: result.credited,
-        wallet_amount_ngn: result.amount,
-        paystack: result.paystack ?? null,
-      };
-      const { error: updateAuditError } = await supabaseAdmin
+      // Create the audit record before calling Paystack. If the audit store is
+      // unavailable, fail closed and do not perform a money-affecting recheck.
+      const { data: actorResult } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const actorEmail = actorResult.user?.email ?? null;
+      const { data: audit, error: auditError } = await supabaseAdmin
         .from("admin_audit_logs")
-        .update({
-          description: result.credited
-            ? "Paystack wallet recheck verified and wallet credited"
-            : "Paystack wallet recheck completed without a new wallet credit",
+        .insert({
+          actor_user_id: context.userId,
+          action: "wallet_funding_recheck",
+          target_type: "wallet_transaction",
+          target_id: data.reference,
+          description: "Paystack wallet funding recheck started",
           metadata: {
-            ...auditMetadata,
+            outcome: "started",
             actor_email: actorEmail,
             provider: "paystack",
+            wallet_amount_ngn: amount,
           },
         })
-        .eq("id", audit.id);
-      if (updateAuditError) {
-        console.error("[wallet-recheck] audit completion update failed", {
-          auditId: audit.id,
-          reference: data.reference,
-          message: updateAuditError.message,
-        });
-        throw new Error(
-          "Recheck completed, but its audit record could not be finalized. Check the Admin audit log before retrying.",
-        );
+        .select("id")
+        .single();
+      if (auditError || !audit?.id) {
+        throw new Error("Could not create the required wallet recheck audit record.");
       }
-      return {
-        reference: data.reference,
-        status: result.status,
-        amount: result.amount,
-        credited: result.credited,
-        auditId: audit.id,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown recheck error";
-      const failureMetadata = settlementCompleted && settledResult
-        ? {
-            outcome: "audit_update_failed_after_settlement",
-            actor_email: actorEmail,
-            provider: "paystack",
-            credited: settledResult.credited,
-            wallet_amount_ngn: settledResult.amount,
-            paystack: settledResult.paystack ?? null,
-            error_message: message.slice(0, 300),
-          }
-        : {
-            outcome: "error",
-            actor_email: actorEmail,
-            provider: "paystack",
-            error_message: message.slice(0, 300),
-          };
-      const { error: auditUpdateError } = await supabaseAdmin
-        .from("admin_audit_logs")
-        .update({
-          description: settlementCompleted
-            ? "Wallet settlement completed but audit finalization needs attention"
-            : "Paystack wallet funding recheck encountered an error",
-          metadata: failureMetadata,
-        })
-        .eq("id", audit.id);
-      if (auditUpdateError) {
-        console.error("[wallet-recheck] failed to record recheck outcome", {
-          auditId: audit.id,
+
+      let settlementCompleted = false;
+      let settledResult: {
+        status: "successful" | "pending" | "failed";
+        amount: number;
+        credited: boolean;
+        paystack?: Record<string, unknown>;
+      } | null = null;
+      try {
+        // This function verifies Paystack and invokes only the established
+        // complete_paystack_funding / recover_paystack_funding settlement RPCs.
+        const { verifyAndSettle } = await import("./paystack.server");
+        const result = await verifyAndSettle(data.reference);
+        settlementCompleted = true;
+        settledResult = result;
+        const auditMetadata = {
+          outcome: result.status,
+          credited: result.credited,
+          wallet_amount_ngn: result.amount,
+          paystack: result.paystack ?? null,
+        };
+        const { error: updateAuditError } = await supabaseAdmin
+          .from("admin_audit_logs")
+          .update({
+            description: result.credited
+              ? "Paystack wallet recheck verified and wallet credited"
+              : "Paystack wallet recheck completed without a new wallet credit",
+            metadata: {
+              ...auditMetadata,
+              actor_email: actorEmail,
+              provider: "paystack",
+            },
+          })
+          .eq("id", audit.id);
+        if (updateAuditError) {
+          console.error("[wallet-recheck] audit completion update failed", {
+            auditId: audit.id,
+            reference: data.reference,
+            message: updateAuditError.message,
+          });
+          throw new Error(
+            "Recheck completed, but its audit record could not be finalized. Check the Admin audit log before retrying.",
+          );
+        }
+        return {
           reference: data.reference,
-          message: auditUpdateError.message,
-        });
+          status: result.status,
+          amount: result.amount,
+          credited: result.credited,
+          auditId: audit.id,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown recheck error";
+        const failureMetadata =
+          settlementCompleted && settledResult
+            ? {
+                outcome: "audit_update_failed_after_settlement",
+                actor_email: actorEmail,
+                provider: "paystack",
+                credited: settledResult.credited,
+                wallet_amount_ngn: settledResult.amount,
+                paystack: settledResult.paystack ?? null,
+                error_message: message.slice(0, 300),
+              }
+            : {
+                outcome: "error",
+                actor_email: actorEmail,
+                provider: "paystack",
+                error_message: message.slice(0, 300),
+              };
+        const { error: auditUpdateError } = await supabaseAdmin
+          .from("admin_audit_logs")
+          .update({
+            description: settlementCompleted
+              ? "Wallet settlement completed but audit finalization needs attention"
+              : "Paystack wallet funding recheck encountered an error",
+            metadata: failureMetadata,
+          })
+          .eq("id", audit.id);
+        if (auditUpdateError) {
+          console.error("[wallet-recheck] failed to record recheck outcome", {
+            auditId: audit.id,
+            reference: data.reference,
+            message: auditUpdateError.message,
+          });
+        }
+        throw error;
       }
-      throw error;
-    }
-  });
+    },
+  );

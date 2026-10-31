@@ -205,7 +205,9 @@ function AdminWallet() {
               <span className="text-xs text-muted-foreground">{auditRows.length} recent</span>
             </div>
             {auditRows.length === 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">No wallet recheck audit events recorded yet.</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                No wallet recheck audit events recorded yet.
+              </p>
             ) : (
               <div className="mt-3 space-y-2">
                 {auditRows.map((entry) => {
@@ -214,13 +216,17 @@ function AdminWallet() {
                     meta["paystack"] && typeof meta["paystack"] === "object"
                       ? (meta["paystack"] as Record<string, unknown>)
                       : {};
-                  const actor = typeof meta["actor_email"] === "string"
-                    ? meta["actor_email"]
-                    : entry.actor_user_id;
+                  const actor =
+                    typeof meta["actor_email"] === "string"
+                      ? meta["actor_email"]
+                      : entry.actor_user_id;
                   const outcome = String(meta["outcome"] ?? "unknown");
                   const credited = meta["credited"] === true;
                   return (
-                    <div key={entry.id} className="rounded-xl border bg-background px-3 py-3 text-xs">
+                    <div
+                      key={entry.id}
+                      className="rounded-xl border bg-background px-3 py-3 text-xs"
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-semibold">{entry.target_id || "Unknown reference"}</p>
@@ -228,21 +234,36 @@ function AdminWallet() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold capitalize">{outcome.replaceAll("_", " ")}</p>
-                          <p className={credited ? "font-semibold text-success" : "text-muted-foreground"}>
+                          <p
+                            className={
+                              credited ? "font-semibold text-success" : "text-muted-foreground"
+                            }
+                          >
                             {credited ? "Wallet credited" : "No new credit"}
                           </p>
                         </div>
                       </div>
-                      <p className="mt-1 text-muted-foreground">{new Date(entry.created_at).toLocaleString("en-NG")}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        {new Date(entry.created_at).toLocaleString("en-NG")}
+                      </p>
                       <p className="mt-1">{entry.description}</p>
                       {Object.keys(paystack).length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
                           <span>Paystack: {String(paystack["gatewayStatus"] ?? "unknown")}</span>
                           <span>Channel: {String(paystack["channel"] ?? "—")}</span>
                           <span>Currency: {String(paystack["currency"] ?? "—")}</span>
-                          <span>Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}</span>
-                          <span>Charged: {paystack["chargedSubunits"] == null ? "—" : formatNaira(Number(paystack["chargedSubunits"]) / 100, false)}</span>
-                          {paystack["validationReason"] ? <span>Validation: {String(paystack["validationReason"])}</span> : null}
+                          <span>
+                            Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}
+                          </span>
+                          <span>
+                            Charged:{" "}
+                            {paystack["chargedSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["chargedSubunits"]) / 100, false)}
+                          </span>
+                          {paystack["validationReason"] ? (
+                            <span>Validation: {String(paystack["validationReason"])}</span>
+                          ) : null}
                         </div>
                       ) : meta["error_message"] ? (
                         <p className="mt-1 text-destructive">{String(meta["error_message"])}</p>
