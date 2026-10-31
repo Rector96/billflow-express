@@ -463,7 +463,8 @@ export function CacRegistrationFlow() {
 
   const field =
     "h-10 min-w-0 rounded-xl border-border/70 bg-card text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 sm:h-11";
-  const card = "cac-form-section grid grid-cols-1 gap-2.5 border-b border-border/60 pb-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2.5 lg:gap-x-5";
+  const card =
+    "cac-form-section grid grid-cols-1 gap-2.5 border-b border-border/60 pb-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2.5 lg:gap-x-5";
 
   return (
     <AppShell>
