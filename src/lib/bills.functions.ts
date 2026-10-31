@@ -181,6 +181,33 @@ export const verifyVtpassCustomer = createServerFn({ method: "POST" })
     };
   });
 
+function pendingBillPurchaseResult(input: {
+  slug: "data" | "cable" | "electricity";
+  serviceID: string;
+  product: string;
+  identifier: string;
+  amount: number;
+  requestId: string;
+  providerRequestId: string;
+  customerName: string | null;
+}): BillPurchaseResult {
+  return {
+    status: "pending",
+    reference: input.requestId,
+    requestId: input.providerRequestId,
+    providerTransactionId: null,
+    amount: input.amount,
+    identifierMasked:
+      input.slug === "data" ? maskPhone(input.identifier) : maskId(input.identifier),
+    provider: input.serviceID,
+    product: input.product,
+    token: null,
+    balanceAfter: null,
+    message: customerMessage("pending", input.slug),
+    customerName: input.customerName,
+  };
+}
+
 async function settleBillPurchase(
   context: { supabase: AuthSupabase; userId: string },
   input: {
@@ -375,15 +402,34 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start cable payment.");
-    const routed = await routeCablePay({
-      request_id: row.request_id,
-      serviceID: data.serviceID,
-      billersCode: data.billersCode,
-      variation_code: data.variationCode,
-      amount: providerAmount,
-      phone,
-      subscription_type: data.subscriptionType,
-    });
+    let routed: Awaited<ReturnType<typeof routeCablePay>>;
+    try {
+      routed = await routeCablePay({
+        request_id: row.request_id,
+        serviceID: data.serviceID,
+        billersCode: data.billersCode,
+        variation_code: data.variationCode,
+        amount: providerAmount,
+        phone,
+        subscription_type: data.subscriptionType,
+      });
+    } catch (error) {
+      console.error("[cable] provider request timed out or failed after wallet reservation", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return pendingBillPurchaseResult({
+        slug: "cable",
+        serviceID: data.serviceID,
+        product: pack.name,
+        identifier: data.billersCode,
+        amount: pricing.customerAmount,
+        requestId: row.internal_reference,
+        providerRequestId: row.request_id,
+        customerName: data.customerName ?? null,
+      });
+    }
     const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "cable",
@@ -523,14 +569,33 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start electricity payment.");
-    const routed = await routeElectricityPay({
-      request_id: row.request_id,
-      serviceID: data.serviceID,
-      billersCode: data.billersCode,
-      meterType: data.meterType,
-      amount: data.amount,
-      phone,
-    });
+    let routed: Awaited<ReturnType<typeof routeElectricityPay>>;
+    try {
+      routed = await routeElectricityPay({
+        request_id: row.request_id,
+        serviceID: data.serviceID,
+        billersCode: data.billersCode,
+        meterType: data.meterType,
+        amount: data.amount,
+        phone,
+      });
+    } catch (error) {
+      console.error("[electricity] provider request timed out or failed after wallet reservation", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return pendingBillPurchaseResult({
+        slug: "electricity",
+        serviceID: data.serviceID,
+        product: data.meterType,
+        identifier: data.billersCode,
+        amount: pricing.customerAmount,
+        requestId: row.internal_reference,
+        providerRequestId: row.request_id,
+        customerName: verified.customerName,
+      });
+    }
     const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "electricity",
@@ -647,14 +712,33 @@ export const purchaseData = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start data purchase.");
-    const pay = await vtpassPay({
-      request_id: row.request_id,
-      serviceID,
-      billersCode: phone,
-      variation_code: data.variationCode,
-      amount: providerAmount,
-      phone,
-    });
+    let pay: Awaited<ReturnType<typeof vtpassPay>>;
+    try {
+      pay = await vtpassPay({
+        request_id: row.request_id,
+        serviceID,
+        billersCode: phone,
+        variation_code: data.variationCode,
+        amount: providerAmount,
+        phone,
+      });
+    } catch (error) {
+      console.error("[data] provider request timed out or failed after wallet reservation", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return pendingBillPurchaseResult({
+        slug: "data",
+        serviceID,
+        product: pack.name,
+        identifier: phone,
+        amount: pricing.customerAmount,
+        requestId: row.internal_reference,
+        providerRequestId: row.request_id,
+        customerName: null,
+      });
+    }
     const result = await settleBillPurchase(context, {
       slug: "data",
       serviceID,
