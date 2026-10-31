@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         property: "og:description",
-        content: "Electricity, cable TV, education, airtime and data — all in one place.",
+        content: "Electricity, cable TV, education and official services — all in one place.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: BRAND.name },
