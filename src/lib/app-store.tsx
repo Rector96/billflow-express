@@ -144,7 +144,7 @@ export function friendlyError(
   if (message.includes("invalid_phone") || message.includes("valid Nigerian"))
     return "Enter a valid Nigerian mobile number.";
   if (message.includes("unsupported_network"))
-    return "That network is not supported for airtime yet.";
+    return "That provider is not supported for this service.";
   if (
     message.includes("An unknown error has occurred") ||
     message === "Error" ||
