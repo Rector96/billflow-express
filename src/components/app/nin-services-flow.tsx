@@ -119,183 +119,208 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
       <div className="service-flow-layout nin-flow-layout">
         <main className="service-flow-main">
           <div className="service-flow-form-card space-y-3">
-        <PayStepper steps={steps} current={Math.min(stepIndex, steps.length - 1)} />
+            <PayStepper steps={steps} current={Math.min(stepIndex, steps.length - 1)} />
 
-        {step === "choose" ? (
-          <section className="space-y-2">
-            {(
-              [
-                {
-                  id: "retrieve" as const,
-                  Icon: Search,
-                  title: "Retrieve NIN",
-                  sub: "11-digit number · digital",
-                  price: priceRetrieve,
-                },
-                {
-                  id: "slip_pdf" as const,
-                  Icon: FileText,
-                  title: "NIN slip (PDF)",
-                  sub: "Download when ready",
-                  price: priceSlip,
-                },
-                {
-                  id: "plastic_card" as const,
-                  Icon: CreditCard,
-                  title: "Plastic ID card",
-                  sub: "Print + home delivery",
-                  price: priceCard + priceCourier,
-                },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
-                onClick={() => {
-                  setProduct(item.id);
-                  setStep("details");
-                }}
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                  <item.Icon className="size-4.5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.sub}</p>
-                </div>
-                <p className="shrink-0 text-xs font-bold tabular-nums text-primary">
-                  {formatNaira(item.price, false)}
-                </p>
-              </button>
-            ))}
-          </section>
-        ) : null}
-
-        {step === "details" && product ? (
-          <section className="space-y-3">
-            {product === "retrieve" ? (
-              <div className="space-y-1">
-                <Label>Phone on NIN</Label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 rounded-xl"
-                  inputMode="tel"
-                />
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Label>NIN (11 digits)</Label>
-                <Input
-                  value={nin}
-                  onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  className="h-11 rounded-xl"
-                  inputMode="numeric"
-                />
-              </div>
-            )}
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => {
-                  if (product === "retrieve" && phone.replace(/\D/g, "").length < 10) {
-                    toast.error("Enter the phone linked to your NIN.");
-                    return;
-                  }
-                  if (product !== "retrieve" && nin.length !== 11) {
-                    toast.error("Enter a valid 11-digit NIN.");
-                    return;
-                  }
-                  setStep(needsAddress ? "address" : "confirm");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "address" && product === "plastic_card" ? (
-          <section className="space-y-3">
-            <DeliveryAddressFields value={address} onChange={setAddress} />
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => {
-                  const err = validateDeliveryAddress(address);
-                  if (err) toast.error(err);
-                  else setStep("confirm");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "confirm" && product ? (
-          <section className="space-y-3">
-            <PayBreakdown
-              lines={
-                product === "plastic_card"
-                  ? [
-                      { label: "Plastic ID card", amount: priceCard },
-                      { label: "Delivery", amount: priceCourier },
-                    ]
-                  : [
-                      {
-                        label: product === "retrieve" ? "Retrieve NIN" : "NIN slip (PDF)",
-                        amount: checkoutTotal,
-                      },
-                    ]
-              }
-              total={checkoutTotal}
-            />
-            {needsAddress ? (
-              <p className="text-[11px] text-muted-foreground">
-                Deliver to: {formatDeliveryOneLine(address)}
-              </p>
+            {step === "choose" ? (
+              <section className="space-y-2">
+                {(
+                  [
+                    {
+                      id: "retrieve" as const,
+                      Icon: Search,
+                      title: "Retrieve NIN",
+                      sub: "11-digit number · digital",
+                      price: priceRetrieve,
+                    },
+                    {
+                      id: "slip_pdf" as const,
+                      Icon: FileText,
+                      title: "NIN slip (PDF)",
+                      sub: "Download when ready",
+                      price: priceSlip,
+                    },
+                    {
+                      id: "plastic_card" as const,
+                      Icon: CreditCard,
+                      title: "Plastic ID card",
+                      sub: "Print + home delivery",
+                      price: priceCard + priceCourier,
+                    },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
+                    onClick={() => {
+                      setProduct(item.id);
+                      setStep("details");
+                    }}
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                      <item.Icon className="size-4.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{item.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{item.sub}</p>
+                    </div>
+                    <p className="shrink-0 text-xs font-bold tabular-nums text-primary">
+                      {formatNaira(item.price, false)}
+                    </p>
+                  </button>
+                ))}
+              </section>
             ) : null}
-            <p className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
-              NIN live checkout is not enabled yet. No payment will be taken until secure
-              payment-intent and fulfillment processing is ready.
-            </p>
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled
-                onClick={() => void onPay()}
-              >
-                {paying ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
-                  </>
+
+            {step === "details" && product ? (
+              <section className="space-y-3">
+                {product === "retrieve" ? (
+                  <div className="space-y-1">
+                    <Label>Phone on NIN</Label>
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="h-11 rounded-xl"
+                      inputMode="tel"
+                    />
+                  </div>
                 ) : (
-                  "Live checkout unavailable"
+                  <div className="space-y-1">
+                    <Label>NIN (11 digits)</Label>
+                    <Input
+                      value={nin}
+                      onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                      className="h-11 rounded-xl"
+                      inputMode="numeric"
+                    />
+                  </div>
                 )}
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (product === "retrieve" && phone.replace(/\D/g, "").length < 10) {
+                        toast.error("Enter the phone linked to your NIN.");
+                        return;
+                      }
+                      if (product !== "retrieve" && nin.length !== 11) {
+                        toast.error("Enter a valid 11-digit NIN.");
+                        return;
+                      }
+                      setStep(needsAddress ? "address" : "confirm");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "address" && product === "plastic_card" ? (
+              <section className="space-y-3">
+                <DeliveryAddressFields value={address} onChange={setAddress} />
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      const err = validateDeliveryAddress(address);
+                      if (err) toast.error(err);
+                      else setStep("confirm");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "confirm" && product ? (
+              <section className="space-y-3">
+                <PayBreakdown
+                  lines={
+                    product === "plastic_card"
+                      ? [
+                          { label: "Plastic ID card", amount: priceCard },
+                          { label: "Delivery", amount: priceCourier },
+                        ]
+                      : [
+                          {
+                            label: product === "retrieve" ? "Retrieve NIN" : "NIN slip (PDF)",
+                            amount: checkoutTotal,
+                          },
+                        ]
+                  }
+                  total={checkoutTotal}
+                />
+                {needsAddress ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Deliver to: {formatDeliveryOneLine(address)}
+                  </p>
+                ) : null}
+                <p className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
+                  NIN live checkout is not enabled yet. No payment will be taken until secure
+                  payment-intent and fulfillment processing is ready.
+                </p>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    disabled
+                    onClick={() => void onPay()}
+                  >
+                    {paying ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
+                      </>
+                    ) : (
+                      "Live checkout unavailable"
+                    )}
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
           </div>
         </main>
         <aside className="service-flow-summary">
           <div className="service-flow-summary-card space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">RockPay · NIN</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                RockPay · NIN
+              </p>
               <h2 className="mt-1 text-lg font-bold">Request summary</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Your selected service, required details and estimated amount.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your selected service, required details and estimated amount.
+              </p>
             </div>
             <div className="space-y-2 rounded-xl bg-muted/60 p-3 text-sm">
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Service</span><strong>{product === "retrieve" ? "Retrieve NIN" : product === "slip_pdf" ? "NIN slip (PDF)" : product === "plastic_card" ? "Plastic ID card" : "Not selected"}</strong></div>
-              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Delivery</span><strong>{needsAddress ? "Home delivery" : "Digital"}</strong></div>
-              <div className="flex justify-between gap-3 border-t border-border/70 pt-2"><span className="text-muted-foreground">Estimated total</span><strong className="text-primary">{formatNaira(checkoutTotal, false)}</strong></div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Service</span>
+                <strong>
+                  {product === "retrieve"
+                    ? "Retrieve NIN"
+                    : product === "slip_pdf"
+                      ? "NIN slip (PDF)"
+                      : product === "plastic_card"
+                        ? "Plastic ID card"
+                        : "Not selected"}
+                </strong>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Delivery</span>
+                <strong>{needsAddress ? "Home delivery" : "Digital"}</strong>
+              </div>
+              <div className="flex justify-between gap-3 border-t border-border/70 pt-2">
+                <span className="text-muted-foreground">Estimated total</span>
+                <strong className="text-primary">{formatNaira(checkoutTotal, false)}</strong>
+              </div>
             </div>
             <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
-              Live checkout is disabled until NIN has its own secure payment intent and fulfillment integration. This flow will not collect payment or claim that a NIN request has been submitted.
+              Live checkout is disabled until NIN has its own secure payment intent and fulfillment
+              integration. This flow will not collect payment or claim that a NIN request has been
+              submitted.
             </div>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">Keep your NIN private and never share an OTP or transaction PIN with an agent.</p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Keep your NIN private and never share an OTP or transaction PIN with an agent.
+            </p>
           </div>
         </aside>
       </div>
