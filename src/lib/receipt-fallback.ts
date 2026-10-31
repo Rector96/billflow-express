@@ -77,7 +77,7 @@ function drawFallbackReceipt(payload: ReceiptPayload): HTMLCanvasElement {
   ctx.fill();
   ctx.fillStyle = "#94A3B8";
   ctx.font = "700 10px system-ui, sans-serif";
-  ctx.fillText("TRANSACTION ID", pad + 18, 405);
+  ctx.fillText("ROCKPAY REFERENCE", pad + 18, 405);
   ctx.fillStyle = "#172033";
   ctx.font = "700 14px ui-monospace, monospace";
   ctx.fillText(String(payload.reference || "—").slice(0, 48), pad + 18, 427);
