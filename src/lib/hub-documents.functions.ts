@@ -58,7 +58,11 @@ export const listMyHubDocuments = createServerFn({ method: "GET" })
         let url: string | null = null;
         const path =
           typeof m["certificate_storage_path"] === "string" ? m["certificate_storage_path"] : "";
-        if (row.service === "cac" && path) {
+        const expectedCertificatePrefix = `${context.userId}/${row.id}/`;
+        const isOwnedCertificatePath =
+          path.startsWith(expectedCertificatePrefix) &&
+          /^[0-9a-f-]{36}\\.pdf$/i.test(path.slice(expectedCertificatePrefix.length));
+        if (row.service === "cac" && path && row.status === "successful" && isOwnedCertificatePath) {
           const { data: signed, error: signError } = await supabaseAdmin.storage
             .from(CERTIFICATE_BUCKET)
             .createSignedUrl(path, 300);
