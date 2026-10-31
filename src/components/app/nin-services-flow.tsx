@@ -256,7 +256,8 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </p>
             ) : null}
             <p className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
-              NIN live checkout is not enabled yet. No payment will be taken until secure payment-intent and fulfillment processing is ready.
+              NIN live checkout is not enabled yet. No payment will be taken until secure
+              payment-intent and fulfillment processing is ready.
             </p>
             <PayActionBar>
               <Button
