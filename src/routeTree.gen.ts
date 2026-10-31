@@ -36,6 +36,8 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 import { Route as AdminAuditLogsRouteImport } from './routes/admin.audit-logs'
+import { Route as AdminDispatchRouteImport } from './routes/admin.dispatch'
+import { Route as AdminHubOrdersRouteImport } from './routes/admin.hub-orders'
 import { Route as AdminCareRouteImport } from './routes/admin.care'
 import { Route as AdminPricingRouteImport } from './routes/admin.pricing'
 import { Route as AdminReconciliationRouteImport } from './routes/admin.reconciliation'
@@ -50,6 +52,7 @@ import { Route as HistoryTxIdRouteImport } from './routes/history.$txId'
 import { Route as PaySlugRouteImport } from './routes/pay.$slug'
 import { Route as PayCompleteRouteImport } from './routes/pay.complete'
 import { Route as ProfilePersonalRouteImport } from './routes/profile.personal'
+import { Route as ProfileDocumentsRouteImport } from './routes/profile.documents'
 import { Route as ProfilePrivacyRouteImport } from './routes/profile.privacy'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
 import { Route as WalletFundRouteImport } from './routes/wallet.fund'
@@ -198,6 +201,16 @@ const AdminCareRoute = AdminCareRouteImport.update({
   path: '/care',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDispatchRoute = AdminDispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHubOrdersRoute = AdminHubOrdersRouteImport.update({
+  id: '/hub-orders',
+  path: '/hub-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPricingRoute = AdminPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -261,6 +274,11 @@ const PayCompleteRoute = PayCompleteRouteImport.update({
 const ProfilePersonalRoute = ProfilePersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
+  getParentRoute: () => ProfileRoute,
+} as any)
+const ProfileDocumentsRoute = ProfileDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => ProfileRoute,
 } as any)
 const ProfilePrivacyRoute = ProfilePrivacyRouteImport.update({
@@ -328,6 +346,8 @@ export interface FileRoutesByFullPath {
   '/admin/activity': typeof AdminActivityRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/care': typeof AdminCareRouteWithChildren
+  '/admin/dispatch': typeof AdminDispatchRoute
+  '/admin/hub-orders': typeof AdminHubOrdersRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/reconciliation': typeof AdminReconciliationRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -341,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/pay/$slug': typeof PaySlugRoute
   '/pay/complete': typeof PayCompleteRoute
   '/profile/personal': typeof ProfilePersonalRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/profile/privacy': typeof ProfilePrivacyRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/wallet/fund': typeof WalletFundRoute
@@ -367,7 +388,10 @@ const AdminUsersRouteChildren: AdminUsersRouteChildren = {
 }
 const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(AdminUsersRouteChildren)
 
+interface ProfileRouteDocumentsMarker {}
 interface AdminRouteChildren {
+  AdminDispatchRoute: typeof AdminDispatchRoute
+  AdminHubOrdersRoute: typeof AdminHubOrdersRoute
   AdminActivityRoute: typeof AdminActivityRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminCareRoute: typeof AdminCareRouteWithChildren
@@ -383,6 +407,8 @@ interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
 }
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminDispatchRoute: AdminDispatchRoute,
+  AdminHubOrdersRoute: AdminHubOrdersRoute,
   AdminActivityRoute: AdminActivityRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminCareRoute: AdminCareRouteWithChildren,
@@ -418,10 +444,12 @@ const HistoryRouteWithChildren = HistoryRoute._addFileChildren(HistoryRouteChild
 interface ProfileRouteChildren {
   ProfilePersonalRoute: typeof ProfilePersonalRoute
   ProfilePrivacyRoute: typeof ProfilePrivacyRoute
+  ProfileDocumentsRoute: typeof ProfileDocumentsRoute
 }
 const ProfileRouteChildren: ProfileRouteChildren = {
   ProfilePersonalRoute: ProfilePersonalRoute,
   ProfilePrivacyRoute: ProfilePrivacyRoute,
+  ProfileDocumentsRoute: ProfileDocumentsRoute,
 }
 const ProfileRouteWithChildren = ProfileRoute._addFileChildren(ProfileRouteChildren)
 
