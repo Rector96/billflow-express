@@ -30,11 +30,13 @@ BEGIN
     'pending_funding_count', (SELECT count(*) FROM public.wallet_transactions WHERE type = 'deposit' AND provider = 'paystack' AND status = 'pending'),
     'pending_funding_total', coalesce((SELECT sum(amount) FROM public.wallet_transactions WHERE type = 'deposit' AND provider = 'paystack' AND status = 'pending'), 0),
     'anomalies', coalesce((
-      SELECT jsonb_agg(row_to_json(a)::jsonb ORDER BY
-        CASE a.severity WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC,
-        a.created_at DESC
+      SELECT jsonb_agg(row_to_json(page)::jsonb ORDER BY
+        CASE page.severity WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC,
+        page.created_at DESC
       )
       FROM (
+        SELECT a.*
+        FROM (
         SELECT
           'wallet_balance_chain'::text AS issue,
           'high'::text AS severity,
@@ -247,8 +249,12 @@ BEGIN
           AND wt.provider = 'paystack'
           AND wt.status = 'pending'
           AND wt.created_at < now() - interval '30 minutes'
-      ) a
-      OFFSET off LIMIT lim
+        ) a
+        ORDER BY
+          CASE a.severity WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC,
+          a.created_at DESC
+        OFFSET off LIMIT lim
+      ) page
     ), '[]'::jsonb)
   );
 END;
