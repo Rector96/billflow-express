@@ -395,7 +395,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       });
       return {
         billReference: billRef,
-        status: "failed",
+        status: "pending",
         amount,
         token: null,
         message:
