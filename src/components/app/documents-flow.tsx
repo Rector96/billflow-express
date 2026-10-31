@@ -104,18 +104,31 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const validateForm = () => {
     if (partyA.trim().length < 2) {
-      toast.error(docType === "constitution" ? "Enter the registered business name." : "Enter the landlord's full name.");
+      toast.error(
+        docType === "constitution"
+          ? "Enter the registered business name."
+          : "Enter the landlord's full name.",
+      );
       return false;
     }
     if (partyB.trim().length < 2) {
-      toast.error(docType === "constitution" ? "Enter the manager's full name." : "Enter the tenant's full name.");
+      toast.error(
+        docType === "constitution"
+          ? "Enter the manager's full name."
+          : "Enter the tenant's full name.",
+      );
       return false;
     }
     if (address.trim().length < 8) {
       toast.error("Enter the complete property or business address.");
       return false;
     }
-    if (docType === "tenancy" && (!rent.trim() || !Number.isFinite(Number(rent.replace(/,/g, ""))) || Number(rent.replace(/,/g, "")) <= 0)) {
+    if (
+      docType === "tenancy" &&
+      (!rent.trim() ||
+        !Number.isFinite(Number(rent.replace(/,/g, ""))) ||
+        Number(rent.replace(/,/g, "")) <= 0)
+    ) {
       toast.error("Enter a valid annual rent amount.");
       return false;
     }
@@ -275,62 +288,104 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
         {step === "form" && docType ? (
           <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:items-start">
             <div className="form-section-card space-y-4">
-              <div><h2 className="form-section-heading">{docType === "constitution" ? "Business details" : "Agreement parties"}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Complete every required field. Your document preview will use these details.</p></div>
+              <div>
+                <h2 className="form-section-heading">
+                  {docType === "constitution" ? "Business details" : "Agreement parties"}
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Complete every required field. Your document preview will use these details.
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="document-party-a">{docType === "constitution" ? "Registered business name" : "Landlord's full name"}</Label>
-              <Input id="document-party-a" value={partyA} onChange={(e) => setPartyA(e.target.value)} className={field} placeholder={docType === "constitution" ? "Enter registered business name" : "Enter landlord's full name"} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="document-party-b">{docType === "constitution" ? "Manager's full name" : "Tenant's full name"}</Label>
-              <Input id="document-party-b" value={partyB} onChange={(e) => setPartyB(e.target.value)} className={field} placeholder="Enter full name" />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="document-address">{docType === "constitution" ? "Business address" : "Property address"}</Label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className={field}
-              />
-            </div>
-            {docType === "tenancy" ? (
-              <>
                 <div className="space-y-2">
-                  <Label htmlFor="document-rent">Annual rent (₦)</Label>
+                  <Label htmlFor="document-party-a">
+                    {docType === "constitution"
+                      ? "Registered business name"
+                      : "Landlord's full name"}
+                  </Label>
                   <Input
-                    id="document-rent"
-                    value={rent}
-                    onChange={(e) => setRent(e.target.value.replace(/[^0-9,]/g, ""))}
+                    id="document-party-a"
+                    value={partyA}
+                    onChange={(e) => setPartyA(e.target.value)}
                     className={field}
-                    placeholder="e.g. 850000"
-                    inputMode="numeric"
+                    placeholder={
+                      docType === "constitution"
+                        ? "Enter registered business name"
+                        : "Enter landlord's full name"
+                    }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="document-duration">Agreement duration</Label>
+                  <Label htmlFor="document-party-b">
+                    {docType === "constitution" ? "Manager's full name" : "Tenant's full name"}
+                  </Label>
                   <Input
-                    id="document-duration"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
+                    id="document-party-b"
+                    value={partyB}
+                    onChange={(e) => setPartyB(e.target.value)}
+                    className={field}
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="document-address">
+                    {docType === "constitution" ? "Business address" : "Property address"}
+                  </Label>
+                  <Input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     className={field}
                   />
                 </div>
-              </>
-            ) : null}
+                {docType === "tenancy" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="document-rent">Annual rent (₦)</Label>
+                      <Input
+                        id="document-rent"
+                        value={rent}
+                        onChange={(e) => setRent(e.target.value.replace(/[^0-9,]/g, ""))}
+                        className={field}
+                        placeholder="e.g. 850000"
+                        inputMode="numeric"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="document-duration">Agreement duration</Label>
+                      <Input
+                        id="document-duration"
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value)}
+                        className={field}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
             <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
-              <div className="flex items-center gap-2 text-sm font-bold"><FileText className="size-4 text-primary" /> Document checklist</div>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <FileText className="size-4 text-primary" /> Document checklist
+              </div>
               <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <li>• Names must be spelt correctly.</li><li>• Provide a complete address.</li>
-                {docType === "tenancy" ? <li>• Enter the agreed annual rent and duration.</li> : <li>• Use the registered business name.</li>}
+                <li>• Names must be spelt correctly.</li>
+                <li>• Provide a complete address.</li>
+                {docType === "tenancy" ? (
+                  <li>• Enter the agreed annual rent and duration.</li>
+                ) : (
+                  <li>• Use the registered business name.</li>
+                )}
               </ul>
-              <p className="mt-4 border-t border-primary/10 pt-3 text-xs font-semibold text-foreground">Service fee: {formatNaira(fee, false)}</p>
+              <p className="mt-4 border-t border-primary/10 pt-3 text-xs font-semibold text-foreground">
+                Service fee: {formatNaira(fee, false)}
+              </p>
             </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => { if (validateForm()) setStep("preview"); }}
+                onClick={() => {
+                  if (validateForm()) setStep("preview");
+                }}
               >
                 Continue
               </Button>
@@ -343,11 +398,14 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
               {draft}
             </div>
             <div className="space-y-3">
-            <div className="flex justify-between rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm font-bold">
-              <span>Total</span>
-              <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">Please review the complete draft before paying. Payment will generate the downloadable document.</p>
+              <div className="flex justify-between rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm font-bold">
+                <span>Total</span>
+                <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
+              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Please review the complete draft before paying. Payment will generate the
+                downloadable document.
+              </p>
             </div>
             <PayActionBar>
               <Button
