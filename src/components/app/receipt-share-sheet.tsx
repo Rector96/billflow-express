@@ -58,7 +58,9 @@ export function ReceiptShareButton({ payload, className }: Props) {
           `RockPay reference: ${payload.reference}`,
           payload.paystackRef ? `Paystack reference: ${payload.paystackRef}` : null,
           payload.providerRef ? `Provider reference: ${payload.providerRef}` : null,
-        ].filter(Boolean).join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
       });
 
       toast.success(
