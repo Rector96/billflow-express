@@ -825,7 +825,7 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
     return { intentId };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertSuperAdmin(context.userId, "CAC payment reconciliation");
     const { data: intent, error } = await admin
       .from("hub_payment_intents")
       .select("id,service,amount_kobo,currency,payment_reference,paystack_domain,status")
