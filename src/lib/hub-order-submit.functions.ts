@@ -301,9 +301,12 @@ export const submitNinOrder = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    if (!isBillLive("nin") && !isHubPreviewServerEnabled()) {
-      throw new Error("NIN services are not available right now.");
-    }
+    // NIN remains preview-only until it has a server-created payment intent,
+    // verified amount/reference ownership, idempotent finalization, and real fulfilment.
+    // Never create a paid-looking order from a client-supplied amount or demo reference.
+    throw new Error(
+      "NIN checkout is temporarily unavailable while secure payment and fulfilment are being prepared.",
+    );
 
     const service =
       data.product === "retrieve"
