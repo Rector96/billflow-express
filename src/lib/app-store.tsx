@@ -265,7 +265,8 @@ function toTransaction(row: LedgerRow): Transaction {
   return {
     // Bill-payment rows link to the bill receipt. Refund rows must keep
     // their own RFD reference so they do not collide with the original debit.
-    id: row.type === "bill_payment" ? (str(meta, "bill_reference") ?? row.reference) : row.reference,
+    id:
+      row.type === "bill_payment" ? (str(meta, "bill_reference") ?? row.reference) : row.reference,
     title: str(meta, "title") ?? (isIn ? "Wallet Funded" : (row.description ?? "Payment")),
     service:
       str(meta, "service_label") ??
