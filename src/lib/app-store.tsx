@@ -288,11 +288,7 @@ function toTransaction(row: LedgerRow): Transaction {
     status,
     date: fmtDate(row.created_at),
     time: fmtTime(row.created_at),
-    method: isIn
-      ? str(meta, "channel") === "paystack"
-        ? "Paystack"
-        : "Wallet Funding"
-      : "Wallet",
+    method: isIn ? (str(meta, "channel") === "paystack" ? "Paystack" : "Wallet Funding") : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
     ...(row.provider_reference ? { providerReference: row.provider_reference } : {}),
@@ -388,7 +384,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
         supabase
           .from("wallet_transactions")
-          .select("reference, provider_reference, type, amount, status, description, metadata, created_at")
+          .select(
+            "reference, provider_reference, type, amount, status, description, metadata, created_at",
+          )
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
