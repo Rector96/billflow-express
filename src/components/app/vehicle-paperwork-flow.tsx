@@ -95,7 +95,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const [step, setStep] = useState<Step>("lookup");
   const [plate, setPlate] = useState("");
-  const [state, setState] = useState("Lagos");
+  const [state, setState] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [vehicle, setVehicle] = useState<VehicleInfo | null>(null);
