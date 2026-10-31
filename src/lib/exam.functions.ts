@@ -107,8 +107,10 @@ function storedPins(metadata: unknown): string[] {
 }
 
 function mergePins(existing: string[], incoming: string[], quantity: number): string[] {
-  return [...new Set([...existing, ...incoming].map((pin) => pin.trim()).filter(Boolean))]
-    .slice(0, quantity);
+  return [...new Set([...existing, ...incoming].map((pin) => pin.trim()).filter(Boolean))].slice(
+    0,
+    quantity,
+  );
 }
 
 function requestedPinQuantity(metadata: unknown, fallback = 1): number {
@@ -316,7 +318,8 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       };
     }
     const providerOutcome = mapVtpassOutcome(pay);
-    const pins = providerOutcome === "successful" ? mergePins([], extractPins(pay), data.quantity) : [];
+    const pins =
+      providerOutcome === "successful" ? mergePins([], extractPins(pay), data.quantity) : [];
     // A provider success without every requested PIN is not customer fulfilment.
     // Keep the wallet reservation pending and recover through VTpass requery.
     const outcome =
@@ -418,9 +421,10 @@ export const requeryExamPins = createServerFn({ method: "POST" })
     const pay = await vtpassRequery(bill.provider_request_id);
     const providerOutcome = mapVtpassOutcome(pay);
     const quantity = requestedPinQuantity(meta);
-    const pins = providerOutcome === "successful"
-      ? mergePins(storedPins(meta), extractPins(pay), quantity)
-      : storedPins(meta);
+    const pins =
+      providerOutcome === "successful"
+        ? mergePins(storedPins(meta), extractPins(pay), quantity)
+        : storedPins(meta);
     const outcome =
       providerOutcome === "successful" && pins.length < quantity ? "pending" : providerOutcome;
     const payload = {
