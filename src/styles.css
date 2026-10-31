@@ -1389,3 +1389,73 @@
     padding: 1rem;
   }
 }
+
+
+/* CAC desktop correction: preserve the intended two-column grid.
+   The generic service-flow child rule must not turn this layout into a flex column. */
+@media (min-width: 1024px) {
+  .service-flow-content > div.service-flow-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 19rem);
+    align-items: stretch;
+    gap: 1rem;
+    flex: 1 1 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .service-flow-content > div.service-flow-layout > .service-flow-main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 0.25rem 6.5rem 0;
+  }
+
+  .service-flow-content > div.service-flow-layout > .service-flow-summary {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    align-self: start;
+  }
+
+  .service-flow-content > div.service-flow-layout .service-flow-numbered-steps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .service-flow-content > div.service-flow-layout .service-flow-step-item {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .service-flow-content > div.service-flow-layout .service-flow-step-label {
+    display: block;
+    font-size: clamp(0.58rem, 0.65vw, 0.7rem);
+  }
+}
+
+@media (min-width: 1280px) {
+  .service-flow-content > div.service-flow-layout {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .service-flow-content > div.service-flow-layout {
+    display: block !important;
+    overflow: visible;
+    padding: 0;
+  }
+}
