@@ -5,7 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 export type StaffRole = "super_admin" | "admin" | "support";
 
 export type AdminPerm =
-  "view" | "users_manage" | "staff_manage" | "wallet_adjust" | "settings" | "cac_documents";
+  | "view"
+  | "users_manage"
+  | "staff_manage"
+  | "wallet_adjust"
+  | "settings"
+  | "cac_documents"
+  | "transaction_requery";
 
 const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
   super_admin: [
@@ -15,6 +21,7 @@ const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
     "wallet_adjust",
     "settings",
     "cac_documents",
+    "transaction_requery",
   ],
   // Account suspension/reactivation is super-admin-only in the database RPC.
   admin: ["view", "settings", "cac_documents", "transaction_requery"],
