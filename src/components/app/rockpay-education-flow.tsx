@@ -476,7 +476,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
               ) : null}
             </div>
             {variations.length ? (
-              <div className="education-product-grid grid max-h-[min(58dvh,620px)] grid-cols-1 gap-3 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="education-product-grid grid max-h-[min(58dvh,620px)] grid-cols-1 gap-3 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2 lg:grid-cols-2">
                 {variations.map((item) => (
                   <button
                     key={item.variationCode}
