@@ -65,6 +65,8 @@ export function ExamPinsFlow({
   const [quantity, setQuantity] = useState(1);
   const [profileId, setProfileId] = useState("");
   const [pin, setPin] = useState("");
+  // Reuse the same provider request ID if the client retries after a network interruption.
+  const [purchaseRequestId, setPurchaseRequestId] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState("");
@@ -141,12 +143,15 @@ export function ExamPinsFlow({
     setLoading(true);
     setError("");
     try {
+      const requestId = purchaseRequestId || `exam-${crypto.randomUUID()}`;
+      if (!purchaseRequestId) setPurchaseRequestId(requestId);
       const result = await purchase({
         data: {
           examId,
           variationCode,
           quantity,
           pin,
+          requestId,
           ...(examId === "jamb" ? { profileId } : {}),
         },
       });
