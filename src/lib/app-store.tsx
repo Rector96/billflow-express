@@ -462,7 +462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: directBills } = await supabase
           .from("bill_transactions")
           .select(
-            "internal_reference, provider, service, customer_identifier, status, amount, created_at, metadata",
+            "internal_reference, provider, provider_request_id, provider_transaction_id, service, customer_identifier, status, amount, created_at, metadata",
           )
           .order("created_at", { ascending: false })
           .limit(50);
@@ -483,7 +483,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 ? "successful"
                 : rawStatus === "failed"
                   ? "failed"
-                  : "pending";
+                  : rawStatus === "reversed"
+                    ? "reversed"
+                    : "pending";
             const slug = String(meta["service_slug"] ?? "").toLowerCase();
             const serviceSlug = slug === "cable" ? "cable" : "electricity";
             return {
@@ -506,6 +508,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 : {}),
               reference: String(bill.customer_identifier ?? ""),
               method: "Paystack (Direct)",
+              ...((bill.provider_request_id || bill.provider_transaction_id)
+                ? { providerReference: String(bill.provider_request_id || bill.provider_transaction_id) }
+                : {}),
               ...(typeof meta["token"] === "string"
                 ? { token: String(meta["token"]) }
                 : typeof meta["purchased_code"] === "string"
