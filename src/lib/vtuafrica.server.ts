@@ -159,3 +159,12 @@ export async function vtuafricaPayCable(input: {
   const raw = await getJson(url);
   return parseVtuafricaResult(raw, input.ref);
 }
+
+
+/** Query an existing VTUAfrica transaction; never submit a second purchase. */
+export async function vtuafricaRequery(ref: string): Promise<VtuafricaPayResult> {
+  const { key, base } = getConfig();
+  const params = new URLSearchParams({ apikey: key, serviceName: "Transaction", ref });
+  const raw = await getJson(`${base}/merchant-verify/?${params.toString()}`);
+  return parseVtuafricaResult(raw, ref);
+}
