@@ -186,7 +186,9 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                   <p className="mt-0.5 font-mono text-xs font-semibold">{identifier}</p>
                 </div>
               </div>
-              <p className="mt-4 text-center font-mono text-lg font-bold blur-[5px]">{blurredTin}</p>
+              <p className="mt-4 text-center font-mono text-lg font-bold blur-[5px]">
+                {blurredTin}
+              </p>
               <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-sm font-bold">
                 <span>Total</span>
                 <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
