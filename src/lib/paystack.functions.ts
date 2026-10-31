@@ -151,3 +151,62 @@ export const verifyWalletFunding = createServerFn({ method: "POST" })
     const result = await verifyAndSettle(data.reference);
     return { reference: data.reference, status: result.status, amount: result.amount };
   });
+
+
+/**
+ * Staff-only reconciliation for an existing Paystack wallet deposit.
+ * Paystack verification and the established atomic settlement RPCs remain
+ * the only path that can credit a wallet; this action never writes balances.
+ */
+export const recheckWalletFunding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { reference: string }) => {
+    const reference = String(input?.reference ?? "").trim();
+    if (!/^WAL-[A-Z0-9]{4,32}$/.test(reference)) {
+      throw new Error("Invalid wallet funding reference.");
+    }
+    return { reference };
+  })
+  .handler(async ({ data, context }): Promise<FundingStatus & { credited: boolean }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: isStaff, error: staffError } = await supabaseAdmin.rpc("is_staff", {
+      _user_id: context.userId,
+    });
+    if (staffError) throw new Error("Could not verify staff permissions.");
+    if (isStaff !== true) throw new Error("Forbidden: staff access required.");
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("wallet_transactions")
+      .select("reference, amount, status, type, provider")
+      .eq("reference", data.reference)
+      .eq("provider", "paystack")
+      .eq("provider_reference", data.reference)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const row = rows?.[0];
+    if (!row || row.type !== "deposit") throw new Error("Paystack wallet deposit not found.");
+
+    const amount = Number(row.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Stored wallet deposit amount is invalid.");
+    }
+
+    if (row.status === "successful") {
+      return { reference: data.reference, status: "successful", amount, credited: false };
+    }
+    if (row.status !== "pending" && row.status !== "failed") {
+      throw new Error("This wallet transaction is not eligible for recheck.");
+    }
+
+    // verifyAndSettle performs Paystack verification, validates reference,
+    // currency, amount and environment, then invokes only the atomic ledger RPCs.
+    const { verifyAndSettle } = await import("./paystack.server");
+    const result = await verifyAndSettle(data.reference);
+    return {
+      reference: data.reference,
+      status: result.status,
+      amount: result.amount,
+      credited: result.credited,
+    };
+  });
