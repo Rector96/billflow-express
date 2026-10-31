@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
 import { n, type OpsStats } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
+import { recheckWalletFunding } from "@/lib/paystack.functions";
+import { friendlyError } from "@/lib/app-store";
 
 export const Route = createFileRoute("/admin/wallet")({
   head: () => ({ meta: [{ title: `Wallet — ${BRAND.name} Admin` }] }),
@@ -29,7 +33,9 @@ type FundingRow = {
 };
 
 function AdminWallet() {
+  const recheck = useServerFn(recheckWalletFunding);
   const [loading, setLoading] = useState(true);
+  const [recheckingReference, setRecheckingReference] = useState<string | null>(null);
   const [stats, setStats] = useState<OpsStats>({});
   const [rows, setRows] = useState<FundingRow[]>([]);
   const [query, setQuery] = useState("");
@@ -110,6 +116,26 @@ function AdminWallet() {
   }, [query, status]);
 
   const pageCount = Math.max(1, Math.ceil(totalCount / 50));
+
+  const runRecheck = async (reference: string) => {
+    if (recheckingReference) return;
+    setRecheckingReference(reference);
+    try {
+      const result = await recheck({ data: { reference } });
+      if (result.credited) {
+        toast.success("Paystack verified. " + formatNaira(result.amount, false) + " credited to the wallet.");
+      } else if (result.status === "successful") {
+        toast.success("This funding transaction is already settled; no duplicate credit was made.");
+      } else {
+        toast.info("Paystack recheck completed: " + result.status + ". No wallet credit was made.");
+      }
+      await load();
+    } catch (error) {
+      toast.error(friendlyError(error, "Wallet funding recheck failed"));
+    } finally {
+      setRecheckingReference(null);
+    }
+  };
 
   return (
     <AdminShell title="Wallet" subtitle="Platform liability and ledger activity">
@@ -213,6 +239,18 @@ function AdminWallet() {
                         <span>Completed {new Date(r.completedAt).toLocaleString("en-NG")}</span>
                       ) : null}
                     </div>
+                    {r.status === "pending" || r.status === "failed" ? (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => void runRecheck(r.reference)}
+                          disabled={recheckingReference !== null}
+                          className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {recheckingReference === r.reference ? "Verifying with Paystack…" : "Recheck with Paystack"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}
