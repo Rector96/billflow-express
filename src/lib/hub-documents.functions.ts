@@ -274,7 +274,6 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
 
     // Only remove an older certificate after the new PDF is attached successfully.
     // Restrict cleanup to this customer's exact order folder; never touch uploaded evidence.
-    const expectedPrefix = `${row.user_id}/${row.id}/`;
     if (
       previousPath &&
       previousPath !== data.storagePath &&
