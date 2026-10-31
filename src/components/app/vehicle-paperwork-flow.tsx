@@ -205,11 +205,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">State</Label>
-                <Input
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className={field}
-                />
+                <Input value={state} onChange={(e) => setState(e.target.value)} className={field} />
               </div>
             </div>
             <PayActionBar>
