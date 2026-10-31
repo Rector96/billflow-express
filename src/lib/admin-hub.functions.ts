@@ -1049,13 +1049,29 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const admin = await assertStaff(context.userId);
+    const { data: roles, error: rolesError } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (rolesError) throw new Error(rolesError.message);
+    if (!roles?.some((row) => row.role === "admin" || row.role === "super_admin")) {
+      throw new Error("Forbidden: only admins can change catalog pricing");
+    }
 
-    const { data: rows } = await admin
+    const { data: rows, error: lookupError } = await admin
       .from("pricing_rules")
       .select("id")
       .eq("service", data.service)
+      .is("provider", null)
+      .is("product_code", null)
+      .eq("markup_type", "selling_price")
       .eq("is_active", true)
-      .limit(1);
+      .order("priority", { ascending: false })
+      .limit(2);
+    if (lookupError) throw new Error(lookupError.message);
+    if ((rows ?? []).length > 1) {
+      throw new Error("Multiple active default pricing rules exist for this service. Resolve the duplicates before saving.");
+    }
 
     if (rows?.[0]?.id) {
       const { error } = await admin
