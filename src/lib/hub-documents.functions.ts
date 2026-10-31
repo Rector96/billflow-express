@@ -43,9 +43,9 @@ async function assertCacOperator(userId: string) {
     .select("role")
     .eq("user_id", userId);
   if (roleError) throw new Error("Could not verify CAC document permissions.");
-  if (!(roles ?? []).some((entry) =>
-    ["support", "admin", "super_admin"].includes(String(entry.role))
-  )) {
+  if (
+    !(roles ?? []).some((entry) => ["support", "admin", "super_admin"].includes(String(entry.role)))
+  ) {
     throw new Error("Forbidden: CAC certificate handling requires support or admin access.");
   }
   return supabaseAdmin;
