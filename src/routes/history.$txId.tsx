@@ -31,6 +31,7 @@ export const Route = createFileRoute("/history/$txId")({
 
 type BillExtra = {
   provider: string | null;
+  external_reference: string | null;
   provider_request_id: string | null;
   provider_transaction_id: string | null;
   provider_status: string | null;
@@ -61,7 +62,7 @@ function TransactionDetails() {
       const { data } = await supabase
         .from("bill_transactions")
         .select(
-          "provider, provider_request_id, provider_transaction_id, provider_status, provider_channel, customer_identifier, service, status, amount, created_at, metadata",
+          "provider, external_reference, provider_request_id, provider_transaction_id, provider_status, provider_channel, customer_identifier, service, status, amount, created_at, metadata",
         )
         .eq("internal_reference", txId)
         .maybeSingle();
@@ -100,6 +101,11 @@ function TransactionDetails() {
     tx?.token ||
     null;
   const manualReviewRequired = bill?.metadata?.["manual_review_required"] === true;
+  const paystackRef =
+    bill?.external_reference ||
+    (typeof bill?.metadata?.["paystack_reference"] === "string"
+      ? String(bill.metadata["paystack_reference"])
+      : "");
   const providerRef =
     bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
 
@@ -245,10 +251,27 @@ function TransactionDetails() {
             </Button>
           </div>
           {channel ? <InfoRow label="Channel" value={String(channel).toUpperCase()} /> : null}
+          {paystackRef ? (
+            <div className="flex items-center justify-between gap-2 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">Paystack Reference</p>
+                <p className="truncate font-mono text-xs font-semibold">{paystackRef}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-lg text-xs font-bold"
+                onClick={() => copy("Paystack ref", paystackRef)}
+              >
+                <Copy className="size-3.5" /> Copy
+              </Button>
+            </div>
+          ) : null}
           {providerRef ? (
             <div className="flex items-center justify-between gap-2 py-2.5">
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground">Provider Reference</p>
+                <p className="text-[11px] text-muted-foreground">Fulfilment Provider Reference</p>
                 <p className="truncate font-mono text-xs font-semibold">{providerRef}</p>
               </div>
               <Button
