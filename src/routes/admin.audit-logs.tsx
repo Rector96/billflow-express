@@ -39,20 +39,24 @@ function AdminAuditLogs() {
         setRows([]);
         return;
       }
-      const actors = [...new Set((data ?? []).map((r) => r.actor_user_id))];
-      const { data: profiles } = actors.length
+      const actors = [...new Set((data ?? []).map((r) => r.actor_user_id).filter((id): id is string => Boolean(id)))];
+      const profileResult = actors.length
         ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", actors)
-        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[] };
-      const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[], error: null };
+      if (profileResult.error) throw profileResult.error;
+      const pmap = new Map((profileResult.data ?? []).map((p) => [p.user_id, p]));
       setRows(
         (data ?? []).map((r) => {
-          const p = pmap.get(r.actor_user_id);
+          const p = r.actor_user_id ? pmap.get(r.actor_user_id) : undefined;
           return {
             ...r,
-            actor_label: p?.full_name || p?.email || r.actor_user_id.slice(0, 8),
+            actor_label: p?.full_name || p?.email || (r.actor_user_id ? r.actor_user_id.slice(0, 8) : "System / unavailable"),
           };
         }),
       );
+    } catch (e) {
+      setRows([]);
+      setError(e instanceof Error ? e.message : "Could not load audit logs");
     } finally {
       setLoading(false);
     }

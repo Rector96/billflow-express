@@ -26,9 +26,11 @@ type Item = {
 function AdminActivity() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Item[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [tx, profiles] = await Promise.all([
         supabase
@@ -44,6 +46,9 @@ function AdminActivity() {
           .order("created_at", { ascending: false })
           .limit(30),
       ]);
+
+      if (tx.error) throw tx.error;
+      if (profiles.error) throw profiles.error;
 
       const pmap = new Map((profiles.data ?? []).map((p) => [p.user_id, p]));
       const out: Item[] = [];
@@ -83,6 +88,9 @@ function AdminActivity() {
 
       out.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
       setItems(out.slice(0, 100));
+    } catch (e) {
+      setItems([]);
+      setError(e instanceof Error ? e.message : "Could not load activity");
     } finally {
       setLoading(false);
     }
@@ -98,6 +106,7 @@ function AdminActivity() {
         Login events are not stored in-app yet (Supabase Auth only). Shown: registrations and wallet
         ledger activity.
       </p>
+      {error ? <p role="alert" className="mb-3 rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button></p> : null}
       {loading ? (
         <AdminLoading />
       ) : items.length === 0 ? (

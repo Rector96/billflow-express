@@ -46,11 +46,13 @@ function CareQueue() {
   const [q, setQ] = useState(search.q ?? "");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const knownTicketIds = useRef<Set<string> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [s, t] = await Promise.all([
         asLooseRpc(supabase.rpc)("admin_care_stats"),
@@ -77,6 +79,8 @@ function CareQueue() {
       toast.error(e instanceof Error ? e.message : "Could not load Care queue");
       setTickets([]);
       setTotal(0);
+      setStats(null);
+      setError(e instanceof Error ? e.message : "Could not load Care queue");
     } finally {
       setLoading(false);
     }
@@ -105,6 +109,8 @@ function CareQueue() {
             <KpiCard label="Waiting" value={String(stats?.waiting ?? 0)} />
             <KpiCard label="Resolved today" value={String(stats?.resolved_today ?? 0)} />
           </div>
+
+          {error ? <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button></p> : null}
 
           <div className="flex flex-wrap items-center gap-2">
             <input
