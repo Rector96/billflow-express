@@ -20,6 +20,7 @@ import { friendlyError, useApp } from "@/lib/app-store";
 import { getService, SERVICES, type ServiceSlug } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { REMOVED_SERVICE_SLUGS } from "@/lib/product-mode";
 
 export const Route = createFileRoute("/saved-payments")({
   head: () => ({
@@ -43,13 +44,17 @@ function SavedPaymentsPage() {
   const [provider, setProvider] = useState("AEDC");
 
   const service = getService(slug)!;
+  const visibleSaved = saved.filter(
+    (item) => !REMOVED_SERVICE_SLUGS.has(item.serviceSlug) && Boolean(getService(item.serviceSlug)),
+  );
 
   return (
     <AppShell>
       <PageHeader title="Saved Payments" backTo="/profile" />
       <div className="space-y-3 px-4 pt-2 pb-6">
-        {saved.map((item) => {
-          const svc = getService(item.serviceSlug)!;
+        {visibleSaved.map((item) => {
+          const svc = getService(item.serviceSlug);
+          if (!svc) return null;
           return (
             <div
               key={item.id}
