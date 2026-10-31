@@ -80,7 +80,9 @@ function AdminWallet() {
       if (audit.error) {
         console.warn("[AdminWallet] could not load recheck audit history", audit.error.message);
         setAuditRows([]);
-        setAuditError("Wallet funding loaded, but the audit history could not be retrieved. Retry to confirm previous staff actions.");
+        setAuditError(
+          "Wallet funding loaded, but the audit history could not be retrieved. Retry to confirm previous staff actions.",
+        );
       } else {
         setAuditError(null);
         setAuditRows(
@@ -218,7 +220,10 @@ function AdminWallet() {
               <span className="text-xs text-muted-foreground">{auditRows.length} recent</span>
             </div>
             {auditError ? (
-              <p role="alert" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+              <p
+                role="alert"
+                className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+              >
                 {auditError}
               </p>
             ) : auditRows.length === 0 ? (
