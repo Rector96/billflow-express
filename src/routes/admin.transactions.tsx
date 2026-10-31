@@ -57,7 +57,7 @@ type BillRow = {
 
 type TransactionFilter = "all" | TxStatus;
 
-const transactionFilters: TransactionFilter[] = ["all", "successful", "pending", "failed"];
+const transactionFilters: TransactionFilter[] = ["all", "successful", "pending", "failed", "reversed"];
 
 const PAGE = 30;
 
@@ -247,7 +247,7 @@ function AdminTransactions() {
           placeholder="Name, email, phone, BIL-, VTpass id…"
           className="h-10 min-w-[200px] flex-1 rounded-xl border bg-card px-3 text-sm"
         />
-        {["all", "successful", "pending", "failed"].map((s) => (
+        {["all", "successful", "pending", "failed", "reversed"].map((s) => (
           <button
             key={s}
             type="button"
