@@ -31,14 +31,14 @@ export function CareContextLink({
   className,
 }: {
   reference?: string;
-  status?: "successful" | "pending" | "failed";
+  status?: "successful" | "pending" | "failed" | "reversed";
   className?: string;
 }) {
   const copy =
     status === "failed"
       ? { title: "Something went wrong?", cta: "RockPay Care" }
-      : status === "pending"
-        ? { title: "Need help?", cta: "RockPay Care" }
+      : status === "pending" || status === "reversed"
+        ? { title: status === "reversed" ? "Question about this reversal?" : "Need help?", cta: "RockPay Care" }
         : { title: "Need help with this?", cta: "Get help" };
 
   return (
