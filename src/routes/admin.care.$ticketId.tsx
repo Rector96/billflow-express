@@ -154,9 +154,14 @@ function StaffTicket() {
   if (loadError) {
     return (
       <AdminShell title="Care ticket">
-        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive-soft p-4 text-sm text-destructive">
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive-soft p-4 text-sm text-destructive"
+        >
           Could not load this ticket: {loadError}
-          <Button variant="outline" className="ml-3" onClick={() => void load()}>Retry</Button>
+          <Button variant="outline" className="ml-3" onClick={() => void load()}>
+            Retry
+          </Button>
         </div>
       </AdminShell>
     );
