@@ -1,13 +1,14 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ReceiptText, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ReceiptText, Search, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
-import { EmptyState, TransactionRow } from "@/components/app/ui-bits";
+import { EmptyState, StatusBadge } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/lib/app-store";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { formatNaira } from "@/lib/mock-data";
 import type { Transaction, TxStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/history")({
@@ -103,6 +104,21 @@ function inDateRange(tx: Transaction, key: DateKey): boolean {
   return true;
 }
 
+function dayLabel(tx: Transaction): string {
+  const ts = parseTxTime(tx);
+  if (!ts) return tx.date;
+  const now = new Date();
+  const startOf = (y: number, m: number, day: number) => new Date(y, m, day).getTime();
+  const today0 = startOf(now.getFullYear(), now.getMonth(), now.getDate());
+  if (ts >= today0) return "Today";
+  if (ts >= today0 - 86_400_000) return "Yesterday";
+  return new Date(ts).toLocaleDateString("en-NG", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function Chip({
   active,
   children,
@@ -128,6 +144,52 @@ function Chip({
   );
 }
 
+function ModernRow({ tx }: { tx: Transaction }) {
+  const inbound = tx.direction === "in";
+  return (
+    <Link
+      to="/history/$txId"
+      params={{ txId: tx.id }}
+      className="press flex items-center gap-3 px-4 py-3 transition-colors hover:bg-primary-soft/30"
+    >
+      <span
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-2xl",
+          inbound
+            ? "bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 text-emerald-600"
+            : "bg-gradient-to-br from-primary/15 to-fuchsia-500/15 text-primary",
+        )}
+      >
+        {inbound ? (
+          <ArrowDownLeft className="size-4.5" strokeWidth={2} />
+        ) : (
+          <ArrowUpRight className="size-4.5" strokeWidth={2} />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{tx.title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {tx.service} · {tx.time}
+        </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p
+          className={cn(
+            "text-sm font-bold tabular-nums",
+            inbound ? "text-emerald-600" : "text-foreground",
+          )}
+        >
+          {inbound ? "+" : "-"}
+          {formatNaira(tx.amount, false)}
+        </p>
+        <div className="mt-1 flex justify-end">
+          <StatusBadge status={tx.status} compact />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function HistoryPage() {
   const { transactions } = useApp();
   const [activityTab, setActivityTab] = useState<ActivityTab>("all");
@@ -140,7 +202,7 @@ function HistoryPage() {
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return transactions.filter((t) => {
-      // Legacy Airtime/Data records remain in the database for audit, but are not part of the customer UI.
+      // Keep legacy Airtime/Data transactions in the database for audit, but hide them from customer activity.
       if (t.serviceSlug === "airtime" || t.serviceSlug === "data") return false;
       if (activityTab === "payments" && isHubTx(t)) return false;
       if (activityTab === "applications" && !isHubTx(t)) return false;
@@ -156,29 +218,46 @@ function HistoryPage() {
     });
   }, [transactions, activityTab, status, category, dateKey, q]);
 
+  const groups = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const tx of list) {
+      const label = dayLabel(tx);
+      const arr = map.get(label);
+      if (arr) arr.push(tx);
+      else map.set(label, [tx]);
+    }
+    return [...map.entries()];
+  }, [list]);
+
   const extraActive = category !== "all" || dateKey !== "all";
 
   return (
     <AppShell>
       <PageHeader title="Activity" backTo="/home" />
-      <div className="space-y-3 px-4 pt-1 pb-6">
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {ACTIVITY_TABS.map((t) => (
-            <Chip key={t.key} active={activityTab === t.key} onClick={() => setActivityTab(t.key)}>
-              {t.label}
-            </Chip>
-          ))}
-        </div>
+      <div className="space-y-3 px-4 pt-1 pb-8 lg:px-0 lg:space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {ACTIVITY_TABS.map((t) => (
+              <Chip
+                key={t.key}
+                active={activityTab === t.key}
+                onClick={() => setActivityTab(t.key)}
+              >
+                {t.label}
+              </Chip>
+            ))}
+          </div>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, reference or amount..."
-            aria-label="Search activity"
-            className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
-          />
+          <div className="relative w-full max-w-md lg:w-80">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name, reference or amount..."
+              aria-label="Search activity"
+              className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -201,12 +280,12 @@ function HistoryPage() {
                 : "border-border/80 bg-card text-muted-foreground hover:bg-secondary",
             )}
           >
-            <SlidersHorizontal className="size-3.5" />
+            <SlidersHorizontal className="size-3.5" strokeWidth={1.8} />
           </button>
         </div>
 
         {moreOpen ? (
-          <div className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card">
+          <div className="space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-card lg:max-w-2xl">
             <div>
               <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Service
@@ -234,7 +313,7 @@ function HistoryPage() {
             {extraActive ? (
               <button
                 type="button"
-                className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
+                className="text-xs font-medium text-primary transition-colors hover:text-primary-deep"
                 onClick={() => {
                   setCategory("all");
                   setDateKey("all");
@@ -247,9 +326,18 @@ function HistoryPage() {
         ) : null}
 
         {list.length ? (
-          <div className="space-y-2">
-            {list.map((tx) => (
-              <TransactionRow key={tx.id} tx={tx} compact />
+          <div className="space-y-4">
+            {groups.map(([label, txs]) => (
+              <section key={label}>
+                <p className="mb-1.5 px-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {label}
+                </p>
+                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
+                  {txs.map((tx) => (
+                    <ModernRow key={tx.id} tx={tx} />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         ) : (
