@@ -29,6 +29,7 @@ export type Transaction = {
   time: string;
   customer?: string;
   reference?: string;
+  providerReference?: string;
   method: string;
   token?: string;
 };
