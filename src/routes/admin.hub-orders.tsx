@@ -28,7 +28,7 @@ import {
   type HubOrderRow,
   type HubOrderStatus,
 } from "@/lib/admin-hub.functions";
-import { attachCacCertificate, createCacCertificateUpload } from "@/lib/hub-documents.functions";
+import { attachCacCertificate, createCacCertificateUpload, markCacCertificateEmailed } from "@/lib/hub-documents.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { FULFILLMENT_LABELS, type FulfillmentStatus } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
@@ -115,6 +115,7 @@ function AdminHubOrders() {
   const runFul = useServerFn(updateHubFulfillment);
   const runCertificateUpload = useServerFn(createCacCertificateUpload);
   const runAttachCertificate = useServerFn(attachCacCertificate);
+  const runMarkCacEmailed = useServerFn(markCacCertificateEmailed);
   const runAgent = useServerFn(assignHubAgent);
   const runCare = useServerFn(updateHubCareCall);
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
@@ -336,6 +337,24 @@ function AdminHubOrders() {
       await refreshDetail();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not upload certificate");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markManualEmail = async () => {
+    if (!detail || !email.trim()) {
+      toast.error("No customer email address is available on this order.");
+      return;
+    }
+    if (!window.confirm(`Confirm that the completed CAC certificate was manually emailed to ${email}?`)) return;
+    setBusy(true);
+    try {
+      await runMarkCacEmailed({ data: { orderId: detail.id, recipientEmail: email } });
+      toast.success("Manual email delivery recorded");
+      await refreshDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not record email delivery");
     } finally {
       setBusy(false);
     }
@@ -964,6 +983,21 @@ function AdminHubOrders() {
                           : "Not attached"
                       }
                     />
+                    <div className="mt-2 border-t border-border/60 pt-2">
+                      <p className="mb-2 text-[10px] text-muted-foreground">
+                        If staff sent the certificate directly by email instead, record the recipient here.
+                      </p>
+                      <Field label="Customer email" value={email || "—"} />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full rounded-xl text-xs"
+                        disabled={busy || detail.service !== "cac" || !email || Boolean(metaGet(meta, "certificate_storage_path"))}
+                        onClick={() => void markManualEmail()}
+                      >
+                        Record certificate emailed manually
+                      </Button>
+                    </div>
                   </Section>
 
                   <Section title="Workflow">
