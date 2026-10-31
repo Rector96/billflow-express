@@ -149,6 +149,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success") {
     return (
       <AppShell>
+        <PageHeader title="NIN" backTo="/services" />
         <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
           <h1 className="text-lg font-bold">Order received</h1>
           <p className="text-sm text-muted-foreground">
