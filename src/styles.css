@@ -1152,7 +1152,6 @@
   }
 }
 
-
 /* Reference layout: fixed service header, numbered progress, focused form
    workspace and a persistent application summary. */
 .service-flow-content {
@@ -1242,7 +1241,9 @@
   scrollbar-width: none;
 }
 
-.service-flow-numbered-steps::-webkit-scrollbar { display: none; }
+.service-flow-numbered-steps::-webkit-scrollbar {
+  display: none;
+}
 
 .service-flow-step-item {
   display: flex;
@@ -1288,7 +1289,9 @@
   white-space: nowrap;
 }
 
-.service-flow-step-label.is-current-label { color: var(--primary); }
+.service-flow-step-label.is-current-label {
+  color: var(--primary);
+}
 
 .service-flow-step-connector {
   height: 1px;
@@ -1297,7 +1300,9 @@
   background: var(--border);
 }
 
-.service-flow-step-connector.is-complete { background: var(--success); }
+.service-flow-step-connector.is-complete {
+  background: var(--success);
+}
 
 .service-flow-content [id="pay-action"] {
   left: 16.25rem;
@@ -1319,35 +1324,68 @@
 }
 
 @media (max-width: 1279px) {
-  .service-flow-layout { grid-template-columns: minmax(0, 1fr) 17rem; }
-  .service-flow-step-label { display: none; }
+  .service-flow-layout {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+  }
+  .service-flow-step-label {
+    display: none;
+  }
 }
 
 @media (max-width: 1023px) {
-  .service-flow-content { gap: 0.5rem; }
-  .service-flow-layout { display: block; overflow: hidden; }
+  .service-flow-content {
+    gap: 0.5rem;
+  }
+  .service-flow-layout {
+    display: block;
+    overflow: hidden;
+  }
   .service-flow-main {
     height: 100%;
     padding-bottom: 6.25rem;
   }
-  .service-flow-summary { display: none; }
-  .service-flow-form-card > section { padding: 1rem; }
+  .service-flow-summary {
+    display: none;
+  }
+  .service-flow-form-card > section {
+    padding: 1rem;
+  }
   .service-flow-content [id="pay-action"] {
     left: 0.5rem;
     right: 0.5rem;
     bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
   }
-  .service-flow-numbered-steps { justify-content: flex-start; }
-  .service-flow-step-item { flex: 0 0 auto; }
-  .service-flow-step-label { display: none; }
-  .service-flow-step-connector { min-width: 0.75rem; }
+  .service-flow-numbered-steps {
+    justify-content: flex-start;
+  }
+  .service-flow-step-item {
+    flex: 0 0 auto;
+  }
+  .service-flow-step-label {
+    display: none;
+  }
+  .service-flow-step-connector {
+    min-width: 0.75rem;
+  }
 }
 
 @media (max-height: 760px) {
-  .service-flow-content { gap: 0.35rem; }
-  .service-flow-layout { gap: 0.65rem; }
-  .service-flow-form-card > section { padding-block: 0.85rem; }
-  .service-flow-form-card > section > h2 { margin-bottom: 0.65rem; }
-  .service-flow-main { padding-bottom: 5.75rem; }
-  .service-flow-summary-card { padding: 1rem; }
+  .service-flow-content {
+    gap: 0.35rem;
+  }
+  .service-flow-layout {
+    gap: 0.65rem;
+  }
+  .service-flow-form-card > section {
+    padding-block: 0.85rem;
+  }
+  .service-flow-form-card > section > h2 {
+    margin-bottom: 0.65rem;
+  }
+  .service-flow-main {
+    padding-bottom: 5.75rem;
+  }
+  .service-flow-summary-card {
+    padding: 1rem;
+  }
 }
