@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BRAND } from "@/lib/brand";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { BrandLogo } from "@/components/app/app-shell";
+import { AuthShell } from "@/components/app/auth-shell";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -58,14 +58,8 @@ function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col px-6 py-10">
-      <BrandLogo className="h-[clamp(3.25rem,16vw,5.5rem)] self-start" />
-      <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Welcome Back 👋</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Log in to continue paying your bills with {BRAND.name}.
-      </p>
-
-      <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
+    <AuthShell title="Welcome back" subtitle="Log in to manage your bills, anytime, anywhere.">
+      <form onSubmit={submit} className="space-y-5" noValidate>
         <div className="space-y-2">
           <Label htmlFor="identifier">Email</Label>
           <Input
@@ -125,13 +119,11 @@ function LoginPage() {
           {loading ? "Logging in…" : "Login"}
         </Button>
       </form>
-
-      <p className="mt-auto pt-10 text-center text-sm text-muted-foreground">
+      <p className="mt-6 pt-4 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
         <Link to="/signup" className="font-bold text-primary">
           Sign Up
         </Link>
       </p>
-    </main>
-  );
+    </AuthShell>
 }
