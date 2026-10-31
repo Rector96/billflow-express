@@ -1,11 +1,10 @@
 /**
  * NIN — retrieve / slip (download) / plastic card (deliver + address).
- * On pay: Paystack Inline → submitNinOrder with paymentReference → hub_orders.
+ * Live checkout is gated until NIN has secure payment intents and provider fulfillment.
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { CreditCard, FileText, Home, Loader2, Search } from "lucide-react";
+import { CreditCard, FileText, Home, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { DeliveryAddressFields, PayBreakdown } from "@/components/app/hub-delivery-ui";
@@ -15,14 +14,12 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApp } from "@/lib/app-store";
 import {
   EMPTY_DELIVERY_ADDRESS,
   formatDeliveryOneLine,
   validateDeliveryAddress,
   type DeliveryAddress,
 } from "@/lib/hub-delivery";
-import { submitNinOrder } from "@/lib/hub-order-submit.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
 
@@ -44,8 +41,6 @@ const STEPS_DELIVER: PayStepMeta[] = [
 
 export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const navigate = useNavigate();
-  const { profile, authed } = useApp();
-  const runSubmit = useServerFn(submitNinOrder);
 
   const priceRetrieve = feeFromMap(fees, "nin_retrieve");
   const priceSlip = feeFromMap(fees, "nin_slip");
@@ -57,7 +52,6 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const [phone, setPhone] = useState("");
   const [nin, setNin] = useState("");
   const [address, setAddress] = useState<DeliveryAddress>(EMPTY_DELIVERY_ADDRESS);
-  const [paying, setPaying] = useState(false);
   const [refId, setRefId] = useState("");
 
   const needsAddress = product === "plastic_card";
@@ -76,10 +70,6 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
     if (step === "confirm") return needsAddress ? 3 : 2;
     return needsAddress ? 3 : 2;
   }, [step, needsAddress]);
-
-  const onPay = async () => {
-    toast.error("NIN live checkout is not enabled. You have not been charged.");
-  };
 
   if (step === "success") {
     return (
