@@ -101,16 +101,17 @@ function TransactionDetails() {
     tx?.token ||
     null;
   const manualReviewRequired = bill?.metadata?.["manual_review_required"] === true;
+  const isWalletFunding =
+    tx?.direction === "in" && tx?.serviceSlug === "wallet" && tx?.method === "Paystack";
   const paystackRef =
     bill?.external_reference ||
     (typeof bill?.metadata?.["paystack_reference"] === "string"
       ? String(bill.metadata["paystack_reference"])
-      : "");
-  const providerRef =
-    bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
-
-  const isWalletFunding =
-    tx?.direction === "in" && tx?.serviceSlug === "wallet" && tx?.method === "Paystack";
+      : "") ||
+    (isWalletFunding ? tx?.providerReference || "" : "");
+  const providerRef = isWalletFunding
+    ? ""
+    : bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
   const canRequery =
     status === "pending" &&
     ((Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime)) ||
