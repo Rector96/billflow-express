@@ -508,8 +508,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 : {}),
               reference: String(bill.customer_identifier ?? ""),
               method: "Paystack (Direct)",
-              ...((bill.provider_request_id || bill.provider_transaction_id)
-                ? { providerReference: String(bill.provider_request_id || bill.provider_transaction_id) }
+              ...(bill.provider_request_id || bill.provider_transaction_id
+                ? {
+                    providerReference: String(
+                      bill.provider_request_id || bill.provider_transaction_id,
+                    ),
+                  }
                 : {}),
               ...(typeof meta["token"] === "string"
                 ? { token: String(meta["token"]) }
