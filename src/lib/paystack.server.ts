@@ -179,6 +179,9 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       credited: false,
     };
   }
+  if (row.status === "reversed") {
+    throw new Error("This wallet funding transaction has been reversed and cannot be credited.");
+  }
 
   const data = await paystackVerify(reference);
   if (!data) {
@@ -332,6 +335,19 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       amount: result["amount"] != null ? Number(result["amount"]) : amount,
       balanceAfter: result["balance_after"] != null ? Number(result["balance_after"]) : null,
       credited: Boolean(result["credited"]),
+      paystack: auditPaystack,
+    };
+  }
+
+  // A failed funding attempt is terminal unless the verified fee-inclusive
+  // recovery path above explicitly qualifies it. Delayed webhook events must
+  // not move it back to pending or erase the validation_mismatch marker.
+  if (row.status === "failed" && gatewayStatus !== "failed" && gatewayStatus !== "abandoned") {
+    return {
+      status: "failed",
+      amount,
+      balanceAfter: null,
+      credited: false,
       paystack: auditPaystack,
     };
   }
