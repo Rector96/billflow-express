@@ -184,7 +184,7 @@ function TransactionDetails() {
           {phone ? <InfoRow label="Recipient" value={maskTail(phone)} /> : null}
           <div className="flex items-center justify-between gap-2 py-2.5">
             <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground">Reference</p>
+              <p className="text-[11px] text-muted-foreground">RockPay reference</p>
               <p className="truncate font-mono text-xs font-semibold">{txId}</p>
             </div>
             <Button
