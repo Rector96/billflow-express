@@ -375,7 +375,15 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start cable payment.");
-    const routed = await routeCablePay({ request_id: row.request_id, serviceID: data.serviceID, billersCode: data.billersCode, variation_code: data.variationCode, amount: providerAmount, phone, subscription_type: data.subscriptionType });
+    const routed = await routeCablePay({
+      request_id: row.request_id,
+      serviceID: data.serviceID,
+      billersCode: data.billersCode,
+      variation_code: data.variationCode,
+      amount: providerAmount,
+      phone,
+      subscription_type: data.subscriptionType,
+    });
     const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "cable",
@@ -515,7 +523,14 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start electricity payment.");
-    const routed = await routeElectricityPay({ request_id: row.request_id, serviceID: data.serviceID, billersCode: data.billersCode, meterType: data.meterType, amount: data.amount, phone });
+    const routed = await routeElectricityPay({
+      request_id: row.request_id,
+      serviceID: data.serviceID,
+      billersCode: data.billersCode,
+      meterType: data.meterType,
+      amount: data.amount,
+      phone,
+    });
     const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "electricity",
@@ -723,7 +738,15 @@ export const requeryBill = createServerFn({ method: "POST" })
     if (vendor === "vtuafrica") {
       const result = await vtuafricaRequery(vendorReference);
       outcome = result.status;
-      pay = { code: result.code, responseDescription: result.message, requestId: bill.provider_request_id, transactionId: result.transactionId, contentStatus: result.status, purchasedCode: result.token, raw: result.raw };
+      pay = {
+        code: result.code,
+        responseDescription: result.message,
+        requestId: bill.provider_request_id,
+        transactionId: result.transactionId,
+        contentStatus: result.status,
+        purchasedCode: result.token,
+        raw: result.raw,
+      };
     } else {
       pay = await vtpassRequery(bill.provider_request_id);
       outcome = mapVtpassOutcome(pay);

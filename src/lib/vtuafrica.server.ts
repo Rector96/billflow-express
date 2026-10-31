@@ -160,7 +160,6 @@ export async function vtuafricaPayCable(input: {
   return parseVtuafricaResult(raw, input.ref);
 }
 
-
 /** Query an existing VTUAfrica transaction; never submit a second purchase. */
 export async function vtuafricaRequery(ref: string): Promise<VtuafricaPayResult> {
   const { key, base } = getConfig();
