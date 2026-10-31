@@ -45,6 +45,7 @@ import {
 import { recordHubPayment } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
+import { isHubDemoOnly } from "@/lib/product-mode";
 
 type DocType = "constitution" | "tenancy";
 type Step = "type" | "form" | "preview" | "success";
@@ -143,6 +144,10 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
   };
 
   const onPayNow = async () => {
+    if (isHubDemoOnly("documents")) {
+      toast.error("Document generation is in preview. Payments are disabled until live fulfilment is ready.");
+      return;
+    }
     if (!docType) return;
     if (!authed) {
       toast.error("Please log in to continue.");
@@ -470,14 +475,15 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Please review the complete draft before paying. Payment will generate the
-                downloadable document.
+                {isHubDemoOnly("documents")
+                  ? "This is a draft preview only. RockPay is not accepting payment or issuing official documents through this flow yet."
+                  : "Please review the complete draft before paying. Payment will generate the downloadable document."}
               </p>
             </div>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
+                disabled={paying || isHubDemoOnly("documents")}
                 onClick={() => void onPayNow()}
               >
                 {paying ? (
@@ -485,7 +491,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
-                  `Pay ${formatNaira(fee, false)}`
+                  isHubDemoOnly("documents") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
                 )}
               </Button>
             </PayActionBar>
