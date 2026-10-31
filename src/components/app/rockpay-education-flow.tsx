@@ -20,6 +20,7 @@ import { motion } from "motion/react";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { PayStepper } from "@/components/app/pay-step";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   const [error, setError] = useState("");
   const [resultPins, setResultPins] = useState<string[]>([]);
   const [resultRef, setResultRef] = useState("");
+  const [resultProviderRef, setResultProviderRef] = useState<string | null>(null);
   const [resultMsg, setResultMsg] = useState("");
   const [resultStatus, setResultStatus] = useState<"successful" | "pending" | "failed">("pending");
 
@@ -152,7 +154,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
       });
       await refresh();
       setResultRef(result.reference);
+      setResultProviderRef(result.providerTransactionId ?? null);
       setResultMsg(result.message);
+      setResultProviderRef(result.providerTransactionId ?? resultProviderRef);
       setResultPins(result.pins ?? []);
       setResultStatus(result.status);
       setPin("");
@@ -338,15 +342,30 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
             </Button>
           ) : null}
           {resultRef ? (
-            <Button
-              variant={resultStatus === "successful" ? "default" : "outline"}
-              className="h-12 w-full rounded-xl font-bold"
-              asChild
-            >
-              <Link to="/history/$txId" params={{ txId: resultRef }}>
-                View receipt
-              </Link>
-            </Button>
+            <>
+              <ReceiptShareButton
+                payload={{
+                  reference: resultRef,
+                  title: `${exam?.name ?? "Education"} ${variation?.name ?? "PIN purchase"}`,
+                  status: resultStatus,
+                  amountLabel: formatNaira(total),
+                  direction: "out",
+                  service: exam?.name ?? "Education",
+                  recipient: candidateName || profileId || null,
+                  providerRef: resultProviderRef,
+                  detailRows: [{ label: "Product", value: variation?.name ?? "Education PIN" }],
+                }}
+              />
+              <Button
+                variant={resultStatus === "successful" ? "default" : "outline"}
+                className="h-12 w-full rounded-xl font-bold"
+                asChild
+              >
+                <Link to="/history/$txId" params={{ txId: resultRef }}>
+                  View full transaction
+                </Link>
+              </Button>
+            </>
           ) : null}
           <Button
             variant="outline"
