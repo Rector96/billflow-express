@@ -70,7 +70,8 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
         status: "pending",
         reference: row.reference,
         amount: Number(row.amount),
-        message: "Your funding reference was created, but checkout could not start because your account email is missing. Contact RockPay Care before trying again.",
+        message:
+          "Your funding reference was created, but checkout could not start because your account email is missing. Contact RockPay Care before trying again.",
       };
     }
 
@@ -113,7 +114,8 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
           status: "pending",
           reference: row.reference,
           amount: Number(row.amount),
-          message: "We couldn't confirm that checkout started. Your funding reference has been saved. Check its status before starting another top-up.",
+          message:
+            "We couldn't confirm that checkout started. Your funding reference has been saved. Check its status before starting another top-up.",
         };
       }
 
@@ -132,7 +134,8 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
         status: "pending",
         reference: row.reference,
         amount: Number(row.amount),
-        message: "Checkout could not be confirmed because of a connection problem. We saved your funding reference; verify its status before trying another top-up.",
+        message:
+          "Checkout could not be confirmed because of a connection problem. We saved your funding reference; verify its status before trying another top-up.",
       };
     }
   });
