@@ -102,6 +102,26 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
     return 3;
   }, [step]);
 
+  const validateForm = () => {
+    if (partyA.trim().length < 2) {
+      toast.error(docType === "constitution" ? "Enter the registered business name." : "Enter the landlord's full name.");
+      return false;
+    }
+    if (partyB.trim().length < 2) {
+      toast.error(docType === "constitution" ? "Enter the manager's full name." : "Enter the tenant's full name.");
+      return false;
+    }
+    if (address.trim().length < 8) {
+      toast.error("Enter the complete property or business address.");
+      return false;
+    }
+    if (docType === "tenancy" && (!rent.trim() || !Number.isFinite(Number(rent.replace(/,/g, ""))) || Number(rent.replace(/,/g, "")) <= 0)) {
+      toast.error("Enter a valid annual rent amount.");
+      return false;
+    }
+    return true;
+  };
+
   const onPayNow = async () => {
     if (!docType) return;
     if (!authed) {
@@ -214,13 +234,13 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Documents" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="documents-workflow mx-auto w-full max-w-5xl space-y-4 px-4 pb-28 pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "type" ? (
-          <section className="space-y-2">
+          <section className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
+              className="press flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-4 py-4 text-left shadow-soft transition-all hover:border-primary/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10"
               onClick={() => {
                 setDocType("constitution");
                 setStep("form");
@@ -253,17 +273,20 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           </section>
         ) : null}
         {step === "form" && docType ? (
-          <section className="space-y-2.5">
-            <div className="space-y-1">
-              <Label>{docType === "constitution" ? "Business name" : "Landlord"}</Label>
-              <Input value={partyA} onChange={(e) => setPartyA(e.target.value)} className={field} />
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:items-start">
+            <div className="form-section-card space-y-4">
+              <div><h2 className="form-section-heading">{docType === "constitution" ? "Business details" : "Agreement parties"}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Complete every required field. Your document preview will use these details.</p></div>
+              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="document-party-a">{docType === "constitution" ? "Registered business name" : "Landlord's full name"}</Label>
+              <Input id="document-party-a" value={partyA} onChange={(e) => setPartyA(e.target.value)} className={field} placeholder={docType === "constitution" ? "Enter registered business name" : "Enter landlord's full name"} />
             </div>
-            <div className="space-y-1">
-              <Label>{docType === "constitution" ? "Manager" : "Tenant"}</Label>
-              <Input value={partyB} onChange={(e) => setPartyB(e.target.value)} className={field} />
+            <div className="space-y-2">
+              <Label htmlFor="document-party-b">{docType === "constitution" ? "Manager's full name" : "Tenant's full name"}</Label>
+              <Input id="document-party-b" value={partyB} onChange={(e) => setPartyB(e.target.value)} className={field} placeholder="Enter full name" />
             </div>
-            <div className="space-y-1">
-              <Label>Address</Label>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="document-address">{docType === "constitution" ? "Business address" : "Property address"}</Label>
               <Input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -272,18 +295,21 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             {docType === "tenancy" ? (
               <>
-                <div className="space-y-1">
-                  <Label>Rent / year (₦)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="document-rent">Annual rent (₦)</Label>
                   <Input
+                    id="document-rent"
                     value={rent}
-                    onChange={(e) => setRent(e.target.value)}
+                    onChange={(e) => setRent(e.target.value.replace(/[^0-9,]/g, ""))}
                     className={field}
+                    placeholder="e.g. 850000"
                     inputMode="numeric"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label>Duration</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="document-duration">Agreement duration</Label>
                   <Input
+                    id="document-duration"
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
                     className={field}
@@ -291,10 +317,20 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 </div>
               </>
             ) : null}
+              </div>
+            </div>
+            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
+              <div className="flex items-center gap-2 text-sm font-bold"><FileText className="size-4 text-primary" /> Document checklist</div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                <li>• Names must be spelt correctly.</li><li>• Provide a complete address.</li>
+                {docType === "tenancy" ? <li>• Enter the agreed annual rent and duration.</li> : <li>• Use the registered business name.</li>}
+              </ul>
+              <p className="mt-4 border-t border-primary/10 pt-3 text-xs font-semibold text-foreground">Service fee: {formatNaira(fee, false)}</p>
+            </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("preview")}
+                onClick={() => { if (validateForm()) setStep("preview"); }}
               >
                 Continue
               </Button>
@@ -302,13 +338,16 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
           </section>
         ) : null}
         {step === "preview" ? (
-          <section className="space-y-3">
-            <div className="max-h-36 overflow-y-auto rounded-xl border border-border/70 bg-card p-3 text-left text-[10px] leading-relaxed whitespace-pre-wrap">
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)] lg:items-start">
+            <div className="max-h-[min(52dvh,520px)] overflow-y-auto rounded-xl border border-border/70 bg-card p-3 text-left text-[10px] leading-relaxed whitespace-pre-wrap">
               {draft}
             </div>
-            <div className="flex justify-between rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-sm font-bold">
+            <div className="space-y-3">
+            <div className="flex justify-between rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm font-bold">
               <span>Total</span>
               <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">Please review the complete draft before paying. Payment will generate the downloadable document.</p>
             </div>
             <PayActionBar>
               <Button
