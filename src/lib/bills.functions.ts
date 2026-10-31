@@ -327,8 +327,9 @@ export const purchaseCable = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const { getVtpassConfig, vtpassListVariations, vtpassPay, normalizeNgPhone } =
+    const { getVtpassConfig, vtpassListVariations, normalizeNgPhone } =
       await import("./vtpass.server");
+    const { routeCablePay, toVtpassShape } = await import("./vendor-router.server");
     const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
     const variations = await vtpassListVariations(data.serviceID);
@@ -374,15 +375,8 @@ export const purchaseCable = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start cable payment.");
-    const pay = await vtpassPay({
-      request_id: row.request_id,
-      serviceID: data.serviceID,
-      billersCode: data.billersCode,
-      variation_code: data.variationCode,
-      amount: providerAmount,
-      phone,
-      subscription_type: data.subscriptionType,
-    });
+    const routed = await routeCablePay({ request_id: row.request_id, serviceID: data.serviceID, billersCode: data.billersCode, variation_code: data.variationCode, amount: providerAmount, phone, subscription_type: data.subscriptionType });
+    const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "cable",
       serviceID: data.serviceID,
@@ -403,6 +397,9 @@ export const purchaseCable = createServerFn({ method: "POST" })
         vtpass_status: pay.contentStatus,
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
+        vendor: routed.vendor,
+        vendor_reference: routed.vendorReference,
+        fallback_used: routed.fallbackUsed,
         vtpass_snapshot: safePayload(pay.raw),
       },
       providerTransactionId: pay.transactionId,
@@ -465,8 +462,9 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
-    const { getVtpassConfig, vtpassMerchantVerify, vtpassPay, normalizeNgPhone } =
+    const { getVtpassConfig, vtpassMerchantVerify, normalizeNgPhone } =
       await import("./vtpass.server");
+    const { routeElectricityPay, toVtpassShape } = await import("./vendor-router.server");
     const { resolvePricing } = await import("./pricing.server");
     getVtpassConfig();
     const verified = await vtpassMerchantVerify({
@@ -517,15 +515,8 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start electricity payment.");
-    const pay = await vtpassPay({
-      request_id: row.request_id,
-      serviceID: data.serviceID,
-      billersCode: data.billersCode,
-      variation_code: data.meterType,
-      type: data.meterType,
-      amount: data.amount,
-      phone,
-    });
+    const routed = await routeElectricityPay({ request_id: row.request_id, serviceID: data.serviceID, billersCode: data.billersCode, meterType: data.meterType, amount: data.amount, phone });
+    const pay = toVtpassShape(routed);
     const result = await settleBillPurchase(context, {
       slug: "electricity",
       serviceID: data.serviceID,
@@ -547,6 +538,9 @@ export const purchaseElectricity = createServerFn({ method: "POST" })
         response_description: pay.responseDescription,
         purchased_code: pay.purchasedCode,
         token: pay.purchasedCode,
+        vendor: routed.vendor,
+        vendor_reference: routed.vendorReference,
+        fallback_used: routed.fallbackUsed,
         vtpass_snapshot: safePayload(pay.raw),
       },
       providerTransactionId: pay.transactionId,
@@ -692,6 +686,7 @@ export const requeryBill = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
     const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
+    const { vtuafricaRequery } = await import("./vtuafrica.server");
     const { data: bills, error } = await context.supabase
       .from("bill_transactions")
       .select(
@@ -721,8 +716,18 @@ export const requeryBill = createServerFn({ method: "POST" })
         customerName: typeof meta["customer"] === "string" ? meta["customer"] : null,
       };
     if (!bill.provider_request_id) throw new Error("Your money is protected. Check again shortly.");
-    const pay = await vtpassRequery(bill.provider_request_id);
-    const outcome = mapVtpassOutcome(pay);
+    const vendor = String(meta["vendor"] ?? "vtpass");
+    const vendorReference = String(meta["vendor_reference"] ?? bill.provider_request_id);
+    let pay;
+    let outcome: "successful" | "pending" | "failed";
+    if (vendor === "vtuafrica") {
+      const result = await vtuafricaRequery(vendorReference);
+      outcome = result.status;
+      pay = { code: result.code, responseDescription: result.message, requestId: bill.provider_request_id, transactionId: result.transactionId, contentStatus: result.status, purchasedCode: result.token, raw: result.raw };
+    } else {
+      pay = await vtpassRequery(bill.provider_request_id);
+      outcome = mapVtpassOutcome(pay);
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: finalized, error: settleError } = await asAdmin(supabaseAdmin).rpc(
       "trusted_complete_bill_purchase",
@@ -738,6 +743,8 @@ export const requeryBill = createServerFn({ method: "POST" })
           purchased_code: pay.purchasedCode,
           token: pay.purchasedCode,
           requery: true,
+          vendor,
+          vendor_reference: vendorReference,
           vtpass_snapshot: safePayload(pay.raw),
         },
       },
