@@ -412,7 +412,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const providerAmount = Number(meta["provider_amount"] ?? amount);
 
     let routed;
-    const priorVendor = meta["vendor"] === "vtuafrica" ? "vtuafrica" : meta["vendor"] === "vtpass" ? "vtpass" : null;
+    const priorVendor =
+      meta["vendor"] === "vtuafrica" ? "vtuafrica" : meta["vendor"] === "vtpass" ? "vtpass" : null;
     if (priorVendor) {
       routed = await requeryRoutedBill({
         vendor: priorVendor,
@@ -421,12 +422,23 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       });
     } else if (slug === "electricity") {
       const meterType = String(meta["meter_type"] ?? bill.product ?? "prepaid");
-      routed = await routeElectricityPay({ request_id: providerRequestId, serviceID, billersCode, meterType, amount: providerAmount, phone });
+      routed = await routeElectricityPay({
+        request_id: providerRequestId,
+        serviceID,
+        billersCode,
+        meterType,
+        amount: providerAmount,
+        phone,
+      });
     } else {
       const variationCode = String(meta["variation_code"] ?? "");
       routed = await routeCablePay({
-        request_id: providerRequestId, serviceID, billersCode, variation_code: variationCode,
-        amount: providerAmount, phone,
+        request_id: providerRequestId,
+        serviceID,
+        billersCode,
+        variation_code: variationCode,
+        amount: providerAmount,
+        phone,
         subscription_type: String(meta["subscription_type"] ?? "change"),
       });
     }

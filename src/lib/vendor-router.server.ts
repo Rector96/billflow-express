@@ -220,7 +220,21 @@ export async function routeElectricityPay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica electricity error", e);
-    return { vendor: "vtuafrica", status: "pending", code: "099", responseDescription: "Secondary provider response is being confirmed.", requestId: input.request_id, vendorReference: ref, transactionId: null, purchasedCode: null, contentStatus: "pending", totalAmount: null, commission: null, raw: { error: String(e) }, fallbackUsed: true };
+    return {
+      vendor: "vtuafrica",
+      status: "pending",
+      code: "099",
+      responseDescription: "Secondary provider response is being confirmed.",
+      requestId: input.request_id,
+      vendorReference: ref,
+      transactionId: null,
+      purchasedCode: null,
+      contentStatus: "pending",
+      totalAmount: null,
+      commission: null,
+      raw: { error: String(e) },
+      fallbackUsed: true,
+    };
   }
 }
 
@@ -273,10 +287,23 @@ export async function routeCablePay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica cable error", e);
-    return { vendor: "vtuafrica", status: "pending", code: "099", responseDescription: "Secondary provider response is being confirmed.", requestId: input.request_id, vendorReference: ref, transactionId: null, purchasedCode: null, contentStatus: "pending", totalAmount: null, commission: null, raw: { error: String(e) }, fallbackUsed: true };
+    return {
+      vendor: "vtuafrica",
+      status: "pending",
+      code: "099",
+      responseDescription: "Secondary provider response is being confirmed.",
+      requestId: input.request_id,
+      vendorReference: ref,
+      transactionId: null,
+      purchasedCode: null,
+      contentStatus: "pending",
+      totalAmount: null,
+      commission: null,
+      raw: { error: String(e) },
+      fallbackUsed: true,
+    };
   }
 }
-
 
 /** Requery the provider that owns an existing transaction; never initiate a new purchase. */
 export async function requeryRoutedBill(input: {
