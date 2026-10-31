@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import {
   DeliveryAddressFields,
   DeliveryMethodCards,
@@ -260,6 +261,8 @@ export function CacRegistrationFlow() {
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [refId, setRefId] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paystackReference, setPaystackReference] = useState("");
   const [name1, setName1] = useState("");
   const [name2, setName2] = useState("");
   const [name3, setName3] = useState("");
@@ -514,7 +517,9 @@ export function CacRegistrationFlow() {
           paymentReference: intent.reference,
         },
       });
-      setRefId(done.trackingReference || paystack.reference);
+      setRefId(done.trackingReference || "");
+      setPaymentReference(intent.reference);
+      setPaystackReference(paystack.reference);
       setStep("success");
       toast.success("Payment received — application queued");
     } catch (e) {
@@ -1074,17 +1079,41 @@ export function CacRegistrationFlow() {
                     ? "We’ll process your CAC, then send the printed pack."
                     : "We’ll process your CAC. Check My documents when the file is ready."}
                 </p>
-                <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-xl text-xs"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(refId);
-                    toast.success("Copied");
-                  }}
-                >
-                  <Copy className="mr-1.5 size-3.5" /> Copy ref
-                </Button>
+                {refId ? (
+                  <div className="w-full max-w-xs rounded-xl border bg-card p-3 text-left">
+                    <p className="text-[11px] text-muted-foreground">Application tracking reference</p>
+                    <p className="mt-1 break-all font-mono text-xs font-semibold">{refId}</p>
+                    <Button
+                      variant="outline"
+                      className="mt-2 h-8 rounded-lg text-xs"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(refId);
+                        toast.success("Application reference copied");
+                      }}
+                    >
+                      <Copy className="mr-1.5 size-3.5" /> Copy application reference
+                    </Button>
+                  </div>
+                ) : null}
+                {paymentReference ? (
+                  <div className="w-full max-w-xs space-y-2">
+                    <ReceiptShareButton
+                      payload={{
+                        reference: paymentReference,
+                        title: "CAC Business Name Registration",
+                        status: "successful",
+                        amountLabel: formatNaira(totalPay),
+                        direction: "out",
+                        service: "CAC registration",
+                        paystackRef: paystackReference || null,
+                        dateLabel: new Date().toLocaleString("en-NG"),
+                        method: "Paystack",
+                        detailRows: refId ? [{ label: "Application tracking reference", value: refId }] : [],
+                      }}
+                    />
+                    <p className="break-all text-[10px] text-muted-foreground">Payment reference: {paymentReference}</p>
+                  </div>
+                ) : null}
                 <Button
                   className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
                   onClick={() => void navigate({ to: "/home" })}
