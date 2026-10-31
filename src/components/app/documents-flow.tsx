@@ -22,7 +22,13 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useApp } from "@/lib/app-store";
 import {
   buildGenerateDocumentPayload,
@@ -356,7 +362,9 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <div className="space-y-2">
                       <Label htmlFor="document-duration">Agreement duration</Label>
                       <Select value={duration} onValueChange={setDuration}>
-                        <SelectTrigger id="document-duration"><SelectValue placeholder="Choose duration" /></SelectTrigger>
+                        <SelectTrigger id="document-duration">
+                          <SelectValue placeholder="Choose duration" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="6 Months">6 Months</SelectItem>
                           <SelectItem value="1 Year">1 Year</SelectItem>
