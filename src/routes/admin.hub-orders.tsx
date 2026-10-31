@@ -233,12 +233,6 @@ function AdminHubOrders() {
       const d = res.order;
       setDetail(d);
       const m = d.metadata && typeof d.metadata === "object" ? d.metadata : {};
-      const existing =
-        typeof m["document_url"] === "string"
-          ? m["document_url"]
-          : typeof m["certificate_url"] === "string"
-            ? m["certificate_url"]
-            : "";
       setCertificateFile(null);
       setAgentName(typeof m["assigned_agent"] === "string" ? m["assigned_agent"] : "");
       setAgentDesk(
