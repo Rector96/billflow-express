@@ -228,11 +228,20 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
       throw new Error("Could not create the required wallet recheck audit record.");
     }
 
+    let settlementCompleted = false;
+    let settledResult: {
+      status: "successful" | "pending" | "failed";
+      amount: number;
+      credited: boolean;
+      paystack?: Record<string, unknown>;
+    } | null = null;
     try {
       // This function verifies Paystack and invokes only the established
       // complete_paystack_funding / recover_paystack_funding settlement RPCs.
       const { verifyAndSettle } = await import("./paystack.server");
       const result = await verifyAndSettle(data.reference);
+      settlementCompleted = true;
+      settledResult = result;
       const auditMetadata = {
         outcome: result.status,
         credited: result.credited,
@@ -271,20 +280,33 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown recheck error";
-      const { error: auditUpdateError } = await supabaseAdmin
-        .from("admin_audit_logs")
-        .update({
-          description: "Paystack wallet funding recheck encountered an error",
-          metadata: {
+      const failureMetadata = settlementCompleted && settledResult
+        ? {
+            outcome: "audit_update_failed_after_settlement",
+            actor_email: actorEmail,
+            provider: "paystack",
+            credited: settledResult.credited,
+            wallet_amount_ngn: settledResult.amount,
+            paystack: settledResult.paystack ?? null,
+            error_message: message.slice(0, 300),
+          }
+        : {
             outcome: "error",
             actor_email: actorEmail,
             provider: "paystack",
             error_message: message.slice(0, 300),
-          },
+          };
+      const { error: auditUpdateError } = await supabaseAdmin
+        .from("admin_audit_logs")
+        .update({
+          description: settlementCompleted
+            ? "Wallet settlement completed but audit finalization needs attention"
+            : "Paystack wallet funding recheck encountered an error",
+          metadata: failureMetadata,
         })
         .eq("id", audit.id);
       if (auditUpdateError) {
-        console.error("[wallet-recheck] failed to record recheck error", {
+        console.error("[wallet-recheck] failed to record recheck outcome", {
           auditId: audit.id,
           reference: data.reference,
           message: auditUpdateError.message,
