@@ -172,6 +172,7 @@ export function ExamPinsFlow({
     const isPending = resultStatus === "pending";
     return (
       <AppShell>
+        <PageHeader title={entryTitle} backTo="/services" />
         <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
           <span
             className={cn(
