@@ -231,12 +231,34 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("Could not prepare this payment safely. Your wallet was not charged.");
     }
 
-    const pay = await vtpassPayAirtime({
-      requestId: String(row.request_id),
-      serviceId,
-      amount: providerAmount,
-      phone,
-    });
+    let pay: Awaited<ReturnType<typeof vtpassPayAirtime>>;
+    try {
+      pay = await vtpassPayAirtime({
+        requestId: String(row.request_id),
+        serviceId,
+        amount: providerAmount,
+        phone,
+      });
+    } catch (error) {
+      // The wallet reservation already exists. A network timeout does not prove
+      // VTpass failed, so keep the transaction pending and return its reference.
+      console.warn("[airtime] provider response pending", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        detail: error instanceof Error ? error.message : "Provider response unavailable",
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        requestId: String(row.request_id),
+        providerTransactionId: null,
+        amount: customerAmount,
+        phoneMasked: maskPhone(phone),
+        network: serviceId,
+        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
+        message: customerMessage("pending", customerAmount),
+      };
+    }
     const outcome = mapVtpassOutcome(pay);
     console.info("[airtime] pay", row.internal_reference, {
       code: pay.code,
