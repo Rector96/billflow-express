@@ -610,8 +610,8 @@ export function CacRegistrationFlow() {
                   <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
                   <p className="rounded-lg bg-primary/5 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
                     Live manual service: RockPay staff review your details and complete the
-                    registration through the CAC portal. Your certificate will be added to
-                    Profile → My documents when ready.
+                    registration through the CAC portal. Your certificate will be added to Profile →
+                    My documents when ready.
                   </p>
                 </div>
                 <PayActionBar>
