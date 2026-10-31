@@ -87,8 +87,17 @@ function TransactionDetails() {
     bill?.customer_identifier ?? (typeof tx?.reference === "string" ? tx.reference : "");
   const channel =
     bill?.provider_channel ||
+    (typeof bill?.metadata?.["vendor"] === "string" ? String(bill.metadata["vendor"]) : null) ||
     (typeof bill?.metadata?.["channel"] === "string" ? String(bill.metadata["channel"]) : null) ||
     (isAirtime ? "vtpass" : null);
+  const receiptToken =
+    (typeof bill?.metadata?.["token"] === "string" ? String(bill.metadata["token"]) : null) ||
+    (typeof bill?.metadata?.["purchased_code"] === "string"
+      ? String(bill.metadata["purchased_code"])
+      : null) ||
+    tx?.token ||
+    null;
+  const manualReviewRequired = bill?.metadata?.["manual_review_required"] === true;
   const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
 
   const canRequery =
@@ -183,7 +192,9 @@ function TransactionDetails() {
           </p>
           {status === "pending" ? (
             <p className="max-w-xs text-center text-xs text-muted-foreground">
-              Your transaction is still being confirmed. Tap Refresh Status if this takes long.
+              {manualReviewRequired
+                ? "Payment was received but needs a manual check. Contact RockPay Care with this reference."
+                : "Your transaction is still being confirmed. Tap Refresh Status if this takes long."}
             </p>
           ) : null}
         </div>
@@ -256,10 +267,23 @@ function TransactionDetails() {
           {tx?.method ? <InfoRow label="Payment Method" value={tx.method} /> : null}
         </div>
 
-        {tx?.token ? (
+        {receiptToken && status === "successful" ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
-            <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
-            <p className="mt-1 text-lg font-extrabold tracking-[0.15em]">{tx.token}</p>
+            <p className="text-xs font-semibold text-muted-foreground">
+              {isAirtime ? "Recharge Details" : "Token / PIN"}
+            </p>
+            <p className="mt-1 break-all text-lg font-extrabold tracking-[0.08em]">
+              {receiptToken}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-3 h-8 rounded-lg text-xs font-bold"
+              onClick={() => copy("Token / PIN", receiptToken)}
+            >
+              <Copy className="size-3.5" /> Copy details
+            </Button>
           </div>
         ) : null}
 
@@ -303,8 +327,8 @@ function TransactionDetails() {
                 ? new Date(bill.created_at).toLocaleString("en-NG")
                 : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim() || null,
               method: tx?.method || null,
-              tokenLabel: tx?.token ? "Token / PIN" : null,
-              tokenValue: tx?.token || null,
+              tokenLabel: receiptToken && status === "successful" ? "Token / PIN" : null,
+              tokenValue: receiptToken && status === "successful" ? receiptToken : null,
             }}
           />
           <CareContextLink
