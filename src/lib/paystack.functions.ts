@@ -230,12 +230,7 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
       }
 
       let settlementCompleted = false;
-      let settledResult: {
-        status: "successful" | "pending" | "failed";
-        amount: number;
-        credited: boolean;
-        paystack?: Record<string, unknown>;
-      } | null = null;
+      let settledResult: import("./paystack.server").SettleResult | null = null;
       try {
         // This function verifies Paystack and invokes only the established
         // complete_paystack_funding / recover_paystack_funding settlement RPCs.
