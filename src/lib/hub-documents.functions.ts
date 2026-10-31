@@ -23,6 +23,7 @@ export type MyHubDocument = {
   delivery: string | null;
   shipping_address: string | null;
   fulfillment_status: string | null;
+  delivery_method: string | null;
 };
 
 function asMeta(raw: unknown): Record<string, unknown> {
@@ -134,6 +135,52 @@ export const createCacCertificateUpload = createServerFn({ method: "POST" })
     if (uploadError || !signed?.token)
       throw new Error(uploadError?.message || "Could not prepare secure upload.");
     return { path, token: signed.token };
+  });
+
+/** Record that staff manually emailed the completed certificate outside RockPay. */
+export const markCacCertificateEmailed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; recipientEmail: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    const recipientEmail = String(input?.recipientEmail ?? "").trim().toLowerCase();
+    if (!orderId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail))
+      throw new Error("Enter the email address that received the certificate.");
+    return { orderId, recipientEmail };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertStaff(context.userId);
+    const { data: row, error } = await admin.from("hub_orders")
+      .select("id, user_id, service, status, payment_reference, paid_at, metadata")
+      .eq("id", data.orderId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Order not found");
+    if (row.service !== "cac") throw new Error("This action is only available for CAC orders.");
+    if (!row.payment_reference || !row.paid_at || row.status === "failed")
+      throw new Error("Only a payment-confirmed CAC order can be completed.");
+    const previous = asMeta(row.metadata);
+    if (typeof previous["certificate_storage_path"] === "string")
+      throw new Error("A certificate is already available in the customer's documents.");
+    const now = new Date().toISOString();
+    const { error: updateError } = await admin.from("hub_orders").update({
+      status: "successful",
+      metadata: {
+        ...previous,
+        certificate_delivery_method: "manual_email",
+        certificate_emailed_at: now,
+        certificate_emailed_to: data.recipientEmail,
+        certificate_emailed_by: context.userId,
+      },
+      updated_at: now,
+    } as never).eq("id", data.orderId);
+    if (updateError) throw new Error(updateError.message);
+    await notifyUser({
+      userId: row.user_id,
+      title: "CAC certificate emailed",
+      message: `Our team has marked your completed CAC certificate as emailed to ${data.recipientEmail}. Please check that inbox and its spam folder.`,
+      type: "success",
+      eventKey: `hub-order:${row.id}:cac-manual-email:${now}`,
+    });
+    return { ok: true as const, status: "successful" as const };
   });
 
 /** Attach an uploaded private PDF and only then mark the CAC order complete. */
