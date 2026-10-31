@@ -925,7 +925,8 @@ function AdminHubOrders() {
                       <FileText className="size-3" /> Upload completed CAC certificate
                     </div>
                     <p className="mb-2 text-[11px] text-muted-foreground">
-                      Upload the PDF received after the external CAC process. RockPay stores it privately and makes it available to this customer.
+                      Upload the PDF received after the external CAC process. RockPay stores it
+                      privately and makes it available to this customer.
                     </p>
                     <input
                       type="file"
@@ -941,7 +942,12 @@ function AdminHubOrders() {
                     <Button
                       size="sm"
                       className="mt-2 w-full rounded-xl text-xs"
-                      disabled={busy || !certificateFile || detail.service !== "cac" || !detail.payment_reference}
+                      disabled={
+                        busy ||
+                        !certificateFile ||
+                        detail.service !== "cac" ||
+                        !detail.payment_reference
+                      }
                       onClick={() => void saveDocument()}
                     >
                       Upload certificate & mark ready
@@ -958,7 +964,11 @@ function AdminHubOrders() {
                     </Button>
                     <Field
                       label="Certificate storage"
-                      value={metaGet(meta, "certificate_storage_path") ? "Private file attached" : "Not attached"}
+                      value={
+                        metaGet(meta, "certificate_storage_path")
+                          ? "Private file attached"
+                          : "Not attached"
+                      }
                     />
                   </Section>
 
