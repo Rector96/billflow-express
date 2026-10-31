@@ -156,7 +156,7 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   if (payload.recipient) rows.push({ label: "Recipient", value: payload.recipient });
   if (payload.detailRows) rows.push(...payload.detailRows);
   if (payload.dateLabel) rows.push({ label: "Date & time", value: payload.dateLabel });
-  rows.push({ label: "Transaction ID", value: payload.reference });
+  rows.push({ label: "RockPay reference", value: payload.reference });
   if (payload.paystackRef) rows.push({ label: "Paystack reference", value: payload.paystackRef });
   if (payload.providerRef)
     rows.push({ label: "Fulfilment provider reference", value: payload.providerRef });
