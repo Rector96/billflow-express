@@ -177,12 +177,29 @@ function AdminTransactions() {
     setDetailLoading(true);
     try {
       const [walletResult, ticketResult] = await Promise.all([
-        supabase.from("wallet_transactions").select("balance_before, balance_after, amount").eq("type", "bill_payment").contains("metadata", { bill_reference: row.internal_reference }).limit(1).maybeSingle(),
-        supabase.from("support_tickets").select("id, ticket_number, status").eq("transaction_id", row.id).in("status", ["open", "in_progress", "waiting_for_customer"]).order("created_at", { ascending: false }).limit(1),
+        supabase
+          .from("wallet_transactions")
+          .select("balance_before, balance_after, amount")
+          .eq("type", "bill_payment")
+          .contains("metadata", { bill_reference: row.internal_reference })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("support_tickets")
+          .select("id, ticket_number, status")
+          .eq("transaction_id", row.id)
+          .in("status", ["open", "in_progress", "waiting_for_customer"])
+          .order("created_at", { ascending: false })
+          .limit(1),
       ]);
       if (walletResult.error) throw walletResult.error;
       if (ticketResult.error) throw ticketResult.error;
-      if (walletResult.data) setWalletSnap({ balance_before: n(walletResult.data.balance_before), balance_after: n(walletResult.data.balance_after), amount: n(walletResult.data.amount) });
+      if (walletResult.data)
+        setWalletSnap({
+          balance_before: n(walletResult.data.balance_before),
+          balance_after: n(walletResult.data.balance_after),
+          amount: n(walletResult.data.amount),
+        });
       const ticket = ticketResult.data?.[0];
       if (ticket) setCareTicket({ id: ticket.id, ticket_number: ticket.ticket_number });
     } catch (error) {
@@ -470,11 +487,23 @@ function AdminTransactions() {
                 <Row k="Updated" v={new Date(selected.updated_at).toLocaleString("en-NG")} />
               </section>
 
-              {detailLoading ? <p className="rounded-xl border p-3 text-xs text-muted-foreground">Loading wallet and support evidence…</p> : null}
+              {detailLoading ? (
+                <p className="rounded-xl border p-3 text-xs text-muted-foreground">
+                  Loading wallet and support evidence…
+                </p>
+              ) : null}
               {detailError ? (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                  {detailError} The transaction record above is still available, but wallet and support evidence could not be confirmed.
-                  <Button variant="outline" size="sm" className="mt-2 h-8" onClick={() => void openDetail(selected)}>Retry evidence lookup</Button>
+                  {detailError} The transaction record above is still available, but wallet and
+                  support evidence could not be confirmed.
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-8"
+                    onClick={() => void openDetail(selected)}
+                  >
+                    Retry evidence lookup
+                  </Button>
                 </div>
               ) : null}
               {walletSnap ? (
