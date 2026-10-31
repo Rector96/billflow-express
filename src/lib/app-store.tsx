@@ -246,6 +246,7 @@ const str = (m: Meta, k: string) => (typeof m[k] === "string" ? (m[k] as string)
 
 type LedgerRow = {
   reference: string;
+  provider_reference?: string | null;
   type: string;
   amount: number | string;
   status: string;
@@ -289,11 +290,12 @@ function toTransaction(row: LedgerRow): Transaction {
     time: fmtTime(row.created_at),
     method: isIn
       ? str(meta, "channel") === "paystack"
-        ? "Paystack (test)"
+        ? "Paystack"
         : "Wallet Funding"
       : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
+    ...(row.provider_reference ? { providerReference: row.provider_reference } : {}),
     ...(token ? { token } : {}),
   };
 }
@@ -386,7 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
         supabase
           .from("wallet_transactions")
-          .select("reference, type, amount, status, description, metadata, created_at")
+          .select("reference, provider_reference, type, amount, status, description, metadata, created_at")
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
