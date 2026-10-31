@@ -361,7 +361,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   return (
     <AppShell>
       <PageHeader title={entryTitle} backTo="/services" />
-      <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6">
+      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-3">
         <PayStepper
           steps={progress.map((key) => ({
             key,
@@ -382,7 +382,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         />
 
         {step === "exam" ? (
-          <section className="space-y-3">
+          <section className="space-y-4">
             <div className="flex items-start gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning">
                 <Ticket className="size-5" />
@@ -394,6 +394,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                 </p>
               </div>
             </div>
+            <div className="education-choice-grid grid gap-3 sm:grid-cols-2">
             {EXAMS.map((item) => (
               <button
                 key={item.id}
@@ -413,6 +414,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                 )}
               </button>
             ))}
+            </div>
             {error ? (
               <p className="rounded-xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
                 {error}
@@ -457,8 +459,9 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
 
         {step === "product" && exam ? (
           <section className="space-y-4">
-            <div>
-              <h2 className="text-base font-bold">Choose {exam.name} product</h2>
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div><h2 className="text-base font-bold">Choose {exam.name} product</h2><p className="mt-1 text-xs text-muted-foreground">Choose the correct product from the available options.</p></div>
+              <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">{variations.length} available</span>
               {candidateName ? (
                 <p className="mt-1 text-xs font-semibold text-success">
                   Verified candidate: {candidateName}
@@ -466,7 +469,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
               ) : null}
             </div>
             {variations.length ? (
-              <div className="space-y-2">
+              <div className="education-product-grid grid max-h-[min(58dvh,620px)] grid-cols-1 gap-3 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-2 lg:grid-cols-3">
                 {variations.map((item) => (
                   <button
                     key={item.variationCode}
@@ -476,14 +479,14 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                       setStep("quantity");
                     }}
                     className={cn(
-                      "press flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left shadow-card transition-colors",
+                      "press flex min-h-[76px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-4 text-left shadow-card transition-all hover:shadow-soft",
                       variationCode === item.variationCode
                         ? "border-primary bg-primary-soft"
                         : "bg-card hover:border-border",
                     )}
                   >
-                    <span className="text-sm font-bold">{item.name}</span>
-                    <span className="font-bold">{formatNaira(item.amount, false)}</span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">{item.name}</span>
+                    <span className="shrink-0 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary">{formatNaira(item.amount, false)}</span>
                   </button>
                 ))}
               </div>
