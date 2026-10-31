@@ -85,6 +85,27 @@ async function assertStaff(userId: string) {
   return supabaseAdmin;
 }
 
+async function assertRole(userId: string, allowed: readonly string[], action: string) {
+  const admin = await assertStaff(userId);
+  const { data: roles, error } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (error) throw new Error("Could not verify permissions for this action.");
+  if (!(roles ?? []).some((entry) => allowed.includes(String(entry.role)))) {
+    throw new Error(`Forbidden: ${action} requires ${allowed.join(" or ")} access.`);
+  }
+  return admin;
+}
+
+async function assertAdmin(userId: string, action: string) {
+  return assertRole(userId, ["admin", "super_admin"], action);
+}
+
+async function assertSuperAdmin(userId: string, action: string) {
+  return assertRole(userId, ["super_admin"], action);
+}
+
 function asMeta(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
 }
@@ -263,7 +284,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     return { orderId, status: status as HubOrderStatus, note: String(input?.note ?? "").trim() };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "hub order status changes");
 
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
@@ -750,7 +771,7 @@ export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
     limit: Math.min(Math.max(Math.trunc(Number(input?.limit ?? 20)), 1), 100),
   }))
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "email outbox retry");
     const { error } = await admin
       .from("hub_email_outbox")
       .update({
