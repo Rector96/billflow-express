@@ -269,7 +269,7 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </button>
             <button
               type="button"
-              className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-3.5 py-3 text-left shadow-soft"
+              className="press flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card px-4 py-4 text-left shadow-soft transition-all hover:border-primary/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/10"
               onClick={() => {
                 setDocType("tenancy");
                 setStep("form");
