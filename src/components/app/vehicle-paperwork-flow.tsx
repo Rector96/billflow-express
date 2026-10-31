@@ -150,19 +150,25 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
     }
   };
 
+  const field =
+    "h-10 rounded-xl border-border/70 bg-card text-sm shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 sm:h-11";
+
   if (step === "done" && vehicle && choice) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[60dvh] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
-          <h1 className="text-lg font-bold">Order received</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
+          <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success result-pop">
+            <Car className="size-7" />
+          </span>
+          <h1 className="text-lg font-bold lg:text-xl">Order received</h1>
+          <p className="max-w-sm text-sm text-muted-foreground">
             {choice === "third_party_insurance"
               ? "Insurance request is with our team. Official docs will appear under My documents."
               : "License sticker is queued. Staff will process and notify you."}
           </p>
           <p className="font-mono text-[10px] text-muted-foreground">{trackId || payRef}</p>
           <Button
-            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+            className="mt-2 h-11 w-full max-w-xs rounded-xl font-semibold lg:h-12"
             onClick={() => navigate({ to: "/profile/documents" })}
           >
             My documents
@@ -182,31 +188,33 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Vehicle" backTo="/services" />
-      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-28 pt-1 lg:max-w-2xl lg:px-0 lg:pb-12">
+      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-24 pt-1 lg:max-w-2xl lg:space-y-3 lg:px-0 lg:pb-10 lg:pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "lookup" ? (
           <section className="space-y-3">
-            <div className="space-y-1">
-              <Label>Plate number</Label>
-              <Input
-                value={plate}
-                onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                className="h-11 rounded-xl"
-                placeholder="e.g. ABC123XY"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>State</Label>
-              <Input
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                className="h-11 rounded-xl"
-              />
+            <div className="grid grid-cols-1 gap-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft sm:grid-cols-2 sm:gap-x-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Plate number</Label>
+                <Input
+                  value={plate}
+                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                  className={field}
+                  placeholder="e.g. ABC123XY"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">State</Label>
+                <Input
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className={field}
+                />
+              </div>
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-11 w-full rounded-xl font-semibold lg:h-12"
                 disabled={lookingUp}
                 onClick={() => void onLookup()}
               >
@@ -224,25 +232,54 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
         {step === "result" && vehicle ? (
           <section className="space-y-3">
-            <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-soft">
+            <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-soft lg:mx-auto lg:max-w-lg">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                <span className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
                   <Car className="size-5" />
                 </span>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold">{vehicle.plate}</p>
                   <p className="text-xs text-muted-foreground">{vehicle.makeModel}</p>
                 </div>
               </div>
-              {vehicle.expiryStatus ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Status: {vehicle.expiryStatus}
-                </p>
-              ) : null}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-secondary/50 px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    State
+                  </p>
+                  <p className="mt-0.5 font-semibold">{vehicle.state}</p>
+                </div>
+                {vehicle.expiryStatus ? (
+                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Status
+                    </p>
+                    <p className="mt-0.5 font-semibold">{vehicle.expiryStatus}</p>
+                  </div>
+                ) : null}
+                {vehicle.color ? (
+                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Color
+                    </p>
+                    <p className="mt-0.5 font-semibold">{vehicle.color}</p>
+                  </div>
+                ) : null}
+                {vehicle.chassisNumber ? (
+                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Chassis
+                    </p>
+                    <p className="mt-0.5 truncate font-mono text-[11px] font-semibold">
+                      {vehicle.chassisNumber}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-11 w-full rounded-xl font-semibold lg:h-12"
                 onClick={() => setStep("renew")}
               >
                 Continue to renew
@@ -253,41 +290,51 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
         {step === "renew" ? (
           <section className="space-y-3">
-            <button
-              type="button"
-              className={`flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left ${
-                choice === "license_sticker"
-                  ? "border-primary bg-primary/5"
-                  : "border-border/80 bg-card"
-              }`}
-              onClick={() => setChoice("license_sticker")}
-            >
-              <FileText className="size-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold">License sticker</p>
-                <p className="text-[11px] text-muted-foreground">Physical · staff process</p>
-              </div>
-              <p className="text-xs font-bold text-primary">{formatNaira(feeSticker, false)}</p>
-            </button>
-            <button
-              type="button"
-              className={`flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left ${
-                choice === "third_party_insurance"
-                  ? "border-primary bg-primary/5"
-                  : "border-border/80 bg-card"
-              }`}
-              onClick={() => setChoice("third_party_insurance")}
-            >
-              <Shield className="size-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold">3rd-party insurance</p>
-                <p className="text-[11px] text-muted-foreground">Digital · staff attach PDF</p>
-              </div>
-              <p className="text-xs font-bold text-primary">{formatNaira(feeInsurance, false)}</p>
-            </button>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <button
+                type="button"
+                className={`flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors ${
+                  choice === "license_sticker"
+                    ? "border-primary bg-primary/5 shadow-soft"
+                    : "border-border/80 bg-card hover:border-primary/30"
+                }`}
+                onClick={() => setChoice("license_sticker")}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <FileText className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">License sticker</p>
+                  <p className="text-[11px] text-muted-foreground">Physical · staff process</p>
+                  <p className="mt-1 text-xs font-bold text-primary">
+                    {formatNaira(feeSticker, false)}
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                className={`flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors ${
+                  choice === "third_party_insurance"
+                    ? "border-primary bg-primary/5 shadow-soft"
+                    : "border-border/80 bg-card hover:border-primary/30"
+                }`}
+                onClick={() => setChoice("third_party_insurance")}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <Shield className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">3rd-party insurance</p>
+                  <p className="text-[11px] text-muted-foreground">Digital · staff attach PDF</p>
+                  <p className="mt-1 text-xs font-bold text-primary">
+                    {formatNaira(feeInsurance, false)}
+                  </p>
+                </div>
+              </button>
+            </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-11 w-full rounded-xl font-semibold lg:h-12"
                 disabled={!choice || paying}
                 onClick={() => void onPay()}
               >
