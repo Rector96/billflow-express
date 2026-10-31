@@ -145,7 +145,9 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const onPayNow = async () => {
     if (isHubDemoOnly("documents")) {
-      toast.error("Document generation is in preview. Payments are disabled until live fulfilment is ready.");
+      toast.error(
+        "Document generation is in preview. Payments are disabled until live fulfilment is ready.",
+      );
       return;
     }
     if (!docType) return;
@@ -490,8 +492,10 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
+                ) : isHubDemoOnly("documents") ? (
+                  "Payments unavailable"
                 ) : (
-                  isHubDemoOnly("documents") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
+                  `Pay ${formatNaira(fee, false)}`
                 )}
               </Button>
             </PayActionBar>
