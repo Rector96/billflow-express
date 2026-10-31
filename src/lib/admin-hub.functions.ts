@@ -292,7 +292,9 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       typeof currentMeta["certificate_storage_path"] !== "string" &&
       currentMeta["certificate_delivery_method"] !== "manual_email"
     ) {
-      throw new Error("Upload the completed CAC certificate or record its manual email delivery before marking this order successful.");
+      throw new Error(
+        "Upload the completed CAC certificate or record its manual email delivery before marking this order successful.",
+      );
     }
     const eventKey = statusChanged
       ? `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`
@@ -658,7 +660,9 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       typeof prevMeta["certificate_storage_path"] !== "string" &&
       prevMeta["certificate_delivery_method"] !== "manual_email"
     ) {
-      throw new Error("Upload the completed CAC certificate or record its manual email delivery before marking it ready.");
+      throw new Error(
+        "Upload the completed CAC certificate or record its manual email delivery before marking it ready.",
+      );
     }
     const history = Array.isArray(prevMeta["fulfillment_history"])
       ? [...(prevMeta["fulfillment_history"] as unknown[])]
