@@ -19,9 +19,8 @@ export const Route = createFileRoute("/admin")({
     const { data: isStaff, error } = await supabase.rpc("is_staff", {
       _user_id: session.user.id,
     });
-    const envUrl = (import.meta.env as Record<string, string | undefined>)["VITE_SUPABASE_URL"];
-    const isMock = !envUrl || envUrl.includes("placeholder");
-    if (!isMock && isStaff === false && !error) {
+    // Fail closed: a failed role lookup must never grant access to the admin workspace.
+    if (error || isStaff !== true) {
       throw redirect({ to: "/home" });
     }
   },
