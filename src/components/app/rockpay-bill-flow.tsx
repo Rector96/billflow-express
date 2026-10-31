@@ -21,6 +21,7 @@ import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PayActionBar } from "@/components/app/pay-action-bar";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
@@ -706,15 +707,34 @@ export function RockPayBillFlow() {
             </Button>
           ) : null}
           {txId ? (
-            <Button
-              variant={outcome === "successful" ? "default" : "outline"}
-              className="h-12 w-full rounded-xl font-bold"
-              asChild
-            >
-              <Link to="/history/$txId" params={{ txId }}>
-                View receipt
-              </Link>
-            </Button>
+            <>
+              <ReceiptShareButton
+                payload={{
+                  reference: txId,
+                  title: `${service?.name ?? "Bill payment"} - ${provider || serviceID}`,
+                  status: outcome,
+                  amountLabel: formatNaira(total),
+                  direction: "out",
+                  service: service?.name ?? "Bill payment",
+                  network: provider || null,
+                  recipient: identifier || null,
+                  providerRef: providerTxId || null,
+                  detailRows: [
+                    { label: "Provider", value: provider || serviceID },
+                    ...(variation?.name ? [{ label: "Plan", value: variation.name }] : []),
+                  ],
+                }}
+              />
+              <Button
+                variant={outcome === "successful" ? "default" : "outline"}
+                className="h-12 w-full rounded-xl font-bold"
+                asChild
+              >
+                <Link to="/history/$txId" params={{ txId }}>
+                  View full transaction
+                </Link>
+              </Button>
+            </>
           ) : null}
           <Button variant="outline" className="h-12 w-full rounded-xl font-bold" asChild>
             <Link to="/home">Home</Link>
