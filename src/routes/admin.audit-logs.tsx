@@ -39,10 +39,17 @@ function AdminAuditLogs() {
         setRows([]);
         return;
       }
-      const actors = [...new Set((data ?? []).map((r) => r.actor_user_id).filter((id): id is string => Boolean(id)))];
+      const actors = [
+        ...new Set(
+          (data ?? []).map((r) => r.actor_user_id).filter((id): id is string => Boolean(id)),
+        ),
+      ];
       const profileResult = actors.length
         ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", actors)
-        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[], error: null };
+        : {
+            data: [] as { user_id: string; full_name: string | null; email: string | null }[],
+            error: null,
+          };
       if (profileResult.error) throw profileResult.error;
       const pmap = new Map((profileResult.data ?? []).map((p) => [p.user_id, p]));
       setRows(
@@ -50,7 +57,10 @@ function AdminAuditLogs() {
           const p = r.actor_user_id ? pmap.get(r.actor_user_id) : undefined;
           return {
             ...r,
-            actor_label: p?.full_name || p?.email || (r.actor_user_id ? r.actor_user_id.slice(0, 8) : "System / unavailable"),
+            actor_label:
+              p?.full_name ||
+              p?.email ||
+              (r.actor_user_id ? r.actor_user_id.slice(0, 8) : "System / unavailable"),
           };
         }),
       );

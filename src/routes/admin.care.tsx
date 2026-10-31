@@ -110,7 +110,17 @@ function CareQueue() {
             <KpiCard label="Resolved today" value={String(stats?.resolved_today ?? 0)} />
           </div>
 
-          {error ? <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button></p> : null}
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive"
+            >
+              {error}{" "}
+              <button type="button" className="ml-2 underline" onClick={() => void load()}>
+                Retry
+              </button>
+            </p>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-2">
             <input

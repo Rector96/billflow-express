@@ -106,7 +106,17 @@ function AdminActivity() {
         Login events are not stored in-app yet (Supabase Auth only). Shown: registrations and wallet
         ledger activity.
       </p>
-      {error ? <p role="alert" className="mb-3 rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{error} <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button></p> : null}
+      {error ? (
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-destructive/30 p-3 text-sm text-destructive"
+        >
+          {error}{" "}
+          <button type="button" className="ml-2 underline" onClick={() => void load()}>
+            Retry
+          </button>
+        </p>
+      ) : null}
       {loading ? (
         <AdminLoading />
       ) : items.length === 0 ? (
