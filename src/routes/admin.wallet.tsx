@@ -253,6 +253,10 @@ function AdminWallet() {
                           <span>Channel: {String(paystack["channel"] ?? "—")}</span>
                           <span>Currency: {String(paystack["currency"] ?? "—")}</span>
                           <span>Domain: {String(paystack["domain"] ?? "—")}</span>
+                          <span>Gateway response: {String(paystack["gatewayResponse"] ?? "—")}</span>
+                          <span>
+                            Paid at: {paystack["paidAt"] ? new Date(String(paystack["paidAt"])).toLocaleString("en-NG") : "—"}
+                          </span>
                           <span>
                             Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}
                           </span>
