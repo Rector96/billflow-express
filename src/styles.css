@@ -517,7 +517,6 @@
   flex: 0 0 auto;
 }
 
-
 /* Responsive service-flow refinements: lock the page only on desktop.
    Long forms may scroll inside their content panel rather than being clipped. */
 @media (min-width: 1024px) {
