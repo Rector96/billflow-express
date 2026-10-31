@@ -98,12 +98,12 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success" && result) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[60dvh] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
-          <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success">
+        <div className="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
+          <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success result-pop">
             <CheckCircle2 className="size-7" />
           </span>
-          <h1 className="text-lg font-bold">Your TIN</h1>
-          <p className="font-mono text-xl font-bold tracking-wide">{result.data.tin}</p>
+          <h1 className="text-lg font-bold lg:text-xl">Your TIN</h1>
+          <p className="font-mono text-xl font-bold tracking-wide lg:text-2xl">{result.data.tin}</p>
           <Button
             variant="outline"
             className="h-9 rounded-xl text-xs"
@@ -115,7 +115,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
             <Copy className="mr-1.5 size-3.5" /> Copy
           </Button>
           <Button
-            className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+            className="mt-2 h-11 w-full max-w-xs rounded-xl font-semibold lg:h-12"
             onClick={() => navigate({ to: "/home" })}
           >
             <Home className="mr-2 size-4" /> Home
@@ -125,37 +125,41 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
     );
   }
 
-  const field = "h-11 rounded-xl";
-  const card = "space-y-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft";
+  const field =
+    "h-10 rounded-xl border-border/70 bg-card text-sm shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 sm:h-11";
+  const card =
+    "grid grid-cols-1 gap-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2.5";
 
   return (
     <AppShell>
       <PageHeader title="TIN" backTo="/services" />
-      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-28 pt-1 lg:max-w-2xl lg:px-0 lg:pb-12">
+      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-24 pt-1 lg:max-w-2xl lg:space-y-3 lg:px-0 lg:pb-10 lg:pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "input" ? (
           <section className="space-y-3">
             <div className={card}>
-              <div className="space-y-1">
-                <Label>NIN or CAC number</Label>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-semibold">NIN or CAC number</Label>
                 <Input
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="11-digit NIN or CAC number"
                   className={field}
                 />
               </div>
-              <div className="space-y-1">
-                <Label>Full name</Label>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-semibold">Full name</Label>
                 <Input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  placeholder="As it appears on your ID"
                   className={field}
                 />
               </div>
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-11 w-full rounded-xl font-semibold lg:h-12"
                 onClick={() => {
                   if (validate()) setStep("preview");
                 }}
@@ -167,10 +171,22 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
         ) : null}
         {step === "preview" ? (
           <section className="space-y-3">
-            <div className={card}>
-              <p className="text-sm font-semibold">{fullName}</p>
-              <p className="font-mono text-xs text-muted-foreground">{identifier}</p>
-              <p className="mt-3 font-mono text-lg font-bold blur-[5px]">{blurredTin}</p>
+            <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-soft lg:mx-auto lg:max-w-lg">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Full name
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold">{fullName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Identifier
+                  </p>
+                  <p className="mt-0.5 font-mono text-xs font-semibold">{identifier}</p>
+                </div>
+              </div>
+              <p className="mt-4 text-center font-mono text-lg font-bold blur-[5px]">{blurredTin}</p>
               <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-sm font-bold">
                 <span>Total</span>
                 <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
@@ -178,7 +194,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             <PayActionBar>
               <Button
-                className="h-12 w-full rounded-xl font-semibold"
+                className="h-11 w-full rounded-xl font-semibold lg:h-12"
                 disabled={paying}
                 onClick={() => void onPayNow()}
               >
