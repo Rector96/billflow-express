@@ -229,7 +229,9 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;
     const { data: duplicate, error: duplicateError } = await context.supabase
       .from("bill_transactions")
-      .select("internal_reference, status, amount, provider, provider_request_id, provider_transaction_id, metadata")
+      .select(
+        "internal_reference, status, amount, provider, provider_request_id, provider_transaction_id, metadata",
+      )
       .eq("provider_request_id", data.requestId)
       .eq("user_id", context.userId)
       .limit(1);
