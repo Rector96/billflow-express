@@ -172,7 +172,10 @@ function ModernRow({ tx }: { tx: Transaction }) {
         <p className="truncate text-xs text-muted-foreground">
           {tx.service} · {tx.time}
         </p>
-        {tx.direction === "in" && tx.serviceSlug === "wallet" && tx.method === "Paystack" && tx.status === "pending" ? (
+        {tx.direction === "in" &&
+        tx.serviceSlug === "wallet" &&
+        tx.method === "Paystack" &&
+        tx.status === "pending" ? (
           <p className="mt-0.5 text-[11px] font-medium text-amber-600">
             Awaiting Paystack confirmation — not yet credited
           </p>
