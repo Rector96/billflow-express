@@ -222,6 +222,12 @@ function AdminWallet() {
                       : entry.actor_user_id;
                   const outcome = String(meta["outcome"] ?? "unknown");
                   const credited = meta["credited"] === true;
+                  const creditState =
+                    meta["credited"] === true
+                      ? "Wallet credited"
+                      : meta["credited"] === false
+                        ? "No new credit"
+                        : "Credit not confirmed";
                   return (
                     <div
                       key={entry.id}
