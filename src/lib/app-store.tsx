@@ -258,7 +258,13 @@ function toTransaction(row: LedgerRow): Transaction {
   const meta = row.metadata ?? {};
   const isIn = row.type === "deposit" || row.type === "refund";
   const status: TxStatus =
-    row.status === "successful" ? "successful" : row.status === "pending" ? "pending" : "failed";
+    row.status === "successful"
+      ? "successful"
+      : row.status === "pending"
+        ? "pending"
+        : row.status === "reversed"
+          ? "reversed"
+          : "failed";
   const token = str(meta, "token");
   const customer = str(meta, "customer");
   const reference = str(meta, "masked");
