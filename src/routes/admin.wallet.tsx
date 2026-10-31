@@ -252,6 +252,7 @@ function AdminWallet() {
                           <span>Paystack: {String(paystack["gatewayStatus"] ?? "unknown")}</span>
                           <span>Channel: {String(paystack["channel"] ?? "—")}</span>
                           <span>Currency: {String(paystack["currency"] ?? "—")}</span>
+                          <span>Domain: {String(paystack["domain"] ?? "—")}</span>
                           <span>
                             Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}
                           </span>
@@ -260,6 +261,18 @@ function AdminWallet() {
                             {paystack["chargedSubunits"] == null
                               ? "—"
                               : formatNaira(Number(paystack["chargedSubunits"]) / 100, false)}
+                          </span>
+                          <span>
+                            Requested:{" "}
+                            {paystack["requestedSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["requestedSubunits"]) / 100, false)}
+                          </span>
+                          <span>
+                            Fee:{" "}
+                            {paystack["feeSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["feeSubunits"]) / 100, false)}
                           </span>
                           {paystack["validationReason"] ? (
                             <span>Validation: {String(paystack["validationReason"])}</span>
