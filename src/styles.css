@@ -997,3 +997,55 @@
     grid-column: 1 / -1;
   }
 }
+
+
+/* Shared RockPay form language: accessible, consistent controls across every workflow. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+  accent-color: var(--color-primary);
+}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea)::placeholder {
+  opacity: 1;
+}
+:where(input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"]) {
+  border-color: var(--color-destructive) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-destructive) 10%, transparent);
+}
+:where(input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+:where(input[type="date"], input[type="time"], input[type="datetime-local"]) {
+  min-height: 2.75rem;
+  color-scheme: light;
+}
+:where(textarea) {
+  min-height: 7rem;
+  resize: vertical;
+}
+.form-field-hint {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.form-field-error {
+  color: var(--color-destructive);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.form-section-card {
+  border: 1px solid var(--color-border);
+  border-radius: 1.125rem;
+  background: var(--color-card);
+  padding: 1.125rem;
+  box-shadow: var(--shadow-card);
+}
+.form-section-heading {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(input, select, textarea) {
+    transition-duration: 0.01ms !important;
+  }
+}
