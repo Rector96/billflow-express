@@ -228,13 +228,19 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       .select("phone")
       .eq("user_id", context.userId)
       .maybeSingle();
-    let phone = "08011111111";
-    if (profile?.phone) {
-      try {
-        phone = normalizeNgPhone(profile.phone);
-      } catch {
-        /* provider fallback */
-      }
+    const profilePhone = String(profile?.phone ?? "").trim();
+    if (!profilePhone) {
+      throw new Error(
+        "Add a valid mobile number to your RockPay profile before purchasing exam PINs.",
+      );
+    }
+    let phone: string;
+    try {
+      phone = normalizeNgPhone(profilePhone);
+    } catch {
+      throw new Error(
+        "Your RockPay profile phone number is invalid. Update it before purchasing exam PINs.",
+      );
     }
     const identifier = data.exam === "jamb" ? data.profileId : data.exam;
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
@@ -267,15 +273,37 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start exam PIN purchase.");
 
-    const pay = await vtpassPay({
-      request_id: row.request_id,
-      serviceID,
-      variation_code: data.variationCode,
-      amount: unitAmount,
-      quantity: data.quantity,
-      phone,
-      ...(data.exam === "jamb" ? { billersCode: data.profileId } : {}),
-    });
+    let pay: Awaited<ReturnType<typeof vtpassPay>>;
+    try {
+      pay = await vtpassPay({
+        request_id: row.request_id,
+        serviceID,
+        variation_code: data.variationCode,
+        amount: unitAmount,
+        quantity: data.quantity,
+        phone,
+        ...(data.exam === "jamb" ? { billersCode: data.profileId } : {}),
+      });
+    } catch (error) {
+      // The wallet has already been reserved. A provider timeout is ambiguous:
+      // keep the bill pending and return its reference so the customer can requery.
+      const detail = error instanceof Error ? error.message : "Provider response unavailable";
+      console.warn("[exam] provider response pending", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        detail,
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        pins: [],
+        amount: totalAmount,
+        message:
+          "Your wallet payment is reserved and the exam provider has not confirmed the PIN yet. Do not pay again. Use Check payment status or your receipt to retry the status check.",
+        requestId: String(row.request_id),
+        providerTransactionId: null,
+      };
+    }
     const outcome = mapVtpassOutcome(pay);
     const pins = outcome === "successful" ? extractPins(pay) : [];
     const payload = {
@@ -298,7 +326,24 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         _payload: payload,
       },
     );
-    if (settleError) throw new Error(settleError.message);
+    if (settleError) {
+      // Provider may have fulfilled the PIN even if settlement RPC timed out.
+      // Preserve the reference and let the idempotent requery/settlement path recover.
+      console.error("[exam] settlement pending", {
+        reference: row.internal_reference,
+        error: settleError.message,
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        pins: [],
+        amount: totalAmount,
+        message:
+          "The provider response was received, but RockPay is still confirming the wallet settlement. Do not pay again. Check payment status shortly.",
+        requestId: String(row.request_id),
+        providerTransactionId: pay.transactionId,
+      };
+    }
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
     const status = (fin?.status ?? outcome) as ExamPurchaseResult["status"];
     return {
