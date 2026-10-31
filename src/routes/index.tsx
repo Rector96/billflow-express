@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Pay electricity, cable TV, education, airtime and data bills from one wallet. Mobile-first and built for Nigeria.",
+          "Pay electricity, cable TV, education and official services from one secure wallet. Mobile-first and built for Nigeria.",
       },
       { property: "og:title", content: `${BRAND.name} — Pay. Fund. Connect.` },
 
