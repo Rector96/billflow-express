@@ -547,6 +547,7 @@ export function RockPayBillFlow() {
   if (step === "processing")
     return (
       <AppShell>
+        <PageHeader title={service?.name ?? "Bill payment"} subtitle="Processing payment" showBack={false} />
         <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -611,6 +612,7 @@ export function RockPayBillFlow() {
   if (step === "result")
     return (
       <AppShell>
+        <PageHeader title={service?.name ?? "Bill payment"} backTo="/services" />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
           <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
             <span
