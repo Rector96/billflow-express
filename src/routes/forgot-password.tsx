@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/app/page-header";
+import { AuthShell } from "@/components/app/auth-shell";
 import { BRAND } from "@/lib/brand";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,7 +40,7 @@ function ForgotPassword() {
 
   if (step === "done") {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+      <AuthShell title="Password reset" subtitle="You are all set.">
         <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
           <CheckCircle2 className="size-10" />
         </span>
@@ -54,16 +54,15 @@ function ForgotPassword() {
         >
           Back to Login
         </Button>
-      </main>
+      </AuthShell>
     );
   }
 
   if (step === "password") {
     return (
-      <main className="mx-auto min-h-dvh max-w-md pb-10">
-        <PageHeader title="Set new password" />
+      <AuthShell title="Set new password" subtitle="Choose a strong password for your account.">
         <form
-          className="space-y-5 px-6 pt-4"
+          className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (pw.length < 6) return setError("Use at least 6 characters");
@@ -112,13 +111,15 @@ function ForgotPassword() {
             {loading ? "Saving…" : "Reset Password"}
           </Button>
         </form>
-      </main>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md pb-10">
-      <PageHeader title="Forgot Password" />
+    <AuthShell
+      title="Forgot password"
+      subtitle="Enter the email linked to your account and we will send a secure reset link."
+    >
       <form
         className="space-y-5 px-6 pt-4"
         onSubmit={(e) => {
@@ -160,6 +161,6 @@ function ForgotPassword() {
           {loading ? "Sending…" : "Send Reset Link"}
         </Button>
       </form>
-    </main>
+    </AuthShell>
   );
 }
