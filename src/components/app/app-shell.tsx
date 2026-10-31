@@ -130,11 +130,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           role="status"
           className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-xs font-bold text-warning-foreground shadow-soft"
         >
-          You're offline — payments and top-ups can't be completed right now.
+          You're offline — payments can't be completed right now.
         </div>
       ) : null}
 
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-6 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-6 lg:flex">
         <Link to="/home" className="mb-8 flex items-center gap-2.5 px-2">
           <BrandMark />
           <div className="min-w-0">
@@ -153,13 +153,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
+                  "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-soft"
                     : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                 )}
               >
-                <item.icon className={cn("size-[18px]", active && "text-primary")} />
+                <item.icon
+                  className={cn("size-[18px] shrink-0", active && "text-primary")}
+                  strokeWidth={active ? 2.2 : 1.8}
+                />
                 {item.label}
               </Link>
             );
@@ -170,14 +173,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           to="/services"
           className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold text-primary-foreground shadow-sm"
         >
-          <ScanLine className="size-4" /> Pay a bill
+          <ScanLine className="size-4" strokeWidth={2} />
+          Pay a bill
         </Link>
       </aside>
 
       <div
         key={pathname}
         className={cn(
-          "page-fade mx-auto w-full max-w-2xl flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-3xl lg:pb-10",
+          "page-fade mx-auto w-full flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-6xl lg:pb-10 lg:px-6",
           isServiceFlow &&
             "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-5 lg:pb-5",
         )}
