@@ -140,7 +140,7 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
     // A signed event alone is not proof of a successful charge.
     return true;
   }
-  if (transaction.domain && transaction.domain !== expectedDomain) {
+  if (transaction.domain !== expectedDomain) {
     throw new Error("Paystack transaction domain mismatch.");
   }
 
