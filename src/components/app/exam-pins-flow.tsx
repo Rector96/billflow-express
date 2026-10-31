@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
 import { friendlyError, useApp } from "@/lib/app-store";
-import { listExamCatalog, purchaseExamPins, type ExamVariation } from "@/lib/exam.functions";
+import { listExamCatalog, purchaseExamPins, requeryExamPins, type ExamVariation } from "@/lib/exam.functions";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,7 @@ export function ExamPinsFlow({
   const { refresh, profile } = useApp();
   const loadCatalog = useServerFn(listExamCatalog);
   const purchase = useServerFn(purchaseExamPins);
+  const requery = useServerFn(requeryExamPins);
   const [step, setStep] = useState<Step>("exam");
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function ExamPinsFlow({
   const [profileId, setProfileId] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState("");
   const [resultPins, setResultPins] = useState<string[]>([]);
   const [resultRef, setResultRef] = useState("");
@@ -97,6 +99,25 @@ export function ExamPinsFlow({
       toast.success("PIN(s) copied");
     } catch {
       toast.error("Could not copy");
+    }
+  };
+
+  const checkPaymentStatus = async () => {
+    if (!resultRef || checkingStatus) return;
+    setCheckingStatus(true);
+    try {
+      const latest = await requery({ data: { reference: resultRef } });
+      setResultStatus(latest.status);
+      setResultMsg(latest.message);
+      setResultPins(latest.pins ?? []);
+      await refresh();
+      if (latest.status === "successful") toast.success("Exam PINs confirmed");
+      else if (latest.status === "failed") toast.error(latest.message);
+      else toast.message("The provider is still confirming this purchase.");
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not check this payment yet."));
+    } finally {
+      setCheckingStatus(false);
     }
   };
 
@@ -228,6 +249,20 @@ export function ExamPinsFlow({
           ) : null}
 
           <div className="mt-2 w-full space-y-2">
+            {isPending ? (
+              <Button
+                variant="outline"
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={checkingStatus}
+                onClick={() => void checkPaymentStatus()}
+              >
+                {checkingStatus ? (
+                  <><Loader2 className="mr-2 size-4 animate-spin" /> Checking…</>
+                ) : (
+                  "Check payment status"
+                )}
+              </Button>
+            ) : null}
             <Button
               className="h-12 w-full rounded-2xl font-bold"
               onClick={() => navigate({ to: "/home" })}
