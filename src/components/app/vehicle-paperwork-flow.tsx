@@ -158,7 +158,9 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const onPay = async () => {
     if (isHubDemoOnly("vehicle")) {
-      toast.error("Vehicle renewal is in preview. Payments are disabled until live registry and fulfilment are enabled.");
+      toast.error(
+        "Vehicle renewal is in preview. Payments are disabled until live registry and fulfilment are enabled.",
+      );
       return;
     }
     if (!vehicle || !choice) {
@@ -484,7 +486,11 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : choice ? (
-                  isHubDemoOnly("vehicle") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
+                  isHubDemoOnly("vehicle") ? (
+                    "Payments unavailable"
+                  ) : (
+                    `Pay ${formatNaira(fee, false)}`
+                  )
                 ) : (
                   "Select an option"
                 )}
