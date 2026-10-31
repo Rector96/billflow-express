@@ -64,7 +64,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
     if (!transaction || String(transaction.status ?? "").toLowerCase() !== "success") {
       throw new Error("Could not verify a successful CAC payment with Paystack.");
     }
-    if (transaction.domain && transaction.domain !== intent.paystack_domain) {
+    if (transaction.domain !== intent.paystack_domain) {
       throw new Error("The Paystack transaction environment does not match this payment request.");
     }
     const classification = classifyPaystackFunding(
@@ -112,6 +112,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
         service: "cac",
         amount,
         orderHint: preferredName,
+        eventKey: `hub-order:${finalRow.order_id}:paid:staff`,
       });
       await notifyUser({
         userId: context.userId,
@@ -121,6 +122,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
             ? "We received your application. We’ll process it and deliver the printed pack to your address."
             : "We received your application. You’ll be notified when the certificate is ready to download.",
         type: "success",
+        eventKey: `hub-order:${finalRow.order_id}:paid:customer:${context.userId}`,
       });
       void sendHubLifecycleEmail({
         userId: context.userId,
