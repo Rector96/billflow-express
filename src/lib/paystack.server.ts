@@ -127,6 +127,17 @@ export type SettleResult = {
   amount: number;
   balanceAfter: number | null;
   credited: boolean;
+  paystack?: {
+    gatewayStatus: string | null;
+    providerTransactionId: string | null;
+    channel: string | null;
+    currency: string | null;
+    chargedSubunits: number | null;
+    requestedSubunits: number | null;
+    feeSubunits: number | null;
+    validationReason: string | null;
+    domain: string | null;
+  };
 };
 
 function toRpcRow(value: unknown): Record<string, unknown> | null {
@@ -173,6 +184,23 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   }
 
   const gatewayStatus = String(data.status ?? "").toLowerCase();
+  const providerTransactionId =
+    data.id == null ? null : String(data.id);
+  const auditPaystack = {
+    gatewayStatus: gatewayStatus || null,
+    providerTransactionId,
+    channel: data.channel ?? null,
+    currency: data.currency ?? null,
+    chargedSubunits: Number.isSafeInteger(data.amount) ? Number(data.amount) : null,
+    requestedSubunits:
+      data.requested_amount != null && Number.isSafeInteger(Number(data.requested_amount))
+        ? Number(data.requested_amount)
+        : null,
+    feeSubunits:
+      data.fees != null && Number.isSafeInteger(Number(data.fees)) ? Number(data.fees) : null,
+    validationReason: null as string | null,
+    domain: data.domain ?? null,
+  };
   if (gatewayStatus === "success") {
     const key = getPaystackSecret();
     const expectedDomain = key.startsWith("sk_test_") ? "test" : "live";
@@ -210,7 +238,13 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
         },
       });
       if (error) throw new Error(error.message);
-      return { status: "failed", amount, balanceAfter: null, credited: false };
+      return {
+        status: "failed",
+        amount,
+        balanceAfter: null,
+        credited: false,
+        paystack: { ...auditPaystack, validationReason: classification.reason },
+      };
     }
 
     if (classification.kind === "standard") {
@@ -234,6 +268,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
         amount,
         balanceAfter: result?.["balance_after"] != null ? Number(result["balance_after"]) : null,
         credited: Boolean(result?.["credited"]),
+        paystack: auditPaystack,
       };
     }
 
@@ -289,6 +324,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
       amount: result["amount"] != null ? Number(result["amount"]) : amount,
       balanceAfter: result["balance_after"] != null ? Number(result["balance_after"]) : null,
       credited: Boolean(result["credited"]),
+      paystack: auditPaystack,
     };
   }
 
@@ -300,5 +336,5 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     _payload: { gateway_status: gatewayStatus, gateway_response: data.gateway_response ?? null },
   });
   if (error) throw new Error(error.message);
-  return { status: nextStatus, amount, balanceAfter: null, credited: false };
+  return { status: nextStatus, amount, balanceAfter: null, credited: false, paystack: auditPaystack };
 }
