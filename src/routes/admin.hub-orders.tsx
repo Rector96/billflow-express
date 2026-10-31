@@ -28,7 +28,8 @@ import {
   type HubOrderRow,
   type HubOrderStatus,
 } from "@/lib/admin-hub.functions";
-import { attachHubDocument } from "@/lib/hub-documents.functions";
+import { attachCacCertificate, createCacCertificateUpload } from "@/lib/hub-documents.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { FULFILLMENT_LABELS, type FulfillmentStatus } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
 import { formatNaira } from "@/lib/mock-data";
@@ -112,7 +113,8 @@ function AdminHubOrders() {
   const runStatus = useServerFn(updateHubOrderStatus);
   const runNote = useServerFn(addHubStaffNote);
   const runFul = useServerFn(updateHubFulfillment);
-  const runAttach = useServerFn(attachHubDocument);
+  const runCertificateUpload = useServerFn(createCacCertificateUpload);
+  const runAttachCertificate = useServerFn(attachCacCertificate);
   const runAgent = useServerFn(assignHubAgent);
   const runCare = useServerFn(updateHubCareCall);
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
@@ -130,7 +132,7 @@ function AdminHubOrders() {
   const [filterService, setFilterService] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [noteText, setNoteText] = useState("");
-  const [docUrl, setDocUrl] = useState("");
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [agentName, setAgentName] = useState("");
   const [agentDesk, setAgentDesk] = useState("nin");
   const [careNote, setCareNote] = useState("");
@@ -237,7 +239,7 @@ function AdminHubOrders() {
           : typeof m["certificate_url"] === "string"
             ? m["certificate_url"]
             : "";
-      setDocUrl(existing);
+      setCertificateFile(null);
       setAgentName(typeof m["assigned_agent"] === "string" ? m["assigned_agent"] : "");
       setAgentDesk(
         typeof m["assigned_desk"] === "string"
@@ -316,16 +318,30 @@ function AdminHubOrders() {
   };
 
   const saveDocument = async () => {
-    if (!detail) return;
+    if (!detail || !certificateFile) return;
     setBusy(true);
     try {
-      await runAttach({
-        data: { orderId: detail.id, documentUrl: docUrl.trim(), markReady: true },
+      const upload = await runCertificateUpload({
+        data: {
+          orderId: detail.id,
+          fileName: certificateFile.name,
+          size: certificateFile.size,
+          contentType: certificateFile.type,
+        },
       });
-      toast.success("Document attached — customer can download from My documents");
+      const { error: uploadError } = await supabase.storage
+        .from("cac-certificates")
+        .uploadToSignedUrl(upload.path, upload.token, certificateFile, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+      if (uploadError) throw new Error(uploadError.message);
+      await runAttachCertificate({ data: { orderId: detail.id, storagePath: upload.path } });
+      setCertificateFile(null);
+      toast.success("CAC certificate securely uploaded — customer can download it");
       await refreshDetail();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not attach document");
+      toast.error(e instanceof Error ? e.message : "Could not upload certificate");
     } finally {
       setBusy(false);
     }
@@ -904,27 +920,31 @@ function AdminHubOrders() {
                     </div>
                   </Section>
 
-                  <Section title="Document for customer">
+                  <Section title="CAC certificate delivery">
                     <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
-                      <FileText className="size-3" /> Paste https link (Drive / storage)
+                      <FileText className="size-3" /> Upload completed CAC certificate
                     </div>
                     <p className="mb-2 text-[11px] text-muted-foreground">
-                      When CAC / NIN file is ready, attach it. Customer opens Profile → My
-                      documents.
+                      Upload the PDF received after the external CAC process. RockPay stores it privately and makes it available to this customer.
                     </p>
-                    <Input
-                      value={docUrl}
-                      onChange={(e) => setDocUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="h-9 rounded-xl text-xs"
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(e) => setCertificateFile(e.target.files?.[0] ?? null)}
+                      className="block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary"
                     />
+                    {certificateFile ? (
+                      <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                        Selected: {certificateFile.name}
+                      </p>
+                    ) : null}
                     <Button
                       size="sm"
                       className="mt-2 w-full rounded-xl text-xs"
-                      disabled={busy || !docUrl.trim()}
+                      disabled={busy || !certificateFile || detail.service !== "cac" || !detail.payment_reference}
                       onClick={() => void saveDocument()}
                     >
-                      Attach & mark ready
+                      Upload certificate & mark ready
                     </Button>
                     <Button
                       size="sm"
@@ -934,11 +954,11 @@ function AdminHubOrders() {
                       onClick={() => void pingDownload()}
                     >
                       <Bell className="mr-1.5 size-3.5" />
-                      Notify: log in & download
+                      Notify customer again
                     </Button>
                     <Field
-                      label="Linked file"
-                      value={metaGet(meta, "document_url", "certificate_url") || "—"}
+                      label="Certificate storage"
+                      value={metaGet(meta, "certificate_storage_path") ? "Private file attached" : "Not attached"}
                     />
                   </Section>
 
