@@ -48,6 +48,7 @@ function StaffTicket() {
   const [internal, setInternal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const suggestions = ticket
     ? getCareReplySuggestions({
@@ -59,6 +60,7 @@ function StaffTicket() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data: t, error } = await supabase
         .from("support_tickets")
@@ -86,10 +88,15 @@ function StaffTicket() {
           .eq("user_id", t.user_id)
           .maybeSingle(),
       ]);
+      if (m.error) throw m.error;
+      if (p.error) throw p.error;
       setMessages((m.data as Msg[]) ?? []);
       setCustomer(p.data ?? null);
     } catch (e) {
-      toast.error(friendlyError(e, "Could not load ticket"));
+      setTicket(null);
+      setMessages([]);
+      setCustomer(null);
+      setLoadError(friendlyError(e, "Could not load ticket"));
     } finally {
       setLoading(false);
     }
@@ -139,6 +146,17 @@ function StaffTicket() {
       <AdminShell title="Care ticket">
         <div className="flex justify-center py-16">
           <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
+      </AdminShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AdminShell title="Care ticket">
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive-soft p-4 text-sm text-destructive">
+          Could not load this ticket: {loadError}
+          <Button variant="outline" className="ml-3" onClick={() => void load()}>Retry</Button>
         </div>
       </AdminShell>
     );
