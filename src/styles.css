@@ -1013,3 +1013,142 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Unified single-viewport service workspace: fixed header, pinned progress,
+   scrollable form canvas and a shared bottom action dock on desktop + mobile. */
+.service-flow-shell {
+  display: flex;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.service-flow-shell > aside {
+  position: sticky;
+  top: 0;
+  flex: 0 0 16rem;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.service-flow-content {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh !important;
+  min-height: 0;
+  overflow: hidden !important;
+  padding: 0.75rem !important;
+}
+
+.service-flow-content > header.service-flow-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex: 0 0 auto;
+  width: 100%;
+  background: color-mix(in srgb, var(--color-background) 94%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.service-flow-content > div:not([id="pay-action"]):not(.service-flow-action-spacer) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 6.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-muted-foreground) 28%, transparent) transparent;
+}
+
+.service-flow-content .service-flow-stepper {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex: 0 0 auto;
+  margin-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--color-card) 96%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.service-flow-content .service-flow-action-spacer {
+  display: none;
+}
+
+.service-flow-content [id="pay-action"] {
+  position: fixed;
+  left: 16rem;
+  right: 0;
+  bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  padding-inline: 1rem;
+  pointer-events: none;
+}
+
+.service-flow-content [id="pay-action"] > div {
+  width: min(100%, 760px);
+  max-width: 760px;
+  margin-inline: auto;
+  pointer-events: auto;
+}
+
+.service-flow-content input,
+.service-flow-content select,
+.service-flow-content textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .service-flow-shell {
+    display: block;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .service-flow-content {
+    height: 100dvh !important;
+    min-height: 0;
+    padding: max(0.5rem, env(safe-area-inset-top)) 0.75rem 0.75rem !important;
+  }
+
+  .service-flow-content > div:not([id="pay-action"]):not(.service-flow-action-spacer) {
+    padding-bottom: 6.5rem;
+  }
+
+  .service-flow-content [id="pay-action"] {
+    left: 0;
+    right: 0;
+    bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    padding-inline: 0.75rem;
+  }
+
+  .service-flow-content [id="pay-action"] > div {
+    width: 100%;
+    max-width: 760px;
+  }
+}
+
+@media (max-height: 720px) {
+  .service-flow-content {
+    padding-block: 0.5rem !important;
+  }
+
+  .service-flow-content > header.service-flow-page-header {
+    padding-top: 0.35rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .service-flow-content .service-flow-stepper {
+    margin-bottom: 0.5rem;
+    padding-block: 0.5rem;
+  }
+}
