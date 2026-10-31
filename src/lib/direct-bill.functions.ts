@@ -398,7 +398,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
         status: "failed",
         amount,
         token: null,
-        message: "Paystack confirmed a payment, but its details need manual verification. Your order has been held safely; contact Care with your reference.",
+        message:
+          "Paystack confirmed a payment, but its details need manual verification. Your order has been held safely; contact Care with your reference.",
         providerTransactionId: null,
       };
     }
@@ -441,7 +442,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
           status: "pending",
           amount,
           token: null,
-          message: "Payment is confirmed. We are safely preparing delivery; please check again shortly.",
+          message:
+            "Payment is confirmed. We are safely preparing delivery; please check again shortly.",
           providerTransactionId: null,
         };
       }
@@ -450,7 +452,9 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
 
     let routed;
     const priorVendor = hadFulfilmentAttempt
-      ? meta["vendor"] === "vtuafrica" ? "vtuafrica" : "vtpass"
+      ? meta["vendor"] === "vtuafrica"
+        ? "vtuafrica"
+        : "vtpass"
       : null;
     if (priorVendor) {
       routed = await requeryRoutedBill({
