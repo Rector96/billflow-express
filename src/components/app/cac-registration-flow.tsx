@@ -579,9 +579,10 @@ export function CacRegistrationFlow() {
         subtitle="Business Name"
         onBack={step === "success" ? () => void navigate({ to: "/home" }) : goBack}
       />
-      <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-1 pb-28">
-        {step !== "success" ? <PayStepper steps={STEPS} current={stepIndex} /> : null}
-
+      <div className="service-flow-layout">
+        <main className="service-flow-main">
+          {step !== "success" ? <PayStepper steps={STEPS} current={stepIndex} /> : null}
+          <div className="service-flow-form-card">
         {step === "intro" ? (
           <section className="space-y-3">
             <div className={card}>
@@ -1072,6 +1073,54 @@ export function CacRegistrationFlow() {
               <Home className="mr-2 size-4" /> Home
             </Button>
           </section>
+        ) : null}
+          </div>
+        </main>
+        {step !== "success" ? (
+          <aside className="service-flow-summary">
+            <div className="service-flow-summary-card">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <Building2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">Business Name Registration</p>
+                  <p className="text-xs text-muted-foreground">CAC application workspace</p>
+                </div>
+              </div>
+              <div className="mt-5 border-t border-border/70 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Application progress</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">Step {stepIndex + 1}<span className="text-sm font-medium text-muted-foreground"> / {STEPS.length}</span></p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }} />
+                </div>
+              </div>
+              <div className="mt-5 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Application checklist</p>
+                {[
+                  ["Preferred names", Boolean(name1.trim())],
+                  ["Business details", Boolean(street.trim() && city.trim() && lga.trim() && bizPhone.trim() && bizEmail.trim())],
+                  ["Owner information", Boolean(fullName.trim() && nin.length === 11 && idNumber.trim())],
+                  ["Supporting documents", Boolean(idFile && photoFile && signature)],
+                  ["Review and delivery", Boolean(delivery)],
+                ].map(([label, complete]) => (
+                  <div key={String(label)} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className={complete ? "size-4 text-emerald-600" : "size-4 text-muted-foreground/40"} />
+                    <span className={complete ? "text-foreground" : "text-muted-foreground"}>{String(label)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 rounded-xl bg-muted/60 p-3">
+                <p className="text-xs text-muted-foreground">Estimated service fee</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">{priceQuote ? formatNaira(delivery === "deliver" ? priceQuote.total : priceQuote.registration) : quoteLoading ? "Loading…" : "Unavailable"}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Final amount is confirmed before secure payment.</p>
+              </div>
+              <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                Your information and uploaded documents are handled securely.
+              </div>
+            </div>
+          </aside>
         ) : null}
       </div>
     </AppShell>
