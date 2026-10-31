@@ -105,53 +105,10 @@ export const recoverTin = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<RecoverTinSuccess> => {
     const live = isBillLive("tin");
-    const preview = isHubPreviewServerEnabled();
-
-    if (!live && !preview) {
-      throw new Error("TIN retrieval is temporarily unavailable.");
-    }
-
-    if (!live && preview) {
-      await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: true });
-      const track = uid("TIN-DEMO");
-      const fakeTin = `1${data.identifier.replace(/\D/g, "").slice(-9).padStart(9, "0")}`.slice(
-        0,
-        10,
+    if (!live) {
+      throw new Error(
+        "TIN retrieval is in preview and cannot accept payments or generate TIN records yet.",
       );
-      await logHubOrder({
-        userId: context.userId,
-        service: "tin",
-        amount: data.amount,
-        paymentReference: data.paymentReference,
-        trackingReference: track,
-        customerIdentifier: data.identifier,
-        metadata: {
-          demo: true,
-          taxpayerName: data.fullName,
-          tin: fakeTin,
-          document_ready: true,
-        },
-        status: "successful",
-      });
-      return {
-        status: "success",
-        data: {
-          tin: fakeTin,
-          taxpayerName: data.fullName,
-          taxpayerType: data.identifierType === "cac" ? "business" : "individual",
-          jtbRegistered: true,
-          cacNumber: data.identifierType === "cac" ? data.identifier : null,
-          nin: data.identifierType === "nin" ? data.identifier : null,
-          email: null,
-          phone: null,
-          rawProvider: "demo",
-        },
-        meta: {
-          paymentReference: data.paymentReference,
-          requestId: track,
-          fee: data.amount,
-        },
-      };
     }
 
     const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
