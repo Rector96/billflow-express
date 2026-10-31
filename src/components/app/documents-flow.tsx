@@ -377,22 +377,39 @@ export function DocumentsFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 ) : null}
               </div>
             </div>
-            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <FileText className="size-4 text-primary" /> Document checklist
+            <aside className="document-live-preview overflow-hidden rounded-2xl border border-border/70 bg-[#eef2f8] p-3 lg:sticky lg:top-5">
+              <div className="flex items-center justify-between gap-2 px-1 pb-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Live document</p>
+                  <p className="mt-1 text-sm font-semibold">Preview updates as you type</p>
+                </div>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">Draft</span>
               </div>
-              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <li>• Names must be spelt correctly.</li>
-                <li>• Provide a complete address.</li>
-                {docType === "tenancy" ? (
-                  <li>• Enter the agreed annual rent and duration.</li>
-                ) : (
-                  <li>• Use the registered business name.</li>
-                )}
-              </ul>
-              <p className="mt-4 border-t border-primary/10 pt-3 text-xs font-semibold text-foreground">
-                Service fee: {formatNaira(fee, false)}
-              </p>
+              <div className="mx-auto max-h-[min(58dvh,620px)] min-h-[390px] max-w-[390px] overflow-y-auto rounded-md border border-border/60 bg-white px-5 py-6 text-slate-800 shadow-md sm:px-7">
+                <div className="border-b border-slate-200 pb-4 text-center">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">RockPay document desk</p>
+                  <h3 className="mt-3 text-sm font-bold">{docType === "constitution" ? "Business Constitution" : "Tenancy Agreement"}</h3>
+                  <p className="mt-1 text-[9px] text-slate-400">Draft preview • Not yet issued</p>
+                </div>
+                <div className="mt-5 space-y-3 text-[10px] leading-relaxed">
+                  <p><strong>{docType === "constitution" ? "Business name" : "Landlord"}:</strong> {partyA.trim() || "Not provided"}</p>
+                  <p><strong>{docType === "constitution" ? "Manager" : "Tenant"}:</strong> {partyB.trim() || "Not provided"}</p>
+                  <p><strong>{docType === "constitution" ? "Business address" : "Property address"}:</strong> {address.trim() || "Not provided"}</p>
+                  {docType === "tenancy" ? <><p><strong>Annual rent:</strong> {rent.trim() ? formatNaira(Number(rent.replace(/,/g, "")), false) : "Not provided"}</p><p><strong>Duration:</strong> {duration}</p></> : null}
+                  <div className="border-t border-slate-200 pt-4">
+                    <p className="font-bold">Agreement</p>
+                    <p className="mt-2 text-slate-500">{docType === "tenancy" ? "The parties named above agree to the terms governing the tenancy of the property stated in this document, subject to review and execution." : "This constitution sets out the business details and management information supplied by the applicant, subject to review and execution."}</p>
+                  </div>
+                  <div className="mt-8 grid grid-cols-2 gap-5 pt-5 text-[9px] text-slate-400">
+                    <div className="border-t border-slate-300 pt-2">Party A signature</div>
+                    <div className="border-t border-slate-300 pt-2">Party B signature</div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between px-1 pt-3 text-xs">
+                <span className="text-muted-foreground">Service fee</span>
+                <strong className="tabular-nums">{formatNaira(fee, false)}</strong>
+              </div>
             </aside>
             <PayActionBar>
               <Button
