@@ -4,7 +4,6 @@
  * through short-lived signed download URLs.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { randomUUID } from "node:crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { notifyUser } from "@/lib/hub-notify.server";
@@ -63,7 +62,7 @@ export const listMyHubDocuments = createServerFn({ method: "GET" })
             .from(CERTIFICATE_BUCKET)
             .createSignedUrl(path, 300);
           if (!signError) url = signed?.signedUrl ?? null;
-        } else {
+        } else if (row.service !== "cac") {
           // Backward compatibility for previously attached external document links.
           url =
             typeof m["document_url"] === "string"
@@ -128,7 +127,7 @@ export const createCacCertificateUpload = createServerFn({ method: "POST" })
     if (!row.payment_reference || !row.paid_at || row.status === "failed")
       throw new Error("Only a payment-confirmed CAC order can receive a certificate.");
 
-    const path = `${row.user_id}/${row.id}/${randomUUID()}.pdf`;
+    const path = `${row.user_id}/${row.id}/${globalThis.crypto.randomUUID()}.pdf`;
     const { data: signed, error: uploadError } = await admin.storage
       .from(CERTIFICATE_BUCKET)
       .createSignedUploadUrl(path, { upsert: false });
