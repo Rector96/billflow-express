@@ -180,7 +180,10 @@ function TransactionDetails() {
           />
           <StatusBadge
             status={
-              status === "successful" || status === "pending" || status === "failed" || status === "reversed"
+              status === "successful" ||
+              status === "pending" ||
+              status === "failed" ||
+              status === "reversed"
                 ? status
                 : "pending"
             }
@@ -334,7 +337,10 @@ function TransactionDetails() {
           <CareContextLink
             reference={txId}
             status={
-              status === "successful" || status === "pending" || status === "failed" || status === "reversed"
+              status === "successful" ||
+              status === "pending" ||
+              status === "failed" ||
+              status === "reversed"
                 ? status
                 : "pending"
             }

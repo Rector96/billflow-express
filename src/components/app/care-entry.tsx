@@ -38,7 +38,10 @@ export function CareContextLink({
     status === "failed"
       ? { title: "Something went wrong?", cta: "RockPay Care" }
       : status === "pending" || status === "reversed"
-        ? { title: status === "reversed" ? "Question about this reversal?" : "Need help?", cta: "RockPay Care" }
+        ? {
+            title: status === "reversed" ? "Question about this reversal?" : "Need help?",
+            cta: "RockPay Care",
+          }
         : { title: "Need help with this?", cta: "Get help" };
 
   return (
