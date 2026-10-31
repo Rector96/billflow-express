@@ -383,16 +383,22 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
         _user_id: context.userId,
         _internal_reference: billRef,
-        _outcome: "failed",
+        _outcome: "pending",
         _provider_transaction_id: "",
-        _payload: { reason: "paystack_validation_mismatch" },
+        _payload: {
+          reason: "paystack_validation_mismatch",
+          manual_review_required: true,
+          gateway_status: gatewayStatus,
+          verified_currency: ps.currency ?? null,
+          verified_amount_kobo: ps.amount ?? null,
+        },
       });
       return {
         billReference: billRef,
         status: "failed",
         amount,
         token: null,
-        message: "Payment validation failed. Contact Care with your reference.",
+        message: "Paystack confirmed a payment, but its details need manual verification. Your order has been held safely; contact Care with your reference.",
         providerTransactionId: null,
       };
     }
@@ -410,6 +416,36 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const serviceID = bill.provider as string;
     const billersCode = bill.customer_identifier as string;
     const providerAmount = Number(meta["provider_amount"] ?? amount);
+
+    // Persist the fulfilment attempt before contacting VTpass. If this request
+    // times out or the browser retries, the next verification must requery the
+    // existing provider request instead of submitting a second purchase.
+    if (!meta["fulfilment_attempted_at"]) {
+      const attemptedMeta = {
+        ...meta,
+        fulfilment_attempted_at: new Date().toISOString(),
+        vendor: "vtpass",
+        vendor_reference: providerRequestId,
+        fulfilment_state: "submitted_or_unknown",
+      };
+      const { error: attemptErr } = await supabaseAdmin
+        .from("bill_transactions")
+        .update({ metadata: attemptedMeta })
+        .eq("id", bill.id)
+        .eq("status", "pending");
+      if (attemptErr) {
+        console.error("[direct-bill] could not persist fulfilment attempt", attemptErr.message);
+        return {
+          billReference: billRef,
+          status: "pending",
+          amount,
+          token: null,
+          message: "Payment is confirmed. We are safely preparing delivery; please check again shortly.",
+          providerTransactionId: null,
+        };
+      }
+      Object.assign(meta, attemptedMeta);
+    }
 
     let routed;
     const priorVendor =
