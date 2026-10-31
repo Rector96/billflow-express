@@ -8,7 +8,8 @@ export type AdminPerm = "view" | "users_manage" | "staff_manage" | "wallet_adjus
 
 const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
   super_admin: ["view", "users_manage", "staff_manage", "wallet_adjust", "settings"],
-  admin: ["view", "users_manage", "settings"],
+  // Account suspension/reactivation is super-admin-only in the database RPC.
+  admin: ["view", "settings"],
   support: ["view"],
 };
 
