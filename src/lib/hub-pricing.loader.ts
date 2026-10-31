@@ -43,7 +43,10 @@ function fallbackFor(slug: string): number {
   return 0;
 }
 
-function feeFromRule(row: { markup_type?: string | null; markup_value?: number | null }): number | null {
+function feeFromRule(row: {
+  markup_type?: string | null;
+  markup_value?: number | null;
+}): number | null {
   const type = String(row.markup_type ?? "").toLowerCase();
   const value = Number(row.markup_value ?? 0);
   if (!Number.isFinite(value) || value < 0) return null;

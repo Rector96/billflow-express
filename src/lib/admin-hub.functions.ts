@@ -1070,7 +1070,9 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
       .limit(2);
     if (lookupError) throw new Error(lookupError.message);
     if ((rows ?? []).length > 1) {
-      throw new Error("Multiple active default pricing rules exist for this service. Resolve the duplicates before saving.");
+      throw new Error(
+        "Multiple active default pricing rules exist for this service. Resolve the duplicates before saving.",
+      );
     }
 
     if (rows?.[0]?.id) {
