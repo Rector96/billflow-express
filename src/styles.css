@@ -1151,3 +1151,203 @@
     padding-block: 0.5rem;
   }
 }
+
+
+/* Reference layout: fixed service header, numbered progress, focused form
+   workspace and a persistent application summary. */
+.service-flow-content {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.service-flow-content > header.service-flow-page-header {
+  flex: 0 0 auto;
+  padding-inline: 0.25rem;
+}
+
+.service-flow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  align-items: start;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.service-flow-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 0.15rem 6.5rem;
+  scrollbar-width: thin;
+}
+
+.service-flow-form-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0.25rem 0 1rem;
+}
+
+.service-flow-form-card > section {
+  width: 100%;
+  max-width: none;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+  padding: clamp(1rem, 2vw, 1.5rem);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 4%);
+}
+
+.service-flow-form-card > section > h2 {
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.service-flow-summary {
+  position: sticky;
+  top: 0;
+  min-width: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.service-flow-summary-card {
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: var(--card);
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 4%);
+}
+
+.service-flow-numbered-steps {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 0.15rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.15rem 0.5rem;
+  scrollbar-width: none;
+}
+
+.service-flow-numbered-steps::-webkit-scrollbar { display: none; }
+
+.service-flow-step-item {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.service-flow-step-number {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 1.8rem;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.service-flow-step-number.is-current {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.service-flow-step-number.is-complete {
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.service-flow-step-label {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-flow-step-label.is-current-label { color: var(--primary); }
+
+.service-flow-step-connector {
+  height: 1px;
+  min-width: 0.45rem;
+  flex: 1 1 auto;
+  background: var(--border);
+}
+
+.service-flow-step-connector.is-complete { background: var(--success); }
+
+.service-flow-content [id="pay-action"] {
+  left: 16.25rem;
+  right: 0.75rem;
+  bottom: max(0.65rem, env(safe-area-inset-bottom, 0px));
+}
+
+.service-flow-content [id="pay-action"] > div {
+  width: min(100%, 860px);
+  max-width: 860px;
+  margin-inline: auto;
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.service-flow-content [id="pay-action"] button {
+  min-height: 2.9rem;
+  border-radius: 0.85rem;
+}
+
+@media (max-width: 1279px) {
+  .service-flow-layout { grid-template-columns: minmax(0, 1fr) 17rem; }
+  .service-flow-step-label { display: none; }
+}
+
+@media (max-width: 1023px) {
+  .service-flow-content { gap: 0.5rem; }
+  .service-flow-layout { display: block; overflow: hidden; }
+  .service-flow-main {
+    height: 100%;
+    padding-bottom: 6.25rem;
+  }
+  .service-flow-summary { display: none; }
+  .service-flow-form-card > section { padding: 1rem; }
+  .service-flow-content [id="pay-action"] {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+  .service-flow-numbered-steps { justify-content: flex-start; }
+  .service-flow-step-item { flex: 0 0 auto; }
+  .service-flow-step-label { display: none; }
+  .service-flow-step-connector { min-width: 0.75rem; }
+}
+
+@media (max-height: 760px) {
+  .service-flow-content { gap: 0.35rem; }
+  .service-flow-layout { gap: 0.65rem; }
+  .service-flow-form-card > section { padding-block: 0.85rem; }
+  .service-flow-form-card > section > h2 { margin-bottom: 0.65rem; }
+  .service-flow-main { padding-bottom: 5.75rem; }
+  .service-flow-summary-card { padding: 1rem; }
+}
