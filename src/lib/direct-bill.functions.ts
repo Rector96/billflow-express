@@ -294,7 +294,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const { paystackVerify } = await import("./paystack.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { normalizeNgPhone } = await import("./vtpass.server");
-    const { routeElectricityPay, routeCablePay, toVtpassShape } =
+    const { routeElectricityPay, routeCablePay, toVtpassShape, requeryRoutedBill } =
       await import("./vendor-router.server");
 
     let q = supabaseAdmin
@@ -412,25 +412,21 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const providerAmount = Number(meta["provider_amount"] ?? amount);
 
     let routed;
-    if (slug === "electricity") {
-      const meterType = String(meta["meter_type"] ?? bill.product ?? "prepaid");
-      routed = await routeElectricityPay({
-        request_id: providerRequestId,
-        serviceID,
-        billersCode,
-        meterType,
-        amount: providerAmount,
-        phone,
+    const priorVendor = meta["vendor"] === "vtuafrica" ? "vtuafrica" : meta["vendor"] === "vtpass" ? "vtpass" : null;
+    if (priorVendor) {
+      routed = await requeryRoutedBill({
+        vendor: priorVendor,
+        vendorReference: String(meta["vendor_reference"] ?? providerRequestId),
+        requestId: providerRequestId,
       });
+    } else if (slug === "electricity") {
+      const meterType = String(meta["meter_type"] ?? bill.product ?? "prepaid");
+      routed = await routeElectricityPay({ request_id: providerRequestId, serviceID, billersCode, meterType, amount: providerAmount, phone });
     } else {
       const variationCode = String(meta["variation_code"] ?? "");
       routed = await routeCablePay({
-        request_id: providerRequestId,
-        serviceID,
-        billersCode,
-        variation_code: variationCode,
-        amount: providerAmount,
-        phone,
+        request_id: providerRequestId, serviceID, billersCode, variation_code: variationCode,
+        amount: providerAmount, phone,
         subscription_type: String(meta["subscription_type"] ?? "change"),
       });
     }
