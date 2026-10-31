@@ -142,16 +142,20 @@ export const markCacCertificateEmailed = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string; recipientEmail: string }) => {
     const orderId = String(input?.orderId ?? "").trim();
-    const recipientEmail = String(input?.recipientEmail ?? "").trim().toLowerCase();
+    const recipientEmail = String(input?.recipientEmail ?? "")
+      .trim()
+      .toLowerCase();
     if (!orderId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail))
       throw new Error("Enter the email address that received the certificate.");
     return { orderId, recipientEmail };
   })
   .handler(async ({ data, context }) => {
     const admin = await assertStaff(context.userId);
-    const { data: row, error } = await admin.from("hub_orders")
+    const { data: row, error } = await admin
+      .from("hub_orders")
       .select("id, user_id, service, status, payment_reference, paid_at, metadata")
-      .eq("id", data.orderId).maybeSingle();
+      .eq("id", data.orderId)
+      .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Order not found");
     if (row.service !== "cac") throw new Error("This action is only available for CAC orders.");
@@ -161,17 +165,20 @@ export const markCacCertificateEmailed = createServerFn({ method: "POST" })
     if (typeof previous["certificate_storage_path"] === "string")
       throw new Error("A certificate is already available in the customer's documents.");
     const now = new Date().toISOString();
-    const { error: updateError } = await admin.from("hub_orders").update({
-      status: "successful",
-      metadata: {
-        ...previous,
-        certificate_delivery_method: "manual_email",
-        certificate_emailed_at: now,
-        certificate_emailed_to: data.recipientEmail,
-        certificate_emailed_by: context.userId,
-      },
-      updated_at: now,
-    } as never).eq("id", data.orderId);
+    const { error: updateError } = await admin
+      .from("hub_orders")
+      .update({
+        status: "successful",
+        metadata: {
+          ...previous,
+          certificate_delivery_method: "manual_email",
+          certificate_emailed_at: now,
+          certificate_emailed_to: data.recipientEmail,
+          certificate_emailed_by: context.userId,
+        },
+        updated_at: now,
+      } as never)
+      .eq("id", data.orderId);
     if (updateError) throw new Error(updateError.message);
     await notifyUser({
       userId: row.user_id,
