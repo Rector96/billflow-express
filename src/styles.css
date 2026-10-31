@@ -516,3 +516,74 @@
 .service-flow-content > header {
   flex: 0 0 auto;
 }
+
+
+/* Responsive service-flow refinements: lock the page only on desktop.
+   Long forms may scroll inside their content panel rather than being clipped. */
+@media (min-width: 1024px) {
+  .service-flow-shell {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .service-flow-content {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .service-flow-content > div:not([id="pay-action"]) {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-muted-foreground) 28%, transparent) transparent;
+  }
+}
+
+@media (max-width: 1023px) {
+  .service-flow-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .service-flow-content {
+    display: block;
+    height: auto;
+    min-height: calc(100dvh - 5.25rem - env(safe-area-inset-bottom));
+    overflow: visible;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  .service-flow-content > div:not([id="pay-action"]) {
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .service-flow-content [id="pay-action"] {
+    left: 0;
+    right: 0;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    padding-inline: 0.75rem;
+  }
+}
+
+/* Keep service forms usable at narrow widths and with browser zoom. */
+.service-flow-content input,
+.service-flow-content select,
+.service-flow-content textarea,
+.service-flow-content button {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .service-flow-content section.space-y-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .service-flow-content section.space-y-3 > * {
+    grid-column: 1 / -1;
+  }
+}
