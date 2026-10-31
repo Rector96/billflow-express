@@ -252,18 +252,8 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                   payment-intent and fulfillment processing is ready.
                 </p>
                 <PayActionBar>
-                  <Button
-                    className="h-12 w-full rounded-xl font-semibold"
-                    disabled
-                    onClick={() => void onPay()}
-                  >
-                    {paying ? (
-                      <>
-                        <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
-                      </>
-                    ) : (
-                      "Live checkout unavailable"
-                    )}
+                  <Button className="h-12 w-full rounded-xl font-semibold" disabled>
+                    Live checkout unavailable
                   </Button>
                 </PayActionBar>
               </section>
