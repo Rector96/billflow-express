@@ -179,7 +179,11 @@ function AdminWallet() {
 
   return (
     <AdminShell title="Wallet" subtitle="Platform liability and ledger activity">
-      {loadError ? <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{loadError}</div> : null}
+      {loadError ? (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
       {loading ? (
         <AdminLoading />
       ) : (

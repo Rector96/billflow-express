@@ -25,12 +25,17 @@ function AdminStaff() {
     setLoading(true);
     setError(null);
     try {
-      const { data: roles, error: rolesError } = await supabase.from("user_roles").select("user_id, role");
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
       if (rolesError) throw rolesError;
       const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
       const { data: profiles, error: profilesError } = ids.length
         ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids)
-        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[], error: null };
+        : {
+            data: [] as { user_id: string; full_name: string | null; email: string | null }[],
+            error: null,
+          };
       if (profilesError) throw profilesError;
       const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
       setRows(
@@ -58,7 +63,11 @@ function AdminStaff() {
 
   return (
     <AdminShell title="Staff" subtitle="Roles from user_roles (super_admin, admin, support)">
-      {error ? <p className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+      {error ? (
+        <p className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       <p className="mb-4 text-xs text-muted-foreground">
         Finance / Operations roles from the product brief are not in the database enum yet. Current
         roles: <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Grant

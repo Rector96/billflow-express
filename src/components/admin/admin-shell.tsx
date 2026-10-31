@@ -126,7 +126,10 @@ export function AdminShell({
           </p>
         </div>
       </div>
-      <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 flex flex-col gap-0.5" aria-label="Admin">
+      <nav
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 flex flex-col gap-0.5"
+        aria-label="Admin"
+      >
         {nav.map((n) => {
           const active = current === n.id;
           return (
