@@ -62,7 +62,12 @@ export const listMyHubDocuments = createServerFn({ method: "GET" })
         const isOwnedCertificatePath =
           path.startsWith(expectedCertificatePrefix) &&
           /^[0-9a-f-]{36}\\.pdf$/i.test(path.slice(expectedCertificatePrefix.length));
-        if (row.service === "cac" && path && row.status === "successful" && isOwnedCertificatePath) {
+        if (
+          row.service === "cac" &&
+          path &&
+          row.status === "successful" &&
+          isOwnedCertificatePath
+        ) {
           const { data: signed, error: signError } = await supabaseAdmin.storage
             .from(CERTIFICATE_BUCKET)
             .createSignedUrl(path, 300);
@@ -270,7 +275,11 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
     // Only remove an older certificate after the new PDF is attached successfully.
     // Restrict cleanup to this customer's exact order folder; never touch uploaded evidence.
     const expectedPrefix = `${row.user_id}/${row.id}/`;
-    if (previousPath && previousPath !== data.storagePath && previousPath.startsWith(expectedPrefix)) {
+    if (
+      previousPath &&
+      previousPath !== data.storagePath &&
+      previousPath.startsWith(expectedPrefix)
+    ) {
       const { error: cleanupError } = await admin.storage
         .from(CERTIFICATE_BUCKET)
         .remove([previousPath]);
