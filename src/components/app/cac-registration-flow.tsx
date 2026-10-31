@@ -1081,7 +1081,9 @@ export function CacRegistrationFlow() {
                 </p>
                 {refId ? (
                   <div className="w-full max-w-xs rounded-xl border bg-card p-3 text-left">
-                    <p className="text-[11px] text-muted-foreground">Application tracking reference</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Application tracking reference
+                    </p>
                     <p className="mt-1 break-all font-mono text-xs font-semibold">{refId}</p>
                     <Button
                       variant="outline"
@@ -1108,10 +1110,14 @@ export function CacRegistrationFlow() {
                         paystackRef: paystackReference || null,
                         dateLabel: new Date().toLocaleString("en-NG"),
                         method: "Paystack",
-                        detailRows: refId ? [{ label: "Application tracking reference", value: refId }] : [],
+                        detailRows: refId
+                          ? [{ label: "Application tracking reference", value: refId }]
+                          : [],
                       }}
                     />
-                    <p className="break-all text-[10px] text-muted-foreground">Payment reference: {paymentReference}</p>
+                    <p className="break-all text-[10px] text-muted-foreground">
+                      Payment reference: {paymentReference}
+                    </p>
                   </div>
                 ) : null}
                 <Button
