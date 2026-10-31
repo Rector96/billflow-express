@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Copy, Home, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Home, Loader2, ShieldCheck, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -131,28 +131,39 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="TIN" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="tin-workflow mx-auto w-full max-w-5xl space-y-4 px-4 pb-28 pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
         {step === "input" ? (
-          <section className="space-y-3">
-            <div className={card}>
-              <div className="space-y-1">
-                <Label>NIN or CAC number</Label>
-                <Input
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className={field}
-                />
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-start">
+            <div className="form-section-card space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"><Search className="size-5" /></span>
+                <div>
+                  <h2 className="text-base font-bold tracking-tight">Find your Tax Identification Number</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Enter the identity details used when your TIN was registered. Check them carefully before continuing.</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label>Full name</Label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={field}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="tin-identifier">NIN or CAC number</Label>
+                  <Input id="tin-identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value.toUpperCase())} className={field} placeholder="e.g. 12345678901 or RC123456" autoComplete="off" />
+                  <p className="form-field-hint">Use the NIN or registered CAC number linked to the tax record.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tin-full-name">Full registered name</Label>
+                  <Input id="tin-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={field} placeholder="Enter name as registered" autoComplete="name" />
+                  <p className="form-field-hint">Enter the name exactly as it appears on the registration record.</p>
+                </div>
               </div>
             </div>
+            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 lg:sticky lg:top-5">
+              <div className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="size-4 text-primary" /> Before you continue</div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                <li>• Confirm the NIN or CAC number is correct.</li>
+                <li>• Use the full registered name, not a nickname.</li>
+                <li>• Review the details again before payment.</li>
+              </ul>
+            </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
@@ -168,6 +179,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
         {step === "preview" ? (
           <section className="space-y-3">
             <div className={card}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Confirm your details</p>
               <p className="text-sm font-semibold">{fullName}</p>
               <p className="font-mono text-xs text-muted-foreground">{identifier}</p>
               <p className="mt-3 font-mono text-lg font-bold blur-[5px]">{blurredTin}</p>
@@ -176,6 +188,10 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 <span className="tabular-nums text-primary">{formatNaira(fee, false)}</span>
               </div>
             </div>
+            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
+              <div className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="size-4 text-primary" /> Payment summary</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Your request will be submitted after payment is confirmed. Make sure the details are correct.</p>
+            </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
