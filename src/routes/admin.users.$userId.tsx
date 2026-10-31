@@ -47,9 +47,11 @@ function AdminUserDetail() {
     }[]
   >([]);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const staff = await requireStaffSession();
       setCanManage(can(staff.perms, "users_manage"));
@@ -66,6 +68,9 @@ function AdminUserDetail() {
           .order("created_at", { ascending: false })
           .limit(100),
       ]);
+
+      const failedQuery = p.error || w.error || ledger.error;
+      if (failedQuery) throw failedQuery;
 
       if (p.data) {
         setProfile({
@@ -110,6 +115,12 @@ function AdminUserDetail() {
         }) ?? [];
       setSummary({ funded, spent, refunds, tx: list.length, ok, fail });
       setTxs(list);
+    } catch (e) {
+      setProfile(null);
+      setBalance(0);
+      setSummary({ funded: 0, spent: 0, refunds: 0, tx: 0, ok: 0, fail: 0 });
+      setTxs([]);
+      setLoadError(e instanceof Error ? e.message : "Could not load customer details");
     } finally {
       setLoading(false);
     }
@@ -147,6 +158,17 @@ function AdminUserDetail() {
     return (
       <AdminShell title="User">
         <AdminLoading />
+      </AdminShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AdminShell title="User">
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive-soft p-4 text-sm text-destructive">
+          Could not load this customer record: {loadError}
+          <Button variant="outline" className="ml-3" onClick={() => void load()}>Retry</Button>
+        </div>
       </AdminShell>
     );
   }
