@@ -19,6 +19,7 @@ import { recoverTin } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import type { RecoverTinSuccess } from "@/lib/hub-api.types";
 import { formatNaira } from "@/lib/mock-data";
+import { isHubDemoOnly } from "@/lib/product-mode";
 
 type Step = "input" | "preview" | "success";
 
@@ -62,6 +63,10 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   };
 
   const onPayNow = async () => {
+    if (isHubDemoOnly("tin")) {
+      toast.error("TIN retrieval is in preview. No payment can be accepted until live provider verification is enabled.");
+      return;
+    }
     if (!validate()) return;
     if (!authed) {
       toast.error("Please log in.");
@@ -261,14 +266,15 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 <ShieldCheck className="size-4 text-primary" /> Payment summary
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Your request will be submitted after payment is confirmed. Make sure the details are
-                correct.
+                {isHubDemoOnly("tin")
+                  ? "This service is currently a preview. RockPay is not accepting payment or issuing TIN records here yet."
+                  : "Your request will be submitted after payment is confirmed. Make sure the details are correct."}
               </p>
             </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
+                disabled={paying || isHubDemoOnly("tin")}
                 onClick={() => void onPayNow()}
               >
                 {paying ? (
@@ -276,7 +282,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
-                  `Pay ${formatNaira(fee, false)}`
+                  isHubDemoOnly("tin") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
                 )}
               </Button>
             </PayActionBar>
