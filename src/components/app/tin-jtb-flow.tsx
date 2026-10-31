@@ -64,7 +64,9 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const onPayNow = async () => {
     if (isHubDemoOnly("tin")) {
-      toast.error("TIN retrieval is in preview. No payment can be accepted until live provider verification is enabled.");
+      toast.error(
+        "TIN retrieval is in preview. No payment can be accepted until live provider verification is enabled.",
+      );
       return;
     }
     if (!validate()) return;
@@ -281,8 +283,10 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
+                ) : isHubDemoOnly("tin") ? (
+                  "Payments unavailable"
                 ) : (
-                  isHubDemoOnly("tin") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
+                  `Pay ${formatNaira(fee, false)}`
                 )}
               </Button>
             </PayActionBar>
