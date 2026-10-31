@@ -24,7 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
 import { friendlyError, useApp } from "@/lib/app-store";
-import { listExamCatalog, purchaseExamPins, requeryExamPins, type ExamVariation } from "@/lib/exam.functions";
+import {
+  listExamCatalog,
+  purchaseExamPins,
+  requeryExamPins,
+  type ExamVariation,
+} from "@/lib/exam.functions";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +84,10 @@ export function ExamPinsFlow({
     { key: "confirm", label: "Review" },
     { key: "pin", label: "Pay" },
   ];
-  const progressIndex = Math.max(0, progressSteps.findIndex((item) => item.key === (step === "result" ? "pin" : step)));
+  const progressIndex = Math.max(
+    0,
+    progressSteps.findIndex((item) => item.key === (step === "result" ? "pin" : step)),
+  );
 
   useEffect(() => {
     if (!examId) return;
@@ -264,7 +272,9 @@ export function ExamPinsFlow({
                 onClick={() => void checkPaymentStatus()}
               >
                 {checkingStatus ? (
-                  <><Loader2 className="mr-2 size-4 animate-spin" /> Checking…</>
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Checking…
+                  </>
                 ) : (
                   "Check payment status"
                 )}
