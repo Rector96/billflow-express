@@ -331,31 +331,44 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
         ) : null}
 
         {step === "result" && vehicle ? (
-          <section className="space-y-3">
-            <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-soft">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                  <Car className="size-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-bold">{vehicle.plate}</p>
-                  <p className="text-xs text-muted-foreground">{vehicle.makeModel}</p>
+          <section className="vehicle-registration-panel space-y-4 rounded-[26px] border border-[#dce5f2] bg-[#eef3fb] p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Registration details</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">Current vehicle registration</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Review the returned record before choosing a renewal.</p>
+              </div>
+              <span className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide ${vehicle.expiryStatus?.toLowerCase().includes("valid") ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}>
+                {vehicle.expiryStatus || "Record found"}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/75 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600"><Car className="size-6" /></span>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold">{vehicle.makeModel}</p>
+                  <p className="mt-0.5 font-mono text-xs tracking-wider text-muted-foreground">{vehicle.plate}</p>
                 </div>
               </div>
-              {vehicle.expiryStatus ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Status: {vehicle.expiryStatus}
-                </p>
-              ) : null}
-            </div>
-            <PayActionBar>
-              <Button
-                className="h-12 w-full rounded-xl font-semibold"
-                onClick={() => setStep("renew")}
-              >
-                Continue to renew
+              <Button className="h-10 rounded-full px-5 font-semibold" onClick={() => setStep("renew")}>
+                Renew <span className="ml-1">→</span>
               </Button>
-            </PayActionBar>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white p-4 sm:p-5">
+              <h3 className="text-base font-bold">Vehicle registration details</h3>
+              <div className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                <div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Registration number</p><p className="mt-1 font-mono text-sm font-semibold">{vehicle.plate}</p></div>
+                <div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Registration state</p><p className="mt-1 text-sm font-semibold">{vehicle.state}</p></div>
+                <div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Vehicle</p><p className="mt-1 text-sm font-semibold">{vehicle.makeModel}</p></div>
+                {vehicle.color ? <div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Colour</p><p className="mt-1 text-sm font-semibold">{vehicle.color}</p></div> : null}
+                {vehicle.chassisNumber ? <div className="sm:col-span-2"><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Chassis number</p><p className="mt-1 break-all font-mono text-sm font-semibold">{vehicle.chassisNumber}</p></div> : null}
+                <div><p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Record status</p><p className="mt-1 text-sm font-semibold">{vehicle.expiryStatus || "Returned by registry lookup"}</p></div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+              <p className="text-xs text-muted-foreground">Confirm these details before renewing a vehicle document.</p>
+              <Button variant="outline" className="h-10 rounded-full" onClick={() => setStep("lookup")}>Change vehicle</Button>
+            </div>
           </section>
         ) : null}
 
