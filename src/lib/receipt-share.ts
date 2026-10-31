@@ -15,6 +15,7 @@ export type ReceiptPayload = {
   network?: string | null;
   recipient?: string | null;
   providerRef?: string | null;
+  paystackRef?: string | null;
   channel?: string | null;
   dateLabel?: string | null;
   method?: string | null;
@@ -156,7 +157,8 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   if (payload.detailRows) rows.push(...payload.detailRows);
   if (payload.dateLabel) rows.push({ label: "Date & time", value: payload.dateLabel });
   rows.push({ label: "Transaction ID", value: payload.reference });
-  if (payload.providerRef) rows.push({ label: "Provider reference", value: payload.providerRef });
+  if (payload.paystackRef) rows.push({ label: "Paystack reference", value: payload.paystackRef });
+  if (payload.providerRef) rows.push({ label: "Fulfilment provider reference", value: payload.providerRef });
   if (payload.channel) rows.push({ label: "Channel", value: payload.channel });
   if (payload.method) rows.push({ label: "Payment method", value: payload.method });
 
