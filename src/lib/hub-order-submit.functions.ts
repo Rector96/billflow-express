@@ -12,136 +12,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyStaffNewHubOrder } from "@/lib/hub-documents.functions";
 import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import { notifyUser } from "@/lib/hub-notify.server";
-import { isHubPreviewServerEnabled, isHubUnverifiedPayAllowed } from "@/lib/hub-preview.server";
+import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
 
-function uid(prefix: string) {
-  return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-}
-
 function paystackSecret(): string {
   return String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
-}
-
-/**
- * Verify Paystack charge when secret is configured.
- * Demo references only when unverified pay is explicitly allowed.
- */
-async function assertHubPayment(
-  reference: string,
-  expectedNaira: number,
-): Promise<{ demo: boolean }> {
-  const ref = String(reference ?? "").trim();
-  if (!ref) {
-    throw new Error("Payment reference is required. Complete Paystack checkout first.");
-  }
-
-  const secret = paystackSecret();
-  const allowDemo = isHubUnverifiedPayAllowed();
-  const isDemoRef = ref.startsWith("PSK_DEMO_");
-
-  if (!secret) {
-    if (allowDemo || isDemoRef) return { demo: true };
-    throw new Error(
-      "PAYSTACK_SECRET_KEY is not set on the server. Add it in Netlify env and redeploy.",
-    );
-  }
-
-  if (isDemoRef) {
-    if (allowDemo) return { demo: true };
-    throw new Error(
-      "Demo payment was used but Paystack is configured. Complete a real Paystack checkout.",
-    );
-  }
-
-  const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
-    headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" },
-  });
-  const json = (await res.json()) as {
-    status?: boolean;
-    data?: { status?: string; amount?: number };
-    message?: string;
-  };
-  if (!res.ok || !json.status) {
-    throw new Error(json.message || "Could not verify payment with Paystack.");
-  }
-  if (String(json.data?.status).toLowerCase() !== "success") {
-    throw new Error("Payment was not successful.");
-  }
-  const kobo = Number(json.data?.amount ?? 0);
-  const expectedKobo = Math.round(expectedNaira * 100);
-  if (Number.isFinite(expectedKobo) && expectedKobo > 0 && Math.abs(kobo - expectedKobo) > 100) {
-    throw new Error("Paid amount does not match the service fee.");
-  }
-  return { demo: false };
-}
-
-async function insertHubOrder(input: {
-  userId: string;
-  service: string;
-  amount: number;
-  paymentReference: string;
-  trackingReference: string;
-  customerIdentifier: string | null;
-  metadata: Record<string, unknown>;
-  status?: string;
-  demo: boolean;
-}) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const status = input.status ?? "pending";
-  const now = new Date().toISOString();
-
-  const { data: row, error } = await supabaseAdmin
-    .from("hub_orders")
-    .insert({
-      user_id: input.userId,
-      service: input.service,
-      amount: input.amount,
-      status,
-      payment_reference: input.paymentReference,
-      tracking_reference: input.trackingReference,
-      customer_identifier: input.customerIdentifier,
-      fulfillment_status: "paid",
-      paid_at: now,
-      metadata: {
-        channel: "hub",
-        demo: input.demo,
-        fulfillment_status: "paid",
-        source: input.demo ? "hub_submit_preview" : "hub_submit_paystack",
-        ...input.metadata,
-      },
-    } as never)
-    .select("id")
-    .limit(1);
-
-  if (error) throw new Error(error.message || "Could not save application order");
-
-  try {
-    await supabaseAdmin.from("bill_transactions").insert({
-      user_id: input.userId,
-      service: input.service,
-      provider: "hub",
-      product: input.service,
-      amount: input.amount,
-      customer_identifier: input.customerIdentifier,
-      internal_reference: input.trackingReference,
-      status,
-      provider_request_id: input.paymentReference,
-      metadata: {
-        channel: "hub",
-        title: `Hub · ${input.service}`,
-        service_slug: input.service,
-        payment_reference: input.paymentReference,
-        demo: input.demo,
-        ...input.metadata,
-      },
-    } as never);
-  } catch {
-    /* mirror optional */
-  }
-
-  return { orderId: (row?.[0] as { id?: string } | undefined)?.id ?? null };
 }
 
 export const submitCacApplication = createServerFn({ method: "POST" })
@@ -270,110 +146,13 @@ export const submitCacApplication = createServerFn({ method: "POST" })
 
 export const submitNinOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: {
-      product: "retrieve" | "slip_pdf" | "plastic_card";
-      amount: number;
-      phone?: string;
-      nin?: string;
-      shippingAddress?: string;
-      shipping?: Record<string, string>;
-      paymentReference?: string;
-    }) => {
-      const product = input?.product;
-      if (product !== "retrieve" && product !== "slip_pdf" && product !== "plastic_card") {
-        throw new Error("Invalid NIN product");
-      }
-      const amount = Math.round(Number(input?.amount));
-      if (!Number.isFinite(amount) || amount < 1) throw new Error("Invalid amount");
-      return {
-        product,
-        amount,
-        phone: String(input?.phone ?? "").trim(),
-        nin: String(input?.nin ?? "").replace(/\D/g, ""),
-        shippingAddress: String(input?.shippingAddress ?? "").trim(),
-        shipping:
-          input?.shipping && typeof input.shipping === "object"
-            ? (input.shipping as Record<string, string>)
-            : {},
-        paymentReference: String(input?.paymentReference ?? "").trim(),
-      };
-    },
-  )
-  .handler(async ({ data, context }) => {
-    // NIN remains preview-only until it has a server-created payment intent,
-    // verified amount/reference ownership, idempotent finalization, and real fulfilment.
-    // Never create a paid-looking order from a client-supplied amount or demo reference.
+  .inputValidator((input: unknown) => input)
+  .handler(async () => {
+    // NIN remains unavailable until secure payment intents, idempotent
+    // payment finalization, and real provider fulfilment are implemented.
     throw new Error(
       "NIN checkout is temporarily unavailable while secure payment and fulfilment are being prepared.",
     );
-
-    const service =
-      data.product === "retrieve"
-        ? "nin_retrieve"
-        : data.product === "slip_pdf"
-          ? "nin_slip"
-          : "nin_card_print";
-
-    const trackingReference = uid("NIN");
-    const paymentReference =
-      data.paymentReference || (isHubUnverifiedPayAllowed() ? `PSK_DEMO_${trackingReference}` : "");
-    const needsDeliver = data.product === "plastic_card";
-
-    const { demo } = await assertHubPayment(paymentReference, data.amount);
-
-    await insertHubOrder({
-      userId: context.userId,
-      service,
-      amount: data.amount,
-      paymentReference,
-      trackingReference,
-      customerIdentifier: data.nin || data.phone || null,
-      status: "pending",
-      demo,
-      metadata: {
-        product: data.product,
-        phone: data.phone || null,
-        nin: data.nin || null,
-        delivery: needsDeliver ? "deliver" : "download",
-        shipping_address: needsDeliver ? data.shippingAddress : null,
-        shipping: needsDeliver ? data.shipping : null,
-        fulfillment_status: "paid",
-      },
-    });
-
-    await notifyStaffNewHubOrder({
-      service,
-      amount: data.amount,
-      orderHint: data.nin || data.phone || trackingReference,
-    });
-
-    await notifyUser({
-      userId: context.userId,
-      title: "NIN order received",
-      message: needsDeliver
-        ? "Payment recorded. Your plastic card will be prepared for delivery."
-        : "Payment recorded. We’ll notify you when your digital result is ready.",
-      type: "success",
-    });
-
-    void sendHubLifecycleEmail({
-      userId: context.userId,
-      event: "paid",
-      eventKey: `hub-payment:${paymentReference}:paid:email`,
-      service,
-      trackingReference,
-      amount: data.amount,
-    });
-
-    return {
-      ok: true as const,
-      trackingReference,
-      paymentReference,
-      service,
-      amount: data.amount,
-      demo,
-    };
   });
 
 export const CAC_DEFAULT_AMOUNT = SERVICE_PRICES.cac_registration;
