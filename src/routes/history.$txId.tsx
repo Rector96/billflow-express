@@ -98,7 +98,8 @@ function TransactionDetails() {
     tx?.token ||
     null;
   const manualReviewRequired = bill?.metadata?.["manual_review_required"] === true;
-  const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
+  const providerRef =
+    bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
 
   const canRequery =
     status === "pending" && Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime);
