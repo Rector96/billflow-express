@@ -227,14 +227,36 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
 
     const unitAmount = Math.round(variation.amount * 100) / 100;
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;
-    const { data: duplicate } = await context.supabase
+    const { data: duplicate, error: duplicateError } = await context.supabase
       .from("bill_transactions")
-      .select("internal_reference")
+      .select("internal_reference, status, amount, provider, provider_request_id, provider_transaction_id, metadata")
       .eq("provider_request_id", data.requestId)
       .eq("user_id", context.userId)
       .limit(1);
-    if (duplicate?.[0])
-      throw new Error("This payment request has already been submitted. Refresh its status.");
+    if (duplicateError) throw new Error(duplicateError.message);
+    if (duplicate?.[0]) {
+      const existing = duplicate[0];
+      const status = existing.status as ExamPurchaseResult["status"];
+      const meta = (existing.metadata ?? {}) as Record<string, unknown>;
+      const pins = status === "successful" ? storedPins(meta) : [];
+      return {
+        status,
+        reference: existing.internal_reference,
+        pins,
+        amount: Number(existing.amount),
+        message:
+          status === "pending"
+            ? "This purchase request is already being processed. Do not pay again; check its status using this reference."
+            : providerMessage(
+                status,
+                String(meta["exam_id"] ?? existing.provider ?? data.exam),
+                Number(existing.amount),
+                String(meta["response_description"] ?? ""),
+              ),
+        requestId: existing.provider_request_id ?? data.requestId,
+        providerTransactionId: existing.provider_transaction_id,
+      };
+    }
 
     const { data: profile } = await context.supabase
       .from("profiles")
