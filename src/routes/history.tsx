@@ -172,6 +172,11 @@ function ModernRow({ tx }: { tx: Transaction }) {
         <p className="truncate text-xs text-muted-foreground">
           {tx.service} · {tx.time}
         </p>
+        {tx.direction === "in" && tx.serviceSlug === "wallet" && tx.method === "Paystack" && tx.status === "pending" ? (
+          <p className="mt-0.5 text-[11px] font-medium text-amber-600">
+            Awaiting Paystack confirmation — not yet credited
+          </p>
+        ) : null}
       </div>
       <div className="shrink-0 text-right">
         <p
@@ -212,7 +217,7 @@ function HistoryPage() {
       if (!inDateRange(t, dateKey)) return false;
       if (needle) {
         const hay =
-          `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""}`.toLowerCase();
+          `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""} ${t.providerReference ?? ""} ${t.method}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
