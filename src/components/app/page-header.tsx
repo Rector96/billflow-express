@@ -11,6 +11,7 @@ export function PageHeader({
   onBack,
   variant = "light",
   className,
+  showBack = true,
 }: {
   title: string;
   subtitle?: string;
@@ -19,6 +20,7 @@ export function PageHeader({
   onBack?: () => void;
   variant?: "light" | "brand";
   className?: string;
+  showBack?: boolean;
 }) {
   const router = useRouter();
   const brand = variant === "brand";
@@ -51,14 +53,14 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-        {backTo ? (
+      <div className={cn("grid items-center gap-3", showBack ? "grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]")}>
+        {showBack && backTo ? (
           <Link to={backTo} aria-label="Go back" className={cn(backClass, "lg:hidden")}>
             <ChevronLeft className="size-5" strokeWidth={1.8} />
           </Link>
-        ) : (
+        ) : showBack ? (
           back
-        )}
+        ) : null}
         <div className="min-w-0 text-center lg:text-left">
           <h1 className="truncate text-[15px] font-extrabold tracking-tight sm:text-base lg:text-lg">
             {title}
