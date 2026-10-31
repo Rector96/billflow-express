@@ -17,6 +17,7 @@ import {
   reconcileVerdict,
 } from "@/lib/reconciliation";
 import { adminRequeryAirtime } from "@/lib/airtime.functions";
+import { requeryBill } from "@/lib/bills.functions";
 import { friendlyError } from "@/lib/app-store";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -70,6 +71,7 @@ const PAGE = 30;
 function AdminTransactions() {
   const search = Route.useSearch();
   const requery = useServerFn(adminRequeryAirtime);
+  const requeryBillFn = useServerFn(requeryBill);
   const [q, setQ] = useState(search.q);
   const [status, setStatus] = useState<TransactionFilter>(
     ["all", "pending", "successful", "failed", "reversed"].includes(search.status)
@@ -213,7 +215,9 @@ function AdminTransactions() {
     if (!selected) return;
     setRequerying(true);
     try {
-      const res = await requery({ data: { reference: selected.internal_reference } });
+      const res = selected.service.toLowerCase() === "airtime"
+        ? await requery({ data: { reference: selected.internal_reference } })
+        : await requeryBillFn({ data: { reference: selected.internal_reference, admin: true } });
       toast.success(`Requery: ${res.status}`);
       await load();
       const { data, error } = await supabase
