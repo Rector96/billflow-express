@@ -35,7 +35,7 @@ export function PayStepper({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border/70 bg-card px-3.5 py-3 shadow-soft lg:px-4 lg:py-3.5",
+        "service-flow-stepper sticky top-0 z-30 rounded-2xl border border-border/70 bg-card/95 px-3 py-2.5 shadow-soft backdrop-blur-md lg:px-4 lg:py-3",
         className,
       )}
     >
