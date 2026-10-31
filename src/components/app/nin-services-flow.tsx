@@ -22,7 +22,6 @@ import {
   validateDeliveryAddress,
   type DeliveryAddress,
 } from "@/lib/hub-delivery";
-import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import { submitNinOrder } from "@/lib/hub-order-submit.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
@@ -79,71 +78,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   }, [step, needsAddress]);
 
   const onPay = async () => {
-    if (!product || checkoutTotal <= 0) return;
-    if (needsAddress) {
-      const err = validateDeliveryAddress(address);
-      if (err) {
-        toast.error(err);
-        return;
-      }
-    }
-    if (!authed) {
-      toast.error("Please log in to continue.");
-      navigate({ to: "/login" });
-      return;
-    }
-    setPaying(true);
-    try {
-      const email = profile.email?.trim() || "customer@rockpay.app";
-      const serviceSlug =
-        product === "retrieve"
-          ? "nin_retrieve"
-          : product === "slip_pdf"
-            ? "nin_slip"
-            : "nin_card_print";
-      const paystack = await simulatePaystackInline({
-        email,
-        amountNaira: checkoutTotal,
-        metadata: {
-          channel: "hub",
-          service: serviceSlug,
-          service_type: serviceSlug,
-          product,
-          nin: nin || phone,
-          delivery: needsAddress ? "deliver" : "download",
-          shipping_address: needsAddress ? formatDeliveryOneLine(address) : "",
-        },
-      });
-      if (paystack.status !== "success") throw new Error("Payment was not completed.");
-
-      const done = await runSubmit({
-        data: {
-          product,
-          amount: checkoutTotal,
-          phone,
-          nin,
-          shippingAddress: needsAddress ? formatDeliveryOneLine(address) : "",
-          shipping: needsAddress
-            ? {
-                phone: address.phone,
-                street: address.street,
-                area: address.area,
-                lga: address.lga,
-                state: address.state,
-              }
-            : {},
-          paymentReference: paystack.reference,
-        },
-      });
-
-      setRefId(done.trackingReference || paystack.reference);
-      setStep("success");
-      toast.success("Order saved — staff will process it");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment failed");
-    } finally {
-      setPaying(false);
-    }
+    toast.error("NIN live checkout is not enabled. You have not been charged.");
   };
 
   if (step === "success") {
@@ -181,7 +116,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="NIN" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="mx-auto w-full max-w-5xl space-y-3 px-4 pb-28 pt-1">
         <PayStepper steps={steps} current={Math.min(stepIndex, steps.length - 1)} />
 
         {step === "choose" ? (
@@ -320,10 +255,13 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 Deliver to: {formatDeliveryOneLine(address)}
               </p>
             ) : null}
+            <p className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
+              NIN live checkout is not enabled yet. No payment will be taken until secure payment-intent and fulfillment processing is ready.
+            </p>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={paying}
+                disabled
                 onClick={() => void onPay()}
               >
                 {paying ? (
@@ -331,7 +269,7 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : (
-                  `Pay ${formatNaira(checkoutTotal, false)}`
+                  "Live checkout unavailable"
                 )}
               </Button>
             </PayActionBar>
