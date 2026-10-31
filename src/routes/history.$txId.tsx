@@ -107,7 +107,7 @@ function TransactionDetails() {
     tx?.direction === "in" && tx?.serviceSlug === "wallet" && tx?.method === "Paystack";
   const canRequery =
     status === "pending" &&
-    (Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime) ||
+    ((Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime)) ||
       (isWalletFunding && Boolean(tx?.providerReference)));
 
   const onRefresh = async () => {
