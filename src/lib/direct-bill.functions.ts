@@ -420,7 +420,8 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     // Persist the fulfilment attempt before contacting VTpass. If this request
     // times out or the browser retries, the next verification must requery the
     // existing provider request instead of submitting a second purchase.
-    if (!meta["fulfilment_attempted_at"]) {
+    const hadFulfilmentAttempt = Boolean(meta["fulfilment_attempted_at"]);
+    if (!hadFulfilmentAttempt) {
       const attemptedMeta = {
         ...meta,
         fulfilment_attempted_at: new Date().toISOString(),
@@ -448,8 +449,9 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     }
 
     let routed;
-    const priorVendor =
-      meta["vendor"] === "vtuafrica" ? "vtuafrica" : meta["vendor"] === "vtpass" ? "vtpass" : null;
+    const priorVendor = hadFulfilmentAttempt
+      ? meta["vendor"] === "vtuafrica" ? "vtuafrica" : "vtpass"
+      : null;
     if (priorVendor) {
       routed = await requeryRoutedBill({
         vendor: priorVendor,
