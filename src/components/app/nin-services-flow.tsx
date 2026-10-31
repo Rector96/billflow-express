@@ -116,7 +116,9 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="NIN" backTo="/services" />
-      <div className="mx-auto w-full max-w-5xl space-y-3 px-4 pb-28 pt-1">
+      <div className="service-flow-layout nin-flow-layout">
+        <main className="service-flow-main">
+          <div className="service-flow-form-card space-y-3">
         <PayStepper steps={steps} current={Math.min(stepIndex, steps.length - 1)} />
 
         {step === "choose" ? (
@@ -276,6 +278,26 @@ export function NinServicesFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </PayActionBar>
           </section>
         ) : null}
+          </div>
+        </main>
+        <aside className="service-flow-summary">
+          <div className="service-flow-summary-card space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">RockPay · NIN</p>
+              <h2 className="mt-1 text-lg font-bold">Request summary</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Your selected service, required details and estimated amount.</p>
+            </div>
+            <div className="space-y-2 rounded-xl bg-muted/60 p-3 text-sm">
+              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Service</span><strong>{product === "retrieve" ? "Retrieve NIN" : product === "slip_pdf" ? "NIN slip (PDF)" : product === "plastic_card" ? "Plastic ID card" : "Not selected"}</strong></div>
+              <div className="flex justify-between gap-3"><span className="text-muted-foreground">Delivery</span><strong>{needsAddress ? "Home delivery" : "Digital"}</strong></div>
+              <div className="flex justify-between gap-3 border-t border-border/70 pt-2"><span className="text-muted-foreground">Estimated total</span><strong className="text-primary">{formatNaira(checkoutTotal, false)}</strong></div>
+            </div>
+            <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-warning-foreground">
+              Live checkout is disabled until NIN has its own secure payment intent and fulfillment integration. This flow will not collect payment or claim that a NIN request has been submitted.
+            </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">Keep your NIN private and never share an OTP or transaction PIN with an agent.</p>
+          </div>
+        </aside>
       </div>
     </AppShell>
   );
