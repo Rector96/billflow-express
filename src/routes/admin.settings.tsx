@@ -12,19 +12,22 @@ const destinations = [
   {
     to: "/admin/pricing" as const,
     title: "Pricing and service fees",
-    description: "Manage VTpass bill markups and the RockPay hub catalogue fees used by customer checkout.",
+    description:
+      "Manage VTpass bill markups and the RockPay hub catalogue fees used by customer checkout.",
     icon: Percent,
   },
   {
     to: "/admin/services" as const,
     title: "Service availability",
-    description: "See which services are live, manually fulfilled, preview-only or removed. Control live electricity and cable availability.",
+    description:
+      "See which services are live, manually fulfilled, preview-only or removed. Control live electricity and cable availability.",
     icon: Boxes,
   },
   {
     to: "/admin/staff" as const,
     title: "Staff access",
-    description: "Review staff roles. Role grants remain restricted to the secured database administration process.",
+    description:
+      "Review staff roles. Role grants remain restricted to the secured database administration process.",
     icon: ShieldCheck,
   },
 ] as const;
@@ -39,8 +42,8 @@ function AdminSettings() {
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           Configuration is split by responsibility so changes are applied through the correct,
-          audited workflow. Payment-provider credentials and private API keys are never editable
-          or displayed in this admin page; manage them in the secured hosting environment.
+          audited workflow. Payment-provider credentials and private API keys are never editable or
+          displayed in this admin page; manage them in the secured hosting environment.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
