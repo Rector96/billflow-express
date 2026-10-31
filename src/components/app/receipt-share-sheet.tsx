@@ -52,7 +52,13 @@ export function ReceiptShareButton({ payload, className }: Props) {
         blob,
         filename: `${BRAND.name}-receipt-${payload.reference}.${kind === "image" ? "png" : "pdf"}`,
         title: `${BRAND.name} receipt`,
-        text: `${payload.title} · ${payload.amountLabel}`,
+        text: [
+          payload.title,
+          payload.amountLabel,
+          `RockPay reference: ${payload.reference}`,
+          payload.paystackRef ? `Paystack reference: ${payload.paystackRef}` : null,
+          payload.providerRef ? `Provider reference: ${payload.providerRef}` : null,
+        ].filter(Boolean).join("\n"),
       });
 
       toast.success(
