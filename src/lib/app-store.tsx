@@ -426,18 +426,90 @@ export function AppProvider({ children }: { children: ReactNode }) {
             billStatus.set(String(b.internal_reference), String(b.status));
           }
         }
+        const walletTransactions = rows.map((r) => {
+          const ref =
+            r.metadata && typeof r.metadata["bill_reference"] === "string"
+              ? (r.metadata["bill_reference"] as string)
+              : null;
+          const override = ref ? billStatus.get(ref) : undefined;
+          if (override && override !== r.status) {
+            return toTransaction({ ...r, status: override });
+          }
+          return toTransaction(r);
+        });
+
+        // Direct Paystack bill orders do not debit the wallet ledger. Include
+        // them from bill_transactions, while excluding any bill already
+        // represented by a wallet-ledger row.
+        const representedBillRefs = new Set(
+          rows
+            .map((r) =>
+              typeof r.metadata?.["bill_reference"] === "string"
+                ? String(r.metadata["bill_reference"])
+                : null,
+            )
+            .filter((v): v is string => Boolean(v)),
+        );
+        const { data: directBills } = await supabase
+          .from("bill_transactions")
+          .select(
+            "internal_reference, provider, service, customer_identifier, status, amount, created_at, metadata",
+          )
+          .order("created_at", { ascending: false })
+          .limit(50);
+        const directTransactions: Transaction[] = (directBills ?? [])
+          .filter((bill) => {
+            const meta = (bill.metadata ?? {}) as Record<string, unknown>;
+            return (
+              meta["payment_mode"] === "direct_paystack" &&
+              !representedBillRefs.has(String(bill.internal_reference))
+            );
+          })
+          .map((bill) => {
+            const meta = (bill.metadata ?? {}) as Record<string, unknown>;
+            const createdAt = String(bill.created_at);
+            const rawStatus = String(bill.status);
+            const status: TxStatus =
+              rawStatus === "successful"
+                ? "successful"
+                : rawStatus === "failed"
+                  ? "failed"
+                  : "pending";
+            const slug = String(meta["service_slug"] ?? "").toLowerCase();
+            const serviceSlug = slug === "cable" ? "cable" : "electricity";
+            return {
+              id: String(bill.internal_reference),
+              title:
+                typeof meta["title"] === "string"
+                  ? String(meta["title"])
+                  : serviceSlug === "cable"
+                    ? "Cable TV Payment"
+                    : "Electricity Payment",
+              service: String(bill.service ?? "Bill payment"),
+              serviceSlug,
+              amount: money(bill.amount),
+              direction: "out",
+              status,
+              date: fmtDate(createdAt),
+              time: fmtTime(createdAt),
+              ...(typeof meta["customer"] === "string"
+                ? { customer: String(meta["customer"]) }
+                : {}),
+              reference: String(bill.customer_identifier ?? ""),
+              method: "Paystack (Direct)",
+              ...(typeof meta["token"] === "string"
+                ? { token: String(meta["token"]) }
+                : typeof meta["purchased_code"] === "string"
+                  ? { token: String(meta["purchased_code"]) }
+                  : {}),
+            };
+          });
         setTransactions(
-          rows.map((r) => {
-            const ref =
-              r.metadata && typeof r.metadata["bill_reference"] === "string"
-                ? (r.metadata["bill_reference"] as string)
-                : null;
-            const override = ref ? billStatus.get(ref) : undefined;
-            if (override && override !== r.status) {
-              return toTransaction({ ...r, status: override });
-            }
-            return toTransaction(r);
-          }),
+          [...walletTransactions, ...directTransactions].sort(
+            (a, b) =>
+              new Date(`${b.date} ${b.time}`).getTime() -
+              new Date(`${a.date} ${a.time}`).getTime(),
+          ),
         );
       }
       if (sp.data) {
