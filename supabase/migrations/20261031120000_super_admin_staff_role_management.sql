@@ -6,8 +6,9 @@ BEGIN
   IF uid IS NULL OR NOT public.has_role(uid, 'super_admin') THEN RAISE EXCEPTION 'forbidden_role'; END IF;
   IF _role NOT IN ('admin', 'support') THEN RAISE EXCEPTION 'invalid_staff_role'; END IF;
   IF normalized_email = '' OR normalized_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' THEN RAISE EXCEPTION 'invalid_email'; END IF;
-  SELECT count(*)::integer, min(id) INTO matches, target_id FROM auth.users WHERE lower(email) = normalized_email;
+  SELECT count(*)::integer INTO matches FROM auth.users WHERE lower(email) = normalized_email;
   IF matches = 0 THEN RAISE EXCEPTION 'account_not_found'; END IF;
+  SELECT id INTO target_id FROM auth.users WHERE lower(email) = normalized_email LIMIT 1;
   IF matches > 1 THEN RAISE EXCEPTION 'ambiguous_account'; END IF;
   INSERT INTO public.user_roles(user_id, role) VALUES (target_id, _role::public.app_role) ON CONFLICT (user_id, role) DO NOTHING;
   PERFORM public.admin_write_audit('staff_role_granted', 'Granted ' || _role || ' role to ' || normalized_email, 'user', target_id::text, jsonb_build_object('role', _role, 'email', normalized_email));

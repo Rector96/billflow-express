@@ -425,6 +425,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminServicesRoute: AdminServicesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStaffRoute: AdminStaffRoute,
+  AdminSuperAdminRoute: AdminSuperAdminRoute,
   AdminTransactionsRoute: AdminTransactionsRoute,
   AdminUsersRoute: AdminUsersRouteWithChildren,
   AdminWalletRoute: AdminWalletRoute,
