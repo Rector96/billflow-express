@@ -17,6 +17,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { PinPad } from "@/components/app/pin-pad";
 import { PayActionBar } from "@/components/app/pay-action-bar";
+import { PayStepper } from "@/components/app/pay-step";
 import { scrollForNewStep, scrollIntoAction } from "@/lib/scroll-into-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,8 +72,14 @@ export function ExamPinsFlow({
   const exam = EXAMS.find((item) => item.id === examId);
   const variation = variations.find((item) => item.variationCode === variationCode);
   const total = variation ? variation.amount * quantity : 0;
-  const progressSteps: Step[] = ["exam", "product", "quantity", "confirm", "pin"];
-  const progressIndex = Math.max(0, progressSteps.indexOf(step === "result" ? "pin" : step));
+  const progressSteps = [
+    { key: "exam", label: "Exam" },
+    { key: "product", label: "Product" },
+    { key: "quantity", label: "Quantity" },
+    { key: "confirm", label: "Review" },
+    { key: "pin", label: "Pay" },
+  ];
+  const progressIndex = Math.max(0, progressSteps.findIndex((item) => item.key === (step === "result" ? "pin" : step)));
 
   useEffect(() => {
     if (!examId) return;
@@ -288,17 +295,7 @@ export function ExamPinsFlow({
     <AppShell>
       <PageHeader title={entryTitle} backTo="/services" />
       <div className="mx-auto max-w-md space-y-5 px-4 pb-10 pt-2">
-        <div className="flex items-center gap-1.5">
-          {progressSteps.map((item, index) => (
-            <div
-              key={item}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors",
-                progressIndex >= index ? "bg-primary" : "bg-muted",
-              )}
-            />
-          ))}
-        </div>
+        <PayStepper steps={progressSteps} current={progressIndex} />
 
         {step === "exam" ? (
           <section className="space-y-3">
