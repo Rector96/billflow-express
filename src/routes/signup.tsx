@@ -165,6 +165,7 @@ function SignupPage() {
         </p>
       </form>
     </AuthShell>
+  );
 }
 
 function Field({
