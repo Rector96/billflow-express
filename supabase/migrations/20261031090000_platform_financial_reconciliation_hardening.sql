@@ -182,6 +182,10 @@ BEGIN
             lower(coalesce(wt.metadata #>> '{paystack,gateway_status}', 'success')) <> 'success'
             OR upper(coalesce(wt.metadata #>> '{paystack,currency}', 'NGN')) <> 'NGN'
             OR coalesce(wt.metadata #>> '{paystack,reference_match}', 'true') = 'false'
+            OR (
+              wt.metadata #>> '{paystack,domain}' IS NOT NULL
+              AND wt.metadata #>> '{paystack,domain}' NOT IN ('test', 'live')
+            )
           )
 
         UNION ALL
@@ -201,7 +205,609 @@ BEGIN
         WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
           AND wt.status = 'successful'
           AND nullif(wt.metadata #>> '{paystack,requested_subunits}', '') IS NOT NULL
-          AND (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+          AND CASE
+            WHEN wt.metadata #>> '{paystack,requested_subunits}' ~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR wt.metadata #>> '{paystack,charged_subunits}' !~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+            OR wt.metadata #>> '{paystack,requested_subunits}' !~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+            OR wt.metadata #>> '{paystack,fee_subunits}' !~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+            OR CASE
+              WHEN wt.metadata #>> '{paystack,charged_subunits}' ~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+               AND wt.metadata #>> '{paystack,requested_subunits}' ~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+               AND wt.metadata #>> '{paystack,fee_subunits}' ~ '^[0-9]+
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
+
+        UNION ALL
+
+        SELECT
+          'paystack_fee_reconciliation'::text,
+          'high'::text,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.balance_after,
+          wt.created_at,
+          'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit' AND wt.provider = 'paystack'
+          AND wt.status = 'successful'
+          AND nullif(wt.metadata #>> '{paystack,fee_subunits}', '') IS NOT NULL
+          AND (
+            nullif(wt.metadata #>> '{paystack,charged_subunits}', '') IS NULL
+            OR (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+               (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+               (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,charged_subunits}')::numeric <>
+                   (wt.metadata #>> '{paystack,requested_subunits}')::numeric +
+                   (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+              ELSE false
+            END
+          )
+
+        UNION ALL
+
+        SELECT
+          'pending_funding_age'::text,
+          CASE WHEN wt.created_at < now() - interval '24 hours' THEN 'high' ELSE 'medium' END,
+          wt.wallet_id,
+          wt.user_id,
+          p.full_name,
+          p.email,
+          wt.amount,
+          wt.created_at,
+          'Paystack funding has remained pending beyond the expected operational window'::text
+        FROM public.wallet_transactions wt
+        LEFT JOIN public.profiles p ON p.user_id = wt.user_id
+        WHERE wt.type = 'deposit'
+          AND wt.provider = 'paystack'
+          AND wt.status = 'pending'
+          AND wt.created_at < now() - interval '30 minutes'
+      ) a
+      OFFSET off LIMIT lim
+    ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer) TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
+
+              THEN (wt.metadata #>> '{paystack,requested_subunits}')::numeric <> round(wt.amount * 100)
+            ELSE true
+          END
 
         UNION ALL
 
