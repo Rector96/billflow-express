@@ -126,4 +126,5 @@ function LoginPage() {
         </Link>
       </p>
     </AuthShell>
+  );
 }
