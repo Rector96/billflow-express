@@ -161,7 +161,7 @@ export function AdminShell({
 
   return (
     <div className="min-h-dvh bg-background lg:flex">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 lg:flex">
         {Sidebar}
       </aside>
 
