@@ -206,6 +206,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   if (step === "processing") {
     return (
       <AppShell>
+        <PageHeader title={entryTitle} backTo="/services" />
         <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
