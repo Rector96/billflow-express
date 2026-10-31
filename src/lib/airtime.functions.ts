@@ -372,9 +372,11 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
       .select("role")
       .eq("user_id", context.userId);
     if (roleError) throw new Error("Could not verify transaction requery permissions.");
-    if (!(roles ?? []).some((entry) =>
-      ["support", "admin", "super_admin"].includes(String(entry.role))
-    )) {
+    if (
+      !(roles ?? []).some((entry) =>
+        ["support", "admin", "super_admin"].includes(String(entry.role)),
+      )
+    ) {
       throw new Error("Forbidden: transaction requery requires support or admin access.");
     }
     return requeryAirtimeCore({
