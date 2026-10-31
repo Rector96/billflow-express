@@ -52,9 +52,11 @@ function AdminWallet() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [ops, funding, audit] = await Promise.all([
         supabase.rpc("admin_ops_stats"),
@@ -72,6 +74,7 @@ function AdminWallet() {
           .limit(12),
       ]);
 
+      if (ops.error) throw ops.error;
       if (ops.data && typeof ops.data === "object") setStats(ops.data as OpsStats);
       if (audit.error) {
         console.warn("[AdminWallet] could not load recheck audit history", audit.error.message);
@@ -133,6 +136,7 @@ function AdminWallet() {
       setRows([]);
       setAuditRows([]);
       setTotalCount(0);
+      setLoadError(error instanceof Error ? error.message : "Could not load wallet operations");
     } finally {
       setLoading(false);
     }
@@ -175,6 +179,7 @@ function AdminWallet() {
 
   return (
     <AdminShell title="Wallet" subtitle="Platform liability and ledger activity">
+      {loadError ? <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{loadError}</div> : null}
       {loading ? (
         <AdminLoading />
       ) : (
