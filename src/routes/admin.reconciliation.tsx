@@ -105,7 +105,7 @@ function AdminReconciliation() {
   return (
     <AdminShell
       title="Reconciliation"
-      subtitle="Financial integrity and transactions that need staff attention"
+      subtitle="Platform-wide wallet, Paystack funding and bill-payment integrity checks"
       actions={
         <button
           type="button"
@@ -190,7 +190,7 @@ function AdminReconciliation() {
             <div className="mt-4 rounded-2xl border bg-card p-4 text-sm">
               <p className="font-bold">Wallet integrity check passed</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                No wallet balance-chain, funding-delta, or stale-funding anomalies were returned.
+                No wallet ledger, Paystack verification, funding-reference or stale-funding anomalies were returned.
               </p>
             </div>
           )}
