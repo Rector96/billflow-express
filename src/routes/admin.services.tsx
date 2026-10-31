@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { formatNaira } from "@/lib/mock-data";
-import { n, type ServiceRow } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin, type ServiceRow } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/services")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Services — ${BRAND.name} Admin` }] }),
   component: AdminServices,
 });
