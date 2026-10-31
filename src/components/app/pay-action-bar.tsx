@@ -13,7 +13,7 @@ export function PayActionBar({
 }) {
   return (
     <>
-      <div className="h-24 shrink-0" aria-hidden />
+      <div className="service-flow-action-spacer h-24 shrink-0" aria-hidden />
       <div
         id={id}
         className={cn(
