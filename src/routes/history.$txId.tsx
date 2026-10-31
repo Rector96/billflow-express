@@ -280,8 +280,8 @@ function TransactionDetails() {
           ) : null}
           {status === "failed" ? (
             <Button className="h-12 w-full rounded-2xl font-bold" asChild>
-              <Link to="/pay/$slug" params={{ slug: "airtime" }}>
-                Try Again
+              <Link to="/services">
+                Browse services
               </Link>
             </Button>
           ) : null}
