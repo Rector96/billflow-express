@@ -452,6 +452,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
           vtpass_fulfilled: true,
           paystack_id: ps.id ? String(ps.id) : null,
           vendor: routed.vendor,
+          vendor_reference: routed.vendorReference,
           fallback_used: routed.fallbackUsed,
           vtpass_snapshot: safePayload(pay.raw),
         },
