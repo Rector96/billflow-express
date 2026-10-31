@@ -169,11 +169,16 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<FundingStatus & { credited: boolean }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: isStaff, error: staffError } = await supabaseAdmin.rpc("is_staff", {
-      _user_id: context.userId,
-    });
-    if (staffError) throw new Error("Could not verify staff permissions.");
-    if (isStaff !== true) throw new Error("Forbidden: staff access required.");
+    // Reconciliation can result in a wallet credit, so enforce the existing
+    // wallet-adjustment privilege boundary rather than allowing view-only support staff.
+    const { data: roles, error: roleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleError) throw new Error("Could not verify staff permissions.");
+    if (!(roles ?? []).some((entry) => entry.role === "super_admin")) {
+      throw new Error("Forbidden: super admin access required for wallet funding rechecks.");
+    }
 
     const { data: rows, error } = await supabaseAdmin
       .from("wallet_transactions")
