@@ -16,6 +16,15 @@ export const Route = createFileRoute("/admin/wallet")({
   component: AdminWallet,
 });
 
+type WalletRecheckAuditRow = {
+  id: string;
+  actor_user_id: string;
+  created_at: string;
+  description: string;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+};
+
 type FundingRow = {
   id: string;
   reference: string;
@@ -38,6 +47,7 @@ function AdminWallet() {
   const [recheckingReference, setRecheckingReference] = useState<string | null>(null);
   const [stats, setStats] = useState<OpsStats>({});
   const [rows, setRows] = useState<FundingRow[]>([]);
+  const [auditRows, setAuditRows] = useState<WalletRecheckAuditRow[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
@@ -46,7 +56,7 @@ function AdminWallet() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ops, funding] = await Promise.all([
+      const [ops, funding, audit] = await Promise.all([
         supabase.rpc("admin_ops_stats"),
         supabase.rpc("admin_wallet_funding_queue", {
           _query: query.trim(),
@@ -54,9 +64,29 @@ function AdminWallet() {
           _limit: 50,
           _offset: page * 50,
         }),
+        supabase
+          .from("admin_audit_logs")
+          .select("id, actor_user_id, created_at, description, target_id, metadata")
+          .eq("action", "wallet_funding_recheck")
+          .order("created_at", { ascending: false })
+          .limit(12),
       ]);
 
       if (ops.data && typeof ops.data === "object") setStats(ops.data as OpsStats);
+      if (audit.error) {
+        console.warn("[AdminWallet] could not load recheck audit history", audit.error.message);
+        setAuditRows([]);
+      } else {
+        setAuditRows(
+          (audit.data ?? []).map((entry) => ({
+            ...entry,
+            metadata:
+              entry.metadata && typeof entry.metadata === "object" && !Array.isArray(entry.metadata)
+                ? (entry.metadata as Record<string, unknown>)
+                : {},
+          })),
+        );
+      }
 
       if (funding.error) throw funding.error;
       const payload = (funding.data ?? {}) as {
@@ -101,6 +131,7 @@ function AdminWallet() {
     } catch (error) {
       console.error("[AdminWallet] failed to load", error);
       setRows([]);
+      setAuditRows([]);
       setTotalCount(0);
     } finally {
       setLoading(false);
@@ -132,6 +163,9 @@ function AdminWallet() {
         toast.info("Paystack recheck completed: " + result.status + ". No wallet credit was made.");
       }
       await load();
+      if (result.auditId) {
+        toast.message("Audit record saved", { description: result.auditId });
+      }
     } catch (error) {
       toast.error(friendlyError(error, "Wallet funding recheck failed"));
     } finally {
@@ -159,6 +193,66 @@ function AdminWallet() {
             Wallet balances remain server-controlled. Manual adjustments are not enabled in the UI;
             any future adjustment must use a confirmed, audited server operation.
           </p>
+
+          <div className="mt-5 rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold">Wallet recheck audit trail</p>
+                <p className="text-xs text-muted-foreground">
+                  Recent staff Paystack verification attempts and settlement outcomes.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">{auditRows.length} recent</span>
+            </div>
+            {auditRows.length === 0 ? (
+              <p className="mt-3 text-xs text-muted-foreground">No wallet recheck audit events recorded yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {auditRows.map((entry) => {
+                  const meta = entry.metadata;
+                  const paystack =
+                    meta["paystack"] && typeof meta["paystack"] === "object"
+                      ? (meta["paystack"] as Record<string, unknown>)
+                      : {};
+                  const actor = typeof meta["actor_email"] === "string"
+                    ? meta["actor_email"]
+                    : entry.actor_user_id;
+                  const outcome = String(meta["outcome"] ?? "unknown");
+                  const credited = meta["credited"] === true;
+                  return (
+                    <div key={entry.id} className="rounded-xl border bg-background px-3 py-3 text-xs">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{entry.target_id || "Unknown reference"}</p>
+                          <p className="text-muted-foreground">By {actor}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold capitalize">{outcome.replaceAll("_", " ")}</p>
+                          <p className={credited ? "font-semibold text-success" : "text-muted-foreground"}>
+                            {credited ? "Wallet credited" : "No new credit"}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-1 text-muted-foreground">{new Date(entry.created_at).toLocaleString("en-NG")}</p>
+                      <p className="mt-1">{entry.description}</p>
+                      {Object.keys(paystack).length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                          <span>Paystack: {String(paystack["gatewayStatus"] ?? "unknown")}</span>
+                          <span>Channel: {String(paystack["channel"] ?? "—")}</span>
+                          <span>Currency: {String(paystack["currency"] ?? "—")}</span>
+                          <span>Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}</span>
+                          <span>Charged: {paystack["chargedSubunits"] == null ? "—" : formatNaira(Number(paystack["chargedSubunits"]) / 100, false)}</span>
+                          {paystack["validationReason"] ? <span>Validation: {String(paystack["validationReason"])}</span> : null}
+                        </div>
+                      ) : meta["error_message"] ? (
+                        <p className="mt-1 text-destructive">{String(meta["error_message"])}</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 rounded-2xl border bg-card p-4 shadow-card">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
