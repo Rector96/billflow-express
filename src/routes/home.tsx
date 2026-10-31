@@ -63,7 +63,8 @@ function HomePage() {
   const [drafts, setDrafts] = useState<ContinueDraft[]>([]);
 
   useEffect(() => {
-    const load = () => setDrafts(readContinueDrafts());
+    const load = () =>
+      setDrafts(readContinueDrafts().filter((draft) => !REMOVED_SERVICE_SLUGS.has(draft.serviceSlug)));
     load();
     const onFocus = () => load();
     window.addEventListener("focus", onFocus);
