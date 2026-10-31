@@ -216,6 +216,20 @@ function FundWallet() {
           </div>
 
           <div className="mt-4 w-full max-w-sm space-y-3">
+            {settled?.reference ? (
+              <Button
+                variant="outline"
+                className="h-12 w-full rounded-2xl font-bold"
+                onClick={() =>
+                  navigate({
+                    to: "/history/$txId",
+                    params: { txId: settled.reference },
+                  })
+                }
+              >
+                View full transaction receipt
+              </Button>
+            ) : null}
             {stage === "successful" ? (
               <>
                 <Button
