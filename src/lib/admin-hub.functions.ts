@@ -955,7 +955,7 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
 export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const admin = (await assertStaff(context.userId)) as any;
+    const admin = await assertStaff(context.userId);
     const statuses = ["pending", "paid", "failed", "expired"] as const;
     const countResults = await Promise.all(
       statuses.map((status) =>
