@@ -54,13 +54,13 @@ function PaySlugPage() {
     return (
       <AppShell>
         <PageHeader title={service?.name ?? "Service"} backTo="/services" />
-        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-14 text-center">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-14 text-center lg:max-w-lg lg:px-0 lg:py-16">
           <span className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
-            <ShieldCheck className="size-7" />
+            <ShieldCheck className="size-7" strokeWidth={1.8} />
           </span>
-          <h1 className="mt-4 text-xl font-extrabold">Service not available</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            This product is no longer offered on RockPay.
+          <h1 className="mt-4 text-xl font-extrabold tracking-tight">Service not available</h1>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            This product is no longer offered on {BRAND.name}.
           </p>
         </div>
       </AppShell>
