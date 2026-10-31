@@ -104,7 +104,11 @@ export function AdminShell({
       window.location.href = `/admin/care?q=${encodeURIComponent(term)}`;
       return;
     }
-    if (/^WAL-|BIL-|TXN-|HUB-|TIN-|VR-/i.test(term) || term.length > 20) {
+    if (/^(WAL-|BIL-|TXN-|VR-)/i.test(term)) {
+      window.location.href = `/admin/transactions?q=${encodeURIComponent(term)}`;
+      return;
+    }
+    if (/^(HUB-|CAC-|TIN-)/i.test(term) || term.length > 20) {
       window.location.href = `/admin/hub-orders`;
       return;
     }
@@ -122,7 +126,7 @@ export function AdminShell({
           </p>
         </div>
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5" aria-label="Admin">
+      <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 flex flex-col gap-0.5" aria-label="Admin">
         {nav.map((n) => {
           const active = current === n.id;
           return (
