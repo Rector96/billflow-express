@@ -75,7 +75,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   const previousPath = useRef(pathname);
   const isServiceFlow =
-    /^\/(cac|nin|tin|documents|vehicle|education|exam-pins)(\/|$)/.test(pathname) || /^\/pay\/[^/]+/.test(pathname);
+    /^\/(cac|nin|tin|documents|vehicle|education|exam-pins)(\/|$)/.test(pathname) ||
+    /^\/pay\/[^/]+/.test(pathname);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -191,7 +192,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Bottom navigation"
-        className={cn("fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden", isServiceFlow && "hidden")}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden",
+          isServiceFlow && "hidden",
+        )}
       >
         <div className="mx-auto flex max-w-sm items-center justify-around rounded-2xl border border-border/80 bg-card/95 px-2 py-1.5 shadow-float backdrop-blur-md pointer-events-auto">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
