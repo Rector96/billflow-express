@@ -25,6 +25,7 @@ import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import { completeVehicleRenewal, verifyVehicle } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
+import { isHubDemoOnly } from "@/lib/product-mode";
 
 type Step = "lookup" | "result" | "renew" | "done";
 const NIGERIAN_STATES = [
@@ -156,6 +157,10 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   };
 
   const onPay = async () => {
+    if (isHubDemoOnly("vehicle")) {
+      toast.error("Vehicle renewal is in preview. Payments are disabled until live registry and fulfilment are enabled.");
+      return;
+    }
     if (!vehicle || !choice) {
       toast.error("Choose a renewal option.");
       return;
@@ -471,7 +476,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={!choice || paying}
+                disabled={!choice || paying || isHubDemoOnly("vehicle")}
                 onClick={() => void onPay()}
               >
                 {paying ? (
@@ -479,7 +484,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : choice ? (
-                  `Pay ${formatNaira(fee, false)}`
+                  isHubDemoOnly("vehicle") ? "Payments unavailable" : `Pay ${formatNaira(fee, false)}`
                 ) : (
                   "Select an option"
                 )}
