@@ -286,8 +286,11 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
 
     const statusChanged = row.status !== data.status;
     const currentMeta = asMeta(row.metadata);
-    if (data.status === "successful" && row.service === "cac" &&
-        typeof currentMeta["certificate_storage_path"] !== "string") {
+    if (
+      data.status === "successful" &&
+      row.service === "cac" &&
+      typeof currentMeta["certificate_storage_path"] !== "string"
+    ) {
       throw new Error("Attach the completed CAC certificate before marking this order successful.");
     }
     const eventKey = statusChanged
@@ -648,8 +651,11 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
-    if (data.fulfillmentStatus === "digital_ready" && row.service === "cac" &&
-        typeof prevMeta["certificate_storage_path"] !== "string") {
+    if (
+      data.fulfillmentStatus === "digital_ready" &&
+      row.service === "cac" &&
+      typeof prevMeta["certificate_storage_path"] !== "string"
+    ) {
       throw new Error("Upload the completed CAC certificate before marking it ready.");
     }
     const history = Array.isArray(prevMeta["fulfillment_history"])
