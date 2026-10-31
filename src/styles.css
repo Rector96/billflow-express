@@ -998,12 +998,15 @@
   }
 }
 
-
 /* Shared RockPay form language: accessible, consistent controls across every workflow. */
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
   accent-color: var(--color-primary);
 }
-:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea)::placeholder {
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea
+)::placeholder {
   opacity: 1;
 }
 :where(input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"]) {
