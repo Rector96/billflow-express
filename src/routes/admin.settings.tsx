@@ -60,6 +60,9 @@ function AdminSettings() {
         return;
       }
       setRows((data as unknown as Rule[]) ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load admin settings");
+      setRows([]);
     } finally {
       setLoading(false);
     }
