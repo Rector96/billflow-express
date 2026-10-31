@@ -16,7 +16,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n, pctChange, requireAdminOrSuperAdmin, type OpsStats, type ServiceRow, type VolumePoint } from "@/lib/admin";
+import {
+  n,
+  pctChange,
+  requireAdminOrSuperAdmin,
+  type OpsStats,
+  type ServiceRow,
+  type VolumePoint,
+} from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
