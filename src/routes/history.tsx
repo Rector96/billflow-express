@@ -50,6 +50,7 @@ const STATUS: Array<{ key: StatusKey; label: string }> = [
   { key: "successful", label: "Successful" },
   { key: "pending", label: "Pending" },
   { key: "failed", label: "Failed" },
+  { key: "reversed", label: "Reversed" },
 ];
 
 const CATEGORY: Array<{ key: CategoryKey; label: string }> = [
