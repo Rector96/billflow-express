@@ -368,3 +368,142 @@
     min-width: 44px;
   }
 }
+
+
+/* ---- Single-viewport service flows ---- */
+.service-flow-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.service-flow-shell > aside {
+  height: 100dvh;
+  min-height: 0;
+}
+
+.service-flow-content {
+  display: flex;
+  min-height: 0;
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.service-flow-content > * {
+  min-height: 0;
+}
+
+.service-flow-content .max-w-md,
+.service-flow-content .max-w-lg,
+.service-flow-content .max-w-xl {
+  max-width: min(100%, 1120px);
+}
+
+.service-flow-content .pb-28,
+.service-flow-content .pb-24 {
+  padding-bottom: 0.75rem;
+}
+
+.service-flow-content .space-y-3 > :not(:first-child) {
+  margin-top: 0.65rem;
+}
+
+.service-flow-content .space-y-4 > :not(:first-child) {
+  margin-top: 0.8rem;
+}
+
+.service-flow-content section.space-y-3 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.service-flow-content section.space-y-3 > * {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.service-flow-content section.space-y-3 > .rounded-2xl,
+.service-flow-content section.space-y-3 > [class*="col-span-full"] {
+  grid-column: 1 / -1;
+}
+
+.service-flow-content section.space-y-3 > div.h-24 {
+  display: none;
+}
+
+.service-flow-content input,
+.service-flow-content select,
+.service-flow-content textarea {
+  min-width: 0;
+}
+
+.service-flow-content [id="pay-action"] {
+  left: 16rem;
+  right: 0;
+  bottom: 1rem;
+  padding-inline: 1.25rem;
+}
+
+.service-flow-content [id="pay-action"] > div {
+  max-width: 760px;
+}
+
+@media (max-width: 1023px) {
+  .service-flow-content {
+    height: calc(100dvh - 5.25rem - env(safe-area-inset-bottom));
+    padding-bottom: 0.5rem;
+  }
+
+  .service-flow-content [id="pay-action"] {
+    left: 0;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .service-flow-content section.space-y-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .service-flow-content section.space-y-3 > .rounded-2xl {
+    grid-column: auto;
+  }
+
+  .service-flow-content [id="pay-action"] {
+    left: 0;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 1024px) {
+  .service-flow-content {
+    padding: 0.75rem;
+  }
+
+  .service-flow-content .space-y-3 > :not(:first-child) {
+    margin-top: 0.45rem;
+  }
+
+  .service-flow-content .rounded-2xl {
+    border-radius: 0.9rem;
+  }
+
+  .service-flow-content .p-4 {
+    padding: 0.75rem;
+  }
+
+  .service-flow-content .p-3\.5 {
+    padding: 0.65rem;
+  }
+
+  .service-flow-content .h-12 {
+    height: 2.65rem;
+  }
+
+  .service-flow-content .h-11 {
+    height: 2.4rem;
+  }
+}
