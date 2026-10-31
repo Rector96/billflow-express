@@ -261,7 +261,12 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
           gateway_response: data.gateway_response ?? null,
           gateway_status: gatewayStatus,
           currency: data.currency,
-          reference_match: true,
+          domain: data.domain ?? null,
+          reference_match: data.reference === reference,
+          charged_subunits: auditPaystack.chargedSubunits,
+          requested_subunits: auditPaystack.requestedSubunits,
+          fee_subunits: auditPaystack.feeSubunits,
+          provider_transaction_id: classification.providerTransactionId,
         },
       });
       if (error) throw new Error(error.message);
