@@ -801,6 +801,18 @@ function AdminHubOrders() {
                           : metaGet(meta, "preferred_name")
                       }
                     />
+                    <Field
+                      label="Name choice 2"
+                      value={String(
+                        (meta["application"] as Record<string, unknown> | undefined)?.name2 ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="Name choice 3"
+                      value={String(
+                        (meta["application"] as Record<string, unknown> | undefined)?.name3 ?? "—",
+                      )}
+                    />
                     <Field label="Owner" value={metaGet(meta, "owner_name")} />
                     <Field
                       label="Gender"
