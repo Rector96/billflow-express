@@ -106,6 +106,17 @@ function storedPins(metadata: unknown): string[] {
   return [];
 }
 
+function mergePins(existing: string[], incoming: string[], quantity: number): string[] {
+  return [...new Set([...existing, ...incoming].map((pin) => pin.trim()).filter(Boolean))]
+    .slice(0, quantity);
+}
+
+function requestedPinQuantity(metadata: unknown, fallback = 1): number {
+  if (!metadata || typeof metadata !== "object") return fallback;
+  const raw = Number((metadata as Record<string, unknown>)["quantity"]);
+  return Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : fallback;
+}
+
 function providerMessage(
   status: ExamPurchaseResult["status"],
   exam: string,
@@ -304,8 +315,12 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         providerTransactionId: null,
       };
     }
-    const outcome = mapVtpassOutcome(pay);
-    const pins = outcome === "successful" ? extractPins(pay) : [];
+    const providerOutcome = mapVtpassOutcome(pay);
+    const pins = providerOutcome === "successful" ? mergePins([], extractPins(pay), data.quantity) : [];
+    // A provider success without every requested PIN is not customer fulfilment.
+    // Keep the wallet reservation pending and recover through VTpass requery.
+    const outcome =
+      providerOutcome === "successful" && pins.length < data.quantity ? "pending" : providerOutcome;
     const payload = {
       vtpass_code: pay.code,
       vtpass_status: pay.contentStatus,
@@ -401,8 +416,13 @@ export const requeryExamPins = createServerFn({ method: "POST" })
     if (!bill.provider_request_id)
       throw new Error("Your payment is still protected. Check again shortly.");
     const pay = await vtpassRequery(bill.provider_request_id);
-    const outcome = mapVtpassOutcome(pay);
-    const pins = outcome === "successful" ? extractPins(pay) : [];
+    const providerOutcome = mapVtpassOutcome(pay);
+    const quantity = requestedPinQuantity(meta);
+    const pins = providerOutcome === "successful"
+      ? mergePins(storedPins(meta), extractPins(pay), quantity)
+      : storedPins(meta);
+    const outcome =
+      providerOutcome === "successful" && pins.length < quantity ? "pending" : providerOutcome;
     const payload = {
       vtpass_code: pay.code,
       vtpass_status: pay.contentStatus,
@@ -410,6 +430,7 @@ export const requeryExamPins = createServerFn({ method: "POST" })
       purchased_code: pay.purchasedCode,
       token: pins.join("\n") || pay.purchasedCode,
       pins,
+      quantity,
       requery: true,
       vtpass_snapshot: safePayload(pay.raw),
     };
