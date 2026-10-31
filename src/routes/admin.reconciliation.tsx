@@ -118,8 +118,14 @@ function AdminReconciliation() {
       }
     >
       {error ? (
-        <div role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
-          {error} <button type="button" className="ml-2 underline" onClick={() => void load()}>Retry</button>
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive"
+        >
+          {error}{" "}
+          <button type="button" className="ml-2 underline" onClick={() => void load()}>
+            Retry
+          </button>
         </div>
       ) : null}
 

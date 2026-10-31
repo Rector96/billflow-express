@@ -57,7 +57,13 @@ type BillRow = {
 
 type TransactionFilter = "all" | TxStatus;
 
-const transactionFilters: TransactionFilter[] = ["all", "successful", "pending", "failed", "reversed"];
+const transactionFilters: TransactionFilter[] = [
+  "all",
+  "successful",
+  "pending",
+  "failed",
+  "reversed",
+];
 
 const PAGE = 30;
 
