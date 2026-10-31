@@ -17,12 +17,12 @@ export function PayActionBar({
       <div
         id={id}
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-3",
-          "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]",
+          "service-flow-bottom-nav pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-3",
+          "bottom-[max(0.5rem,env(safe-area-inset-bottom,0px))]",
           className,
         )}
       >
-        <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border/80 bg-background/95 p-3 shadow-card backdrop-blur-md">
+        <div className="pointer-events-auto w-full max-w-[760px] rounded-2xl border border-border/80 bg-background/95 p-3 shadow-card backdrop-blur-md">
           {children}
         </div>
       </div>
