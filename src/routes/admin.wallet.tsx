@@ -53,6 +53,7 @@ function AdminWallet() {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,7 +80,9 @@ function AdminWallet() {
       if (audit.error) {
         console.warn("[AdminWallet] could not load recheck audit history", audit.error.message);
         setAuditRows([]);
+        setAuditError("Wallet funding loaded, but the audit history could not be retrieved. Retry to confirm previous staff actions.");
       } else {
+        setAuditError(null);
         setAuditRows(
           (audit.data ?? []).map((entry) => ({
             ...entry,
@@ -135,6 +138,7 @@ function AdminWallet() {
       console.error("[AdminWallet] failed to load", error);
       setRows([]);
       setAuditRows([]);
+      setAuditError(null);
       setTotalCount(0);
       setLoadError(error instanceof Error ? error.message : "Could not load wallet operations");
     } finally {
@@ -213,7 +217,11 @@ function AdminWallet() {
               </div>
               <span className="text-xs text-muted-foreground">{auditRows.length} recent</span>
             </div>
-            {auditRows.length === 0 ? (
+            {auditError ? (
+              <p role="alert" className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                {auditError}
+              </p>
+            ) : auditRows.length === 0 ? (
               <p className="mt-3 text-xs text-muted-foreground">
                 No wallet recheck audit events recorded yet.
               </p>
@@ -234,9 +242,11 @@ function AdminWallet() {
                   const creditState =
                     meta["credited"] === true
                       ? "Wallet credited"
-                      : meta["credited"] === false
-                        ? "No new credit"
-                        : "Credit not confirmed";
+                      : outcome === "started"
+                        ? "Recheck in progress"
+                        : meta["credited"] === false
+                          ? "No new credit"
+                          : "Credit not confirmed";
                   return (
                     <div
                       key={entry.id}
@@ -254,7 +264,7 @@ function AdminWallet() {
                               credited ? "font-semibold text-success" : "text-muted-foreground"
                             }
                           >
-                            {credited ? "Wallet credited" : "No new credit"}
+                            {creditState}
                           </p>
                         </div>
                       </div>
@@ -330,6 +340,7 @@ function AdminWallet() {
                   ["successful", "Successful"],
                   ["pending", "Pending"],
                   ["failed", "Failed"],
+                  ["reversed", "Reversed"],
                 ].map((pair) => {
                   const value = pair[0] ?? "all";
                   const label = pair[1] ?? "";
