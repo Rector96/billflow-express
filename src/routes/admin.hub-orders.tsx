@@ -28,7 +28,11 @@ import {
   type HubOrderRow,
   type HubOrderStatus,
 } from "@/lib/admin-hub.functions";
-import { attachCacCertificate, createCacCertificateUpload, markCacCertificateEmailed } from "@/lib/hub-documents.functions";
+import {
+  attachCacCertificate,
+  createCacCertificateUpload,
+  markCacCertificateEmailed,
+} from "@/lib/hub-documents.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { FULFILLMENT_LABELS, type FulfillmentStatus } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
@@ -347,7 +351,12 @@ function AdminHubOrders() {
       toast.error("No customer email address is available on this order.");
       return;
     }
-    if (!window.confirm(`Confirm that the completed CAC certificate was manually emailed to ${email}?`)) return;
+    if (
+      !window.confirm(
+        `Confirm that the completed CAC certificate was manually emailed to ${email}?`,
+      )
+    )
+      return;
     setBusy(true);
     try {
       await runMarkCacEmailed({ data: { orderId: detail.id, recipientEmail: email } });
@@ -985,14 +994,20 @@ function AdminHubOrders() {
                     />
                     <div className="mt-2 border-t border-border/60 pt-2">
                       <p className="mb-2 text-[10px] text-muted-foreground">
-                        If staff sent the certificate directly by email instead, record the recipient here.
+                        If staff sent the certificate directly by email instead, record the
+                        recipient here.
                       </p>
                       <Field label="Customer email" value={email || "—"} />
                       <Button
                         size="sm"
                         variant="outline"
                         className="mt-2 w-full rounded-xl text-xs"
-                        disabled={busy || detail.service !== "cac" || !email || Boolean(metaGet(meta, "certificate_storage_path"))}
+                        disabled={
+                          busy ||
+                          detail.service !== "cac" ||
+                          !email ||
+                          Boolean(metaGet(meta, "certificate_storage_path"))
+                        }
                         onClick={() => void markManualEmail()}
                       >
                         Record certificate emailed manually
