@@ -43,8 +43,6 @@ import { createHubPaymentIntent, getCacPriceQuote } from "@/lib/hub-payment-inte
 import { formatNaira } from "@/lib/mock-data";
 import { supabase } from "@/integrations/supabase/client";
 
-export const CAC_COURIER_PRICE = SERVICE_PRICES.cac_courier;
-
 type Step =
   | "intro"
   | "names"
@@ -391,7 +389,7 @@ export function CacRegistrationFlow() {
       }
     }
     setPaying(true);
-    let uploadedPaths: string[] = [];
+    const uploadedPaths: string[] = [];
     let paymentIntentCreated = false;
     let paymentConfirmed = false;
     try {
