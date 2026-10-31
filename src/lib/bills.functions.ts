@@ -786,11 +786,21 @@ export const requeryBill = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<BillPurchaseResult> => {
     let staffAuthorized = false;
     if (data.admin) {
-      const { data: isStaff, error: staffError } = await context.supabase.rpc("is_staff", { _user_id: context.userId });
+      const { data: isStaff, error: staffError } = await context.supabase.rpc("is_staff", {
+        _user_id: context.userId,
+      });
       if (staffError || isStaff !== true) throw new Error("Forbidden: staff only.");
-      const { data: roles, error: roleError } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
+      const { data: roles, error: roleError } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId);
       if (roleError) throw new Error("Could not verify bill requery permissions.");
-      if (!(roles ?? []).some((entry) => ["support", "admin", "super_admin"].includes(String(entry.role)))) throw new Error("Forbidden: bill requery requires support or admin access.");
+      if (
+        !(roles ?? []).some((entry) =>
+          ["support", "admin", "super_admin"].includes(String(entry.role)),
+        )
+      )
+        throw new Error("Forbidden: bill requery requires support or admin access.");
       staffAuthorized = true;
     }
     const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
@@ -804,12 +814,24 @@ export const requeryBill = createServerFn({ method: "POST" })
       .limit(1);
     if (error) throw new Error(error.message);
     const bill = bills?.[0];
-    if (!bill || (!staffAuthorized && bill.user_id !== context.userId)) throw new Error("Transaction not found.");
+    if (!bill || (!staffAuthorized && bill.user_id !== context.userId))
+      throw new Error("Transaction not found.");
     const meta = (bill.metadata ?? {}) as Record<string, unknown>;
     const slug = String(meta["service_slug"] ?? "bill") as "data" | "cable" | "electricity";
     const identifier = String(bill.customer_identifier ?? "");
     if (bill.status === "successful" || bill.status === "failed") {
-      if (staffAuthorized) await context.supabase.rpc("admin_write_audit", { _action: "bill_requery", _description: `Staff requery: ${data.reference} was already ${bill.status}`, _target_type: "bill_transaction", _target_id: bill.id, _metadata: { reference: data.reference, previous_status: bill.status, result: bill.status } });
+      if (staffAuthorized)
+        await context.supabase.rpc("admin_write_audit", {
+          _action: "bill_requery",
+          _description: `Staff requery: ${data.reference} was already ${bill.status}`,
+          _target_type: "bill_transaction",
+          _target_id: bill.id,
+          _metadata: {
+            reference: data.reference,
+            previous_status: bill.status,
+            result: bill.status,
+          },
+        });
       return {
         status: bill.status,
         reference: bill.internal_reference,
@@ -874,7 +896,13 @@ export const requeryBill = createServerFn({ method: "POST" })
         _description: `Staff requery: ${data.reference} → ${outcome}`,
         _target_type: "bill_transaction",
         _target_id: bill.id,
-        _metadata: { reference: data.reference, previous_status: bill.status, result: outcome, service: slug, vendor },
+        _metadata: {
+          reference: data.reference,
+          previous_status: bill.status,
+          result: outcome,
+          service: slug,
+          vendor,
+        },
       });
       if (auditError) throw new Error(auditError.message);
     }

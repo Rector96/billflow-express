@@ -215,9 +215,10 @@ function AdminTransactions() {
     if (!selected) return;
     setRequerying(true);
     try {
-      const res = selected.service.toLowerCase() === "airtime"
-        ? await requery({ data: { reference: selected.internal_reference } })
-        : await requeryBillFn({ data: { reference: selected.internal_reference, admin: true } });
+      const res =
+        selected.service.toLowerCase() === "airtime"
+          ? await requery({ data: { reference: selected.internal_reference } })
+          : await requeryBillFn({ data: { reference: selected.internal_reference, admin: true } });
       toast.success(`Requery: ${res.status}`);
       await load();
       const { data, error } = await supabase
