@@ -256,15 +256,13 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const live = isBillLive("vehicle");
-    const preview = isHubPreviewServerEnabled();
-
-    if (!live && !preview) {
-      throw new Error("Vehicle renewal is temporarily unavailable.");
+    if (!live) {
+      throw new Error(
+        "Vehicle renewal is in preview and cannot accept payments or create orders yet.",
+      );
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount, {
-      allowDemo: !live && preview,
-    });
+    await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: false });
 
     const service =
       data.choice === "third_party_insurance"
@@ -320,13 +318,11 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    if (!isBillLive(data.service) && !isHubPreviewServerEnabled()) {
-      throw new Error("This service is not currently available for payment.");
+    if (!isBillLive(data.service)) {
+      throw new Error("This service is in preview and cannot accept payments yet.");
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount, {
-      allowDemo: !isBillLive(data.service) && isHubPreviewServerEnabled(),
-    });
+    await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: false });
     const track = uid("HUB");
     await logHubOrder({
       userId: context.userId,
