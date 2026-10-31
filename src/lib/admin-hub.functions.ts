@@ -286,6 +286,10 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
 
     const statusChanged = row.status !== data.status;
     const currentMeta = asMeta(row.metadata);
+    if (data.status === "successful" && row.service === "cac" &&
+        typeof currentMeta["certificate_storage_path"] !== "string") {
+      throw new Error("Attach the completed CAC certificate before marking this order successful.");
+    }
     const eventKey = statusChanged
       ? `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`
       : typeof currentMeta["status_event_key"] === "string"
@@ -310,7 +314,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
         status_history: history,
         status_event_key: eventKey,
       };
-      if (data.status === "successful") {
+      if (data.status === "successful" && row.service !== "cac") {
         nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
       }
 
@@ -569,8 +573,10 @@ export const notifyCustomerToDownload = createServerFn({ method: "POST" })
 
     const meta = asMeta(row.metadata);
     const hasDoc =
-      typeof meta["document_url"] === "string" || typeof meta["certificate_url"] === "string";
-    if (!hasDoc) throw new Error("Attach a document link first");
+      typeof meta["certificate_storage_path"] === "string" ||
+      typeof meta["document_url"] === "string" ||
+      typeof meta["certificate_url"] === "string";
+    if (!hasDoc) throw new Error("Attach a document first");
 
     await notifyUser({
       userId: row.user_id,
@@ -642,6 +648,10 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
+    if (data.fulfillmentStatus === "digital_ready" && row.service === "cac" &&
+        typeof prevMeta["certificate_storage_path"] !== "string") {
+      throw new Error("Upload the completed CAC certificate before marking it ready.");
+    }
     const history = Array.isArray(prevMeta["fulfillment_history"])
       ? [...(prevMeta["fulfillment_history"] as unknown[])]
       : [];
