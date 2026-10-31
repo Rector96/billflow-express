@@ -74,7 +74,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const checkPin = useServerFn(hasTransactionPin);
   const [offline, setOffline] = useState(false);
   const previousPath = useRef(pathname);
-  const isServiceFlow = /^\/(cac|nin|tin|documents|vehicle)(\/|$)/.test(pathname) || /^\/pay\/[^/]+/.test(pathname);
+  const isServiceFlow =
+    /^\/(cac|nin|tin|documents|vehicle)(\/|$)/.test(pathname) || /^\/pay\/[^/]+/.test(pathname);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -118,7 +119,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
   return (
-    <div className={cn("min-h-dvh bg-background lg:flex", isServiceFlow && "service-flow-shell h-dvh overflow-hidden")}>
+    <div
+      className={cn(
+        "min-h-dvh bg-background lg:flex",
+        isServiceFlow && "service-flow-shell h-dvh overflow-hidden",
+      )}
+    >
       {offline ? (
         <div
           role="status"
@@ -170,7 +176,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div
         key={pathname}
-        className={cn("page-fade mx-auto w-full max-w-2xl flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-3xl lg:pb-10", isServiceFlow && "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-5 lg:pb-5")}
+        className={cn(
+          "page-fade mx-auto w-full max-w-2xl flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-3xl lg:pb-10",
+          isServiceFlow &&
+            "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-5 lg:pb-5",
+        )}
       >
         {children}
       </div>
