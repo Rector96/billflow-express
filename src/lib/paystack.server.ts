@@ -184,8 +184,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   }
 
   const gatewayStatus = String(data.status ?? "").toLowerCase();
-  const providerTransactionId =
-    data.id == null ? null : String(data.id);
+  const providerTransactionId = data.id == null ? null : String(data.id);
   const auditPaystack = {
     gatewayStatus: gatewayStatus || null,
     providerTransactionId,
@@ -336,5 +335,11 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     _payload: { gateway_status: gatewayStatus, gateway_response: data.gateway_response ?? null },
   });
   if (error) throw new Error(error.message);
-  return { status: nextStatus, amount, balanceAfter: null, credited: false, paystack: auditPaystack };
+  return {
+    status: nextStatus,
+    amount,
+    balanceAfter: null,
+    credited: false,
+    paystack: auditPaystack,
+  };
 }
