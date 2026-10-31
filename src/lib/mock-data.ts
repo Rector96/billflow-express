@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type TxStatus = "successful" | "pending" | "failed";
+export type TxStatus = "successful" | "pending" | "failed" | "reversed";
 
 export type Transaction = {
   id: string;
