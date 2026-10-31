@@ -823,27 +823,6 @@
   margin-top: 0.8rem;
 }
 
-.service-flow-content section.space-y-3 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 0.75rem;
-}
-
-.service-flow-content section.space-y-3 > * {
-  min-width: 0;
-  margin-top: 0;
-}
-
-.service-flow-content section.space-y-3 > .rounded-2xl,
-.service-flow-content section.space-y-3 > [class*="col-span-full"] {
-  grid-column: 1 / -1;
-}
-
-.service-flow-content section.space-y-3 > div.h-24 {
-  display: none;
-}
-
 .service-flow-content input,
 .service-flow-content select,
 .service-flow-content textarea {
@@ -875,14 +854,6 @@
 }
 
 @media (max-width: 640px) {
-  .service-flow-content section.space-y-3 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .service-flow-content section.space-y-3 > .rounded-2xl {
-    grid-column: auto;
-  }
-
   .service-flow-content [id="pay-action"] {
     left: 0;
   }
@@ -986,16 +957,6 @@
 .service-flow-content textarea,
 .service-flow-content button {
   max-width: 100%;
-}
-
-@media (max-width: 640px) {
-  .service-flow-content section.space-y-3 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .service-flow-content section.space-y-3 > * {
-    grid-column: 1 / -1;
-  }
 }
 
 /* Shared RockPay form language: accessible, consistent controls across every workflow. */
