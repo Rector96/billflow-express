@@ -1,163 +1,73 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowUpRight, Boxes, Percent, ShieldCheck, Settings2 } from "lucide-react";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { BRAND } from "@/lib/brand";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({ meta: [{ title: `Settings — ${BRAND.name} Admin` }] }),
   component: AdminSettings,
 });
 
-type Rule = {
-  id: string;
-  service: string;
-  provider: string | null;
-  product_code: string | null;
-  markup_type: string;
-  markup_value: number;
-  min_amount: number | null;
-  max_amount: number | null;
-  is_active: boolean;
-  priority: number;
-};
+const destinations = [
+  {
+    to: "/admin/pricing" as const,
+    title: "Pricing and service fees",
+    description: "Manage VTpass bill markups and the RockPay hub catalogue fees used by customer checkout.",
+    icon: Percent,
+  },
+  {
+    to: "/admin/services" as const,
+    title: "Service availability",
+    description: "See which services are live, manually fulfilled, preview-only or removed. Control live electricity and cable availability.",
+    icon: Boxes,
+  },
+  {
+    to: "/admin/staff" as const,
+    title: "Staff access",
+    description: "Review staff roles. Role grants remain restricted to the secured database administration process.",
+    icon: ShieldCheck,
+  },
+] as const;
 
 function AdminSettings() {
-  const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<Rule[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      type PricingQuery = {
-        select: (columns: string) => {
-          order: (
-            column: string,
-            options: { ascending: boolean },
-          ) => {
-            order: (
-              column: string,
-              options: { ascending: boolean },
-            ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
-          };
-        };
-      };
-      const { data, error: err } = await (
-        supabase as unknown as { from: (relation: string) => PricingQuery }
-      )
-        .from("pricing_rules")
-        .select(
-          "id, service, provider, product_code, markup_type, markup_value, min_amount, max_amount, is_active, priority",
-        )
-        .order("service", { ascending: true })
-        .order("priority", { ascending: false });
-      if (err) {
-        setError(err.message);
-        setRows([]);
-        return;
-      }
-      setRows((data as unknown as Rule[]) ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load admin settings");
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   return (
-    <AdminShell title="Settings" subtitle="Pricing, providers and operational notes">
-      <div className="space-y-6 text-sm">
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-base font-extrabold tracking-tight">Pricing & markups</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Rules in <code>pricing_rules</code>. Applied server-side only. Airtime is face-value
-              (customer pays what the phone receives).
-            </p>
-          </div>
-          {error ? (
-            <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              {error}
-              <span className="mt-1 block text-xs">
-                Apply pricing migrations and docs/SQL_ADMIN_WALLET_AND_CARE.sql for SELECT grant.
-              </span>
-            </p>
-          ) : null}
-          {loading ? (
-            <AdminLoading />
-          ) : rows.length === 0 ? (
-            <AdminEmpty
-              title="No pricing rules"
-              body="Run the pricing_rules seed migration, then refresh."
-            />
-          ) : (
-            <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
-              <table className="w-full min-w-[640px] text-left text-xs">
-                <thead className="border-b bg-muted/40 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2.5 font-semibold">Service</th>
-                    <th className="px-3 py-2.5 font-semibold">Provider</th>
-                    <th className="px-3 py-2.5 font-semibold">Product</th>
-                    <th className="px-3 py-2.5 font-semibold">Type</th>
-                    <th className="px-3 py-2.5 font-semibold">Value</th>
-                    <th className="px-3 py-2.5 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0">
-                      <td className="px-3 py-2.5 font-semibold capitalize">{r.service}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{r.provider || "All"}</td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] text-muted-foreground">
-                        {r.product_code || "—"}
-                      </td>
-                      <td className="px-3 py-2.5 capitalize">{r.markup_type.replace("_", " ")}</td>
-                      <td className="px-3 py-2.5 font-bold">
-                        {r.markup_type === "percentage"
-                          ? `${r.markup_value}%`
-                          : `₦${Number(r.markup_value).toLocaleString("en-NG")}`}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-                            r.is_active
-                              ? "bg-emerald-500/15 text-emerald-700"
-                              : "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {r.is_active ? "Active" : "Off"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <AdminShell title="Settings" subtitle="Configuration shortcuts and platform controls">
+      <div className="mb-4 rounded-2xl border bg-card p-4 shadow-card">
+        <div className="flex items-center gap-2">
+          <Settings2 className="size-5 text-primary" />
+          <h2 className="text-sm font-extrabold">RockPay operations configuration</h2>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Configuration is split by responsibility so changes are applied through the correct,
+          audited workflow. Payment-provider credentials and private API keys are never editable
+          or displayed in this admin page; manage them in the secured hosting environment.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {destinations.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="group rounded-2xl border bg-card p-4 shadow-card transition-colors hover:border-primary/40"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <item.icon className="size-5" />
+              </div>
+              <ArrowUpRight className="size-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </div>
-          )}
-        </section>
-
-        <div className="rounded-2xl border bg-card p-4 shadow-card">
-          <p className="font-bold">Paystack</p>
-          <p className="mt-1 text-muted-foreground">
-            Test mode is enforced in server code (<code>sk_test_</code> only). Secrets live on
-            Netlify only.
-          </p>
-        </div>
-        <div className="rounded-2xl border bg-card p-4 shadow-card">
-          <p className="font-bold">Staff access</p>
-          <p className="mt-1 text-muted-foreground">
-            Roles in <code>user_roles</code>: super_admin, admin, support. Assign via Supabase SQL.
-          </p>
-        </div>
+            <p className="mt-3 text-sm font-extrabold">{item.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+          </Link>
+        ))}
+      </div>
+      <div className="mt-4 rounded-2xl border border-border/70 bg-muted/30 p-4">
+        <p className="text-xs font-bold">Security note</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Wallet balances, payment verification, CAC fulfilment and provider credentials are not
+          changed from a generic settings form. Their dedicated server-side workflows preserve
+          payment checks, staff permissions and audit history.
+        </p>
       </div>
     </AdminShell>
   );
