@@ -47,8 +47,11 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   }, [identifier]);
 
   const validate = () => {
-    if (identifier.replace(/\s/g, "").trim().length < 7) {
-      toast.error("Enter NIN (11 digits) or CAC number.");
+    const normalized = identifier.replace(/\s/g, "").trim().toUpperCase();
+    const validNin = /^\d{11}$/.test(normalized);
+    const validCac = /^(RC|BN|IT)\d{5,8}$/.test(normalized) || /^\d{7,8}$/.test(normalized);
+    if (!validNin && !validCac) {
+      toast.error("Enter an 11-digit NIN or a valid CAC registration number.");
       return false;
     }
     if (fullName.trim().length < 3) {
