@@ -19,15 +19,19 @@ type StaffRow = {
 function AdminStaff() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<StaffRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data: roles } = await supabase.from("user_roles").select("user_id, role");
+      const { data: roles, error: rolesError } = await supabase.from("user_roles").select("user_id, role");
+      if (rolesError) throw rolesError;
       const ids = [...new Set((roles ?? []).map((r) => r.user_id))];
-      const { data: profiles } = ids.length
+      const { data: profiles, error: profilesError } = ids.length
         ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids)
-        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[] };
+        : { data: [] as { user_id: string; full_name: string | null; email: string | null }[], error: null };
+      if (profilesError) throw profilesError;
       const pmap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
       setRows(
         (roles ?? []).map((r) => {
@@ -40,6 +44,9 @@ function AdminStaff() {
           };
         }),
       );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load staff roles");
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -51,6 +58,7 @@ function AdminStaff() {
 
   return (
     <AdminShell title="Staff" subtitle="Roles from user_roles (super_admin, admin, support)">
+      {error ? <p className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
       <p className="mb-4 text-xs text-muted-foreground">
         Finance / Operations roles from the product brief are not in the database enum yet. Current
         roles: <strong>super_admin</strong>, <strong>admin</strong>, <strong>support</strong>. Grant
