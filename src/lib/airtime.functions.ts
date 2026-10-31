@@ -367,6 +367,16 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     if (staffErr || !staff) throw new Error("forbidden");
+    const { data: roles, error: roleError } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleError) throw new Error("Could not verify transaction requery permissions.");
+    if (!(roles ?? []).some((entry) =>
+      ["support", "admin", "super_admin"].includes(String(entry.role))
+    )) {
+      throw new Error("Forbidden: transaction requery requires support or admin access.");
+    }
     return requeryAirtimeCore({
       supabase: context.supabase,
       userId: context.userId,

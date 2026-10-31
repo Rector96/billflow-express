@@ -17,8 +17,8 @@ const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
     "cac_documents",
   ],
   // Account suspension/reactivation is super-admin-only in the database RPC.
-  admin: ["view", "settings", "cac_documents"],
-  support: ["view", "cac_documents"],
+  admin: ["view", "settings", "cac_documents", "transaction_requery"],
+  support: ["view", "cac_documents", "transaction_requery"],
 };
 
 export function permsForRoles(roles: StaffRole[]): Set<AdminPerm> {
