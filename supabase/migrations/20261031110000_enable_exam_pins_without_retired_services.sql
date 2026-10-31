@@ -165,23 +165,4 @@ REVOKE ALL ON FUNCTION public.start_bill_purchase(text, text, text, text, text, 
 GRANT EXECUTE ON FUNCTION public.start_bill_purchase(text, text, text, text, text, numeric, text, jsonb, text)
   TO authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION public.reject_unsupported_generic_bill()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  slug text := lower(trim(coalesce(NEW.metadata->>'service_slug', '')));
-  service_name text := lower(trim(coalesce(NEW.service, '')));
-BEGIN
-  IF slug IN ('education', 'internet', 'water', 'insurance')
-     OR service_name IN ('education', 'internet', 'water', 'insurance') THEN
-    RAISE EXCEPTION 'unsupported_service';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.reject_unsupported_generic_bill() FROM PUBLIC, anon, authenticated;
-
-
 NOTIFY pgrst, 'reload schema';
