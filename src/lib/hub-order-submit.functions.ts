@@ -1,11 +1,8 @@
 /**
- * CAC & NIN applications → hub_orders + staff/user notify + Resend.
+ * CAC applications → atomic hub payment-intent finalization + notifications.
  *
- * Payment rules:
- * - If PAYSTACK_SECRET_KEY is set: require a real Paystack reference and verify it.
- * - Demo refs (PSK_DEMO_*) only when HUB_ALLOW_UNVERIFIED_PAY=true or
- *   HUB_PREVIEW_FLOWS allows unverified pay (see hub-preview.server).
- * - Webhook path remains the secondary recorder (idempotent on payment_reference).
+ * NIN order submission is intentionally disabled until its own secure payment
+ * intent, idempotent finalization, and real provider fulfilment are implemented.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
