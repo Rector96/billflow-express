@@ -152,7 +152,6 @@ export const verifyWalletFunding = createServerFn({ method: "POST" })
     return { reference: data.reference, status: result.status, amount: result.amount };
   });
 
-
 /**
  * Staff-only reconciliation for an existing Paystack wallet deposit.
  * Paystack verification and the established atomic settlement RPCs remain
