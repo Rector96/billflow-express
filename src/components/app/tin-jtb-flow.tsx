@@ -184,15 +184,33 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
                 </div>
               </div>
             </div>
-            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 lg:sticky lg:top-5">
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <ShieldCheck className="size-4 text-primary" /> Before you continue
+            <aside className="tin-id-preview rounded-[26px] border border-border/70 bg-[#eef3fa] p-4 lg:sticky lg:top-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Identity preview</p>
+                  <p className="mt-1 text-sm font-semibold">Your verification details</p>
+                </div>
+                <ShieldCheck className="size-5 text-primary" />
               </div>
-              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <li>• Confirm the NIN or CAC number is correct.</li>
-                <li>• Use the full registered name, not a nickname.</li>
-                <li>• Review the details again before payment.</li>
-              </ul>
+              <div className="relative mt-4 min-h-[230px] overflow-hidden rounded-[20px] border border-white/70 bg-gradient-to-br from-[#172b42] via-[#243e58] to-[#101d30] p-4 text-white shadow-lg">
+                <div className="absolute -right-12 -top-12 size-44 rounded-full border border-white/10" />
+                <div className="absolute -right-5 -top-5 size-28 rounded-full border border-white/10" />
+                <div className="relative flex items-center justify-between">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/65">RockPay • Secure ID</span>
+                  <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-[9px] text-emerald-200">Preview</span>
+                </div>
+                <div className="relative mt-7 grid size-14 place-items-center rounded-2xl border border-white/15 bg-white/10">
+                  <ShieldCheck className="size-7 text-white/75" />
+                </div>
+                <p className="relative mt-5 text-[9px] uppercase tracking-[0.16em] text-white/55">Registered name</p>
+                <p className="relative mt-1 truncate text-base font-semibold">{fullName.trim() || "Your full name"}</p>
+                <p className="relative mt-4 text-[9px] uppercase tracking-[0.16em] text-white/55">Identity number</p>
+                <p className="relative mt-1 font-mono text-sm tracking-[0.14em]">{identifier.trim() ? identifier.replace(/.(?=.{4})/g, "•") : "•••• •••• ••••"}</p>
+              </div>
+              <div className="mt-4 rounded-xl bg-white/75 p-3">
+                <p className="text-xs font-semibold">Before submitting</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Make sure your name and identity number match the official record. We use these details to retrieve the correct TIN.</p>
+              </div>
             </aside>
             <PayActionBar>
               <Button
