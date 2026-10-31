@@ -357,6 +357,7 @@ function TransactionDetails() {
               network: network || null,
               recipient: phone || null,
               providerRef: providerRef || null,
+              paystackRef: paystackRef || null,
               channel: channel || null,
               dateLabel: bill?.created_at
                 ? new Date(bill.created_at).toLocaleString("en-NG")
