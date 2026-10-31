@@ -388,7 +388,6 @@ const AdminUsersRouteChildren: AdminUsersRouteChildren = {
 }
 const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(AdminUsersRouteChildren)
 
-interface ProfileRouteDocumentsMarker {}
 interface AdminRouteChildren {
   AdminDispatchRoute: typeof AdminDispatchRoute
   AdminHubOrdersRoute: typeof AdminHubOrdersRoute
