@@ -395,25 +395,25 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
               </div>
             </div>
             <div className="education-choice-grid grid gap-3 sm:grid-cols-2">
-            {EXAMS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                disabled={loading}
-                onClick={() => selectExam(item.id)}
-                className="press flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3.5 text-left shadow-card transition-colors hover:border-border"
-              >
-                <div>
-                  <p className="text-sm font-bold">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                </div>
-                {loading && examId === item.id ? (
-                  <Loader2 className="size-5 animate-spin text-primary" />
-                ) : (
-                  <ChevronRight className="size-5 text-muted-foreground" />
-                )}
-              </button>
-            ))}
+              {EXAMS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => selectExam(item.id)}
+                  className="press flex w-full items-center justify-between rounded-2xl border bg-card px-4 py-3.5 text-left shadow-card transition-colors hover:border-border"
+                >
+                  <div>
+                    <p className="text-sm font-bold">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                  </div>
+                  {loading && examId === item.id ? (
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                  ) : (
+                    <ChevronRight className="size-5 text-muted-foreground" />
+                  )}
+                </button>
+              ))}
             </div>
             {error ? (
               <p className="rounded-xl bg-destructive-soft p-3 text-xs font-semibold text-destructive">
@@ -460,8 +460,15 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
         {step === "product" && exam ? (
           <section className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-2">
-              <div><h2 className="text-base font-bold">Choose {exam.name} product</h2><p className="mt-1 text-xs text-muted-foreground">Choose the correct product from the available options.</p></div>
-              <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">{variations.length} available</span>
+              <div>
+                <h2 className="text-base font-bold">Choose {exam.name} product</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose the correct product from the available options.
+                </p>
+              </div>
+              <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                {variations.length} available
+              </span>
               {candidateName ? (
                 <p className="mt-1 text-xs font-semibold text-success">
                   Verified candidate: {candidateName}
@@ -485,8 +492,12 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
                         : "bg-card hover:border-border",
                     )}
                   >
-                    <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">{item.name}</span>
-                    <span className="shrink-0 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary">{formatNaira(item.amount, false)}</span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">
+                      {item.name}
+                    </span>
+                    <span className="shrink-0 rounded-lg bg-primary-soft px-2.5 py-1.5 text-xs font-bold text-primary">
+                      {formatNaira(item.amount, false)}
+                    </span>
                   </button>
                 ))}
               </div>
