@@ -53,7 +53,14 @@ export function PageHeader({
         className,
       )}
     >
-      <div className={cn("grid items-center gap-3", showBack ? "grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]")}>
+      <div
+        className={cn(
+          "grid items-center gap-3",
+          showBack
+            ? "grid-cols-[auto_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto]"
+            : "grid-cols-[minmax(0,1fr)_auto]",
+        )}
+      >
         {showBack && backTo ? (
           <Link to={backTo} aria-label="Go back" className={cn(backClass, "lg:hidden")}>
             <ChevronLeft className="size-5" strokeWidth={1.8} />
