@@ -1390,7 +1390,6 @@
   }
 }
 
-
 /* CAC desktop correction: preserve the intended two-column grid.
    The generic service-flow child rule must not turn this layout into a flex column. */
 @media (min-width: 1024px) {
