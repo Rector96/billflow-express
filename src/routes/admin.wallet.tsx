@@ -267,6 +267,8 @@ function AdminWallet() {
                         </div>
                       ) : meta["error_message"] ? (
                         <p className="mt-1 text-destructive">{String(meta["error_message"])}</p>
+                      ) : outcome === "pending" ? (
+                        <p className="mt-1 text-muted-foreground">Paystack did not return a verifiable transaction record.</p>
                       ) : null}
                     </div>
                   );
