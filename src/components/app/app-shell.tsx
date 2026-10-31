@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   const previousPath = useRef(pathname);
   const isServiceFlow =
-    /^\/(cac|nin|tin|documents|vehicle)(\/|$)/.test(pathname) || /^\/pay\/[^/]+/.test(pathname);
+    /^\/(cac|nin|tin|documents|vehicle|education|exam-pins)(\/|$)/.test(pathname) || /^\/pay\/[^/]+/.test(pathname);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -183,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className={cn(
           "page-fade mx-auto w-full flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-6xl lg:pb-10 lg:px-6",
           isServiceFlow &&
-            "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:p-5 lg:pb-5",
+            "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-3 lg:p-5",
         )}
       >
         {children}
@@ -191,7 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav
         aria-label="Bottom navigation"
-        className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden"
+        className={cn("fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden", isServiceFlow && "hidden")}
       >
         <div className="mx-auto flex max-w-sm items-center justify-around rounded-2xl border border-border/80 bg-card/95 px-2 py-1.5 shadow-float backdrop-blur-md pointer-events-auto">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
