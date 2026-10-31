@@ -101,6 +101,7 @@ export function TinJtbFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "success" && result) {
     return (
       <AppShell>
+        <PageHeader title="TIN" backTo="/services" />
         <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
           <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success">
             <CheckCircle2 className="size-7" />
