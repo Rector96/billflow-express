@@ -39,24 +39,48 @@ export function PayStepper({
         className,
       )}
     >
-      <div className="service-flow-numbered-steps" aria-label={`Step ${idx + 1} of ${steps.length}: ${active?.label ?? ""}`}>
+      <div
+        className="service-flow-numbered-steps"
+        aria-label={`Step ${idx + 1} of ${steps.length}: ${active?.label ?? ""}`}
+      >
         {steps.map((s, i) => {
           const done = i < idx;
           const isNow = i === idx;
           return (
-            <div key={s.key} className="service-flow-step-item" aria-current={isNow ? "step" : undefined}>
-              <span className={cn("service-flow-step-number", done && "is-complete", isNow && "is-current")}>
+            <div
+              key={s.key}
+              className="service-flow-step-item"
+              aria-current={isNow ? "step" : undefined}
+            >
+              <span
+                className={cn(
+                  "service-flow-step-number",
+                  done && "is-complete",
+                  isNow && "is-current",
+                )}
+              >
                 {done ? "✓" : i + 1}
               </span>
-              <span className={cn("service-flow-step-label", isNow && "is-current-label")}>{s.label}</span>
-              {i < steps.length - 1 ? <span className={cn("service-flow-step-connector", done && "is-complete")} aria-hidden /> : null}
+              <span className={cn("service-flow-step-label", isNow && "is-current-label")}>
+                {s.label}
+              </span>
+              {i < steps.length - 1 ? (
+                <span
+                  className={cn("service-flow-step-connector", done && "is-complete")}
+                  aria-hidden
+                />
+              ) : null}
             </div>
           );
         })}
       </div>
       <div className="mt-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
-        <span>Step {idx + 1} of {steps.length}</span>
-        <span className="rounded-lg bg-primary-soft px-2.5 py-1 font-bold text-primary">{active?.label}</span>
+        <span>
+          Step {idx + 1} of {steps.length}
+        </span>
+        <span className="rounded-lg bg-primary-soft px-2.5 py-1 font-bold text-primary">
+          {active?.label}
+        </span>
       </div>
     </div>
   );
