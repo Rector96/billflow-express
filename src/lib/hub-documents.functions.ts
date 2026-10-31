@@ -90,6 +90,12 @@ export const listMyHubDocuments = createServerFn({ method: "GET" })
                 : null,
           fulfillment_status:
             typeof m["fulfillment_status"] === "string" ? m["fulfillment_status"] : null,
+          delivery_method:
+            typeof m["certificate_delivery_method"] === "string"
+              ? m["certificate_delivery_method"]
+              : typeof m["delivery_method"] === "string"
+                ? m["delivery_method"]
+                : null,
         };
       }),
     );
@@ -235,6 +241,10 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
       throw new Error("The uploaded certificate could not be verified as a valid PDF.");
 
     const previous = asMeta(row.metadata);
+    const previousPath =
+      typeof previous["certificate_storage_path"] === "string"
+        ? previous["certificate_storage_path"]
+        : "";
     const now = new Date().toISOString();
     const { error: updateError } = await admin
       .from("hub_orders")
@@ -243,6 +253,7 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
         metadata: {
           ...previous,
           certificate_storage_path: data.storagePath,
+          certificate_delivery_method: "profile_download",
           document_attached_at: now,
           document_attached_by: context.userId,
           fulfillment_status: "digital_ready",
@@ -251,6 +262,21 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
       } as never)
       .eq("id", data.orderId);
     if (updateError) throw new Error(updateError.message);
+
+    // Only remove an older certificate after the new PDF is attached successfully.
+    // Restrict cleanup to this customer's exact order folder; never touch uploaded evidence.
+    const expectedPrefix = `${row.user_id}/${row.id}/`;
+    if (previousPath && previousPath !== data.storagePath && previousPath.startsWith(expectedPrefix)) {
+      const { error: cleanupError } = await admin.storage
+        .from(CERTIFICATE_BUCKET)
+        .remove([previousPath]);
+      if (cleanupError) {
+        console.error("[CAC] Previous certificate cleanup failed", {
+          orderId: row.id,
+          error: cleanupError.message,
+        });
+      }
+    }
 
     await notifyUser({
       userId: row.user_id,
@@ -263,7 +289,7 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
     void sendHubLifecycleEmail({
       userId: row.user_id,
       event: "digital_ready",
-      eventKey: `hub-order:${row.id}:digital_ready:email`,
+      eventKey: `hub-order:${row.id}:digital_ready:email:${data.storagePath}`,
       service: "cac",
       trackingReference: row.tracking_reference,
       amount: Number(row.amount),
