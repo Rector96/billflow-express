@@ -2,11 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type InitFundingResult = {
-  reference: string;
-  authorizationUrl: string;
-  amount: number;
-};
+export type InitFundingResult =
+  | { status: "ready"; reference: string; authorizationUrl: string; amount: number }
+  | { status: "pending"; reference: string; amount: number; message: string };
 
 function resolveCallbackUrl(): string | undefined {
   // Prefer explicit site URL (set on Netlify), then Origin, then Referer.
@@ -68,9 +66,12 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
       throw new Error("Could not create funding intent (no reference returned).");
     }
     if (!row.email) {
-      throw new Error(
-        "Your account has no email on file. Update your profile email, then try Fund Wallet again.",
-      );
+      return {
+        status: "pending",
+        reference: row.reference,
+        amount: Number(row.amount),
+        message: "Your funding reference was created, but checkout could not start because your account email is missing. Contact RockPay Care before trying again.",
+      };
     }
 
     const callbackUrl = resolveCallbackUrl();
@@ -78,43 +79,62 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
       console.warn("[paystack] no callback URL resolved; Paystack will use dashboard default");
     }
 
-    const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${secret}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: row.email,
-        amount: Math.round(Number(row.amount) * 100), // NGN -> kobo
-        currency: "NGN",
-        reference: row.reference,
-        ...(callbackUrl ? { callback_url: callbackUrl } : {}),
-        metadata: {
-          internal_reference: row.reference,
-          user_id: context.userId,
-          purpose: "wallet_funding",
-          mode: "test",
+    try {
+      const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
         },
-      }),
-    });
-    const json = (await res.json().catch(() => null)) as {
-      status?: boolean;
-      message?: string;
-      data?: { authorization_url?: string };
-    } | null;
+        body: JSON.stringify({
+          email: row.email,
+          amount: Math.round(Number(row.amount) * 100), // NGN -> kobo
+          currency: "NGN",
+          reference: row.reference,
+          ...(callbackUrl ? { callback_url: callbackUrl } : {}),
+          metadata: {
+            internal_reference: row.reference,
+            user_id: context.userId,
+            purpose: "wallet_funding",
+            mode: "test",
+          },
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        status?: boolean;
+        message?: string;
+        data?: { authorization_url?: string };
+      } | null;
 
-    if (!res.ok || !json?.status || !json.data?.authorization_url) {
-      const msg = json?.message ?? `Paystack initialize failed (HTTP ${res.status})`;
-      console.error("[paystack] initialize", res.status, msg);
-      throw new Error(msg);
+      if (!res.ok || !json?.status || !json.data?.authorization_url) {
+        const msg = json?.message ?? `Paystack initialize failed (HTTP ${res.status})`;
+        console.error("[paystack] initialize", res.status, msg, row.reference);
+        return {
+          status: "pending",
+          reference: row.reference,
+          amount: Number(row.amount),
+          message: "We couldn't confirm that checkout started. Your funding reference has been saved. Check its status before starting another top-up.",
+        };
+      }
+
+      return {
+        status: "ready",
+        reference: row.reference,
+        authorizationUrl: json.data.authorization_url,
+        amount: Number(row.amount),
+      };
+    } catch (error) {
+      console.error("[paystack] initialize request outcome unknown", {
+        reference: row.reference,
+        message: error instanceof Error ? error.message : "Unknown network error",
+      });
+      return {
+        status: "pending",
+        reference: row.reference,
+        amount: Number(row.amount),
+        message: "Checkout could not be confirmed because of a connection problem. We saved your funding reference; verify its status before trying another top-up.",
+      };
     }
-
-    return {
-      reference: row.reference,
-      authorizationUrl: json.data.authorization_url,
-      amount: Number(row.amount),
-    };
   });
 
 export type FundingStatus = {
