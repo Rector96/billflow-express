@@ -123,7 +123,9 @@ function AdminWallet() {
     try {
       const result = await recheck({ data: { reference } });
       if (result.credited) {
-        toast.success("Paystack verified. " + formatNaira(result.amount, false) + " credited to the wallet.");
+        toast.success(
+          "Paystack verified. " + formatNaira(result.amount, false) + " credited to the wallet.",
+        );
       } else if (result.status === "successful") {
         toast.success("This funding transaction is already settled; no duplicate credit was made.");
       } else {
@@ -247,7 +249,9 @@ function AdminWallet() {
                           disabled={recheckingReference !== null}
                           className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {recheckingReference === r.reference ? "Verifying with Paystack…" : "Recheck with Paystack"}
+                          {recheckingReference === r.reference
+                            ? "Verifying with Paystack…"
+                            : "Recheck with Paystack"}
                         </button>
                       </div>
                     ) : null}
