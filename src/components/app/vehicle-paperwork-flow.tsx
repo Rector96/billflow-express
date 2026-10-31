@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Car, FileText, Home, Loader2, Shield } from "lucide-react";
+import { Car, FileText, Home, Loader2, Shield, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -13,6 +13,7 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApp } from "@/lib/app-store";
 import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import { completeVehicleRenewal, verifyVehicle } from "@/lib/hub.functions";
@@ -20,6 +21,7 @@ import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
 
 type Step = "lookup" | "result" | "renew" | "done";
+const NIGERIAN_STATES = ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"] as const;
 type RenewalChoice = "license_sticker" | "third_party_insurance";
 
 type VehicleInfo = {
@@ -51,6 +53,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const [plate, setPlate] = useState("");
   const [state, setState] = useState("Lagos");
   const [lookingUp, setLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState("");
   const [vehicle, setVehicle] = useState<VehicleInfo | null>(null);
   const [choice, setChoice] = useState<RenewalChoice | null>(null);
   const [paying, setPaying] = useState(false);
@@ -74,9 +77,14 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const onLookup = async () => {
     const cleaned = plate.replace(/\s+/g, "").toUpperCase();
     if (cleaned.length < 5) {
-      toast.error("Enter a valid plate number.");
+      setLookupError("Enter a valid vehicle plate number (at least 5 characters).");
       return;
     }
+    if (!NIGERIAN_STATES.includes(state as (typeof NIGERIAN_STATES)[number])) {
+      setLookupError("Select the state where the vehicle is registered.");
+      return;
+    }
+    setLookupError("");
     if (!authed) {
       toast.error("Please log in to continue.");
       navigate({ to: "/login" });
@@ -95,7 +103,9 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
       });
       setStep("result");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Vehicle not found.");
+      const message = e instanceof Error ? e.message : "Vehicle not found.";
+      setLookupError(message);
+      toast.error(message);
     } finally {
       setLookingUp(false);
     }
@@ -181,32 +191,41 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Vehicle" backTo="/services" />
-      <div className="mx-auto max-w-md space-y-3 px-4 pb-28 pt-1">
+      <div className="vehicle-workflow mx-auto w-full max-w-5xl space-y-4 px-4 pb-28 pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "lookup" ? (
-          <section className="space-y-3">
-            <div className="space-y-1">
-              <Label>Plate number</Label>
-              <Input
-                value={plate}
-                onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                className="h-11 rounded-xl"
-                placeholder="e.g. ABC123XY"
-              />
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-start">
+            <div className="form-section-card space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"><Search className="size-5" /></span>
+                <div><h2 className="text-base font-bold tracking-tight">Find your vehicle</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Enter the registration plate and choose the state where the vehicle is registered.</p></div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle-plate">Vehicle plate number</Label>
+                  <Input id="vehicle-plate" value={plate} onChange={(e) => { setPlate(e.target.value.toUpperCase()); setLookupError(""); }} className="font-mono uppercase tracking-wider" placeholder="e.g. ABC123XY" autoComplete="off" />
+                  <p className="form-field-hint">Enter the plate exactly as printed on the vehicle plate.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle-state">Registration state</Label>
+                  <Select value={state} onValueChange={(value) => { setState(value); setLookupError(""); }}>
+                    <SelectTrigger id="vehicle-state"><SelectValue placeholder="Select state" /></SelectTrigger>
+                    <SelectContent>{NIGERIAN_STATES.map((item) => <SelectItem key={item} value={item}>{item === "FCT" ? "FCT (Abuja)" : item}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="form-field-hint">Choose the state shown on the vehicle registration record.</p>
+                </div>
+              </div>
+              {lookupError ? <p role="alert" className="form-field-error rounded-xl bg-destructive/5 p-3">{lookupError}</p> : null}
             </div>
-            <div className="space-y-1">
-              <Label>State</Label>
-              <Input
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                className="h-11 rounded-xl"
-              />
-            </div>
+            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
+              <div className="flex items-center gap-2 text-sm font-bold"><Shield className="size-4 text-primary" /> Lookup checklist</div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground"><li>• Confirm every character on the plate.</li><li>• Select the state shown on the registration.</li><li>• Check the returned vehicle details before renewal.</li></ul>
+            </aside>
             <PayActionBar>
               <Button
                 className="h-12 w-full rounded-xl font-semibold"
-                disabled={lookingUp}
+                disabled={lookingUp || plate.trim().length < 5}
                 onClick={() => void onLookup()}
               >
                 {lookingUp ? (
