@@ -6,12 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n, type OpsStats } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin, type OpsStats } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
 import { recheckWalletFunding } from "@/lib/paystack.functions";
 import { friendlyError } from "@/lib/app-store";
 
 export const Route = createFileRoute("/admin/wallet")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Wallet — ${BRAND.name} Admin` }] }),
   component: AdminWallet,
 });
