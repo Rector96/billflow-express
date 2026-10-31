@@ -4,13 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 /** Roles that exist in public.app_role enum today. */
 export type StaffRole = "super_admin" | "admin" | "support";
 
-export type AdminPerm = "view" | "users_manage" | "staff_manage" | "wallet_adjust" | "settings";
+export type AdminPerm =
+  | "view"
+  | "users_manage"
+  | "staff_manage"
+  | "wallet_adjust"
+  | "settings"
+  | "cac_documents";
 
 const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
-  super_admin: ["view", "users_manage", "staff_manage", "wallet_adjust", "settings"],
+  super_admin: ["view", "users_manage", "staff_manage", "wallet_adjust", "settings", "cac_documents"],
   // Account suspension/reactivation is super-admin-only in the database RPC.
-  admin: ["view", "settings"],
-  support: ["view"],
+  admin: ["view", "settings", "cac_documents"],
+  support: ["view", "cac_documents"],
 };
 
 export function permsForRoles(roles: StaffRole[]): Set<AdminPerm> {

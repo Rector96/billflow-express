@@ -30,11 +30,24 @@ function asMeta(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
 }
 
-async function assertStaff(userId: string) {
+async function assertCacOperator(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("is_staff", { _user_id: userId });
-  if (error) throw new Error(error.message || "Staff check failed");
-  if (data !== true) throw new Error("Forbidden: staff only");
+  const { data: isStaff, error: staffError } = await supabaseAdmin.rpc("is_staff", {
+    _user_id: userId,
+  });
+  if (staffError) throw new Error(staffError.message || "Staff check failed");
+  if (isStaff !== true) throw new Error("Forbidden: staff only");
+
+  const { data: roles, error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (roleError) throw new Error("Could not verify CAC document permissions.");
+  if (!(roles ?? []).some((entry) =>
+    ["support", "admin", "super_admin"].includes(String(entry.role))
+  )) {
+    throw new Error("Forbidden: CAC certificate handling requires support or admin access.");
+  }
   return supabaseAdmin;
 }
 
@@ -131,7 +144,7 @@ export const createCacCertificateUpload = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertCacOperator(context.userId);
     const { data: row, error } = await admin
       .from("hub_orders")
       .select("id, user_id, service, status, payment_reference, paid_at")
@@ -165,7 +178,7 @@ export const markCacCertificateEmailed = createServerFn({ method: "POST" })
     return { orderId, recipientEmail };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertCacOperator(context.userId);
     const { data: row, error } = await admin
       .from("hub_orders")
       .select("id, user_id, service, status, payment_reference, paid_at, metadata")
@@ -215,7 +228,7 @@ export const attachCacCertificate = createServerFn({ method: "POST" })
     return { orderId, storagePath };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertCacOperator(context.userId);
     const { data: row, error: readError } = await admin
       .from("hub_orders")
       .select(
