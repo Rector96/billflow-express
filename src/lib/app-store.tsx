@@ -507,8 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTransactions(
           [...walletTransactions, ...directTransactions].sort(
             (a, b) =>
-              new Date(`${b.date} ${b.time}`).getTime() -
-              new Date(`${a.date} ${a.time}`).getTime(),
+              new Date(`${b.date} ${b.time}`).getTime() - new Date(`${a.date} ${a.time}`).getTime(),
           ),
         );
       }
