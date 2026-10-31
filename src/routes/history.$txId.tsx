@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { requeryAirtime } from "@/lib/airtime.functions";
 import { requeryBill } from "@/lib/bills.functions";
+import { verifyWalletFunding } from "@/lib/paystack.functions";
 
 export const Route = createFileRoute("/history/$txId")({
   head: ({ params }) => ({
@@ -48,6 +49,7 @@ function TransactionDetails() {
   const tx = transactions.find((t) => t.id === txId);
   const checkAirtime = useServerFn(requeryAirtime);
   const checkBill = useServerFn(requeryBill);
+  const verifyFunding = useServerFn(verifyWalletFunding);
   const [bill, setBill] = useState<BillExtra | null>(null);
   const [loadingBill, setLoadingBill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,14 +103,20 @@ function TransactionDetails() {
   const providerRef =
     bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
 
+  const isWalletFunding =
+    tx?.direction === "in" && tx?.serviceSlug === "wallet" && tx?.method === "Paystack";
   const canRequery =
-    status === "pending" && Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime);
+    status === "pending" &&
+    (Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime) ||
+      (isWalletFunding && Boolean(tx?.providerReference)));
 
   const onRefresh = async () => {
     if (status !== "pending") return;
     setRefreshing(true);
     try {
-      if (isAirtime) {
+      if (isWalletFunding && tx?.providerReference) {
+        await verifyFunding({ data: { reference: tx.providerReference } });
+      } else if (isAirtime) {
         await checkAirtime({ data: { reference: txId } });
       } else {
         await checkBill({ data: { reference: txId } });
