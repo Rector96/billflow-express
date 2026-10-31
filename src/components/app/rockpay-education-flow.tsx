@@ -246,6 +246,7 @@ export function RockPayEducationFlow({ entryTitle = "Education" }: { entryTitle?
   if (step === "result") {
     return (
       <AppShell>
+        <PageHeader title={entryTitle} backTo="/services" />
         <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
           <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
             <span
