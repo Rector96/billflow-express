@@ -372,6 +372,7 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
       userId: context.userId,
       reference: data.reference,
       audit: true,
+      staffAuthorized: true,
     });
   });
 
@@ -380,6 +381,7 @@ export async function requeryAirtimeCore(opts: {
   userId?: string | null;
   reference: string;
   audit?: boolean;
+  staffAuthorized?: boolean;
 }): Promise<AirtimePurchaseResult> {
   const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
   const { supabase, reference } = opts;
@@ -393,7 +395,7 @@ export async function requeryAirtimeCore(opts: {
   if (error) throw new Error(error.message);
   const bill = bills?.[0];
   if (!bill) throw new Error("Transaction not found.");
-  if (opts.userId && bill.user_id && bill.user_id !== opts.userId)
+  if (!opts.staffAuthorized && opts.userId && bill.user_id && bill.user_id !== opts.userId)
     throw new Error("Transaction not found.");
   const amount = Number(bill.amount);
   const phone = String(bill.customer_identifier ?? "");
@@ -431,7 +433,8 @@ export async function requeryAirtimeCore(opts: {
   const { data: finalized, error: finError } = await asAdmin(supabaseAdmin).rpc(
     "trusted_complete_airtime_purchase",
     {
-      _user_id: opts.userId,
+      // Settle against the transaction owner, not the staff member performing an audited requery.
+      _user_id: bill.user_id,
       _internal_reference: bill.internal_reference,
       _outcome: outcome,
       _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",
