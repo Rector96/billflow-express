@@ -44,7 +44,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 lg:px-0 lg:pt-6",
+        "service-flow-page-header sticky top-0 z-40 shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 lg:px-0 lg:pt-3",
         brand
           ? "brand-gradient text-primary-foreground"
           : "border-b border-border/60 bg-background/90 backdrop-blur-md lg:border-0 lg:bg-transparent lg:backdrop-blur-none",
