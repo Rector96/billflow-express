@@ -506,3 +506,13 @@
     height: 2.4rem;
   }
 }
+
+.service-flow-content > div:not([id="pay-action"]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.service-flow-content > header {
+  flex: 0 0 auto;
+}
