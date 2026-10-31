@@ -36,18 +36,41 @@ export function WelcomeScreen() {
       <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-end lg:justify-center">
         <section className="welcome-content welcome-content-enter mx-auto w-full max-w-lg px-6 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-center lg:pb-0 lg:pt-[20vh]">
           <div className="mb-5 flex items-center justify-center gap-2">
-            <span className="grid size-10 place-items-center rounded-2xl border border-white/15 bg-white/10 text-violet-200"><WalletCards className="size-5" /></span>
-            <span className="grid size-10 place-items-center rounded-2xl border border-white/15 bg-white/10 text-violet-200"><Zap className="size-5" /></span>
+            <span className="grid size-10 place-items-center rounded-2xl border border-white/15 bg-white/10 text-violet-200">
+              <WalletCards className="size-5" />
+            </span>
+            <span className="grid size-10 place-items-center rounded-2xl border border-white/15 bg-white/10 text-violet-200">
+              <Zap className="size-5" />
+            </span>
           </div>
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">{BRAND.tagline}</p>
-          <h1 className="text-[2.35rem] font-bold leading-[1.08] sm:text-5xl lg:text-5xl">RockPay.<br />Your everyday app.</h1>
-          <p className="mx-auto mt-4 max-w-sm text-[15px] leading-relaxed opacity-85 sm:mt-5">Bills and essential services.<br />All in one secure wallet.</p>
-          <Button className="welcome-start mt-6 h-13 w-full rounded-full text-base font-bold sm:mt-7" onClick={() => start("/signup")}>
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">
+            {BRAND.tagline}
+          </p>
+          <h1 className="text-[2.35rem] font-bold leading-[1.08] sm:text-5xl lg:text-5xl">
+            RockPay.
+            <br />
+            Your everyday app.
+          </h1>
+          <p className="mx-auto mt-4 max-w-sm text-[15px] leading-relaxed opacity-85 sm:mt-5">
+            Bills and essential services.
+            <br />
+            All in one secure wallet.
+          </p>
+          <Button
+            className="welcome-start mt-6 h-13 w-full rounded-full text-base font-bold sm:mt-7"
+            onClick={() => start("/signup")}
+          >
             Get started <ArrowUpRight className="ml-2 size-5" />
           </Button>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-1 text-sm sm:mt-5">
             <span className="opacity-80">Already have an account?</span>
-            <Button variant="link" className="welcome-login h-auto px-1 py-1 text-sm font-semibold underline underline-offset-4" onClick={() => start("/login")}>Log in</Button>
+            <Button
+              variant="link"
+              className="welcome-login h-auto px-1 py-1 text-sm font-semibold underline underline-offset-4"
+              onClick={() => start("/login")}
+            >
+              Log in
+            </Button>
           </div>
         </section>
       </div>
