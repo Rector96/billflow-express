@@ -31,6 +31,7 @@ export type RoutedPayResult = {
   code: string;
   responseDescription: string;
   requestId: string;
+  vendorReference: string;
   transactionId: string | null;
   purchasedCode: string | null;
   contentStatus: string | null;
@@ -116,6 +117,7 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
     code: result.code,
     responseDescription: result.responseDescription,
     requestId: result.requestId,
+    vendorReference: result.requestId,
     transactionId: result.transactionId,
     purchasedCode: result.purchasedCode,
     contentStatus: result.contentStatus,
@@ -135,6 +137,7 @@ function fromVtuafrica(result: VtuafricaPayResult, requestId: string): RoutedPay
       (result.status === "successful" ? "000" : result.status === "pending" ? "099" : "016"),
     responseDescription: result.message,
     requestId,
+    vendorReference: result.reference,
     transactionId: result.transactionId,
     purchasedCode: result.token,
     contentStatus:
