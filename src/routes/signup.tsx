@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BRAND } from "@/lib/brand";
-import { BrandLogo } from "@/components/app/app-shell";
-import { PageHeader } from "@/components/app/page-header";
+import { AuthShell } from "@/components/app/auth-shell";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/signup")({
@@ -85,13 +84,8 @@ function SignupPage() {
   };
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md pb-10">
-      <PageHeader title="Create your account" />
-      <div className="flex justify-center pt-1 pb-2">
-        <BrandLogo className="h-[clamp(3rem,14vw,4.5rem)]" />
-      </div>
-
-      <form onSubmit={(e) => void submit(e)} className="space-y-5 px-6 pt-2" noValidate>
+    <AuthShell title="Create your account" subtitle="Your bills, all in one place.">
+      <form onSubmit={(e) => void submit(e)} className="space-y-5" noValidate>
         <Field
           label="Full Name"
           id="name"
@@ -170,8 +164,7 @@ function SignupPage() {
           </Link>
         </p>
       </form>
-    </main>
-  );
+    </AuthShell>
 }
 
 function Field({
