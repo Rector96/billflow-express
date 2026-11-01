@@ -77,11 +77,11 @@ function AdminReconciliation() {
     setError(null);
     try {
       const [txResult, walletResult] = await Promise.all([
-        asLooseRpc(supabase.rpc)("admin_reconciliation_queue", { _limit: 100 }),
-        asLooseRpc(supabase.rpc)("admin_wallet_reconciliation", {
+        asLooseRpc(supabase.rpc("admin_reconciliation_queue", { _limit: 100 })),
+        asLooseRpc(supabase.rpc("admin_wallet_reconciliation", {
           _limit: 100,
           _offset: 0,
-        }),
+        })),
       ]);
 
       if (txResult.error) throw txResult.error;
