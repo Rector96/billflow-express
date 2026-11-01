@@ -194,7 +194,7 @@ function AdminReconciliation() {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : !error && wallet ? (
             <div className="mt-4 rounded-2xl border bg-card p-4 text-sm">
               <p className="font-bold">Wallet integrity check passed</p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -206,7 +206,11 @@ function AdminReconciliation() {
 
           <div className="mt-5">
             <p className="mb-2 text-sm font-bold">Bill transaction reconciliation</p>
-            {rows.length === 0 ? (
+            {error ? (
+              <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
+                Bill reconciliation could not be verified because the data request failed.
+              </div>
+            ) : rows.length === 0 ? (
               <AdminEmpty
                 title="Everything is reconciled."
                 body="No transaction mismatches or stale pending bills right now."
