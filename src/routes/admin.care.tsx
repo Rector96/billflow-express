@@ -55,8 +55,8 @@ function CareQueue() {
     setError(null);
     try {
       const [s, t] = await Promise.all([
-        asLooseRpc(supabase.rpc)("admin_care_stats"),
-        asLooseRpc(supabase.rpc)("admin_care_queue", {
+        asLooseRpc(supabase.rpc.bind(supabase))("admin_care_stats"),
+        asLooseRpc(supabase.rpc.bind(supabase))("admin_care_queue", {
           _query: q.trim(),
           _status: status,
           _limit: PAGE,
