@@ -202,7 +202,7 @@ function AdminReconciliation() {
                 anomalies were returned.
               </p>
             </div>
-          )}
+          ) : null}
 
           <div className="mt-5">
             <p className="mb-2 text-sm font-bold">Bill transaction reconciliation</p>
