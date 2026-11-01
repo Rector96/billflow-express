@@ -573,6 +573,3 @@ export function downloadReceiptBlob(blob: Blob, filename: string): void {
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
-
-

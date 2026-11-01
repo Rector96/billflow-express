@@ -56,7 +56,9 @@ export function ReceiptShareButton({ payload, className }: Props) {
         `RockPay reference: ${payload.reference}`,
         payload.paystackRef ? `Paystack reference: ${payload.paystackRef}` : null,
         payload.providerRef ? `Provider reference: ${payload.providerRef}` : null,
-      ].filter(Boolean).join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       if (action === "download") {
         downloadReceiptBlob(blob, filename);
@@ -160,16 +162,44 @@ export function ReceiptShareButton({ payload, className }: Props) {
               </button>
             </div>
 
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Share</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Share
+            </p>
             <div className="grid gap-2">
-              {option("image", "share", "Share as image", "Send through WhatsApp and other available apps", Share2)}
-              {option("pdf", "share", "Share as PDF", "Send a PDF through available sharing apps", Share2)}
+              {option(
+                "image",
+                "share",
+                "Share as image",
+                "Send through WhatsApp and other available apps",
+                Share2,
+              )}
+              {option(
+                "pdf",
+                "share",
+                "Share as PDF",
+                "Send a PDF through available sharing apps",
+                Share2,
+              )}
             </div>
 
-            <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Download</p>
+            <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Download
+            </p>
             <div className="grid gap-2">
-              {option("image", "download", "Download image", "Save the receipt as a PNG image", FileImage)}
-              {option("pdf", "download", "Download PDF", "Save the receipt as a PDF document", FileText)}
+              {option(
+                "image",
+                "download",
+                "Download image",
+                "Save the receipt as a PNG image",
+                FileImage,
+              )}
+              {option(
+                "pdf",
+                "download",
+                "Download PDF",
+                "Save the receipt as a PDF document",
+                FileText,
+              )}
             </div>
           </div>
         </div>
