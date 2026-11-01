@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FileImage, FileText, Loader2, Share2, X } from "lucide-react";
+﻿import { useState } from "react";
+import { Download, FileImage, FileText, Loader2, Share2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/brand";
@@ -8,6 +8,7 @@ import {
   renderReceiptPng,
   renderReceiptPdfFromCanvas,
   shareOrDownload,
+  downloadReceiptBlob,
 } from "@/lib/receipt-share";
 import { renderFallbackReceiptPdf, renderFallbackReceiptPng } from "@/lib/receipt-fallback";
 import { cn } from "@/lib/utils";
@@ -17,71 +18,101 @@ type Props = {
   className?: string;
 };
 
+type ReceiptKind = "image" | "pdf";
+type Action = "share" | "download";
+
 export function ReceiptShareButton({ payload, className }: Props) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState<"image" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const run = async (kind: "image" | "pdf") => {
-    setBusy(kind);
+  const createReceipt = async (kind: ReceiptKind): Promise<Blob> => {
+    if (kind === "image") {
+      try {
+        return await renderReceiptPng(payload);
+      } catch (error) {
+        console.warn("[receipt-share] Primary image renderer failed; using fallback", error);
+        return await renderFallbackReceiptPng(payload);
+      }
+    }
+
     try {
-      let blob: Blob;
-      let usedFallback = false;
+      return await renderReceiptPdfFromCanvas(payload);
+    } catch (error) {
+      console.warn("[receipt-share] Primary PDF renderer failed; using fallback", error);
+      return await renderFallbackReceiptPdf(payload);
+    }
+  };
 
-      if (kind === "image") {
-        try {
-          blob = await renderReceiptPng(payload);
-        } catch (primaryError) {
-          console.warn(
-            "[receipt-share] primary image renderer failed; using fallback",
-            primaryError,
-          );
-          blob = await renderFallbackReceiptPng(payload);
-          usedFallback = true;
-        }
-      } else {
-        try {
-          blob = await renderReceiptPdfFromCanvas(payload);
-        } catch (primaryError) {
-          console.warn("[receipt-share] primary PDF renderer failed; using fallback", primaryError);
-          blob = await renderFallbackReceiptPdf(payload);
-          usedFallback = true;
-        }
+  const run = async (kind: ReceiptKind, action: Action) => {
+    const key = `${action}-${kind}`;
+    setBusy(key);
+
+    try {
+      const blob = await createReceipt(kind);
+      const filename = `${BRAND.name}-receipt-${payload.reference}.${kind === "image" ? "png" : "pdf"}`;
+      const text = [
+        payload.title,
+        payload.amountLabel,
+        `RockPay reference: ${payload.reference}`,
+        payload.paystackRef ? `Paystack reference: ${payload.paystackRef}` : null,
+        payload.providerRef ? `Provider reference: ${payload.providerRef}` : null,
+      ].filter(Boolean).join("\n");
+
+      if (action === "download") {
+        downloadReceiptBlob(blob, filename);
+        toast.success(kind === "image" ? "Receipt image downloaded" : "Receipt PDF downloaded");
+        setOpen(false);
+        return;
       }
 
       const result = await shareOrDownload({
         blob,
-        filename: `${BRAND.name}-receipt-${payload.reference}.${kind === "image" ? "png" : "pdf"}`,
+        filename,
         title: `${BRAND.name} receipt`,
-        text: [
-          payload.title,
-          payload.amountLabel,
-          `RockPay reference: ${payload.reference}`,
-          payload.paystackRef ? `Paystack reference: ${payload.paystackRef}` : null,
-          payload.providerRef ? `Provider reference: ${payload.providerRef}` : null,
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        text,
       });
 
-      toast.success(
-        usedFallback
-          ? result === "shared"
-            ? "Receipt shared"
-            : "Receipt saved"
-          : result === "shared"
-            ? "Receipt shared"
-            : kind === "image"
-              ? "Receipt image saved"
-              : "Receipt PDF saved",
-      );
+      if (result === "unsupported") {
+        toast.error("Sharing files isn't supported in this browser. Choose Download instead.");
+        return;
+      }
+
+      toast.success("Receipt shared");
       setOpen(false);
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") return;
-      console.error("[receipt-share]", e);
-      toast.error("We couldn't create the receipt. Please try again.");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      console.error("[receipt-share]", error);
+      toast.error("We couldn't process the receipt. Please try again.");
     } finally {
       setBusy(null);
     }
+  };
+
+  const option = (
+    kind: ReceiptKind,
+    action: Action,
+    label: string,
+    description: string,
+    Icon: typeof FileImage,
+  ) => {
+    const key = `${action}-${kind}`;
+
+    return (
+      <button
+        type="button"
+        disabled={!!busy}
+        onClick={() => void run(kind, action)}
+        className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+          {busy === key ? <Loader2 className="size-5 animate-spin" /> : <Icon className="size-5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold">{label}</span>
+          <span className="block text-[11px] text-muted-foreground">{description}</span>
+        </span>
+      </button>
+    );
   };
 
   return (
@@ -109,12 +140,13 @@ export function ReceiptShareButton({ payload, className }: Props) {
             aria-label="Close"
             onClick={() => !busy && setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-md max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-3xl border bg-card p-5 shadow-xl sm:max-h-none">
+
+          <div className="relative z-10 max-h-[calc(100dvh-7rem)] w-full max-w-md overflow-y-auto rounded-3xl border bg-card p-5 shadow-xl sm:max-h-none">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-extrabold tracking-tight">Share receipt</p>
+                <p className="text-base font-extrabold tracking-tight">Receipt options</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Branded {BRAND.name} receipt with logo — image or PDF
+                  Share your {BRAND.name} receipt or download a copy.
                 </p>
               </div>
               <button
@@ -128,48 +160,16 @@ export function ReceiptShareButton({ payload, className }: Props) {
               </button>
             </div>
 
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Share</p>
             <div className="grid gap-2">
-              <button
-                type="button"
-                disabled={!!busy}
-                onClick={() => void run("image")}
-                className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
-              >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-                  {busy === "image" ? (
-                    <Loader2 className="size-5 animate-spin" />
-                  ) : (
-                    <FileImage className="size-5" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold">Share as image</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    Best for WhatsApp, Instagram, and chats
-                  </span>
-                </span>
-              </button>
+              {option("image", "share", "Share as image", "Send through WhatsApp and other available apps", Share2)}
+              {option("pdf", "share", "Share as PDF", "Send a PDF through available sharing apps", Share2)}
+            </div>
 
-              <button
-                type="button"
-                disabled={!!busy}
-                onClick={() => void run("pdf")}
-                className="flex min-h-16 items-center gap-3 rounded-2xl border bg-background px-4 py-3.5 text-left transition hover:bg-muted/50 disabled:opacity-60"
-              >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-                  {busy === "pdf" ? (
-                    <Loader2 className="size-5 animate-spin" />
-                  ) : (
-                    <FileText className="size-5" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold">Share as PDF</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    Best for email, records, and printing
-                  </span>
-                </span>
-              </button>
+            <p className="mb-2 mt-5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Download</p>
+            <div className="grid gap-2">
+              {option("image", "download", "Download image", "Save the receipt as a PNG image", FileImage)}
+              {option("pdf", "download", "Download PDF", "Save the receipt as a PDF document", FileText)}
             </div>
           </div>
         </div>
