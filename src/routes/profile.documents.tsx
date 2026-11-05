@@ -94,7 +94,9 @@ function MyDocumentsPage() {
               className="mt-4 h-10 rounded-xl text-xs font-semibold"
               variant="outline"
             >
-              <Link to="/services">Browse services</Link>
+              <Link to="/services" search={{}}>
+                Browse services
+              </Link>
             </Button>
           </div>
         ) : null}

@@ -67,7 +67,8 @@ export const getHubServiceFee = createServerFn({ method: "GET" })
         .order("priority", { ascending: false })
         .limit(5);
       if (error || !rows?.length) return { fee: fallback, source: "fallback" };
-      const row = rows[0] as { markup_type?: string; markup_value?: number };
+      const row = rows[0];
+      if (!row) return { fee: fallback, source: "fallback" };
       const type = String(row.markup_type ?? "").toLowerCase();
       const value = Number(row.markup_value ?? 0);
       if ((type === "selling_price" || type === "fixed") && Number.isFinite(value) && value > 0) {

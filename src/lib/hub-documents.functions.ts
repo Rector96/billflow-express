@@ -335,7 +335,7 @@ export async function notifyCustomerHubStatus(input: {
     title: copy.title,
     message: copy.message,
     type: copy.type,
-    eventKey: input.eventKey,
+    ...(input.eventKey === undefined ? {} : { eventKey: input.eventKey }),
   });
 }
 
@@ -350,6 +350,6 @@ export async function notifyStaffNewHubOrder(input: {
     title: "New hub order",
     message: `${input.service.replace(/_/g, " ")} · ₦${Math.round(input.amount).toLocaleString("en-NG")} · ${input.orderHint}`,
     type: "pending",
-    eventKey: input.eventKey,
+    ...(input.eventKey === undefined ? {} : { eventKey: input.eventKey }),
   });
 }

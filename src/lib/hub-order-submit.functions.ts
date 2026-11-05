@@ -33,7 +33,7 @@ export const submitCacApplication = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hub_payment_intents is not yet in generated Supabase types.
-    const admin = supabaseAdmin as any;
+    const admin = supabaseAdmin;
     const { data: intent, error: intentError } = await admin
       .from("hub_payment_intents")
       .select(
@@ -101,8 +101,8 @@ export const submitCacApplication = createServerFn({ method: "POST" })
     }
 
     const finalPayload = (finalRow.order_payload ?? payload) as Record<string, unknown>;
-    const delivery = finalPayload.delivery === "deliver" ? "deliver" : "download";
-    const preferredName = String(finalPayload.preferredName ?? "");
+    const delivery = finalPayload["delivery"] === "deliver" ? "deliver" : "download";
+    const preferredName = String(finalPayload["preferredName"] ?? "");
     const trackingReference = String(finalRow.tracking_reference);
     const amount = Number(finalRow.amount ?? expectedKobo / 100);
     const wasExisting = Boolean(finalRow.was_existing);

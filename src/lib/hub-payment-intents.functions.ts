@@ -10,12 +10,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { loadHubFeesFromSupabase } from "@/lib/hub-pricing.loader";
 import { isBillLive } from "@/lib/product-mode";
+import type { Json } from "@/integrations/supabase/types";
 
 // Only CAC is enabled for secure intents until each other Hub service has
 // its matching server-side settlement and reconciliation flow.
 const HUB_SERVICES = ["cac"] as const;
 
 type HubService = (typeof HUB_SERVICES)[number];
+type HubOrderPayload = Record<string, Json | undefined>;
 
 function cleanText(value: unknown, max = 500): string {
   return String(value ?? "")
@@ -40,45 +42,45 @@ function cleanShipping(value: unknown): Record<string, string> {
   return output;
 }
 
-function validateOrderPayload(service: HubService, raw: unknown): Record<string, unknown> {
+function validateOrderPayload(service: HubService, raw: unknown): HubOrderPayload {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error("Order details are required.");
   }
   const input = raw as Record<string, unknown>;
 
   if (service === "cac") {
-    const nin = cleanText(input.nin).replace(/\D/g, "");
+    const nin = cleanText(input["nin"]).replace(/\D/g, "");
     if (nin.length !== 11) throw new Error("A valid 11-digit NIN is required.");
-    const delivery = input.delivery === "deliver" ? "deliver" : "download";
-    const shippingAddress = cleanText(input.shippingAddress, 500);
-    const shipping = cleanShipping(input.shipping);
+    const delivery = input["delivery"] === "deliver" ? "deliver" : "download";
+    const shippingAddress = cleanText(input["shippingAddress"], 500);
+    const shipping = cleanShipping(input["shipping"]);
     if (delivery === "deliver" && !shippingAddress) {
       throw new Error("A delivery address is required.");
     }
     const files =
-      input.applicationFiles && typeof input.applicationFiles === "object"
-        ? (input.applicationFiles as Record<string, unknown>)
+      input["applicationFiles"] && typeof input["applicationFiles"] === "object"
+        ? (input["applicationFiles"] as Record<string, unknown>)
         : {};
     const applicationFiles = {
-      idDocument: requiredText(files.idDocument, "Uploaded ID document", 500),
-      passportPhoto: requiredText(files.passportPhoto, "Uploaded passport photo", 500),
-      signature: requiredText(files.signature, "Uploaded signature", 500),
+      idDocument: requiredText(files["idDocument"], "Uploaded ID document", 500),
+      passportPhoto: requiredText(files["passportPhoto"], "Uploaded passport photo", 500),
+      signature: requiredText(files["signature"], "Uploaded signature", 500),
     };
-    const ownerEmail = requiredText(input.ownerEmail, "Owner email", 254).toLowerCase();
-    const businessEmail = requiredText(input.businessEmail, "Business email", 254).toLowerCase();
+    const ownerEmail = requiredText(input["ownerEmail"], "Owner email", 254).toLowerCase();
+    const businessEmail = requiredText(input["businessEmail"], "Business email", 254).toLowerCase();
     if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail) ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(businessEmail)
     ) {
       throw new Error("Enter valid owner and business email addresses.");
     }
-    const idType = requiredText(input.idType, "ID type", 80);
+    const idType = requiredText(input["idType"], "ID type", 80);
     if (
       !["NIN Slip", "International Passport", "Driver's Licence", "Voter's Card"].includes(idType)
     ) {
       throw new Error("Choose a supported ID type.");
     }
-    const dob = requiredText(input.dob, "Date of birth", 20);
+    const dob = requiredText(input["dob"], "Date of birth", 20);
     const parsedDob = new Date(`${dob}T00:00:00.000Z`);
     if (
       !/^\d{4}-\d{2}-\d{2}$/.test(dob) ||
@@ -87,30 +89,32 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
     ) {
       throw new Error("Enter a valid date of birth.");
     }
-    const gender = requiredText(input.gender, "Gender", 20);
+    const gender = requiredText(input["gender"], "Gender", 20);
     if (gender !== "Male" && gender !== "Female") throw new Error("Choose a valid gender.");
-    if (input.declarationAccepted !== true)
+    if (input["declarationAccepted"] !== true)
       throw new Error("Confirm the application declaration before payment.");
     return {
-      preferredName: requiredText(input.preferredName, "First business name choice", 160),
-      nameChoices: [input.preferredName, input.name2, input.name3].map((v) => cleanText(v, 160)),
-      nature: requiredText(input.nature, "Business activity", 160),
-      businessPhone: requiredText(input.businessPhone, "Business phone", 32),
+      preferredName: requiredText(input["preferredName"], "First business name choice", 160),
+      nameChoices: [input["preferredName"], input["name2"], input["name3"]].map((v) =>
+        cleanText(v, 160),
+      ),
+      nature: requiredText(input["nature"], "Business activity", 160),
+      businessPhone: requiredText(input["businessPhone"], "Business phone", 32),
       businessEmail,
-      ownerName: requiredText(input.ownerName, "Owner name", 160),
+      ownerName: requiredText(input["ownerName"], "Owner name", 160),
       gender,
       dob,
       declarationAccepted: true,
       declarationAcceptedAt: new Date().toISOString(),
-      nationality: requiredText(input.nationality, "Nationality", 80),
-      occupation: requiredText(input.occupation, "Occupation", 120),
+      nationality: requiredText(input["nationality"], "Nationality", 80),
+      occupation: requiredText(input["occupation"], "Occupation", 120),
       nin,
       idType,
-      idNumber: requiredText(input.idNumber, "ID number", 80),
-      residentialAddress: requiredText(input.residentialAddress, "Residential address", 500),
-      ownerPhone: requiredText(input.ownerPhone, "Owner phone", 32),
+      idNumber: requiredText(input["idNumber"], "ID number", 80),
+      residentialAddress: requiredText(input["residentialAddress"], "Residential address", 500),
+      ownerPhone: requiredText(input["ownerPhone"], "Owner phone", 32),
       ownerEmail,
-      businessAddress: requiredText(input.businessAddress, "Business address", 500),
+      businessAddress: requiredText(input["businessAddress"], "Business address", 500),
       applicationFiles,
       delivery,
       shippingAddress: delivery === "deliver" ? shippingAddress : "",
@@ -119,13 +123,13 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
   }
 
   if (service === "nin_retrieve" || service === "nin_slip" || service === "nin_card_print") {
-    const nin = cleanText(input.nin).replace(/\D/g, "");
-    const phone = cleanText(input.phone, 32);
+    const nin = cleanText(input["nin"]).replace(/\D/g, "");
+    const phone = cleanText(input["phone"], 32);
     if (nin.length !== 11 && phone.replace(/\D/g, "").length < 10) {
       throw new Error("Enter a valid NIN or phone number.");
     }
     const delivery = service === "nin_card_print";
-    const shippingAddress = cleanText(input.shippingAddress, 500);
+    const shippingAddress = cleanText(input["shippingAddress"], 500);
     if (delivery && !shippingAddress) throw new Error("A delivery address is required.");
     return {
       product:
@@ -138,20 +142,22 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
       phone,
       delivery: delivery ? "deliver" : "download",
       shippingAddress: delivery ? shippingAddress : "",
-      shipping: delivery ? cleanShipping(input.shipping) : {},
+      shipping: delivery ? cleanShipping(input["shipping"]) : {},
     };
   }
 
   if (service === "vehicle_license_sticker" || service === "vehicle_third_party_insurance") {
-    const plate = requiredText(input.plate, "Vehicle plate", 20).replace(/\s+/g, "").toUpperCase();
+    const plate = requiredText(input["plate"], "Vehicle plate", 20)
+      .replace(/\s+/g, "")
+      .toUpperCase();
     if (plate.length < 5) throw new Error("Enter a valid vehicle plate.");
     const delivery = service === "vehicle_license_sticker";
-    const shippingAddress = cleanText(input.shippingAddress, 500);
+    const shippingAddress = cleanText(input["shippingAddress"], 500);
     if (delivery && !shippingAddress) throw new Error("A delivery address is required.");
     return {
       plate,
-      state: requiredText(input.state, "Vehicle state", 80),
-      makeModel: cleanText(input.makeModel, 120),
+      state: requiredText(input["state"], "Vehicle state", 80),
+      makeModel: cleanText(input["makeModel"], 120),
       delivery: delivery ? "deliver" : "download",
       shippingAddress: delivery ? shippingAddress : "",
     };
@@ -159,67 +165,55 @@ function validateOrderPayload(service: HubService, raw: unknown): Record<string,
 
   if (service === "documents") {
     const documentType =
-      input.documentType === "constitution"
+      input["documentType"] === "constitution"
         ? "constitution"
-        : input.documentType === "tenancy"
+        : input["documentType"] === "tenancy"
           ? "tenancy"
           : null;
     if (!documentType) throw new Error("Choose a supported document type.");
     const partyA = requiredText(
-      input.partyA,
+      input["partyA"],
       documentType === "tenancy" ? "Landlord name" : "Business name",
       160,
     );
     const partyB = requiredText(
-      input.partyB,
+      input["partyB"],
       documentType === "tenancy" ? "Tenant name" : "Manager name",
       160,
     );
-    const address = requiredText(input.address, "Address", 500);
+    const address = requiredText(input["address"], "Address", 500);
     return {
       documentType,
       partyA,
       partyB,
       address,
-      rent: documentType === "tenancy" ? cleanText(input.rent, 40) : "",
-      duration: documentType === "tenancy" ? cleanText(input.duration, 40) : "",
+      rent: documentType === "tenancy" ? cleanText(input["rent"], 40) : "",
+      duration: documentType === "tenancy" ? cleanText(input["duration"], 40) : "",
       delivery: "download",
     };
   }
 
   throw new Error("Unsupported Hub service.");
 }
-
 async function resolveHubAmount(
   service: HubService,
-  payload: Record<string, unknown>,
+  payload: HubOrderPayload,
 ): Promise<number> {
-  const fees = await loadHubFeesFromSupabase();
-  let amount = 0;
-  switch (service) {
-    case "cac":
-      amount = Number(fees.cac || 0);
-      if (payload.delivery === "deliver") amount += Number(fees.cac_courier || 0);
-      break;
-    case "nin_retrieve":
-    case "nin_slip":
-      amount = Number(fees[service] || 0);
-      break;
-    case "nin_card_print":
-      amount = Number(fees.nin_card_print || fees.nin_plastic_card || 0);
-      if (payload.delivery === "deliver") amount += Number(fees.nin_courier || 0);
-      break;
-    case "vehicle_license_sticker":
-    case "vehicle_third_party_insurance":
-      amount = Number(fees[service] || 0);
-      break;
-    case "documents":
-      amount = Number(fees.documents || 0);
-      break;
+  if (service !== "cac") {
+    throw new Error("Unsupported Hub service.");
   }
+
+  const fees = await loadHubFeesFromSupabase();
+  let amount = Number(fees["cac"] || 0);
+
+  if (payload["delivery"] === "deliver") {
+    amount += Number(fees["cac_courier"] || 0);
+  }
+
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("The price for this Hub service is unavailable. Please try again later.");
   }
+
   return Math.round(amount * 100) / 100;
 }
 
@@ -231,8 +225,8 @@ export const getCacPriceQuote = createServerFn({ method: "GET" })
   })
   .handler(async ({ data }) => {
     const fees = await loadHubFeesFromSupabase();
-    const registration = Number(fees.cac || 0);
-    const courier = Number(fees.cac_courier || 0);
+      const registration = Number(fees["cac"] || 0);
+      const courier = Number(fees["cac_courier"] || 0);
     if (!Number.isFinite(registration) || registration <= 0) {
       throw new Error("The CAC registration price is currently unavailable.");
     }
@@ -270,7 +264,8 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
       throw new Error("CAC checkout is currently in preview mode and cannot accept live payments.");
     }
 
-    const email = cleanText((context.claims as Record<string, unknown>)?.email, 254).toLowerCase();
+    const claims = context.claims as Record<string, unknown>;
+    const email = cleanText(claims["email"], 254).toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new Error("Your account email is unavailable. Please sign in again.");
     }
@@ -287,7 +282,7 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
 
     const orderPayload = validateOrderPayload(data.service, data.orderDetails);
     if (data.service === "cac") {
-      const files = orderPayload.applicationFiles as Record<string, string>;
+      const files = orderPayload["applicationFiles"] as Record<string, string>;
       const prefix = `${context.userId}/`;
       if (
         Object.values(files).some(
@@ -312,9 +307,9 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
       // sharing a UID/draft folder is not enough: reject path substitution.
       const uploadFolder = `${context.userId}/${draftIds[0]}`;
       if (
-        files.idDocument !== `${uploadFolder}/id-document` ||
-        files.passportPhoto !== `${uploadFolder}/passport-photo` ||
-        files.signature !== `${uploadFolder}/signature.png`
+        files["idDocument"] !== `${uploadFolder}/id-document` ||
+        files["passportPhoto"] !== `${uploadFolder}/passport-photo` ||
+        files["signature"] !== `${uploadFolder}/signature.png`
       ) {
         throw new Error("CAC document paths do not match the expected uploads.");
       }
@@ -329,18 +324,18 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
         Record<string, unknown> | undefined;
       const signatureMeta = objects.get("signature.png")?.metadata as
         Record<string, unknown> | undefined;
-      const idMime = String(idMeta?.mimetype ?? "");
-      const photoMime = String(photoMeta?.mimetype ?? "");
+      const idMime = String(idMeta?.["mimetype"] ?? "");
+      const photoMime = String(photoMeta?.["mimetype"] ?? "");
       if (
         !idMeta ||
         !photoMeta ||
         !signatureMeta ||
         !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(idMime) ||
         !["image/jpeg", "image/png", "image/webp"].includes(photoMime) ||
-        String(signatureMeta.mimetype ?? "") !== "image/png" ||
-        Number(idMeta.size ?? 0) > 10 * 1024 * 1024 ||
-        Number(photoMeta.size ?? 0) > 5 * 1024 * 1024 ||
-        Number(signatureMeta.size ?? 0) > 2 * 1024 * 1024
+        String(signatureMeta["mimetype"] ?? "") !== "image/png" ||
+        Number(idMeta["size"] ?? 0) > 10 * 1024 * 1024 ||
+        Number(photoMeta["size"] ?? 0) > 5 * 1024 * 1024 ||
+        Number(signatureMeta["size"] ?? 0) > 2 * 1024 * 1024
       ) {
         throw new Error("CAC document uploads are missing or have invalid file types or sizes.");
       }
@@ -350,8 +345,7 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
     const paymentReference = `RP-HUB-${randomUUID().replace(/-/g, "").toUpperCase()}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- hub_payment_intents is a new table not yet present in generated Supabase types.
-    const { data: inserted, error } = await (supabaseAdmin as any)
+    const { data: inserted, error } = await supabaseAdmin
       .from("hub_payment_intents")
       .insert({
         user_id: context.userId,

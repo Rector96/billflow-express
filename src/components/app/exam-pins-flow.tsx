@@ -543,7 +543,7 @@ export function ExamPinsFlow({
                 Authorise {formatNaira(total, false)} for {quantity} PIN{quantity > 1 ? "s" : ""}.
               </p>
             </div>
-            <PinPad value={pin} onChange={setPin} maxLength={4} />
+            <PinPad value={pin} onChange={setPin} length={4} />
             {error ? (
               <div className="rounded-2xl border border-destructive/30 bg-destructive-soft/40 px-3 py-3 text-xs text-destructive">
                 {error}

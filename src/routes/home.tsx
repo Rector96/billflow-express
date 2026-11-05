@@ -238,7 +238,7 @@ function HomePage() {
                     Icon={s.Icon}
                     tint={s.tint}
                     to={href.to}
-                    params={href.params}
+                    {...(href.params ? { params: href.params } : {})}
                   />
                 );
               })}
@@ -260,7 +260,9 @@ function HomePage() {
                     Icon={s.icon}
                     tint={s.tint}
                     to={serviceHref(s.slug).to}
-                    params={serviceHref(s.slug).params}
+                    {...(serviceHref(s.slug).params
+                      ? { params: serviceHref(s.slug).params }
+                      : {})}
                   />
                 ) : null,
               )}

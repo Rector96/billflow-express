@@ -365,7 +365,7 @@ export function CacRegistrationFlow() {
     ];
     const i = order.indexOf(step);
     if (i <= 0) {
-      void navigate({ to: "/services" });
+      void navigate({ to: "/services", search: {} });
       return;
     }
     if (step === "pay" && delivery === "download") {

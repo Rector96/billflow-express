@@ -1,4 +1,3 @@
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -358,7 +357,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       quantity: data.quantity,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: settleError } = await supabaseAdmin.rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,
@@ -462,7 +461,7 @@ export const requeryExamPins = createServerFn({ method: "POST" })
       requery: true,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: settleError } = await supabaseAdmin.rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,

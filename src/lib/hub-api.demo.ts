@@ -39,8 +39,8 @@ export async function simulatePaystackInline(input: {
     channel: "hub",
     ...(input.metadata ?? {}),
   };
-  if (!metadata.service && metadata.service_type) {
-    metadata.service = metadata.service_type;
+  if (!metadata["service"] && metadata["service_type"]) {
+    metadata["service"] = metadata["service_type"];
   }
   const payload = { ...input, metadata };
   if (hasPaystackPublicKey()) {
@@ -130,8 +130,8 @@ export function buildGenerateDocumentPayload(input: {
     partyA: input.partyA.trim(),
     partyB: input.partyB.trim(),
     address: input.address.trim(),
-    rentAmountYearly: input.rent ? Number(input.rent.replace(/,/g, "")) : undefined,
-    duration: input.duration?.trim() || undefined,
+    ...(input.rent ? { rentAmountYearly: Number(input.rent.replace(/,/g, "")) } : {}),
+    ...(input.duration?.trim() ? { duration: input.duration.trim() } : {}),
     paymentReference: input.paymentReference,
     amount: input.fee,
     currency: "NGN",

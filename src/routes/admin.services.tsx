@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { formatNaira } from "@/lib/mock-data";
 import { n, requireAdminOrSuperAdmin, type ServiceRow } from "@/lib/admin";
@@ -62,7 +61,7 @@ function AdminServices() {
     try {
       const [{ data: breakdown, error: breakdownError }, { data: settings, error: settingsError }] =
         await Promise.all([
-          asLooseRpc(supabase.rpc)("admin_service_breakdown"),
+          supabase.rpc("admin_service_breakdown"),
           (
             supabase as unknown as {
               from: (t: string) => {
@@ -99,7 +98,7 @@ function AdminServices() {
     setSaving(slug);
     setError(null);
     try {
-      const { error: err } = await asLooseRpc(supabase.rpc)("admin_set_service_availability", {
+      const { error: err } = await supabase.rpc("admin_set_service_availability", {
         _service_slug: slug,
         _enabled: enabled,
       });

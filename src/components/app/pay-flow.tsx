@@ -204,7 +204,9 @@ export function PayFlow() {
             We are focusing on electricity, cable and education first. Check back later.
           </p>
           <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
-            <Link to="/services">Back to services</Link>
+            <Link to="/services" search={{}}>
+              Back to services
+            </Link>
           </Button>
         </div>
       </AppShell>

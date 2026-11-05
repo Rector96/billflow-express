@@ -143,7 +143,7 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
         state: info.state || state,
         makeModel: info.makeModel || "Vehicle",
         color: info.color,
-        chassisNumber: info.chassisNumber,
+        chassisNumber: "chassisMasked" in info ? info.chassisMasked : info.chassisNumber,
         expiryStatus: info.expiryStatus,
       });
       setStep("result");

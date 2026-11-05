@@ -1,4 +1,3 @@
-import { asLooseRpc } from "@/lib/loose-rpc";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
@@ -136,7 +135,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         productCode: meterType,
         baseAmount: data.amount,
       });
-      const { data: started, error } = await asLooseRpc(context.supabase.rpc)(
+      const { data: started, error } = await context.supabase.rpc(
         "start_direct_bill_order",
         {
           _service_slug: "electricity",
@@ -188,7 +187,7 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       productCode: variationCode,
       baseAmount: providerAmount,
     });
-    const { data: started, error } = await asLooseRpc(context.supabase.rpc)(
+    const { data: started, error } = await context.supabase.rpc(
       "start_direct_bill_order",
       {
         _service_slug: "cable",
@@ -349,7 +348,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     if (gatewayStatus !== "success") {
       const failed = gatewayStatus === "failed" || gatewayStatus === "abandoned";
       if (failed) {
-        await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
+        await supabaseAdmin.rpc("trusted_complete_direct_bill_purchase", {
           _user_id: context.userId,
           _internal_reference: billRef,
           _outcome: "failed",
@@ -380,7 +379,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       Number(ps.amount) !== expectedKobo ||
       String(ps.reference) !== paystackRef
     ) {
-      await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
+      await supabaseAdmin.rpc("trusted_complete_direct_bill_purchase", {
         _user_id: context.userId,
         _internal_reference: billRef,
         _outcome: "pending",
@@ -487,7 +486,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
 
     const pay = toVtpassShape(routed);
     const outcome = routed.status;
-    const { data: finalized, error: finErr } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: finErr } = await supabaseAdmin.rpc(
       "trusted_complete_direct_bill_purchase",
       {
         _user_id: context.userId,
@@ -528,7 +527,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       try {
         const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
         await maybeRecordTransactionProfit(
-          { rpc: asLooseRpc(supabaseAdmin.rpc) },
+          { rpc: (fn, args) => supabaseAdmin.rpc(fn, args) },
           {
             internalReference: billRef,
             customerAmount: amount,

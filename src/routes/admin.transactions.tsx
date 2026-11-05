@@ -4,7 +4,6 @@ import { Copy, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -125,7 +124,7 @@ function AdminTransactions() {
         to = end.toISOString();
       }
 
-      const { data, error } = await asLooseRpc(supabase.rpc)("admin_transaction_directory", {
+      const { data, error } = await supabase.rpc("admin_transaction_directory", {
         _query: q.trim(),
         _status: status,
         _service: service,

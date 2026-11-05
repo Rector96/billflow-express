@@ -149,7 +149,7 @@ export async function sendHubLifecycleEmail(
       amount: input.amount ?? null,
       trackingNote: input.trackingNote ?? null,
       courierName: input.courierName ?? null,
-      appOrigin: input.appOrigin,
+      ...(input.appOrigin === undefined ? {} : { appOrigin: input.appOrigin }),
     };
     const { error } = await supabaseAdmin.from("hub_email_outbox").upsert(
       {
@@ -159,7 +159,7 @@ export async function sendHubLifecycleEmail(
         payload,
         status: "pending",
         next_attempt_at: new Date().toISOString(),
-      } as never,
+      },
       { onConflict: "event_key", ignoreDuplicates: true },
     );
     if (error) {
@@ -169,7 +169,12 @@ export async function sendHubLifecycleEmail(
 
     if (!isResendConfigured()) return { queued: true };
     const delivery = await processHubEmailOutbox(5);
-    return { queued: true, sent: delivery.sent > 0, error: delivery.errors[0] };
+    const firstError = delivery.errors[0];
+    return {
+      queued: true,
+      sent: delivery.sent > 0,
+      ...(firstError === undefined ? {} : { error: firstError }),
+    };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Email enqueue failed";
     console.warn("[hub-email] enqueue exception", message);

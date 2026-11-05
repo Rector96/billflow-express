@@ -118,6 +118,195 @@ export type Database = {
           },
         ];
       };
+      pricing_rules: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          economics_source: string | null;
+          id: string;
+          is_active: boolean;
+          markup_type: string;
+          markup_value: number;
+          max_amount: number | null;
+          min_amount: number | null;
+          priority: number;
+          product_code: string | null;
+          provider: string | null;
+          service: string;
+          updated_at: string;
+          verified_at: string | null;
+          verified_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          economics_source?: string | null;
+          id?: string;
+          is_active?: boolean;
+          markup_type: string;
+          markup_value: number;
+          max_amount?: number | null;
+          min_amount?: number | null;
+          priority?: number;
+          product_code?: string | null;
+          provider?: string | null;
+          service: string;
+          updated_at?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          economics_source?: string | null;
+          id?: string;
+          is_active?: boolean;
+          markup_type?: string;
+          markup_value?: number;
+          max_amount?: number | null;
+          min_amount?: number | null;
+          priority?: number;
+          product_code?: string | null;
+          provider?: string | null;
+          service?: string;
+          updated_at?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
+        };
+        Relationships: [];
+      };
+      service_availability: {
+        Row: {
+          is_enabled: boolean;
+          service_slug: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          is_enabled?: boolean;
+          service_slug: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          is_enabled?: boolean;
+          service_slug?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      hub_orders: {
+        Row: {
+          amount: number;
+          created_at: string;
+          customer_identifier: string | null;
+          delivered_at: string | null;
+          dispatched_at: string | null;
+          document_url: string | null;
+          fulfillment_status: string | null;
+          id: string;
+          metadata: Json;
+          paid_at: string | null;
+          payment_reference: string;
+          service: string;
+          status: string;
+          tracking_note: string | null;
+          tracking_reference: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          customer_identifier?: string | null;
+          delivered_at?: string | null;
+          dispatched_at?: string | null;
+          document_url?: string | null;
+          fulfillment_status?: string | null;
+          id?: string;
+          metadata?: Json;
+          paid_at?: string | null;
+          payment_reference: string;
+          service: string;
+          status?: string;
+          tracking_note?: string | null;
+          tracking_reference?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          customer_identifier?: string | null;
+          delivered_at?: string | null;
+          dispatched_at?: string | null;
+          document_url?: string | null;
+          fulfillment_status?: string | null;
+          id?: string;
+          metadata?: Json;
+          paid_at?: string | null;
+          payment_reference?: string;
+          service?: string;
+          status?: string;
+          tracking_note?: string | null;
+          tracking_reference?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      hub_payment_intents: {
+        Row: {
+          amount_kobo: number;
+          created_at: string;
+          currency: string;
+          expires_at: string;
+          id: string;
+          order_payload: Json;
+          paid_at: string | null;
+          payment_reference: string;
+          paystack_domain: string;
+          provider_transaction_id: number | null;
+          service: string;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          amount_kobo: number;
+          created_at?: string;
+          currency?: string;
+          expires_at?: string;
+          id?: string;
+          order_payload?: Json;
+          paid_at?: string | null;
+          payment_reference: string;
+          paystack_domain: string;
+          provider_transaction_id?: number | null;
+          service: string;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          amount_kobo?: number;
+          created_at?: string;
+          currency?: string;
+          expires_at?: string;
+          id?: string;
+          order_payload?: Json;
+          paid_at?: string | null;
+          payment_reference?: string;
+          paystack_domain?: string;
+          provider_transaction_id?: number | null;
+          service?: string;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       hub_email_outbox: {
         Row: {
           attempts: number;
@@ -532,9 +721,34 @@ export type Database = {
       };
       __apply_migration: { Args: { sql: string }; Returns: undefined };
       _pin_is_locked: { Args: { _locked_until: string }; Returns: boolean };
+      admin_care_queue: {
+        Args: { _limit?: number; _offset?: number; _query?: string; _status?: string };
+        Returns: {
+          category: string;
+          created_at: string;
+          description: string;
+          id: string;
+          status: string;
+          subject: string | null;
+          ticket_number: string | null;
+          total_count: number;
+          transaction_id: string | null;
+          user_email: string;
+          user_id: string;
+          user_label: string;
+        }[];
+      };
       admin_care_stats: { Args: never; Returns: Json };
       admin_dashboard_stats: { Args: never; Returns: Json };
+      admin_grant_staff_role: {
+        Args: { _email: string; _role: string };
+        Returns: boolean;
+      };
       admin_ops_stats: { Args: never; Returns: Json };
+      admin_remove_staff_role: {
+        Args: { _role: string; _user_id: string };
+        Returns: boolean;
+      };
       admin_reconciliation_queue: { Args: { _limit?: number }; Returns: Json };
       admin_wallet_funding_queue: {
         Args: { _limit?: number; _offset?: number; _query?: string; _status?: string };
@@ -545,11 +759,66 @@ export type Database = {
         Returns: Json;
       };
       admin_service_breakdown: { Args: never; Returns: Json };
+      admin_set_service_availability: {
+        Args: { _enabled: boolean; _service_slug: string };
+        Returns: Database["public"]["Tables"]["service_availability"]["Row"];
+      };
       admin_set_account_status: {
         Args: { _reason?: string; _status: string; _user_id: string };
         Returns: boolean;
       };
+      admin_transaction_directory: {
+        Args: {
+          _channel?: string;
+          _from?: string | null;
+          _limit?: number;
+          _offset?: number;
+          _query?: string;
+          _service?: string;
+          _status?: string;
+          _to?: string | null;
+        };
+        Returns: {
+          amount: number;
+          created_at: string;
+          customer_identifier: string;
+          id: string;
+          internal_reference: string;
+          metadata: Json;
+          product: string | null;
+          provider: string;
+          provider_channel: string | null;
+          provider_request_id: string | null;
+          provider_response_code: string | null;
+          provider_response_message: string | null;
+          provider_status: string | null;
+          provider_transaction_id: string | null;
+          service: string;
+          status: string;
+          total_count: number;
+          updated_at: string;
+          user_email: string;
+          user_id: string;
+          user_label: string;
+          user_phone: string;
+          wallet_id: string | null;
+        }[];
+      };
       admin_tx_volume_series: { Args: { _days?: number }; Returns: Json };
+      admin_user_directory: {
+        Args: { _limit?: number; _offset?: number; _query?: string; _status?: string };
+        Returns: {
+          account_status: string;
+          balance: number;
+          created_at: string;
+          email: string;
+          full_name: string;
+          phone: string;
+          total_count: number;
+          tx_count: number;
+          user_id: string;
+        }[];
+      };
       admin_write_audit: {
         Args: {
           _action: string;
@@ -682,6 +951,22 @@ export type Database = {
           reference: string;
         }[];
       };
+      finalize_hub_payment_intent: {
+        Args: {
+          _paid_at?: string;
+          _payment_reference: string;
+          _provider_transaction_id: number;
+        };
+        Returns: {
+          amount: number;
+          order_id: string;
+          order_payload: Json;
+          service: string;
+          tracking_reference: string;
+          user_id: string;
+          was_existing: boolean;
+        }[];
+      };
       generate_billpay_id: { Args: never; Returns: string };
       has_role: {
         Args: {
@@ -712,6 +997,25 @@ export type Database = {
         }[];
       };
       set_transaction_pin: { Args: { _pin: string }; Returns: boolean };
+      start_direct_bill_order: {
+        Args: {
+          _amount: number;
+          _customer_identifier: string;
+          _metadata?: Json;
+          _product: string;
+          _provider: string;
+          _request_id?: string | null;
+          _service_label: string;
+          _service_slug: string;
+        };
+        Returns: {
+          amount: number;
+          bill_id: string;
+          internal_reference: string;
+          paystack_reference: string;
+          request_id: string;
+        }[];
+      };
       settle_paystack_funding: {
         Args: {
           _payload?: Json;
@@ -766,6 +1070,66 @@ export type Database = {
           bill_id: string;
           internal_reference: string;
           request_id: string;
+        }[];
+      };
+      trusted_complete_bill_purchase: {
+        Args: {
+          _internal_reference: string;
+          _outcome: Database["public"]["Enums"]["tx_status"];
+          _payload?: Json;
+          _provider_transaction_id?: string | null;
+          _user_id: string;
+        };
+        Returns: {
+        bill_id: string;
+        internal_reference: string;
+        status: Database["public"]["Enums"]["tx_status"];
+        balance_after: number;
+        refunded: boolean;
+      }[];
+      };
+      trusted_record_transaction_profit: {
+        Args: {
+          _customer_amount: number;
+          _internal_reference: string;
+          _pricing_rule_id?: string | null;
+          _product_code?: string | null;
+          _provider?: string | null;
+          _provider_amount?: number | null;
+          _provider_commission?: number | null;
+          _provider_cost?: number | null;
+          _profit?: number | null;
+          _rockpay_fee?: number | null;
+          _service?: string | null;
+        };
+        Returns: { already_recorded: boolean; id: string }[];
+      };
+      trusted_backfill_transaction_profit_costs: {
+        Args: {
+          _internal_reference: string;
+          _provider_commission?: number | null;
+          _provider_cost?: number | null;
+        };
+        Returns: {
+          already_complete: boolean;
+          id: string | null;
+          reason: string;
+          updated: boolean;
+        }[];
+      };
+      trusted_complete_direct_bill_purchase: {
+        Args: {
+          _internal_reference: string;
+          _outcome: Database["public"]["Enums"]["tx_status"];
+          _payload?: Json;
+          _provider_transaction_id?: string | null;
+          _user_id: string;
+        };
+        Returns: {
+          amount: number;
+          bill_id: string;
+          internal_reference: string;
+          status: Database["public"]["Enums"]["tx_status"];
         }[];
       };
       verify_transaction_pin: { Args: { _pin: string }; Returns: boolean };

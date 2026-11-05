@@ -74,13 +74,7 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
     }
 
     const best = new Map<string, { fee: number; priority: number }>();
-    for (const raw of data ?? []) {
-      const row = raw as {
-        service?: string;
-        markup_type?: string;
-        markup_value?: number;
-        priority?: number;
-      };
+    for (const row of data ?? []) {
       const service = String(row.service ?? "")
         .trim()
         .toLowerCase();

@@ -340,7 +340,9 @@ function TransactionDetails() {
           ) : null}
           {status === "failed" ? (
             <Button className="h-12 w-full rounded-2xl font-bold" asChild>
-              <Link to="/services">Browse services</Link>
+              <Link to="/services" search={{}}>
+                Browse services
+              </Link>
             </Button>
           ) : null}
           <ReceiptShareButton

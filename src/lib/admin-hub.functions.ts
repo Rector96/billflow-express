@@ -13,6 +13,7 @@ import {
   paymentStatusForFulfillment,
 } from "@/lib/hub-fulfillment";
 import { notifyStaff, notifyUser } from "@/lib/hub-notify.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export type HubOrderRow = {
   id: string;
@@ -23,7 +24,7 @@ export type HubOrderRow = {
   payment_reference: string | null;
   tracking_reference: string | null;
   customer_identifier: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: Record<string, Json | undefined> | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -106,8 +107,24 @@ async function assertSuperAdmin(userId: string, action: string) {
   return assertRole(userId, ["super_admin"], action);
 }
 
-function asMeta(raw: unknown): Record<string, unknown> {
-  return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
+function isJsonValue(value: unknown): value is Json {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return true;
+  }
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  if (typeof value === "object") {
+    return Object.values(value).every((item) => item === undefined || isJsonValue(item));
+  }
+  return false;
+}
+
+function asMeta(raw: unknown): Record<string, Json | undefined> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const metadata: Record<string, Json | undefined> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined || isJsonValue(value)) metadata[key] = value;
+  }
+  return metadata;
 }
 
 export const listHubOrders = createServerFn({ method: "GET" })
@@ -136,7 +153,9 @@ export const listHubOrders = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { orders: (rows ?? []) as HubOrderRow[] };
+    return {
+      orders: (rows ?? []).map((row) => ({ ...row, metadata: asMeta(row.metadata) })),
+    };
   });
 
 /** Full order + profile for bank-grade side panel */
@@ -157,7 +176,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       .eq("id", data.orderId)
       .limit(1);
     if (error) throw new Error(error.message);
-    const row = rows?.[0] as HubOrderRow | undefined;
+    const row = rows?.[0];
     if (!row) throw new Error("Order not found");
 
     let profile: HubCustomerProfile | null = null;
@@ -230,7 +249,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
         if (signed?.signedUrl) applicationFiles[key] = signed.signedUrl;
       }
     }
-    return { order: { ...row, profile, applicationFiles } };
+    return { order: { ...row, metadata: asMeta(row.metadata), profile, applicationFiles } };
   });
 
 export const listDispatchQueue = createServerFn({ method: "GET" })
@@ -246,27 +265,29 @@ export const listDispatchQueue = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw new Error(error.message);
 
-    const orders = ((rows ?? []) as HubOrderRow[]).filter((o) => {
-      const st = String(o.status).toLowerCase();
-      if (st === "failed") return false;
-      const meta = asMeta(o.metadata);
-      const delivery = String(meta["delivery"] ?? "").toLowerCase();
-      const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
-      if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
-      const svc = o.service.toLowerCase();
-      const physical =
-        delivery === "deliver" ||
-        svc.includes("card_print") ||
-        svc.includes("plastic") ||
-        svc.includes("sticker") ||
-        svc.includes("license");
-      if (!physical && delivery === "download") return false;
-      if (!physical && !delivery) {
-        if (svc.includes("cac") && meta["shipping_address"]) return true;
-        return false;
-      }
-      return true;
-    });
+    const orders = (rows ?? [])
+      .filter((o) => {
+        const st = String(o.status).toLowerCase();
+        if (st === "failed") return false;
+        const meta = asMeta(o.metadata);
+        const delivery = String(meta["delivery"] ?? "").toLowerCase();
+        const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
+        if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
+        const svc = o.service.toLowerCase();
+        const physical =
+          delivery === "deliver" ||
+          svc.includes("card_print") ||
+          svc.includes("plastic") ||
+          svc.includes("sticker") ||
+          svc.includes("license");
+        if (!physical && delivery === "download") return false;
+        if (!physical && !delivery) {
+          if (svc.includes("cac") && meta["shipping_address"]) return true;
+          return false;
+        }
+        return true;
+      })
+      .map((order) => ({ ...order, metadata: asMeta(order.metadata) }));
     return { orders };
   });
 
@@ -325,9 +346,8 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
 
     if (statusChanged) {
       const prevMeta = currentMeta;
-      const history = Array.isArray(prevMeta["status_history"])
-        ? [...(prevMeta["status_history"] as unknown[])]
-        : [];
+      const historyValue = prevMeta["status_history"];
+      const history: Json[] = Array.isArray(historyValue) ? [...historyValue] : [];
       history.push({
         from: row.status,
         to: data.status,
@@ -336,7 +356,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
         note: data.note || null,
       });
 
-      const nextMeta = {
+      const nextMeta: Record<string, Json | undefined> = {
         ...prevMeta,
         status_history: history,
         status_event_key: eventKey,
@@ -351,7 +371,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
           status: data.status,
           metadata: nextMeta,
           updated_at: new Date().toISOString(),
-        } as never)
+        })
         .eq("id", data.orderId);
 
       if (error) throw new Error(error.message);
@@ -939,13 +959,13 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
     }
 
     // Recover notifications with the same stable event keys used by the webhook.
-    const payload = (order.order_payload ?? {}) as Record<string, unknown>;
-    const delivery = payload.delivery === "deliver" ? "deliver" : "download";
+    const payload = asMeta(order.order_payload);
+    const delivery = payload["delivery"] === "deliver" ? "deliver" : "download";
     const userId = String(order.user_id);
     const reference = String(intent.payment_reference);
     const amount = Number(order.amount ?? expectedKobo / 100);
     const trackingReference = String(order.tracking_reference);
-    const preferredName = String(payload.preferredName ?? "CAC application");
+    const preferredName = String(payload["preferredName"] ?? "CAC application");
     const eventKey = `hub-payment:${reference}:paid`;
     const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
       await Promise.all([
@@ -1103,7 +1123,7 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
           markup_type: "selling_price",
           markup_value: data.markupValue,
           updated_at: new Date().toISOString(),
-        } as never)
+        })
         .eq("id", rows[0].id);
       if (error) throw new Error(error.message);
     } else {
@@ -1115,7 +1135,7 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
         markup_value: data.markupValue,
         is_active: true,
         priority: 100,
-      } as never);
+      });
       if (error) throw new Error(error.message);
     }
 

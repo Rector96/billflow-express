@@ -97,6 +97,7 @@ function WalletPage() {
                 </Link>
                 <Link
                   to="/services"
+                  search={{}}
                   className="press inline-flex h-10 items-center justify-center rounded-xl bg-primary-foreground/12 px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-foreground/20"
                 >
                   Pay a bill

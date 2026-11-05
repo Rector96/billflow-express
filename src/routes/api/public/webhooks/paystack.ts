@@ -99,7 +99,7 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
 async function reconcileHubPayment(reference: string): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payment intent table is newly migrated.
-  const admin = supabaseAdmin as any;
+  const admin = supabaseAdmin;
   const { data: intent, error } = await admin
     .from("hub_payment_intents")
     .select("id,service,amount_kobo,currency,paystack_domain,status,provider_transaction_id")
@@ -177,9 +177,12 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
 
   // Always attempt the idempotent notifications, including when a previous
   // webhook already finalized the payment. This recovers transient insert failures.
-  const payload = (order.order_payload ?? {}) as Record<string, unknown>;
-  const delivery = payload.delivery === "deliver" ? "deliver" : "download";
-  const preferredName = String(payload.preferredName ?? "CAC application");
+  const payload =
+    order.order_payload && typeof order.order_payload === "object" && !Array.isArray(order.order_payload)
+      ? order.order_payload
+      : {};
+  const delivery = payload["delivery"] === "deliver" ? "deliver" : "download";
+  const preferredName = String(payload["preferredName"] ?? "CAC application");
   const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
   const userId = String(order.user_id);
   const trackingReference = String(order.tracking_reference);

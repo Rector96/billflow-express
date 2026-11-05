@@ -30,6 +30,7 @@ export function SectionTitle({
         to ? (
           <Link
             to={to}
+            {...(to === "/services" ? { search: {} } : {})}
             className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
           >
             {action}
@@ -129,7 +130,12 @@ export function ServiceTile({
   );
   if (to) {
     return (
-      <Link to={to} {...(params ? { params } : {})} className={cls}>
+      <Link
+        to={to}
+        {...(to === "/services" ? { search: {} } : {})}
+        {...(params ? { params } : {})}
+        className={cls}
+      >
         {inner}
       </Link>
     );

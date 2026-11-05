@@ -302,7 +302,9 @@ export function RockPayBillFlow() {
             This RockPay bill service is not enabled yet.
           </p>
           <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
-            <Link to="/services">Back to services</Link>
+            <Link to="/services" search={{}}>
+              Back to services
+            </Link>
           </Button>
         </div>
       </AppShell>

@@ -159,10 +159,10 @@ function AdminHubOrders() {
       try {
         const res = await runList({
           data: {
-            limit: 150,
-            service: filterService || undefined,
-            status: filterStatus || undefined,
-          },
+          limit: 150,
+          ...(filterService ? { service: filterService } : {}),
+          ...(filterStatus ? { status: filterStatus } : {}),
+        },
         });
         const next = res.orders ?? [];
         if (prevCount.current != null && next.length > prevCount.current) {
@@ -291,7 +291,9 @@ function AdminHubOrders() {
     if (!detail) return;
     setBusy(true);
     try {
-      await runStatus({ data: { orderId: detail.id, status, note } });
+      await runStatus({
+        data: { orderId: detail.id, status, ...(note === undefined ? {} : { note }) },
+      });
       toast.success(`Marked ${status.replace(/_/g, " ")}`);
       await refreshDetail();
     } catch (e) {
@@ -787,87 +789,63 @@ function AdminHubOrders() {
                       <MapPin className="size-3" /> Address & form data
                     </div>
                     <Field
-                      label="Business name choices"
-                      value={
-                        Array.isArray(
-                          (meta["application"] as Record<string, unknown> | undefined)?.nameChoices,
-                        )
-                          ? (
-                              (meta["application"] as Record<string, unknown>)
-                                .nameChoices as string[]
-                            )
-                              .filter(Boolean)
-                              .join(" / ")
-                          : metaGet(meta, "preferred_name")
-                      }
-                    />
-                    <Field
-                      label="Name choice 2"
-                      value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.name2 ?? "—",
-                      )}
-                    />
-                    <Field
                       label="Name choice 3"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.name3 ?? "—",
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.["name3"] ?? "—",
                       )}
                     />
                     <Field label="Owner" value={metaGet(meta, "owner_name")} />
                     <Field
                       label="Gender"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.gender ?? "—",
+                       (meta?.["application"] as Record<string, unknown> | undefined)?.["gender"] ?? "—",
                       )}
                     />
                     <Field
                       label="Date of birth"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.dob ?? "—",
+                  (meta?.["application"] as Record<string, unknown> | undefined)?.["dob"] ?? "—",
                       )}
                     />
                     <Field
                       label="Nationality"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.nationality ??
-                          "—",
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.["nationality"] ?? "—",
                       )}
                     />
-                    <Field
-                      label="Occupation"
-                      value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.occupation ??
-                          "—",
-                      )}
-                    />
+                  <Field
+                    label="Occupation"
+                    value={String(
+                      (meta?.["application"] as Record<string, unknown> | undefined)?.["occupation"] ?? "—",
+                    )}
+                  />
                     <Field label="NIN" value={metaGet(meta, "nin")} />
                     <Field
                       label="ID type"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.idType ?? "—",
+                       (meta?.["application"] as Record<string, unknown> | undefined)?.["idType"] ?? "—",
                       )}
                     />
-                    <Field
-                      label="ID number"
-                      value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)?.idNumber ??
-                          "—",
-                      )}
-                    />
+                  <Field
+                    label="ID number"
+                    value={String(
+                      (meta?.["application"] as Record<string, unknown> | undefined)?.["idNumber"] ?? "—",
+                    )}
+                  />
                     <Field
                       label="Residential address"
                       value={String(
-                        (meta["application"] as Record<string, unknown> | undefined)
-                          ?.residentialAddress ?? "—",
+                       (meta?.["application"] as Record<string, unknown> | undefined)
+                        ?.["residentialAddress"] ?? "—"
                       )}
                     />
-                    <Field
+                   <Field
                       label="Owner phone / email"
-                      value={`${String((meta["application"] as Record<string, unknown> | undefined)?.ownerPhone ?? "—")} / ${String((meta["application"] as Record<string, unknown> | undefined)?.ownerEmail ?? "—")}`}
+                      value={`${String((meta?.["application"] as Record<string, unknown> | undefined)?.["ownerPhone"] ?? "—")} / ${String((meta?.["application"] as Record<string, unknown> | undefined)?.["ownerEmail"] ?? "—")}`}
                     />
-                    <Field
+                   <Field
                       label="Business phone / email"
-                      value={`${String((meta["application"] as Record<string, unknown> | undefined)?.businessPhone ?? "—")} / ${String((meta["application"] as Record<string, unknown> | undefined)?.businessEmail ?? "—")}`}
+                      value={`${String((meta?.["application"] as Record<string, unknown> | undefined)?.["businessPhone"] ?? "—")} / ${String((meta?.["application"] as Record<string, unknown> | undefined)?.["businessEmail"] ?? "—")}`}
                     />
                     <Field label="Nature" value={metaGet(meta, "nature")} />
                     <Field label="Business address" value={metaGet(meta, "business_address")} />

@@ -153,6 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                {...(item.to === "/services" ? { search: {} } : {})}
                 className={cn(
                   "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
                   active
@@ -172,6 +173,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <Link
           to="/services"
+          search={{}}
           className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold text-primary-foreground shadow-sm"
         >
           <ScanLine className="size-4" strokeWidth={2} />
@@ -202,6 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
           <Link
             to="/services"
+            search={{}}
             aria-label="Pay a bill"
             className="press group relative flex flex-col items-center justify-center px-1"
           >

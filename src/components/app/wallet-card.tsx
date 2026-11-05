@@ -55,6 +55,7 @@ export function WalletCard({ label = "Wallet Balance" }: { label?: string }) {
         </Link>
         <Link
           to="/services"
+          search={{}}
           className="press flex-1 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-secondary text-xs font-semibold text-secondary-foreground hover:bg-secondary/80"
         >
           Pay a Bill

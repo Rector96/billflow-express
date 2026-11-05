@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira } from "@/lib/mock-data";
@@ -77,13 +76,11 @@ function AdminReconciliation() {
     setError(null);
     try {
       const [txResult, walletResult] = await Promise.all([
-        asLooseRpc(supabase.rpc("admin_reconciliation_queue", { _limit: 100 })),
-        asLooseRpc(
-          supabase.rpc("admin_wallet_reconciliation", {
-            _limit: 100,
-            _offset: 0,
-          }),
-        ),
+        supabase.rpc("admin_reconciliation_queue", { _limit: 100 }),
+        supabase.rpc("admin_wallet_reconciliation", {
+          _limit: 100,
+          _offset: 0,
+        }),
       ]);
 
       if (txResult.error) throw txResult.error;
