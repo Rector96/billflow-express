@@ -13,9 +13,6 @@ import { isHubPreviewServerEnabled } from "@/lib/hub-preview.server";
 import { SERVICE_PRICES } from "@/lib/hub-service-prices";
 import { isBillLive } from "@/lib/product-mode";
 
-function paystackSecret(): string {
-  return String(process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
-}
 
 export const submitCacApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -53,13 +50,15 @@ export const submitCacApplication = createServerFn({ method: "POST" })
       throw new Error("The saved CAC payment amount is invalid.");
     }
 
-    const secret = paystackSecret();
-    const expectedPrefix = intent.paystack_domain === "test" ? "sk_test_" : "sk_live_";
-    if (!secret.startsWith(expectedPrefix)) {
-      throw new Error("The Paystack environment does not match this payment request.");
-    }
+  const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
+  await import("@/lib/paystack.server");
 
-    const { paystackVerify, classifyPaystackFunding } = await import("@/lib/paystack.server");
+  const secret = getPaystackSecret();
+  const expectedPrefix = intent.paystack_domain === "test" ? "sk_test_" : "sk_live_";
+  if (!secret.startsWith(expectedPrefix)) {
+    throw new Error("The Paystack environment does not match this payment request.");
+  }
+
     const transaction = await paystackVerify(data.paymentReference);
     if (!transaction || String(transaction.status ?? "").toLowerCase() !== "success") {
       throw new Error("Could not verify a successful CAC payment with Paystack.");

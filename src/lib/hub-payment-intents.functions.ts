@@ -270,7 +270,8 @@ export const createHubPaymentIntent = createServerFn({ method: "POST" })
       throw new Error("Your account email is unavailable. Please sign in again.");
     }
 
-    const secret = cleanText(process.env["PAYSTACK_SECRET_KEY"], 300);
+    const { getPaystackSecret } = await import("@/lib/paystack.server");
+    const secret = getPaystackSecret();
     const paystackDomain = secret.startsWith("sk_test_")
       ? "test"
       : secret.startsWith("sk_live_")

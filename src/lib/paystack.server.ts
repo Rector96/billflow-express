@@ -7,14 +7,24 @@ export const PAYSTACK_API = "https://api.paystack.co";
 
 export function getPaystackSecret(): string {
   const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  const mode = (process.env["PAYSTACK_MODE"] ?? "test").trim().toLowerCase();
+
+  if (mode !== "test" && mode !== "live") {
+    throw new Error("Invalid PAYSTACK_MODE. Use test or live.");
+  }
+
   if (!key) {
-    throw new Error(
-      "Paystack is not configured. Set PAYSTACK_SECRET_KEY (sk_test_... or sk_live_...) in Netlify and redeploy.",
-    );
+    throw new Error("Paystack is not configured. Set PAYSTACK_SECRET_KEY.");
   }
-  if (!key.startsWith("sk_test_") && !key.startsWith("sk_live_")) {
-    throw new Error("Invalid Paystack secret key. Expected sk_test_... or sk_live_...");
+
+  if (mode === "test" && !key.startsWith("sk_test_")) {
+    throw new Error("RockPay is in test mode. A Paystack test secret key is required.");
   }
+
+  if (mode === "live" && !key.startsWith("sk_live_")) {
+    throw new Error("RockPay is in live mode. A Paystack live secret key is required.");
+  }
+
   return key;
 }
 
