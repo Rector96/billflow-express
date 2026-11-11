@@ -178,7 +178,9 @@ async function reconcileHubPayment(reference: string): Promise<boolean> {
   // Always attempt the idempotent notifications, including when a previous
   // webhook already finalized the payment. This recovers transient insert failures.
   const payload =
-    order.order_payload && typeof order.order_payload === "object" && !Array.isArray(order.order_payload)
+    order.order_payload &&
+    typeof order.order_payload === "object" &&
+    !Array.isArray(order.order_payload)
       ? order.order_payload
       : {};
   const delivery = payload["delivery"] === "deliver" ? "deliver" : "download";

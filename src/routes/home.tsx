@@ -260,9 +260,7 @@ function HomePage() {
                     Icon={s.icon}
                     tint={s.tint}
                     to={serviceHref(s.slug).to}
-                    {...(serviceHref(s.slug).params
-                      ? { params: serviceHref(s.slug).params }
-                      : {})}
+                    {...(serviceHref(s.slug).params ? { params: serviceHref(s.slug).params } : {})}
                   />
                 ) : null,
               )}

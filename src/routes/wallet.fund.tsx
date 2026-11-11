@@ -1,4 +1,3 @@
-
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -25,10 +24,7 @@ import { friendlyError, useApp } from "@/lib/app-store";
 import { formatNaira } from "@/lib/mock-data";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
-import {
-  initializeWalletFunding,
-  verifyWalletFunding,
-} from "@/lib/paystack.functions";
+import { initializeWalletFunding, verifyWalletFunding } from "@/lib/paystack.functions";
 
 export const Route = createFileRoute("/wallet/fund")({
   head: () => ({
@@ -45,9 +41,7 @@ export const Route = createFileRoute("/wallet/fund")({
       },
     ],
   }),
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { amount?: number; reference?: string } => {
+  validateSearch: (search: Record<string, unknown>): { amount?: number; reference?: string } => {
     const ref =
       typeof search["reference"] === "string"
         ? search["reference"]
@@ -56,9 +50,7 @@ export const Route = createFileRoute("/wallet/fund")({
           : undefined;
 
     return {
-      ...(typeof search["amount"] === "number"
-        ? { amount: search["amount"] }
-        : {}),
+      ...(typeof search["amount"] === "number" ? { amount: search["amount"] } : {}),
       ...(ref ? { reference: ref } : {}),
     };
   },
@@ -67,13 +59,7 @@ export const Route = createFileRoute("/wallet/fund")({
 
 const QUICK = [1000, 5000, 10000, 20000];
 
-type Stage =
-  | "form"
-  | "redirecting"
-  | "confirming"
-  | "successful"
-  | "pending"
-  | "failed";
+type Stage = "form" | "redirecting" | "confirming" | "successful" | "pending" | "failed";
 
 function FundWallet() {
   const navigate = useNavigate();
@@ -83,13 +69,9 @@ function FundWallet() {
   const initFunding = useServerFn(initializeWalletFunding);
   const verifyFunding = useServerFn(verifyWalletFunding);
 
-  const [amount, setAmount] = useState<number>(
-    preset && QUICK.includes(preset) ? preset : 5000,
-  );
+  const [amount, setAmount] = useState<number>(preset && QUICK.includes(preset) ? preset : 5000);
   const [custom, setCustom] = useState("");
-  const [stage, setStage] = useState<Stage>(
-    reference ? "confirming" : "form",
-  );
+  const [stage, setStage] = useState<Stage>(reference ? "confirming" : "form");
   const [settled, setSettled] = useState<{
     reference: string;
     amount: number;
@@ -121,9 +103,7 @@ function FundWallet() {
         setStage("pending");
         setSettled({ reference: ref, amount: 0 });
 
-        toast.error(
-          friendlyError(err, "We couldn't confirm this payment yet."),
-        );
+        toast.error(friendlyError(err, "We couldn't confirm this payment yet."));
       }
     },
     [verifyFunding, refresh],
@@ -171,9 +151,7 @@ function FundWallet() {
       setBusy(false);
       setStage("form");
 
-      toast.error(
-        friendlyError(err, "We couldn't start your top-up."),
-      );
+      toast.error(friendlyError(err, "We couldn't start your top-up."));
     }
   };
 
@@ -199,9 +177,7 @@ function FundWallet() {
             </div>
 
             <h1 className="mt-7 text-xl font-extrabold tracking-tight sm:text-2xl">
-              {stage === "redirecting"
-                ? "Opening secure checkout"
-                : "Confirming your payment"}
+              {stage === "redirecting" ? "Opening secure checkout" : "Confirming your payment"}
             </h1>
 
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
@@ -221,11 +197,7 @@ function FundWallet() {
   }
 
   // Payment result screen
-  if (
-    stage === "successful" ||
-    stage === "pending" ||
-    stage === "failed"
-  ) {
+  if (stage === "successful" || stage === "pending" || stage === "failed") {
     const meta = {
       successful: {
         icon: CheckCircle2,
@@ -267,9 +239,7 @@ function FundWallet() {
               <ShieldCheck className="size-3.5 text-primary" />
               RockPay secure transaction
             </div>
-            <p className="text-xs text-muted-foreground">
-              Wallet funding confirmation
-            </p>
+            <p className="text-xs text-muted-foreground">Wallet funding confirmation</p>
           </div>
 
           <div className="grid items-start gap-4 lg:grid-cols-[1.08fr_0.92fr] lg:gap-6">
@@ -290,8 +260,7 @@ function FundWallet() {
                   <meta.icon
                     className={cn(
                       "size-10 sm:size-12",
-                      stage === "successful" &&
-                        "animate-in zoom-in duration-500",
+                      stage === "successful" && "animate-in zoom-in duration-500",
                     )}
                     strokeWidth={1.7}
                   />
@@ -316,9 +285,7 @@ function FundWallet() {
 
                 <div className="mt-8 w-full max-w-sm rounded-2xl border border-border/60 bg-secondary/40 px-4 py-6 sm:px-6 sm:py-7">
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    {stage === "successful"
-                      ? "Amount added to your wallet"
-                      : "Transaction amount"}
+                    {stage === "successful" ? "Amount added to your wallet" : "Transaction amount"}
                   </p>
 
                   <p className="mt-3 break-words text-3xl font-black tracking-tight text-foreground tabular-nums sm:text-4xl">
@@ -358,10 +325,7 @@ function FundWallet() {
                     <>
                       <Button
                         className="h-12 w-full rounded-xl font-bold"
-                        onClick={() =>
-                          settled?.reference &&
-                          void confirm(settled.reference)
-                        }
+                        onClick={() => settled?.reference && void confirm(settled.reference)}
                       >
                         <RefreshCw className="mr-2 size-4" />
                         Check payment status
@@ -414,9 +378,7 @@ function FundWallet() {
                   <h2 className="text-base font-extrabold tracking-tight text-foreground">
                     Transaction receipt
                   </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Your wallet funding details
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Your wallet funding details</p>
                 </div>
 
                 <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
@@ -432,27 +394,19 @@ function FundWallet() {
 
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        Description
-                      </span>
+                      <span className="text-sm text-muted-foreground">Description</span>
                       <span className="text-right text-sm font-bold text-foreground">
                         Wallet top-up
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        Payment method
-                      </span>
-                      <span className="text-sm font-bold text-foreground">
-                        Paystack
-                      </span>
+                      <span className="text-sm text-muted-foreground">Payment method</span>
+                      <span className="text-sm font-bold text-foreground">Paystack</span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        Payment status
-                      </span>
+                      <span className="text-sm text-muted-foreground">Payment status</span>
                       <span className={cn("text-sm font-extrabold", meta.accent)}>
                         {meta.status}
                       </span>
@@ -460,9 +414,7 @@ function FundWallet() {
 
                     {profile.email && (
                       <div className="flex items-start justify-between gap-3">
-                        <span className="text-sm text-muted-foreground">
-                          Account
-                        </span>
+                        <span className="text-sm text-muted-foreground">Account</span>
                         <span className="max-w-[65%] break-all text-right text-sm font-semibold text-foreground">
                           {profile.email}
                         </span>
@@ -516,9 +468,8 @@ function FundWallet() {
                 <div className="flex items-start gap-3 rounded-2xl border border-primary/10 bg-primary/[0.045] p-4">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
                   <p className="text-xs leading-5 text-muted-foreground">
-                    Your payment is processed securely through Paystack.
-                    RockPay verifies every transaction on its servers before
-                    crediting your wallet.
+                    Your payment is processed securely through Paystack. RockPay verifies every
+                    transaction on its servers before crediting your wallet.
                   </p>
                 </div>
               </div>
@@ -527,9 +478,7 @@ function FundWallet() {
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-2 text-center text-[11px] text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" />
-            <span>
-              {BRAND.name} · Secure payments, simpler everyday transactions.
-            </span>
+            <span>{BRAND.name} · Secure payments, simpler everyday transactions.</span>
           </div>
         </main>
       </AppShell>
@@ -553,19 +502,13 @@ function FundWallet() {
             </span>
 
             <div>
-              <h2 className="text-base font-bold">
-                Add money to your wallet
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Choose an amount to get started.
-              </p>
+              <h2 className="text-base font-bold">Add money to your wallet</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Choose an amount to get started.</p>
             </div>
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-bold">
-              Select an amount
-            </p>
+            <p className="mb-3 text-sm font-bold">Select an amount</p>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {QUICK.map((q) => (
@@ -598,44 +541,28 @@ function FundWallet() {
               inputMode="numeric"
               value={custom}
               disabled={busy}
-              onChange={(e) =>
-                setCustom(e.target.value.replace(/\D/g, ""))
-              }
+              onChange={(e) => setCustom(e.target.value.replace(/\D/g, ""))}
               placeholder="Enter amount"
               className="h-14 rounded-xl bg-background text-lg font-bold"
             />
 
-            <p className="text-xs text-muted-foreground">
-              Minimum wallet funding amount: ₦100
-            </p>
+            <p className="text-xs text-muted-foreground">Minimum wallet funding amount: ₦100</p>
           </div>
 
           <div className="mt-6 rounded-2xl border border-border/70 bg-secondary/40 p-4 text-sm">
             <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                You are adding
-              </span>
-              <span className="font-bold tabular-nums">
-                {formatNaira(value || 0)}
-              </span>
+              <span className="text-muted-foreground">You are adding</span>
+              <span className="font-bold tabular-nums">{formatNaira(value || 0)}</span>
             </div>
 
             <div className="mt-3 flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                New balance after success
-              </span>
-              <span className="font-bold tabular-nums">
-                {formatNaira(balance + (value || 0))}
-              </span>
+              <span className="text-muted-foreground">New balance after success</span>
+              <span className="font-bold tabular-nums">{formatNaira(balance + (value || 0))}</span>
             </div>
 
             <div className="mt-3 flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                Payment method
-              </span>
-              <span className="font-bold">
-                Paystack
-              </span>
+              <span className="text-muted-foreground">Payment method</span>
+              <span className="font-bold">Paystack</span>
             </div>
           </div>
 
@@ -660,8 +587,8 @@ function FundWallet() {
           <div className="mt-5 flex items-start justify-center gap-2 text-center">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />
             <p className="text-[11px] leading-5 text-muted-foreground">
-              Secured by Paystack. Your wallet is credited only after
-              server-side payment verification.
+              Secured by Paystack. Your wallet is credited only after server-side payment
+              verification.
             </p>
           </div>
         </section>

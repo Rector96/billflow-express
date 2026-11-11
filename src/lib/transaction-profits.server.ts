@@ -40,8 +40,7 @@ export type BackfillProfitResult = {
   id?: string | null;
 };
 
-type ProfitRpcArgs =
-  Database["public"]["Functions"]["trusted_record_transaction_profit"]["Args"];
+type ProfitRpcArgs = Database["public"]["Functions"]["trusted_record_transaction_profit"]["Args"];
 type BackfillRpcArgs =
   Database["public"]["Functions"]["trusted_backfill_transaction_profit_costs"]["Args"];
 

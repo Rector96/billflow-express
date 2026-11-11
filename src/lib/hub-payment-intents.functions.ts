@@ -195,10 +195,7 @@ function validateOrderPayload(service: HubService, raw: unknown): HubOrderPayloa
 
   throw new Error("Unsupported Hub service.");
 }
-async function resolveHubAmount(
-  service: HubService,
-  payload: HubOrderPayload,
-): Promise<number> {
+async function resolveHubAmount(service: HubService, payload: HubOrderPayload): Promise<number> {
   if (service !== "cac") {
     throw new Error("Unsupported Hub service.");
   }
@@ -225,8 +222,8 @@ export const getCacPriceQuote = createServerFn({ method: "GET" })
   })
   .handler(async ({ data }) => {
     const fees = await loadHubFeesFromSupabase();
-      const registration = Number(fees["cac"] || 0);
-      const courier = Number(fees["cac_courier"] || 0);
+    const registration = Number(fees["cac"] || 0);
+    const courier = Number(fees["cac_courier"] || 0);
     if (!Number.isFinite(registration) || registration <= 0) {
       throw new Error("The CAC registration price is currently unavailable.");
     }

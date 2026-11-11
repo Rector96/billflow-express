@@ -1081,12 +1081,12 @@ export type Database = {
           _user_id: string;
         };
         Returns: {
-        bill_id: string;
-        internal_reference: string;
-        status: Database["public"]["Enums"]["tx_status"];
-        balance_after: number;
-        refunded: boolean;
-      }[];
+          bill_id: string;
+          internal_reference: string;
+          status: Database["public"]["Enums"]["tx_status"];
+          balance_after: number;
+          refunded: boolean;
+        }[];
       };
       trusted_record_transaction_profit: {
         Args: {

@@ -135,29 +135,26 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         productCode: meterType,
         baseAmount: data.amount,
       });
-      const { data: started, error } = await context.supabase.rpc(
-        "start_direct_bill_order",
-        {
-          _service_slug: "electricity",
-          _service_label: "Electricity",
-          _provider: data.serviceID,
-          _product: meterType,
-          _customer_identifier: data.billersCode,
-          _amount: pricing.customerAmount,
-          _metadata: {
-            title: "Electricity Payment",
-            service_slug: "electricity",
-            meter_type: meterType,
-            provider_amount: data.amount,
-            pricing_rule_id: pricing.pricingRuleId,
-            rockpay_fee: pricing.rockpayFee,
-            customer: verified.customerName,
-            variation_code: meterType,
-            phone: data.phone ?? null,
-          },
-          _request_id: data.requestId,
+      const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+        _service_slug: "electricity",
+        _service_label: "Electricity",
+        _provider: data.serviceID,
+        _product: meterType,
+        _customer_identifier: data.billersCode,
+        _amount: pricing.customerAmount,
+        _metadata: {
+          title: "Electricity Payment",
+          service_slug: "electricity",
+          meter_type: meterType,
+          provider_amount: data.amount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          customer: verified.customerName,
+          variation_code: meterType,
+          phone: data.phone ?? null,
         },
-      );
+        _request_id: data.requestId,
+      });
       if (error) throw new Error(error.message);
       const row = Array.isArray(started) ? started[0] : started;
       if (!row?.["paystack_reference"] || !row?.internal_reference) {
@@ -187,29 +184,26 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       productCode: variationCode,
       baseAmount: providerAmount,
     });
-    const { data: started, error } = await context.supabase.rpc(
-      "start_direct_bill_order",
-      {
-        _service_slug: "cable",
-        _service_label: "Cable TV",
-        _provider: data.serviceID,
-        _product: pack.name,
-        _customer_identifier: data.billersCode,
-        _amount: pricing.customerAmount,
-        _metadata: {
-          title: "Cable TV Payment",
-          service_slug: "cable",
-          variation_code: variationCode,
-          provider_amount: providerAmount,
-          pricing_rule_id: pricing.pricingRuleId,
-          rockpay_fee: pricing.rockpayFee,
-          customer: data.customerName ?? null,
-          subscription_type: (data as { subscriptionType?: string }).subscriptionType ?? "change",
-          phone: data.phone ?? null,
-        },
-        _request_id: data.requestId,
+    const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+      _service_slug: "cable",
+      _service_label: "Cable TV",
+      _provider: data.serviceID,
+      _product: pack.name,
+      _customer_identifier: data.billersCode,
+      _amount: pricing.customerAmount,
+      _metadata: {
+        title: "Cable TV Payment",
+        service_slug: "cable",
+        variation_code: variationCode,
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        customer: data.customerName ?? null,
+        subscription_type: (data as { subscriptionType?: string }).subscriptionType ?? "change",
+        phone: data.phone ?? null,
       },
-    );
+      _request_id: data.requestId,
+    });
     if (error) throw new Error(error.message);
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.["paystack_reference"] || !row?.internal_reference) {
