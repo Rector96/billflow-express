@@ -3,11 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { formatNaira } from "@/lib/mock-data";
-import { n } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/users")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Users — ${BRAND.name} Admin` }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     q: typeof s["q"] === "string" ? s["q"] : "",
