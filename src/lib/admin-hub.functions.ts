@@ -173,6 +173,14 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<{ order: HubOrderDetail }> => {
     const admin = await assertStaff(context.userId);
+    const { data: roles, error: rolesError } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (rolesError) throw new Error("Could not verify order-detail permissions.");
+    const canViewApplicationFiles = (roles ?? []).some((entry) =>
+      ["admin", "super_admin"].includes(String(entry.role)),
+    );
     const { data: rows, error } = await admin
       .from("hub_orders")
       .select(
@@ -218,7 +226,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
     }
 
     const applicationFiles: Record<string, string> = {};
-    if (row.service === "cac") {
+    if (row.service === "cac" && canViewApplicationFiles) {
       const meta = asMeta(row.metadata);
       const files = asMeta(meta["application_files"]);
       const bucket = admin.storage.from("cac-applications");
@@ -260,7 +268,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
 export const listDispatchQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ orders: HubOrderRow[] }> => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "dispatch queue access");
     const { data: rows, error } = await admin
       .from("hub_orders")
       .select(
@@ -679,7 +687,7 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "dispatch fulfillment updates");
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
       .select("id, user_id, service, metadata, status, tracking_reference, amount")
