@@ -144,7 +144,7 @@ export const listHubOrders = createServerFn({ method: "GET" })
       .toLowerCase(),
   }))
   .handler(async ({ data, context }): Promise<{ orders: HubOrderRow[] }> => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub order queue access");
     let q = admin
       .from("hub_orders")
       .select(
@@ -172,7 +172,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
     return { orderId };
   })
   .handler(async ({ data, context }): Promise<{ order: HubOrderDetail }> => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub order detail access");
     const { data: roles, error: rolesError } = await admin
       .from("user_roles")
       .select("role")
@@ -444,7 +444,7 @@ export const addHubStaffNote = createServerFn({ method: "POST" })
     return { orderId, note };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub staff notes");
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
       .select("id, metadata")
@@ -492,7 +492,7 @@ export const assignHubAgent = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub agent assignment");
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
       .select("id, user_id, service, metadata")
@@ -551,7 +551,7 @@ export const updateHubCareCall = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub care-call updates");
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
       .select("id, user_id, service, metadata")
@@ -612,7 +612,7 @@ export const notifyCustomerToDownload = createServerFn({ method: "POST" })
     return { orderId };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub customer document notifications");
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
       .select("id, user_id, service, tracking_reference, amount, metadata")
@@ -824,7 +824,7 @@ export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
 export const getHubEmailOutboxSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub email outbox access");
     const [pending, processing, sent, failed, recent] = await Promise.all([
       admin
         .from("hub_email_outbox")
@@ -1031,7 +1031,7 @@ export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
 export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "Hub payment intent summary");
     const statuses = ["pending", "paid", "failed", "expired"] as const;
     const countResults = await Promise.all(
       statuses.map((status) =>
@@ -1102,15 +1102,7 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
     return { service, markupValue };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
-    const { data: roles, error: rolesError } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (rolesError) throw new Error(rolesError.message);
-    if (!roles?.some((row) => row.role === "admin" || row.role === "super_admin")) {
-      throw new Error("Forbidden: only admins can change catalog pricing");
-    }
+    const admin = await assertAdmin(context.userId, "catalog pricing changes");
 
     const { data: rows, error: lookupError } = await admin
       .from("pricing_rules")
