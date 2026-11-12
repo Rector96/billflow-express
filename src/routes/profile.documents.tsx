@@ -95,7 +95,9 @@ function MyDocumentsPage() {
               className="mt-4 h-10 rounded-xl text-xs font-semibold"
               variant="outline"
             >
-              <Link to="/services">Browse services</Link>
+              <Link to="/services" search={{}}>
+                Browse services
+              </Link>
             </Button>
           </div>
         ) : null}
@@ -143,9 +145,11 @@ function MyDocumentsPage() {
                 </a>
               ) : (
                 <p className="rounded-xl bg-muted/50 px-3 py-2 text-center text-[11px] text-muted-foreground">
-                  {d.status === "successful"
-                    ? "File not attached yet — contact Support if this is delayed."
-                    : "We’ll notify you when the file is ready."}
+                  {d.delivery_method === "manual_email"
+                    ? "Our team recorded that your completed certificate was sent to your email. Please check your inbox and spam folder."
+                    : d.status === "successful"
+                      ? "File not attached yet — contact Support if this is delayed."
+                      : "We’ll notify you when the file is ready."}
                 </p>
               )}
             </div>

@@ -8,8 +8,6 @@ import {
   Search,
   Zap,
   Tv,
-  Smartphone,
-  Wifi,
   GraduationCap,
   FileText,
   Car,
@@ -62,18 +60,7 @@ const PRIMARY_SERVICES = [
     Icon: Tv,
     tint: "text-[#0D9488] bg-[#CCFBF1] border border-[#99F6E4]/60",
   },
-  {
-    slug: "airtime",
-    label: "Airtime",
-    Icon: Smartphone,
-    tint: "text-[#DB2777] bg-[#FCE7F3] border border-[#FBCFE8]/60",
-  },
-  {
-    slug: "data",
-    label: "Data",
-    Icon: Wifi,
-    tint: "text-[#2563EB] bg-[#DBEAFE] border border-[#BFDBFE]/60",
-  },
+
   {
     slug: "education",
     label: "Education",
@@ -123,7 +110,10 @@ function HomePage() {
   const [drafts, setDrafts] = useState<ContinueDraft[]>([]);
 
   useEffect(() => {
-    const load = () => setDrafts(readContinueDrafts());
+    const load = () =>
+      setDrafts(
+        readContinueDrafts().filter((draft) => !REMOVED_SERVICE_SLUGS.has(draft.serviceSlug)),
+      );
     load();
     const onFocus = () => load();
     window.addEventListener("focus", onFocus);
@@ -191,7 +181,7 @@ function HomePage() {
             <Input
               value={serviceQuery}
               onChange={(e) => setServiceQuery(e.target.value)}
-              placeholder="Search electricity, data, CAC, NIN..."
+              placeholder="Search electricity, cable, CAC, NIN..."
               aria-label="Search services"
               className="h-10 rounded-xl border-border/80 bg-card pl-10 text-sm shadow-soft"
             />
@@ -249,7 +239,7 @@ function HomePage() {
                     Icon={s.Icon}
                     tint={s.tint}
                     to={href.to}
-                    params={href.params}
+                    {...(href.params ? { params: href.params } : {})}
                   />
                 );
               })}
@@ -271,7 +261,7 @@ function HomePage() {
                     Icon={s.icon}
                     tint={s.tint}
                     to={serviceHref(s.slug).to}
-                    params={serviceHref(s.slug).params}
+                    {...(serviceHref(s.slug).params ? { params: serviceHref(s.slug).params } : {})}
                   />
                 ) : null,
               )}

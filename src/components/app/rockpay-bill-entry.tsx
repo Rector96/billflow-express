@@ -28,8 +28,10 @@ export function RockPayBillEntry() {
             This bill service is not enabled yet. We will open it when the provider path is
             verified.
           </p>
-          <Button className="mt-6 h-11 rounded-xl font-semibold" asChild>
-            <Link to="/services">Back to services</Link>
+          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
+            <Link to="/services" search={{}}>
+              Back to services
+            </Link>
           </Button>
         </div>
       </AppShell>

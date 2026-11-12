@@ -7,7 +7,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, X, Phone, User, MapPin, FileText, Bell } from "lucide-react";
+import { RefreshCw, X, Phone, User, MapPin, FileText, Bell, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,12 @@ import {
   addHubStaffNote,
   assignHubAgent,
   getHubOrderDetail,
+  getHubEmailOutboxSummary,
+  getHubPaymentIntentSummary,
+  recheckHubPaymentIntent,
   listHubOrders,
   notifyCustomerToDownload,
+  retryHubLifecycleEmails,
   updateHubCareCall,
   updateHubFulfillment,
   updateHubOrderStatus,
@@ -25,7 +29,12 @@ import {
   type HubOrderRow,
   type HubOrderStatus,
 } from "@/lib/admin-hub.functions";
-import { attachHubDocument } from "@/lib/hub-documents.functions";
+import {
+  attachCacCertificate,
+  createCacCertificateUpload,
+  markCacCertificateEmailed,
+} from "@/lib/hub-documents.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { FULFILLMENT_LABELS, type FulfillmentStatus } from "@/lib/hub-fulfillment";
 import { BRAND } from "@/lib/brand";
 import { formatNaira } from "@/lib/mock-data";
@@ -109,10 +118,16 @@ function AdminHubOrders() {
   const runStatus = useServerFn(updateHubOrderStatus);
   const runNote = useServerFn(addHubStaffNote);
   const runFul = useServerFn(updateHubFulfillment);
-  const runAttach = useServerFn(attachHubDocument);
+  const runCertificateUpload = useServerFn(createCacCertificateUpload);
+  const runAttachCertificate = useServerFn(attachCacCertificate);
+  const runMarkCacEmailed = useServerFn(markCacCertificateEmailed);
   const runAgent = useServerFn(assignHubAgent);
   const runCare = useServerFn(updateHubCareCall);
   const runNotifyDl = useServerFn(notifyCustomerToDownload);
+  const runRetryEmails = useServerFn(retryHubLifecycleEmails);
+  const runEmailSummary = useServerFn(getHubEmailOutboxSummary);
+  const runPaymentSummary = useServerFn(getHubPaymentIntentSummary);
+  const runPaymentRecheck = useServerFn(recheckHubPaymentIntent);
 
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<HubOrderRow[]>([]);
@@ -123,10 +138,19 @@ function AdminHubOrders() {
   const [filterService, setFilterService] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [noteText, setNoteText] = useState("");
-  const [docUrl, setDocUrl] = useState("");
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [agentName, setAgentName] = useState("");
   const [agentDesk, setAgentDesk] = useState("nin");
   const [careNote, setCareNote] = useState("");
+  const [emailSummary, setEmailSummary] = useState<Awaited<
+    ReturnType<typeof getHubEmailOutboxSummary>
+  > | null>(null);
+  const [emailSummaryError, setEmailSummaryError] = useState<string | null>(null);
+  const [paymentSummary, setPaymentSummary] = useState<Awaited<
+    ReturnType<typeof getHubPaymentIntentSummary>
+  > | null>(null);
+  const [paymentSummaryError, setPaymentSummaryError] = useState<string | null>(null);
+  const [recheckingIntentId, setRecheckingIntentId] = useState<string | null>(null);
   const prevCount = useRef<number | null>(null);
 
   const load = useCallback(
@@ -137,8 +161,8 @@ function AdminHubOrders() {
         const res = await runList({
           data: {
             limit: 150,
-            service: filterService || undefined,
-            status: filterStatus || undefined,
+            ...(filterService ? { service: filterService } : {}),
+            ...(filterStatus ? { status: filterStatus } : {}),
           },
         });
         const next = res.orders ?? [];
@@ -157,14 +181,53 @@ function AdminHubOrders() {
     [runList, filterService, filterStatus],
   );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const loadEmailSummary = useCallback(async () => {
+    try {
+      const summary = await runEmailSummary();
+      setEmailSummary(summary);
+      setEmailSummaryError(null);
+    } catch (e) {
+      setEmailSummaryError(e instanceof Error ? e.message : "Could not load email queue");
+    }
+  }, [runEmailSummary]);
+
+  const recheckPayment = async (intentId: string) => {
+    setRecheckingIntentId(intentId);
+    try {
+      const result = await runPaymentRecheck({ data: { intentId } });
+      if (result.status === "paid") toast.success(result.message);
+      else toast.message(result.message);
+      await Promise.all([loadPaymentSummary(), load(true)]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Payment recheck failed");
+    } finally {
+      setRecheckingIntentId(null);
+    }
+  };
+  const loadPaymentSummary = useCallback(async () => {
+    try {
+      const summary = await runPaymentSummary();
+      setPaymentSummary(summary);
+      setPaymentSummaryError(null);
+    } catch (e) {
+      setPaymentSummaryError(e instanceof Error ? e.message : "Could not load payment intents");
+    }
+  }, [runPaymentSummary]);
 
   useEffect(() => {
-    const t = window.setInterval(() => void load(true), 20_000);
+    void load();
+    void loadEmailSummary();
+    void loadPaymentSummary();
+  }, [load, loadEmailSummary, loadPaymentSummary]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      void load(true);
+      void loadEmailSummary();
+      void loadPaymentSummary();
+    }, 30_000);
     return () => window.clearInterval(t);
-  }, [load]);
+  }, [load, loadEmailSummary, loadPaymentSummary]);
 
   const openDetail = async (o: HubOrderRow) => {
     setDetailLoading(true);
@@ -176,13 +239,7 @@ function AdminHubOrders() {
       const d = res.order;
       setDetail(d);
       const m = d.metadata && typeof d.metadata === "object" ? d.metadata : {};
-      const existing =
-        typeof m["document_url"] === "string"
-          ? m["document_url"]
-          : typeof m["certificate_url"] === "string"
-            ? m["certificate_url"]
-            : "";
-      setDocUrl(existing);
+      setCertificateFile(null);
       setAgentName(typeof m["assigned_agent"] === "string" ? m["assigned_agent"] : "");
       setAgentDesk(
         typeof m["assigned_desk"] === "string"
@@ -207,6 +264,25 @@ function AdminHubOrders() {
     await load(true);
   };
 
+  const retryEmails = async () => {
+    setBusy(true);
+    try {
+      const result = await runRetryEmails({ data: { limit: 50 } });
+      await loadEmailSummary();
+      if (result.failed > 0) {
+        toast.warning(
+          "Email retry finished: " + result.sent + " sent, " + result.failed + " failed",
+        );
+      } else {
+        toast.success("Email queue checked: " + result.sent + " sent");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not retry email queue");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const meta = useMemo(() => {
     const m = detail?.metadata;
     return m && typeof m === "object" ? m : null;
@@ -216,7 +292,9 @@ function AdminHubOrders() {
     if (!detail) return;
     setBusy(true);
     try {
-      await runStatus({ data: { orderId: detail.id, status, note } });
+      await runStatus({
+        data: { orderId: detail.id, status, ...(note === undefined ? {} : { note }) },
+      });
       toast.success(`Marked ${status.replace(/_/g, " ")}`);
       await refreshDetail();
     } catch (e) {
@@ -242,16 +320,53 @@ function AdminHubOrders() {
   };
 
   const saveDocument = async () => {
-    if (!detail) return;
+    if (!detail || !certificateFile) return;
     setBusy(true);
     try {
-      await runAttach({
-        data: { orderId: detail.id, documentUrl: docUrl.trim(), markReady: true },
+      const upload = await runCertificateUpload({
+        data: {
+          orderId: detail.id,
+          fileName: certificateFile.name,
+          size: certificateFile.size,
+          contentType: certificateFile.type,
+        },
       });
-      toast.success("Document attached — customer can download from My documents");
+      const { error: uploadError } = await supabase.storage
+        .from("cac-certificates")
+        .uploadToSignedUrl(upload.path, upload.token, certificateFile, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+      if (uploadError) throw new Error(uploadError.message);
+      await runAttachCertificate({ data: { orderId: detail.id, storagePath: upload.path } });
+      setCertificateFile(null);
+      toast.success("CAC certificate securely uploaded — customer can download it");
       await refreshDetail();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not attach document");
+      toast.error(e instanceof Error ? e.message : "Could not upload certificate");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markManualEmail = async () => {
+    if (!detail || !email.trim()) {
+      toast.error("No customer email address is available on this order.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Confirm that the completed CAC certificate was manually emailed to ${email}?`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await runMarkCacEmailed({ data: { orderId: detail.id, recipientEmail: email } });
+      toast.success("Manual email delivery recorded");
+      await refreshDetail();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not record email delivery");
     } finally {
       setBusy(false);
     }
@@ -335,16 +450,159 @@ function AdminHubOrders() {
       title="Hub orders"
       subtitle="Full customer profile · agent · care call · documents"
       actions={
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="press flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-bold"
-        >
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void retryEmails()}
+            className="h-10 rounded-xl px-3 text-xs font-bold"
+          >
+            <Mail className="mr-2 size-4" />
+            Retry email queue
+          </Button>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="press flex h-10 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-bold"
+          >
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+            Refresh
+          </button>
+        </div>
       }
     >
+      <section
+        className="mb-4 rounded-2xl border bg-card p-3.5 shadow-card"
+        aria-label="Hub payment reconciliation overview"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold">Hub payment reconciliation</p>
+            <p className="text-[10px] text-muted-foreground">
+              Checkout intent status · customer details remain private
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void loadPaymentSummary()}
+          >
+            <RefreshCw className="mr-1.5 size-3.5" /> Refresh
+          </Button>
+        </div>
+        {paymentSummaryError ? (
+          <p className="mb-2 text-xs text-destructive">{paymentSummaryError}</p>
+        ) : null}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["pending", "paid", "failed", "expired"] as const).map((status) => (
+            <div key={status} className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {status}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums">
+                {paymentSummary?.counts[status] ?? "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+        {paymentSummary?.recent.length ? (
+          <div className="mt-3 divide-y divide-border/60">
+            {paymentSummary.recent.slice(0, 6).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
+                    {item.service.replace(/_/g, " ")} · ₦{item.amountNaira.toLocaleString("en-NG")}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Ref …{item.referenceSuffix} · {new Date(item.createdAt).toLocaleString("en-NG")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge status={item.status} />
+                  {["pending", "expired"].includes(item.status) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy || recheckingIntentId !== null}
+                      onClick={() => void recheckPayment(item.id)}
+                    >
+                      {recheckingIntentId === item.id ? "Checking…" : "Recheck"}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-muted-foreground">No payment intents recorded yet.</p>
+        )}
+      </section>
+
+      <section
+        className="mb-4 rounded-2xl border bg-card p-3.5 shadow-card"
+        aria-label="Lifecycle email queue"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold">Lifecycle email queue</p>
+            <p className="text-[10px] text-muted-foreground">
+              Private delivery status · refreshes every 30 seconds
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void loadEmailSummary()}
+          >
+            <RefreshCw className="mr-1.5 size-3.5" /> Refresh
+          </Button>
+        </div>
+        {emailSummaryError ? (
+          <p className="mb-2 text-xs text-destructive">{emailSummaryError}</p>
+        ) : null}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["pending", "processing", "sent", "failed"] as const).map((status) => (
+            <div key={status} className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {status}
+              </p>
+              <p className="text-xl font-extrabold tabular-nums">
+                {emailSummary?.counts[status] ?? "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+        {emailSummary?.recent.length ? (
+          <div className="mt-3 divide-y divide-border/60">
+            {emailSummary.recent.slice(0, 6).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{item.event.replace(/_/g, " ")}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(item.createdAt).toLocaleString("en-NG")} · {item.attempts} attempt
+                    {item.attempts === 1 ? "" : "s"}
+                  </p>
+                  {item.lastError ? (
+                    <p className="truncate text-[10px] text-destructive">{item.lastError}</p>
+                  ) : null}
+                </div>
+                <StatusBadge status={item.status} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-muted-foreground">
+            No lifecycle email events recorded yet.
+          </p>
+        )}
+      </section>
+
       <div className="mb-3 flex flex-wrap gap-2">
         <select
           value={filterService}
@@ -531,9 +789,78 @@ function AdminHubOrders() {
                     <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
                       <MapPin className="size-3" /> Address & form data
                     </div>
-                    <Field label="Business name" value={metaGet(meta, "preferred_name")} />
+                    <Field
+                      label="Name choice 3"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.["name3"] ??
+                          "—",
+                      )}
+                    />
                     <Field label="Owner" value={metaGet(meta, "owner_name")} />
+                    <Field
+                      label="Gender"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "gender"
+                        ] ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="Date of birth"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.["dob"] ??
+                          "—",
+                      )}
+                    />
+                    <Field
+                      label="Nationality"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "nationality"
+                        ] ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="Occupation"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "occupation"
+                        ] ?? "—",
+                      )}
+                    />
                     <Field label="NIN" value={metaGet(meta, "nin")} />
+                    <Field
+                      label="ID type"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "idType"
+                        ] ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="ID number"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "idNumber"
+                        ] ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="Residential address"
+                      value={String(
+                        (meta?.["application"] as Record<string, unknown> | undefined)?.[
+                          "residentialAddress"
+                        ] ?? "—",
+                      )}
+                    />
+                    <Field
+                      label="Owner phone / email"
+                      value={`${String((meta?.["application"] as Record<string, unknown> | undefined)?.["ownerPhone"] ?? "—")} / ${String((meta?.["application"] as Record<string, unknown> | undefined)?.["ownerEmail"] ?? "—")}`}
+                    />
+                    <Field
+                      label="Business phone / email"
+                      value={`${String((meta?.["application"] as Record<string, unknown> | undefined)?.["businessPhone"] ?? "—")} / ${String((meta?.["application"] as Record<string, unknown> | undefined)?.["businessEmail"] ?? "—")}`}
+                    />
                     <Field label="Nature" value={metaGet(meta, "nature")} />
                     <Field label="Business address" value={metaGet(meta, "business_address")} />
                     <Field
@@ -544,6 +871,18 @@ function AdminHubOrders() {
                     <Field label="Make / model" value={metaGet(meta, "makeModel", "make_model")} />
                     <Field label="TIN" value={metaGet(meta, "tin")} />
                     <Field label="Taxpayer" value={metaGet(meta, "taxpayerName")} />
+                    {detail.applicationFiles &&
+                      Object.entries(detail.applicationFiles).map(([key, url]) => (
+                        <a
+                          key={key}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block rounded-lg border px-3 py-2 text-xs font-semibold text-primary underline"
+                        >
+                          Open CAC {key.replace(/([A-Z])/g, " $1").toLowerCase()}
+                        </a>
+                      ))}
                   </Section>
 
                   <Section title="Agent desk">
@@ -607,27 +946,37 @@ function AdminHubOrders() {
                     </div>
                   </Section>
 
-                  <Section title="Document for customer">
+                  <Section title="CAC certificate delivery">
                     <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground">
-                      <FileText className="size-3" /> Paste https link (Drive / storage)
+                      <FileText className="size-3" /> Upload completed CAC certificate
                     </div>
                     <p className="mb-2 text-[11px] text-muted-foreground">
-                      When CAC / NIN file is ready, attach it. Customer opens Profile → My
-                      documents.
+                      Upload the PDF received after the external CAC process. RockPay stores it
+                      privately and makes it available to this customer.
                     </p>
-                    <Input
-                      value={docUrl}
-                      onChange={(e) => setDocUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="h-9 rounded-xl text-xs"
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(e) => setCertificateFile(e.target.files?.[0] ?? null)}
+                      className="block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary"
                     />
+                    {certificateFile ? (
+                      <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                        Selected: {certificateFile.name}
+                      </p>
+                    ) : null}
                     <Button
                       size="sm"
                       className="mt-2 w-full rounded-xl text-xs"
-                      disabled={busy || !docUrl.trim()}
+                      disabled={
+                        busy ||
+                        !certificateFile ||
+                        detail.service !== "cac" ||
+                        !detail.payment_reference
+                      }
                       onClick={() => void saveDocument()}
                     >
-                      Attach & mark ready
+                      Upload certificate & mark ready
                     </Button>
                     <Button
                       size="sm"
@@ -637,12 +986,37 @@ function AdminHubOrders() {
                       onClick={() => void pingDownload()}
                     >
                       <Bell className="mr-1.5 size-3.5" />
-                      Notify: log in & download
+                      Notify customer again
                     </Button>
                     <Field
-                      label="Linked file"
-                      value={metaGet(meta, "document_url", "certificate_url") || "—"}
+                      label="Certificate storage"
+                      value={
+                        metaGet(meta, "certificate_storage_path")
+                          ? "Private file attached"
+                          : "Not attached"
+                      }
                     />
+                    <div className="mt-2 border-t border-border/60 pt-2">
+                      <p className="mb-2 text-[10px] text-muted-foreground">
+                        If staff sent the certificate directly by email instead, record the
+                        recipient here.
+                      </p>
+                      <Field label="Customer email" value={email || "—"} />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full rounded-xl text-xs"
+                        disabled={
+                          busy ||
+                          detail.service !== "cac" ||
+                          !email ||
+                          Boolean(metaGet(meta, "certificate_storage_path"))
+                        }
+                        onClick={() => void markManualEmail()}
+                      >
+                        Record certificate emailed manually
+                      </Button>
+                    </div>
                   </Section>
 
                   <Section title="Workflow">

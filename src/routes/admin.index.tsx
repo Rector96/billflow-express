@@ -16,11 +16,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n, pctChange, type OpsStats, type ServiceRow, type VolumePoint } from "@/lib/admin";
+import {
+  n,
+  pctChange,
+  requireAdminOrSuperAdmin,
+  type OpsStats,
+  type ServiceRow,
+  type VolumePoint,
+} from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({
     meta: [{ title: `Dashboard — ${BRAND.name} Admin` }],
   }),
@@ -64,23 +72,14 @@ function AdminDashboard() {
         supabase.from("profiles").select("user_id, full_name, email").limit(500),
       ]);
 
-      if (ops.error) {
-        // Fallback if migration not applied yet
-        const legacy = await supabase.rpc("admin_dashboard_stats");
-        if (legacy.data && typeof legacy.data === "object") {
-          setStats(legacy.data as OpsStats);
-        } else {
-          setError(ops.error.message);
-        }
-      } else if (ops.data && typeof ops.data === "object") {
-        setStats(ops.data as OpsStats);
-      }
-
-      if (Array.isArray(vol.data)) setSeries(vol.data as VolumePoint[]);
-      else setSeries([]);
-
-      if (Array.isArray(svc.data)) setServices(svc.data as ServiceRow[]);
-      else setServices([]);
+      if (ops.error) throw ops.error;
+      if (vol.error) throw vol.error;
+      if (svc.error) throw svc.error;
+      if (tx.error) throw tx.error;
+      if (profiles.error) throw profiles.error;
+      if (ops.data && typeof ops.data === "object") setStats(ops.data as OpsStats);
+      setSeries(Array.isArray(vol.data) ? (vol.data as VolumePoint[]) : []);
+      setServices(Array.isArray(svc.data) ? (svc.data as ServiceRow[]) : []);
 
       const pmap = new Map<string, { full_name: string | null; email: string | null }>();
       for (const p of profiles.data ?? []) pmap.set(p.user_id, p);

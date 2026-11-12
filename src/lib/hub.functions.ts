@@ -68,7 +68,8 @@ export const getHubServiceFee = createServerFn({ method: "GET" })
         .order("priority", { ascending: false })
         .limit(5);
       if (error || !rows?.length) return { fee: fallback, source: "fallback" };
-      const row = rows[0] as { markup_type?: string; markup_value?: number };
+      const row = rows[0];
+      if (!row) return { fee: fallback, source: "fallback" };
       const type = String(row.markup_type ?? "").toLowerCase();
       const value = Number(row.markup_value ?? 0);
       if ((type === "selling_price" || type === "fixed") && Number.isFinite(value) && value > 0) {
@@ -106,53 +107,10 @@ export const recoverTin = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<RecoverTinSuccess> => {
     const live = isBillLive("tin");
-    const preview = isHubPreviewServerEnabled();
-
-    if (!live && !preview) {
-      throw new Error("TIN retrieval is temporarily unavailable.");
-    }
-
-    if (!live && preview) {
-      await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: true });
-      const track = uid("TIN-DEMO");
-      const fakeTin = `1${data.identifier.replace(/\D/g, "").slice(-9).padStart(9, "0")}`.slice(
-        0,
-        10,
+    if (!live) {
+      throw new Error(
+        "TIN retrieval is in preview and cannot accept payments or generate TIN records yet.",
       );
-      await logHubOrder({
-        userId: context.userId,
-        service: "tin",
-        amount: data.amount,
-        paymentReference: data.paymentReference,
-        trackingReference: track,
-        customerIdentifier: data.identifier,
-        metadata: {
-          demo: true,
-          taxpayerName: data.fullName,
-          tin: fakeTin,
-          document_ready: true,
-        },
-        status: "successful",
-      });
-      return {
-        status: "success",
-        data: {
-          tin: fakeTin,
-          taxpayerName: data.fullName,
-          taxpayerType: data.identifierType === "cac" ? "business" : "individual",
-          jtbRegistered: true,
-          cacNumber: data.identifierType === "cac" ? data.identifier : null,
-          nin: data.identifierType === "nin" ? data.identifier : null,
-          email: null,
-          phone: null,
-          rawProvider: "demo",
-        },
-        meta: {
-          paymentReference: data.paymentReference,
-          requestId: track,
-          fee: data.amount,
-        },
-      };
     }
 
     const { dojahLookupCompanyTin, isDojahConfigured } = await import("./dojah.server");
@@ -300,15 +258,13 @@ export const completeVehicleRenewal = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const live = isBillLive("vehicle");
-    const preview = isHubPreviewServerEnabled();
-
-    if (!live && !preview) {
-      throw new Error("Vehicle renewal is temporarily unavailable.");
+    if (!live) {
+      throw new Error(
+        "Vehicle renewal is in preview and cannot accept payments or create orders yet.",
+      );
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount, {
-      allowDemo: !live && preview,
-    });
+    await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: false });
 
     const service =
       data.choice === "third_party_insurance"
@@ -364,13 +320,11 @@ export const recordHubPayment = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    if (!isBillLive(data.service) && !isHubPreviewServerEnabled()) {
-      throw new Error("This service is not currently available for payment.");
+    if (!isBillLive(data.service)) {
+      throw new Error("This service is in preview and cannot accept payments yet.");
     }
 
-    await assertPaystackSuccess(data.paymentReference, data.amount, {
-      allowDemo: !isBillLive(data.service) && isHubPreviewServerEnabled(),
-    });
+    await assertPaystackSuccess(data.paymentReference, data.amount, { allowDemo: false });
     const track = uid("HUB");
     await logHubOrder({
       userId: context.userId,
@@ -390,7 +344,8 @@ async function assertPaystackSuccess(
   expectedNaira: number,
   opts?: { allowDemo?: boolean },
 ) {
-  const secret = String(process.env[["PAYSTACK", "SECRET", "KEY"].join("_")] ?? "").trim();
+  const { getPaystackSecret } = await import("@/lib/paystack.server");
+  const secret = getPaystackSecret();
   const allowUnverified =
     String(process.env["HUB_ALLOW_UNVERIFIED_PAY"] ?? "") === "true" || !!opts?.allowDemo;
 

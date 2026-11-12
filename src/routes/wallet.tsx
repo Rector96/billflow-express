@@ -28,6 +28,9 @@ function WalletLayout() {
 
 function WalletPage() {
   const { balance, hideBalance, toggleBalance, transactions } = useApp();
+  const visibleTransactions = transactions.filter(
+    (tx) => tx.serviceSlug !== "airtime" && tx.serviceSlug !== "data",
+  );
 
   return (
     <AppShell>
@@ -94,6 +97,7 @@ function WalletPage() {
                 </Link>
                 <Link
                   to="/services"
+                  search={{}}
                   className="press inline-flex h-10 items-center justify-center rounded-xl bg-primary-foreground/12 px-4 text-xs font-semibold text-primary-foreground hover:bg-primary-foreground/20"
                 >
                   Pay a bill
@@ -128,13 +132,13 @@ function WalletPage() {
 
         <section>
           <SectionTitle title="Recent Activity" action="See all" to="/history" />
-          {transactions.length === 0 ? (
+          {visibleTransactions.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/80 bg-card py-8 text-center text-xs text-muted-foreground">
               No wallet activity yet.
             </p>
           ) : (
             <div className="grid gap-2 lg:grid-cols-2">
-              {transactions.slice(0, 6).map((tx) => (
+              {visibleTransactions.slice(0, 6).map((tx) => (
                 <TransactionRow key={tx.id} tx={tx} compact />
               ))}
             </div>

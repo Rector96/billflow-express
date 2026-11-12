@@ -1,11 +1,16 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 /**
- * Customer My documents + staff attach download URL on hub_orders.metadata.
+ * Customer My documents + staff-only CAC certificate delivery.
+ * Completed certificates live in a private storage bucket and are served
+ * through short-lived signed download URLs.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
-import { customerCopyForStatus, notifyStaff, notifyUser } from "@/lib/hub-notify.server";
+import { notifyUser } from "@/lib/hub-notify.server";
+
+const CERTIFICATE_BUCKET = "cac-certificates";
+const MAX_CERTIFICATE_BYTES = 10 * 1024 * 1024;
 
 export type MyHubDocument = {
   id: string;
@@ -19,10 +24,32 @@ export type MyHubDocument = {
   delivery: string | null;
   shipping_address: string | null;
   fulfillment_status: string | null;
+  delivery_method: string | null;
 };
 
 function asMeta(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
+}
+
+async function assertCacOperator(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: isStaff, error: staffError } = await supabaseAdmin.rpc("is_staff", {
+    _user_id: userId,
+  });
+  if (staffError) throw new Error(staffError.message || "Staff check failed");
+  if (isStaff !== true) throw new Error("Forbidden: staff only");
+
+  const { data: roles, error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (roleError) throw new Error("Could not verify CAC document permissions.");
+  if (
+    !(roles ?? []).some((entry) => ["support", "admin", "super_admin"].includes(String(entry.role)))
+  ) {
+    throw new Error("Forbidden: CAC certificate handling requires support or admin access.");
+  }
+  return supabaseAdmin;
 }
 
 export const listMyHubDocuments = createServerFn({ method: "GET" })
@@ -39,146 +66,277 @@ export const listMyHubDocuments = createServerFn({ method: "GET" })
       .limit(50);
     if (error) throw new Error(error.message);
 
-    const documents: MyHubDocument[] = (data ?? []).map((row) => {
-      const r = row as {
-        id: string;
-        service: string;
-        amount: number;
-        status: string;
-        payment_reference: string | null;
-        tracking_reference: string | null;
-        metadata: unknown;
-        created_at: string;
-      };
-      const m = asMeta(r.metadata);
-      const url =
-        typeof m["document_url"] === "string"
-          ? m["document_url"]
-          : typeof m["certificate_url"] === "string"
-            ? m["certificate_url"]
-            : null;
-      return {
-        id: r.id,
-        service: r.service,
-        amount: Number(r.amount),
-        status: r.status,
-        payment_reference: r.payment_reference,
-        tracking_reference: r.tracking_reference,
-        created_at: r.created_at,
-        document_url: url,
-        delivery: typeof m["delivery"] === "string" ? m["delivery"] : null,
-        shipping_address:
-          typeof m["shipping_address"] === "string"
-            ? m["shipping_address"]
-            : typeof m["shippingAddress"] === "string"
-              ? m["shippingAddress"]
-              : null,
-        fulfillment_status:
-          typeof m["fulfillment_status"] === "string" ? m["fulfillment_status"] : null,
-      };
-    });
+    const documents: MyHubDocument[] = await Promise.all(
+      (data ?? []).map(async (row) => {
+        const m = asMeta(row.metadata);
+        let url: string | null = null;
+        const path =
+          typeof m["certificate_storage_path"] === "string" ? m["certificate_storage_path"] : "";
+        const expectedCertificatePrefix = `${context.userId}/${row.id}/`;
+        const isOwnedCertificatePath =
+          path.startsWith(expectedCertificatePrefix) &&
+          /^[0-9a-f-]{36}\\.pdf$/i.test(path.slice(expectedCertificatePrefix.length));
+        if (
+          row.service === "cac" &&
+          path &&
+          row.status === "successful" &&
+          isOwnedCertificatePath
+        ) {
+          const { data: signed, error: signError } = await supabaseAdmin.storage
+            .from(CERTIFICATE_BUCKET)
+            .createSignedUrl(path, 300);
+          if (!signError) url = signed?.signedUrl ?? null;
+        } else if (row.service !== "cac") {
+          // Backward compatibility for previously attached external document links.
+          url =
+            typeof m["document_url"] === "string"
+              ? m["document_url"]
+              : typeof m["certificate_url"] === "string"
+                ? m["certificate_url"]
+                : null;
+        }
+        return {
+          id: row.id,
+          service: row.service,
+          amount: Number(row.amount),
+          status: row.status,
+          payment_reference: row.payment_reference,
+          tracking_reference: row.tracking_reference,
+          created_at: row.created_at,
+          document_url: url,
+          delivery: typeof m["delivery"] === "string" ? m["delivery"] : null,
+          shipping_address:
+            typeof m["shipping_address"] === "string"
+              ? m["shipping_address"]
+              : typeof m["shippingAddress"] === "string"
+                ? m["shippingAddress"]
+                : null,
+          fulfillment_status:
+            typeof m["fulfillment_status"] === "string" ? m["fulfillment_status"] : null,
+          delivery_method:
+            typeof m["certificate_delivery_method"] === "string"
+              ? m["certificate_delivery_method"]
+              : typeof m["delivery_method"] === "string"
+                ? m["delivery_method"]
+                : null,
+        };
+      }),
+    );
     return { documents };
   });
 
-async function assertStaff(userId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.rpc("is_staff", { _user_id: userId });
-  if (error) throw new Error(error.message || "Staff check failed");
-  if (data !== true) throw new Error("Forbidden: staff only");
-  return supabaseAdmin;
-}
-
-/** Staff pastes a public HTTPS link (Drive, Supabase storage, CDN) for the customer to download. */
-export const attachHubDocument = createServerFn({ method: "POST" })
+/** Create a one-use signed upload URL for a staff member and a paid CAC order. */
+export const createCacCertificateUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; documentUrl: string; markReady?: boolean }) => {
+  .inputValidator(
+    (input: { orderId: string; fileName: string; size: number; contentType: string }) => {
+      const orderId = String(input?.orderId ?? "").trim();
+      const fileName = String(input?.fileName ?? "").trim();
+      const size = Number(input?.size);
+      const contentType = String(input?.contentType ?? "")
+        .trim()
+        .toLowerCase();
+      if (!orderId) throw new Error("Missing order id");
+      if (!fileName.toLowerCase().endsWith(".pdf") || contentType !== "application/pdf")
+        throw new Error("Only PDF certificates are accepted.");
+      if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_CERTIFICATE_BYTES)
+        throw new Error("Certificate must be a PDF no larger than 10 MB.");
+      return { orderId, size };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const admin = await assertCacOperator(context.userId);
+    const { data: row, error } = await admin
+      .from("hub_orders")
+      .select("id, user_id, service, status, payment_reference, paid_at")
+      .eq("id", data.orderId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Order not found");
+    if (row.service !== "cac") throw new Error("Certificates can only be attached to CAC orders.");
+    if (!row.payment_reference || !row.paid_at || row.status === "failed")
+      throw new Error("Only a payment-confirmed CAC order can receive a certificate.");
+
+    const path = `${row.user_id}/${row.id}/${globalThis.crypto.randomUUID()}.pdf`;
+    const { data: signed, error: uploadError } = await admin.storage
+      .from(CERTIFICATE_BUCKET)
+      .createSignedUploadUrl(path, { upsert: false });
+    if (uploadError || !signed?.token)
+      throw new Error(uploadError?.message || "Could not prepare secure upload.");
+    return { path, token: signed.token };
+  });
+
+/** Record that staff manually emailed the completed certificate outside RockPay. */
+export const markCacCertificateEmailed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; recipientEmail: string }) => {
     const orderId = String(input?.orderId ?? "").trim();
-    const documentUrl = String(input?.documentUrl ?? "").trim();
-    if (!orderId) throw new Error("Missing order id");
-    if (!/^https:\/\//i.test(documentUrl))
-      throw new Error("Document link must start with https://");
-    if (documentUrl.length > 2000) throw new Error("Link is too long");
-    return { orderId, documentUrl, markReady: input?.markReady !== false };
+    const recipientEmail = String(input?.recipientEmail ?? "")
+      .trim()
+      .toLowerCase();
+    if (!orderId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail))
+      throw new Error("Enter the email address that received the certificate.");
+    return { orderId, recipientEmail };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
-    const { data: existing, error: readErr } = await admin
+    const admin = await assertCacOperator(context.userId);
+    const { data: row, error } = await admin
       .from("hub_orders")
-      .select("id, user_id, service, status, metadata, tracking_reference, amount")
+      .select("id, user_id, service, status, payment_reference, paid_at, metadata")
       .eq("id", data.orderId)
-      .limit(1);
-    if (readErr) throw new Error(readErr.message);
-    const row = existing?.[0] as
-      | {
-          id: string;
-          user_id: string;
-          service: string;
-          status: string;
-          metadata: unknown;
-          tracking_reference: string | null;
-          amount: number;
-        }
-      | undefined;
+      .maybeSingle();
+    if (error) throw new Error(error.message);
     if (!row) throw new Error("Order not found");
-
-    const prevMeta = asMeta(row.metadata);
-    const nextStatus = data.markReady ? "successful" : row.status;
-    const { error } = await admin
+    if (row.service !== "cac") throw new Error("This action is only available for CAC orders.");
+    if (!row.payment_reference || !row.paid_at || row.status === "failed")
+      throw new Error("Only a payment-confirmed CAC order can be completed.");
+    const previous = asMeta(row.metadata);
+    if (typeof previous["certificate_storage_path"] === "string")
+      throw new Error("A certificate is already available in the customer's documents.");
+    const now = new Date().toISOString();
+    const { error: updateError } = await admin
       .from("hub_orders")
       .update({
-        status: nextStatus,
+        status: "successful",
         metadata: {
-          ...prevMeta,
-          document_url: data.documentUrl,
-          document_attached_at: new Date().toISOString(),
-          document_attached_by: context.userId,
-          fulfillment_status: data.markReady ? "digital_ready" : prevMeta["fulfillment_status"],
+          ...previous,
+          certificate_delivery_method: "manual_email",
+          certificate_emailed_at: now,
+          certificate_emailed_to: data.recipientEmail,
+          certificate_emailed_by: context.userId,
         },
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       } as never)
       .eq("id", data.orderId);
-    if (error) throw new Error(error.message);
-
-    const copy = customerCopyForStatus(row.service, data.markReady ? "successful" : row.status);
+    if (updateError) throw new Error(updateError.message);
     await notifyUser({
       userId: row.user_id,
-      title: data.markReady ? `${row.service.replace(/_/g, " ")} — ready to download` : copy.title,
-      message: data.markReady
-        ? "Your file is ready. Open Profile → My documents to download."
-        : copy.message,
+      title: "CAC certificate emailed",
+      message: `Our team has marked your completed CAC certificate as emailed to ${data.recipientEmail}. Please check that inbox and its spam folder.`,
       type: "success",
+      eventKey: `hub-order:${row.id}:cac-manual-email:${now}`,
     });
+    return { ok: true as const, status: "successful" as const };
+  });
 
-    await notifyStaff({
-      title: "Document attached",
-      message: `Order ${data.orderId.slice(0, 8)}… (${row.service}) has a download link.`,
-      type: "information",
-    });
+/** Attach an uploaded private PDF and only then mark the CAC order complete. */
+export const attachCacCertificate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; storagePath: string }) => {
+    const orderId = String(input?.orderId ?? "").trim();
+    const storagePath = String(input?.storagePath ?? "").trim();
+    if (!orderId || !storagePath) throw new Error("Missing order or certificate file.");
+    return { orderId, storagePath };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertCacOperator(context.userId);
+    const { data: row, error: readError } = await admin
+      .from("hub_orders")
+      .select(
+        "id, user_id, service, status, payment_reference, paid_at, metadata, tracking_reference, amount",
+      )
+      .eq("id", data.orderId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!row) throw new Error("Order not found");
+    if (row.service !== "cac")
+      throw new Error("A CAC certificate can only be attached to a CAC order.");
+    if (!row.payment_reference || !row.paid_at || row.status === "failed")
+      throw new Error("Only a payment-confirmed CAC order can be completed.");
 
-    if (data.markReady) {
-      void sendHubLifecycleEmail({
-        userId: row.user_id,
-        event: "digital_ready",
-        service: row.service,
-        trackingReference: row.tracking_reference,
-        amount: row.amount,
-      });
+    const expectedPrefix = `${row.user_id}/${row.id}/`;
+    if (
+      !data.storagePath.startsWith(expectedPrefix) ||
+      !/^[0-9a-f-]{36}\.pdf$/i.test(data.storagePath.slice(expectedPrefix.length))
+    )
+      throw new Error("Certificate storage path does not match this order.");
+
+    const { data: file, error: fileError } = await admin.storage
+      .from(CERTIFICATE_BUCKET)
+      .download(data.storagePath);
+    if (
+      fileError ||
+      !file ||
+      file.size <= 0 ||
+      file.size > MAX_CERTIFICATE_BYTES ||
+      file.type !== "application/pdf"
+    )
+      throw new Error("The uploaded certificate could not be verified as a valid PDF.");
+
+    const previous = asMeta(row.metadata);
+    const previousPath =
+      typeof previous["certificate_storage_path"] === "string"
+        ? previous["certificate_storage_path"]
+        : "";
+    const now = new Date().toISOString();
+    const { error: updateError } = await admin
+      .from("hub_orders")
+      .update({
+        status: "successful",
+        metadata: {
+          ...previous,
+          certificate_storage_path: data.storagePath,
+          certificate_delivery_method: "profile_download",
+          document_attached_at: now,
+          document_attached_by: context.userId,
+          fulfillment_status: "digital_ready",
+        },
+        updated_at: now,
+      } as never)
+      .eq("id", data.orderId);
+    if (updateError) throw new Error(updateError.message);
+
+    // Only remove an older certificate after the new PDF is attached successfully.
+    // Restrict cleanup to this customer's exact order folder; never touch uploaded evidence.
+    if (
+      previousPath &&
+      previousPath !== data.storagePath &&
+      previousPath.startsWith(expectedPrefix)
+    ) {
+      const { error: cleanupError } = await admin.storage
+        .from(CERTIFICATE_BUCKET)
+        .remove([previousPath]);
+      if (cleanupError) {
+        console.error("[CAC] Previous certificate cleanup failed", {
+          orderId: row.id,
+          error: cleanupError.message,
+        });
+      }
     }
 
-    return { ok: true as const, status: nextStatus };
+    await notifyUser({
+      userId: row.user_id,
+      title: "CAC certificate ready",
+      message:
+        "Your completed CAC certificate is ready. Sign in and open Profile → My documents to download it securely.",
+      type: "success",
+      eventKey: `hub-order:${row.id}:cac-certificate-ready:${data.storagePath}`,
+    });
+    void sendHubLifecycleEmail({
+      userId: row.user_id,
+      event: "digital_ready",
+      eventKey: `hub-order:${row.id}:digital_ready:email:${data.storagePath}`,
+      service: "cac",
+      trackingReference: row.tracking_reference,
+      amount: Number(row.amount),
+    });
+    return { ok: true as const, status: "successful" as const };
   });
 
 export async function notifyCustomerHubStatus(input: {
   userId: string;
   service: string;
   status: string;
+  eventKey?: string;
 }) {
+  const { customerCopyForStatus } = await import("@/lib/hub-notify.server");
   const copy = customerCopyForStatus(input.service, input.status);
-  await notifyUser({
+  return notifyUser({
     userId: input.userId,
     title: copy.title,
     message: copy.message,
     type: copy.type,
+    ...(input.eventKey === undefined ? {} : { eventKey: input.eventKey }),
   });
 }
 
@@ -186,10 +344,13 @@ export async function notifyStaffNewHubOrder(input: {
   service: string;
   amount: number;
   orderHint: string;
+  eventKey?: string;
 }) {
-  await notifyStaff({
+  const { notifyStaff } = await import("@/lib/hub-notify.server");
+  return notifyStaff({
     title: "New hub order",
     message: `${input.service.replace(/_/g, " ")} · ₦${Math.round(input.amount).toLocaleString("en-NG")} · ${input.orderHint}`,
     type: "pending",
+    ...(input.eventKey === undefined ? {} : { eventKey: input.eventKey }),
   });
 }

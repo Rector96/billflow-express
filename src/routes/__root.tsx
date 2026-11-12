@@ -87,12 +87,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         name: "description",
-        content: `${BRAND.name} lets you pay electricity, cable TV, education, airtime and data bills from one secure wallet.`,
+        content: `${BRAND.name} lets you pay electricity, cable TV, education and official services from one secure wallet.`,
       },
       { property: "og:title", content: `${BRAND.name} — Pay. Fund. Connect.` },
       {
         property: "og:description",
-        content: "Electricity, cable TV, education, airtime and data — all in one place.",
+        content: "Electricity, cable TV, education and official services — all in one place.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: BRAND.name },
@@ -153,7 +153,7 @@ function RootComponent() {
       <AppProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-right" />
       </AppProvider>
     </QueryClientProvider>
   );

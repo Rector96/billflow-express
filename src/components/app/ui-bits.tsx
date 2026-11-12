@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   XCircle,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -29,6 +30,7 @@ export function SectionTitle({
         to ? (
           <Link
             to={to}
+            {...(to === "/services" ? { search: {} } : {})}
             className="text-xs font-medium text-primary hover:text-primary-deep transition-colors"
           >
             {action}
@@ -66,6 +68,12 @@ export function StatusBadge({ status, compact }: { status: TxStatus; compact?: b
       short: "Failed",
       cls: "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40",
       Icon: XCircle,
+    },
+    reversed: {
+      label: "Reversed",
+      short: "Reversed",
+      cls: "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
+      Icon: RotateCcw,
     },
   }[status];
   return (
@@ -122,7 +130,12 @@ export function ServiceTile({
   );
   if (to) {
     return (
-      <Link to={to} {...(params ? { params } : {})} className={cls}>
+      <Link
+        to={to}
+        {...(to === "/services" ? { search: {} } : {})}
+        {...(params ? { params } : {})}
+        className={cls}
+      >
         {inner}
       </Link>
     );

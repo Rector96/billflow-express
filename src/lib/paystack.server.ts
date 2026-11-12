@@ -1,33 +1,120 @@
 /**
  * Server-only Paystack helpers. Secret never leaves this module.
- * Accepts sk_test_ and sk_live_ (set matching public key on the client).
+ * Accepts sk_test_ and sk_live_ keys; transaction domain is checked against the key.
  */
 
 export const PAYSTACK_API = "https://api.paystack.co";
 
 export function getPaystackSecret(): string {
-  const key = (process.env[["PAYSTACK", "SECRET", "KEY"].join("_")] ?? "").trim();
+  const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
+  const mode = (process.env["PAYSTACK_MODE"] ?? "test").trim().toLowerCase();
+
+  if (mode !== "test" && mode !== "live") {
+    throw new Error("Invalid PAYSTACK_MODE. Use test or live.");
+  }
+
   if (!key) {
-    throw new Error(
-      "Paystack is not configured. Set PAYSTACK_SECRET_KEY (sk_test_... or sk_live_...) in Netlify and redeploy.",
-    );
+    throw new Error("Paystack is not configured. Set PAYSTACK_SECRET_KEY.");
   }
-  if (!key.startsWith("sk_test_") && !key.startsWith("sk_live_")) {
-    throw new Error("Invalid Paystack secret key. Expected sk_test_... or sk_live_...");
+
+  if (mode === "test" && !key.startsWith("sk_test_")) {
+    throw new Error("RockPay is in test mode. A Paystack test secret key is required.");
   }
+
+  if (mode === "live" && !key.startsWith("sk_live_")) {
+    throw new Error("RockPay is in live mode. A Paystack live secret key is required.");
+  }
+
   return key;
 }
 
 type PaystackVerifyData = {
   id?: number | string;
+  domain?: string;
   status?: string;
   reference?: string;
   amount?: number;
+  requested_amount?: number;
+  fees?: number | null;
   currency?: string;
   gateway_response?: string;
   paid_at?: string | null;
+  paidAt?: string | null;
   channel?: string;
 };
+
+type FundingClassification =
+  | { kind: "standard"; providerTransactionId: string }
+  | {
+      kind: "fee_inclusive";
+      providerTransactionId: string;
+      requestedSubunits: number;
+      chargedSubunits: number;
+      feeSubunits: number;
+    }
+  | { kind: "mismatch"; reason: string };
+
+/**
+ * Paystack's verify response reports amount (the total charge), requested_amount
+ * (the amount requested by the merchant), and fees (the difference). A bank
+ * transfer can therefore have amount > requested_amount without being an
+ * under/over-payment. Only accept that case when all three values reconcile.
+ */
+export function classifyPaystackFunding(
+  data: PaystackVerifyData,
+  reference: string,
+  expectedSubunits: number,
+): FundingClassification {
+  if (data.reference !== reference) return { kind: "mismatch", reason: "reference_mismatch" };
+  if (data.currency !== "NGN") return { kind: "mismatch", reason: "currency_mismatch" };
+
+  const id =
+    typeof data.id === "number"
+      ? Number.isSafeInteger(data.id) && data.id > 0
+        ? String(data.id)
+        : ""
+      : typeof data.id === "string" && /^\d+$/.test(data.id) && BigInt(data.id) > 0n
+        ? data.id
+        : "";
+  if (!id) return { kind: "mismatch", reason: "missing_provider_transaction_id" };
+
+  const charged = data.amount;
+  if (!Number.isSafeInteger(charged) || Number(charged) <= 0) {
+    return { kind: "mismatch", reason: "invalid_charged_amount" };
+  }
+
+  const requested = data.requested_amount == null ? null : Number(data.requested_amount);
+  const fees = data.fees == null ? null : Number(data.fees);
+
+  // Normal Paystack charge: the transaction amount equals the wallet amount.
+  if (Number(charged) === expectedSubunits) {
+    if (requested !== null && requested !== expectedSubunits) {
+      return { kind: "mismatch", reason: "requested_amount_mismatch" };
+    }
+    return { kind: "standard", providerTransactionId: id };
+  }
+
+  // Fee-inclusive bank transfer: only recover when Paystack independently
+  // reports the exact requested amount and a fee that reconciles to the charge.
+  if (
+    requested === expectedSubunits &&
+    Number.isSafeInteger(requested) &&
+    fees !== null &&
+    Number.isSafeInteger(fees) &&
+    fees > 0 &&
+    Number(charged) === requested + fees
+  ) {
+    return {
+      kind: "fee_inclusive",
+      providerTransactionId: id,
+      requestedSubunits: requested,
+      chargedSubunits: Number(charged),
+      feeSubunits: fees,
+    };
+  }
+
+  return { kind: "mismatch", reason: "amount_mismatch" };
+}
 
 export async function paystackVerify(reference: string): Promise<PaystackVerifyData | null> {
   const res = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, {
@@ -50,7 +137,28 @@ export type SettleResult = {
   amount: number;
   balanceAfter: number | null;
   credited: boolean;
+  paystack?: {
+    gatewayStatus: string | null;
+    providerTransactionId: string | null;
+    channel: string | null;
+    currency: string | null;
+    chargedSubunits: number | null;
+    requestedSubunits: number | null;
+    feeSubunits: number | null;
+    validationReason: string | null;
+    domain: string | null;
+    gatewayResponse: string | null;
+    paidAt: string | null;
+  };
 };
+
+function toRpcRow(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return first && typeof first === "object" ? (first as Record<string, unknown>) : null;
+  }
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
 
 /**
  * Wallet funding settlement only. Hub payments are not wallet_transactions rows —
@@ -61,7 +169,7 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
 
   const { data: rows, error: rowError } = await supabaseAdmin
     .from("wallet_transactions")
-    .select("reference, amount, status, balance_after")
+    .select("reference, amount, status, balance_after, type, metadata")
     .eq("provider", "paystack")
     .eq("provider_reference", reference)
     .limit(1);
@@ -69,55 +177,188 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
   const row = rows?.[0];
   if (!row) throw new Error("Unknown funding reference.");
 
+  const amount = Number(row.amount);
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Invalid wallet funding amount.");
+  if (row.type !== "deposit") throw new Error("Paystack wallet reference is not a deposit.");
+
   if (row.status === "successful") {
     return {
       status: "successful",
-      amount: Number(row.amount),
+      amount,
       balanceAfter: row.balance_after === null ? null : Number(row.balance_after),
       credited: false,
     };
   }
+  if (row.status === "reversed") {
+    throw new Error("This wallet funding transaction has been reversed and cannot be credited.");
+  }
 
   const data = await paystackVerify(reference);
   if (!data) {
-    return { status: "pending", amount: Number(row.amount), balanceAfter: null, credited: false };
+    return { status: "pending", amount, balanceAfter: null, credited: false };
   }
 
-  const expectedSubunits = Math.round(Number(row.amount) * 100);
   const gatewayStatus = String(data.status ?? "").toLowerCase();
-
+  const providerTransactionId = data.id == null ? null : String(data.id);
+  const auditPaystack = {
+    gatewayStatus: gatewayStatus || null,
+    providerTransactionId,
+    channel: data.channel ?? null,
+    currency: data.currency ?? null,
+    chargedSubunits: Number.isSafeInteger(data.amount) ? Number(data.amount) : null,
+    requestedSubunits:
+      data.requested_amount != null && Number.isSafeInteger(Number(data.requested_amount))
+        ? Number(data.requested_amount)
+        : null,
+    feeSubunits:
+      data.fees != null && Number.isSafeInteger(Number(data.fees)) ? Number(data.fees) : null,
+    validationReason: null as string | null,
+    domain: data.domain ?? null,
+    gatewayResponse: data.gateway_response ?? null,
+    paidAt: data.paid_at ?? data.paidAt ?? null,
+  };
   if (gatewayStatus === "success") {
-    if (
-      data.currency !== "NGN" ||
-      Number(data.amount) !== expectedSubunits ||
-      data.reference !== reference
-    ) {
+    const key = getPaystackSecret();
+    const expectedDomain = key.startsWith("sk_test_") ? "test" : "live";
+    if (data.domain !== expectedDomain) {
+      throw new Error(
+        "Paystack transaction domain is missing or does not match the configured secret key.",
+      );
+    }
+
+    const expectedSubunits = Math.round(amount * 100);
+    const classification = classifyPaystackFunding(data, reference, expectedSubunits);
+
+    if (classification.kind === "mismatch") {
+      // Safe diagnostics only: never log the secret, customer data, or card details.
+      console.error("[paystack] successful transaction rejected by funding validation", {
+        reference,
+        channel: data.channel ?? null,
+        transactionId: data.id ?? null,
+        currency: data.currency ?? null,
+        chargedAmount: data.amount ?? null,
+        requestedAmount: data.requested_amount ?? null,
+        fees: data.fees ?? null,
+        chargedAmountType: typeof data.amount,
+        requestedAmountType: typeof data.requested_amount,
+        feesType: typeof data.fees,
+        validationReason: classification.reason,
+      });
       const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
         _reference: reference,
         _status: "failed",
-        _payload: { reason: "validation_mismatch", gateway_status: gatewayStatus },
+        _payload: {
+          reason: "validation_mismatch",
+          gateway_status: gatewayStatus,
+          validation_reason: classification.reason,
+        },
       });
       if (error) throw new Error(error.message);
-      return { status: "failed", amount: Number(row.amount), balanceAfter: null, credited: false };
+      return {
+        status: "failed",
+        amount,
+        balanceAfter: null,
+        credited: false,
+        paystack: { ...auditPaystack, validationReason: classification.reason },
+      };
     }
 
-    const { data: credit, error } = await supabaseAdmin.rpc("complete_paystack_funding", {
+    if (classification.kind === "standard") {
+      const { data: credit, error } = await supabaseAdmin.rpc("complete_paystack_funding", {
+        _reference: reference,
+        _paid_amount: amount,
+        _provider_transaction_id: classification.providerTransactionId,
+        _payload: {
+          channel: data.channel ?? null,
+          paid_at: data.paid_at ?? data.paidAt ?? null,
+          gateway_response: data.gateway_response ?? null,
+          gateway_status: gatewayStatus,
+          currency: data.currency,
+          domain: data.domain ?? null,
+          reference_match: data.reference === reference,
+          charged_subunits: auditPaystack.chargedSubunits,
+          requested_subunits: auditPaystack.requestedSubunits,
+          fee_subunits: auditPaystack.feeSubunits,
+          provider_transaction_id: classification.providerTransactionId,
+        },
+      });
+      if (error) throw new Error(error.message);
+      const result = toRpcRow(credit);
+      return {
+        status: "successful",
+        amount,
+        balanceAfter: result?.["balance_after"] != null ? Number(result["balance_after"]) : null,
+        credited: Boolean(result?.["credited"]),
+        paystack: auditPaystack,
+      };
+    }
+
+    // The recovery RPC intentionally only accepts a failed deposit previously
+    // marked with paystack.reason=validation_mismatch. If this is still pending,
+    // first record that verified mismatch; retries can then safely resume recovery.
+    const metadata =
+      row.metadata && typeof row.metadata === "object"
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+    const paystackMetadata =
+      metadata["paystack"] && typeof metadata["paystack"] === "object"
+        ? (metadata["paystack"] as Record<string, unknown>)
+        : {};
+
+    if (row.status === "pending") {
+      const { error } = await supabaseAdmin.rpc("settle_paystack_funding", {
+        _reference: reference,
+        _status: "failed",
+        _payload: {
+          reason: "validation_mismatch",
+          gateway_status: gatewayStatus,
+          validation_reason: "verified_fee_inclusive_amount_mismatch",
+        },
+      });
+      if (error) throw new Error(error.message);
+    } else if (row.status !== "failed" || paystackMetadata["reason"] !== "validation_mismatch") {
+      throw new Error("This transaction is not eligible for fee-inclusive recovery.");
+    }
+
+    const { data: recovered, error } = await supabaseAdmin.rpc("recover_paystack_funding", {
       _reference: reference,
-      _paid_amount: Number(row.amount),
-      _provider_transaction_id: data.id ? String(data.id) : "",
+      _requested_subunits: classification.requestedSubunits,
+      _charged_subunits: classification.chargedSubunits,
+      _fee_subunits: classification.feeSubunits,
+      _provider_transaction_id: classification.providerTransactionId,
       _payload: {
+        gateway_status: gatewayStatus,
+        currency: data.currency,
+        reference_match: data.reference === reference,
         channel: data.channel ?? null,
-        paid_at: data.paid_at ?? null,
+        paid_at: data.paid_at ?? data.paidAt ?? null,
         gateway_response: data.gateway_response ?? null,
       },
     });
     if (error) throw new Error(error.message);
-    const result = Array.isArray(credit) ? credit[0] : credit;
+    const result = toRpcRow(recovered);
+    if (!result || result["status"] !== "successful") {
+      throw new Error("Paystack recovery did not return a successful settlement.");
+    }
     return {
       status: "successful",
-      amount: Number(row.amount),
-      balanceAfter: result?.balance_after != null ? Number(result.balance_after) : null,
-      credited: Boolean(result?.credited),
+      amount: result["amount"] != null ? Number(result["amount"]) : amount,
+      balanceAfter: result["balance_after"] != null ? Number(result["balance_after"]) : null,
+      credited: Boolean(result["credited"]),
+      paystack: auditPaystack,
+    };
+  }
+
+  // A failed funding attempt is terminal unless the verified fee-inclusive
+  // recovery path above explicitly qualifies it. Delayed webhook events must
+  // not move it back to pending or erase the validation_mismatch marker.
+  if (row.status === "failed" && gatewayStatus !== "failed" && gatewayStatus !== "abandoned") {
+    return {
+      status: "failed",
+      amount,
+      balanceAfter: null,
+      credited: false,
+      paystack: auditPaystack,
     };
   }
 
@@ -129,5 +370,11 @@ export async function verifyAndSettle(reference: string): Promise<SettleResult> 
     _payload: { gateway_status: gatewayStatus, gateway_response: data.gateway_response ?? null },
   });
   if (error) throw new Error(error.message);
-  return { status: nextStatus, amount: Number(row.amount), balanceAfter: null, credited: false };
+  return {
+    status: nextStatus,
+    amount,
+    balanceAfter: null,
+    credited: false,
+    paystack: auditPaystack,
+  };
 }

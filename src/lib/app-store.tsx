@@ -144,7 +144,7 @@ export function friendlyError(
   if (message.includes("invalid_phone") || message.includes("valid Nigerian"))
     return "Enter a valid Nigerian mobile number.";
   if (message.includes("unsupported_network"))
-    return "That network is not supported for airtime yet.";
+    return "That provider is not supported for this service.";
   if (
     message.includes("An unknown error has occurred") ||
     message === "Error" ||
@@ -246,6 +246,7 @@ const str = (m: Meta, k: string) => (typeof m[k] === "string" ? (m[k] as string)
 
 type LedgerRow = {
   reference: string;
+  provider_reference?: string | null;
   type: string;
   amount: number | string;
   status: string;
@@ -258,12 +259,21 @@ function toTransaction(row: LedgerRow): Transaction {
   const meta = row.metadata ?? {};
   const isIn = row.type === "deposit" || row.type === "refund";
   const status: TxStatus =
-    row.status === "successful" ? "successful" : row.status === "pending" ? "pending" : "failed";
+    row.status === "successful"
+      ? "successful"
+      : row.status === "pending"
+        ? "pending"
+        : row.status === "reversed"
+          ? "reversed"
+          : "failed";
   const token = str(meta, "token");
   const customer = str(meta, "customer");
   const reference = str(meta, "masked");
   return {
-    id: str(meta, "bill_reference") ?? row.reference,
+    // Bill-payment rows link to the bill receipt. Refund rows must keep
+    // their own RFD reference so they do not collide with the original debit.
+    id:
+      row.type === "bill_payment" ? (str(meta, "bill_reference") ?? row.reference) : row.reference,
     title: str(meta, "title") ?? (isIn ? "Wallet Funded" : (row.description ?? "Payment")),
     service:
       str(meta, "service_label") ??
@@ -278,13 +288,10 @@ function toTransaction(row: LedgerRow): Transaction {
     status,
     date: fmtDate(row.created_at),
     time: fmtTime(row.created_at),
-    method: isIn
-      ? str(meta, "channel") === "paystack"
-        ? "Paystack (test)"
-        : "Wallet Funding"
-      : "Wallet",
+    method: isIn ? (str(meta, "channel") === "paystack" ? "Paystack" : "Wallet Funding") : "Wallet",
     ...(customer ? { customer } : {}),
     ...(reference ? { reference } : {}),
+    ...(row.provider_reference ? { providerReference: row.provider_reference } : {}),
     ...(token ? { token } : {}),
   };
 }
@@ -377,7 +384,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supabase.from("wallets").select("balance").eq("user_id", userId).maybeSingle(),
         supabase
           .from("wallet_transactions")
-          .select("reference, type, amount, status, description, metadata, created_at")
+          .select(
+            "reference, provider_reference, type, amount, status, description, metadata, created_at",
+          )
           .order("created_at", { ascending: false })
           .limit(50),
         supabase
@@ -426,18 +435,98 @@ export function AppProvider({ children }: { children: ReactNode }) {
             billStatus.set(String(b.internal_reference), String(b.status));
           }
         }
+        const walletTransactions = rows.map((r) => {
+          const ref =
+            r.metadata && typeof r.metadata["bill_reference"] === "string"
+              ? (r.metadata["bill_reference"] as string)
+              : null;
+          const override = ref ? billStatus.get(ref) : undefined;
+          if (override && override !== r.status) {
+            return toTransaction({ ...r, status: override });
+          }
+          return toTransaction(r);
+        });
+
+        // Direct Paystack bill orders do not debit the wallet ledger. Include
+        // them from bill_transactions, while excluding any bill already
+        // represented by a wallet-ledger row.
+        const representedBillRefs = new Set(
+          rows
+            .map((r) =>
+              typeof r.metadata?.["bill_reference"] === "string"
+                ? String(r.metadata["bill_reference"])
+                : null,
+            )
+            .filter((v): v is string => Boolean(v)),
+        );
+        const { data: directBills } = await supabase
+          .from("bill_transactions")
+          .select(
+            "internal_reference, provider, provider_request_id, provider_transaction_id, service, customer_identifier, status, amount, created_at, metadata",
+          )
+          .order("created_at", { ascending: false })
+          .limit(50);
+        const directTransactions: Transaction[] = (directBills ?? [])
+          .filter((bill) => {
+            const meta = (bill.metadata ?? {}) as Record<string, unknown>;
+            return (
+              meta["payment_mode"] === "direct_paystack" &&
+              !representedBillRefs.has(String(bill.internal_reference))
+            );
+          })
+          .map((bill) => {
+            const meta = (bill.metadata ?? {}) as Record<string, unknown>;
+            const createdAt = String(bill.created_at);
+            const rawStatus = String(bill.status);
+            const status: TxStatus =
+              rawStatus === "successful"
+                ? "successful"
+                : rawStatus === "failed"
+                  ? "failed"
+                  : rawStatus === "reversed"
+                    ? "reversed"
+                    : "pending";
+            const slug = String(meta["service_slug"] ?? "").toLowerCase();
+            const serviceSlug = slug === "cable" ? "cable" : "electricity";
+            return {
+              id: String(bill.internal_reference),
+              title:
+                typeof meta["title"] === "string"
+                  ? String(meta["title"])
+                  : serviceSlug === "cable"
+                    ? "Cable TV Payment"
+                    : "Electricity Payment",
+              service: String(bill.service ?? "Bill payment"),
+              serviceSlug,
+              amount: money(bill.amount),
+              direction: "out",
+              status,
+              date: fmtDate(createdAt),
+              time: fmtTime(createdAt),
+              ...(typeof meta["customer"] === "string"
+                ? { customer: String(meta["customer"]) }
+                : {}),
+              reference: String(bill.customer_identifier ?? ""),
+              method: "Paystack (Direct)",
+              ...(bill.provider_request_id || bill.provider_transaction_id
+                ? {
+                    providerReference: String(
+                      bill.provider_request_id || bill.provider_transaction_id,
+                    ),
+                  }
+                : {}),
+              ...(typeof meta["token"] === "string"
+                ? { token: String(meta["token"]) }
+                : typeof meta["purchased_code"] === "string"
+                  ? { token: String(meta["purchased_code"]) }
+                  : {}),
+            };
+          });
         setTransactions(
-          rows.map((r) => {
-            const ref =
-              r.metadata && typeof r.metadata["bill_reference"] === "string"
-                ? (r.metadata["bill_reference"] as string)
-                : null;
-            const override = ref ? billStatus.get(ref) : undefined;
-            if (override && override !== r.status) {
-              return toTransaction({ ...r, status: override });
-            }
-            return toTransaction(r);
-          }),
+          [...walletTransactions, ...directTransactions].sort(
+            (a, b) =>
+              new Date(`${b.date} ${b.time}`).getTime() - new Date(`${a.date} ${a.time}`).getTime(),
+          ),
         );
       }
       if (sp.data) {

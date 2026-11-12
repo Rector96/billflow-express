@@ -1,9 +1,10 @@
-/**
- * Single source of truth for the product brand. Change the name, tagline or
- * artwork here and every screen, title and install manifest follows.
+﻿/**
+ * Single source of truth for the product brand.
+ * Change the name, tagline or artwork here and every screen, title and
+ * install manifest follows.
  */
 export const BRAND = {
-  name: "Rockwavehub",
+  name: "RockPay",
   tagline: "PAY • FUND • CONNECT",
   supportEmail: "support@rockpay.ng",
   supportPhone: "0700 123 4567",

@@ -13,19 +13,16 @@ export function PayActionBar({
 }) {
   return (
     <>
-      <div className="h-24 shrink-0 lg:h-20" aria-hidden />
+      <div className="service-flow-action-spacer h-24 shrink-0" aria-hidden />
       <div
         id={id}
         className={cn(
-          "pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-3",
-          /* Mobile: sit above bottom nav */
-          "bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]",
-          /* Desktop: no bottom nav — dock near page bottom */
-          "lg:bottom-6 lg:px-6",
+          "service-flow-bottom-nav pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-3",
+          "bottom-[max(0.5rem,env(safe-area-inset-bottom,0px))]",
           className,
         )}
       >
-        <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-border/70 bg-card/95 p-2.5 shadow-float backdrop-blur-xl lg:max-w-2xl lg:p-3">
+        <div className="pointer-events-auto w-full max-w-[760px] rounded-2xl border border-border/80 bg-background/95 p-3 shadow-card backdrop-blur-md">
           {children}
         </div>
       </div>

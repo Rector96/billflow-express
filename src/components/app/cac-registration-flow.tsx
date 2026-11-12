@@ -1,7 +1,7 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 /**
- * CAC Business Name — demo UI (compact RockPay steps)
- * Pay writes hub_orders when server allows; otherwise local demo success.
+ * CAC Business Name registration flow.
+ * Checkout is preview-gated and uses real Paystack Inline only when enabled.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -25,7 +25,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
-import { DeliveryAddressFields, PayBreakdown } from "@/components/app/hub-delivery-ui";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
+import {
+  DeliveryAddressFields,
+  DeliveryMethodCards,
+  PayBreakdown,
+} from "@/components/app/hub-delivery-ui";
 import { PageHeader } from "@/components/app/page-header";
 import { PayActionBar } from "@/components/app/pay-action-bar";
 import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
@@ -41,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { clearContinueDraft, saveContinueDraft } from "@/lib/continue-draft";
-import { simulatePaystackInline } from "@/lib/hub-api.demo";
+import { openPaystackInline } from "@/lib/paystack-inline";
 import {
   EMPTY_DELIVERY_ADDRESS,
   formatDeliveryOneLine,
@@ -50,12 +55,9 @@ import {
   type DeliveryMethod,
 } from "@/lib/hub-delivery";
 import { submitCacApplication } from "@/lib/hub-order-submit.functions";
-import { SERVICE_PRICES } from "@/lib/hub-service-prices";
+import { createHubPaymentIntent, getCacPriceQuote } from "@/lib/hub-payment-intents.functions";
 import { formatNaira } from "@/lib/mock-data";
-
-export const CAC_DEMO_PRICE = SERVICE_PRICES.cac_registration;
-export const CAC_COURIER_PRICE = SERVICE_PRICES.cac_courier;
-export const CAC_DEMO_MODE = true;
+import { supabase } from "@/integrations/supabase/client";
 
 type Step =
   | "intro"
@@ -295,9 +297,21 @@ function FilePick({
 export function CacRegistrationFlow() {
   const navigate = useNavigate();
   const runSubmit = useServerFn(submitCacApplication);
+  const runCreateIntent = useServerFn(createHubPaymentIntent);
+  const runGetPriceQuote = useServerFn(getCacPriceQuote);
   const [step, setStep] = useState<Step>("intro");
   const [paying, setPaying] = useState(false);
+  const [priceQuote, setPriceQuote] = useState<{
+    registration: number;
+    courier: number;
+    total: number;
+    live: boolean;
+  } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [refId, setRefId] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paystackReference, setPaystackReference] = useState("");
   const [name1, setName1] = useState("");
   const [name2, setName2] = useState("");
   const [name3, setName3] = useState("");
@@ -333,7 +347,31 @@ export function CacRegistrationFlow() {
   }, [step]);
 
   const preferredName = name1.trim() || name2.trim() || name3.trim();
-  const totalPay = CAC_DEMO_PRICE + (delivery === "deliver" ? CAC_COURIER_PRICE : 0);
+  const totalPay = priceQuote?.total ?? 0;
+
+  useEffect(() => {
+    let active = true;
+    setQuoteLoading(true);
+    setQuoteError(null);
+    void runGetPriceQuote({ data: { delivery: delivery === "deliver" ? "deliver" : "download" } })
+      .then((quote) => {
+        if (active) setPriceQuote(quote);
+      })
+      .catch((error) => {
+        if (active) {
+          setPriceQuote(null);
+          setQuoteError(
+            error instanceof Error ? error.message : "Could not load the current CAC price.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setQuoteLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [delivery, runGetPriceQuote]);
 
   useEffect(() => {
     if (step === "success") {
@@ -367,10 +405,27 @@ export function CacRegistrationFlow() {
   }, [step]);
 
   const goBack = () => {
-    const order: Step[] = ["intro", "names", "proprietor", "documents", "review"];
-    const previous = order[order.indexOf(step) - 1];
-    if (previous) setStep(previous);
-    else void navigate({ to: "/services" });
+    const order: Step[] = [
+      "intro",
+      "names",
+      "business",
+      "proprietor",
+      "documents",
+      "review",
+      "delivery",
+      "address",
+      "pay",
+    ];
+    const i = order.indexOf(step);
+    if (i <= 0) {
+      void navigate({ to: "/services", search: {} });
+      return;
+    }
+    if (step === "pay" && delivery === "download") {
+      setStep("delivery");
+      return;
+    }
+    setStep(order[i - 1]!);
   };
 
   const onPay = useCallback(async () => {
@@ -390,54 +445,151 @@ export function CacRegistrationFlow() {
       }
     }
     setPaying(true);
+    const uploadedPaths: string[] = [];
+    let paymentIntentCreated = false;
+    let paymentConfirmed = false;
     try {
-      const email = (ownerEmail || bizEmail || "").trim() || "customer@rockpay.app";
-      const paystack = await simulatePaystackInline({
-        email,
-        amountNaira: totalPay,
+      const email = (ownerEmail || bizEmail || "").trim();
+      if (!idFile || !photoFile || !signature)
+        throw new Error("Upload your ID, passport photo and signature before payment.");
+      const allowedId = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      const allowedImage = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedId.includes(idFile.type) || idFile.size > 10 * 1024 * 1024)
+        throw new Error("ID must be a JPG, PNG, WEBP or PDF up to 10 MB.");
+      if (!allowedImage.includes(photoFile.type) || photoFile.size > 5 * 1024 * 1024)
+        throw new Error("Passport photo must be JPG, PNG or WEBP up to 5 MB.");
+      const signatureBlob = await (await fetch(signature)).blob();
+      if (signatureBlob.size > 2 * 1024 * 1024) throw new Error("Signature image is too large.");
+      const draftId = crypto.randomUUID();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        throw new Error("Your sign-in session has expired. Sign in again before continuing.");
+      }
+
+      const base = `${user.id}/${draftId}`;
+      const storage = supabase.storage.from("cac-applications");
+      try {
+        const idPath = `${base}/id-document`;
+        const idUpload = await storage.upload(idPath, idFile, {
+          upsert: false,
+          contentType: idFile.type,
+        });
+        if (idUpload.error) throw idUpload.error;
+        uploadedPaths.push(idPath);
+
+        const photoPath = `${base}/passport-photo`;
+        const photoUpload = await storage.upload(photoPath, photoFile, {
+          upsert: false,
+          contentType: photoFile.type,
+        });
+        if (photoUpload.error) throw photoUpload.error;
+        uploadedPaths.push(photoPath);
+
+        const signaturePath = `${base}/signature.png`;
+        const signatureUpload = await storage.upload(signaturePath, signatureBlob, {
+          upsert: false,
+          contentType: "image/png",
+        });
+        if (signatureUpload.error) throw signatureUpload.error;
+        uploadedPaths.push(signaturePath);
+      } catch {
+        if (uploadedPaths.length > 0) {
+          const { error: cleanupError } = await storage.remove(uploadedPaths);
+          if (cleanupError) {
+            console.warn("CAC partial-upload cleanup failed.");
+          }
+        }
+        throw new Error("Could not securely upload all CAC documents. Please retry.");
+      }
+      const applicationFiles = {
+        idDocument: `${base}/id-document`,
+        passportPhoto: `${base}/passport-photo`,
+        signature: `${base}/signature.png`,
+      };
+      const intent = await runCreateIntent({
+        data: {
+          service: "cac",
+          orderDetails: {
+            preferredName: name1.trim(),
+            name2: name2.trim(),
+            name3: name3.trim(),
+            nature,
+            businessPhone: bizPhone,
+            businessEmail: bizEmail,
+            ownerName: fullName,
+            gender,
+            dob,
+            nationality,
+            occupation,
+            nin,
+            idType,
+            idNumber,
+            residentialAddress: resAddress,
+            ownerPhone,
+            ownerEmail,
+            applicationFiles,
+            declarationAccepted: declare,
+            businessAddress: `${street}, ${city}, ${lga}, ${state}`,
+            delivery,
+            shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
+            shipping:
+              delivery === "deliver"
+                ? {
+                    phone: shipTo.phone,
+                    street: shipTo.street,
+                    area: shipTo.area,
+                    lga: shipTo.lga,
+                    state: shipTo.state,
+                  }
+                : {},
+          },
+        },
+      });
+      paymentIntentCreated = true;
+      const paystack = await openPaystackInline({
+        email: intent.email || email,
+        amountNaira: intent.amountNaira,
+        reference: intent.reference,
         metadata: {
           channel: "hub",
           service: "cac",
           service_type: "cac",
-          preferred_name: preferredName || name1.trim(),
-          nin,
-          delivery,
+          intent_id: intent.intentId,
         },
       });
       if (paystack.status !== "success") {
         throw new Error("Payment was not completed.");
       }
+      paymentConfirmed = true;
 
       const done = await runSubmit({
         data: {
-          amount: totalPay,
-          delivery,
-          preferredName: preferredName || name1.trim(),
-          nature,
-          ownerName: fullName,
-          nin,
-          ownerPhone,
-          ownerEmail,
-          businessAddress: `${street}, ${city}, ${lga}, ${state}`,
-          shippingAddress: delivery === "deliver" ? formatDeliveryOneLine(shipTo) : "",
-          shipping:
-            delivery === "deliver"
-              ? {
-                  phone: shipTo.phone,
-                  street: shipTo.street,
-                  area: shipTo.area,
-                  lga: shipTo.lga,
-                  state: shipTo.state,
-                }
-              : {},
-          paymentReference: paystack.reference,
+          paymentReference: intent.reference,
         },
       });
-      setRefId(done.trackingReference || paystack.reference);
+      setRefId(done.trackingReference || "");
+      setPaymentReference(intent.reference);
+      setPaystackReference(paystack.reference);
       setStep("success");
       toast.success("Payment received — application queued");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Payment failed");
+      const message = e instanceof Error ? e.message : "";
+      // Never remove evidence after a successful Paystack callback: the server
+      // may still be reconciling the verified payment or allowing a retry.
+      // Once an intent exists, retain its evidence. Closing Paystack or losing
+      // the callback cannot prove that a charge did not succeed; the webhook
+      // may still reconcile it. Only clean files when intent creation failed.
+      const safeToClean = !paymentIntentCreated && !paymentConfirmed;
+      if (safeToClean && uploadedPaths.length > 0) {
+        const { error: cleanupError } = await supabase.storage
+          .from("cac-applications")
+          .remove(uploadedPaths);
+        if (cleanupError) console.warn("CAC abandoned-upload cleanup failed.");
+      }
+      toast.error(message || "Payment failed");
     } finally {
       setPaying(false);
     }
@@ -446,6 +598,7 @@ export function CacRegistrationFlow() {
     delivery,
     shipTo,
     runSubmit,
+    runCreateIntent,
     totalPay,
     preferredName,
     name1,
@@ -459,6 +612,19 @@ export function CacRegistrationFlow() {
     city,
     lga,
     state,
+    bizPhone,
+    dob,
+    gender,
+    idFile,
+    idNumber,
+    idType,
+    name2,
+    name3,
+    nationality,
+    occupation,
+    photoFile,
+    resAddress,
+    signature,
   ]);
 
   const field =
@@ -473,608 +639,643 @@ export function CacRegistrationFlow() {
         subtitle="Business Name application"
         onBack={step === "success" ? () => void navigate({ to: "/home" }) : goBack}
       />
-      <div className="cac-flow payment-flow-page mx-auto w-full max-w-md space-y-3 px-4 pt-2 pb-24 lg:max-w-4xl lg:space-y-3 lg:px-0 lg:pt-2 lg:pb-8">
-        {step !== "success" && step !== "intro" ? (
-          <PayStepper steps={STEPS} current={stepIndex} className="rounded-lg" />
-        ) : null}
+      <div className="service-flow-layout">
+        <main className="service-flow-main">
+          {step !== "success" ? <PayStepper steps={STEPS} current={stepIndex} /> : null}
+          <div className="service-flow-form-card">
+            {step === "intro" ? (
+              <section className="space-y-3">
+                <div className={card}>
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                      <Building2 className="size-5" />
+                    </span>
+                    <div>
+                      <h2 className="text-base font-bold">Business Name</h2>
+                      <p className="text-xs text-muted-foreground">Sole proprietor</p>
+                    </div>
+                  </div>
+                  <p className="pt-1 text-2xl font-bold tabular-nums text-primary">
+                    {priceQuote
+                      ? formatNaira(priceQuote.registration)
+                      : quoteLoading
+                        ? "Loading price…"
+                        : "Price unavailable"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">Form · ID · photo · signature</p>
+                  <p className="rounded-lg bg-primary/5 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                    Live manual service: RockPay staff review your details and complete the
+                    registration through the CAC portal. Your certificate will be added to Profile →
+                    My documents when ready.
+                  </p>
+                </div>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => setStep("names")}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
 
-        {step === "intro" ? (
-          <section className="space-y-4 lg:space-y-3">
-            <div className="space-y-3 pt-1">
-              <span className="grid size-14 place-items-center rounded-lg bg-primary-soft text-primary">
-                <Building2 className="size-7" />
-              </span>
-              <div>
-                <p className="mb-2 text-xs font-semibold text-primary">
-                  BUSINESS NAME · SOLE PROPRIETOR
-                </p>
-                <h2 className="text-3xl font-bold leading-tight">
-                  Your business.
-                  <br />A new beginning.
-                </h2>
-              </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Prepare your Business Name application with your business details, identification
-                and signature.
-              </p>
-            </div>
-            <div className="flex items-end justify-between border-y border-border py-5">
-              <div>
-                <p className="text-xs text-muted-foreground">Registration package</p>
-                <p className="mt-1 text-3xl font-bold text-primary">
-                  {formatNaira(CAC_DEMO_PRICE)}
-                </p>
-              </div>
-              <span className="text-xs text-muted-foreground">Delivery optional</span>
-            </div>
-            <div className="space-y-4">
-              {[
-                {
-                  Icon: Building2,
-                  title: "Business & owner details",
-                  detail: "Preferred names, contact and addresses",
-                },
-                {
-                  Icon: IdCard,
-                  title: "Identification & photo",
-                  detail: "Valid ID and a clear passport photograph",
-                },
-                {
-                  Icon: PenLine,
-                  title: "Your signature",
-                  detail: "Digital signature for your application",
-                },
-              ].map(({ Icon, title, detail }) => (
-                <div key={title} className="flex items-center gap-3">
-                  <Icon className="size-5 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-semibold">{title}</p>
-                    <p className="text-xs text-muted-foreground">{detail}</p>
+            {step === "names" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">Preferred names</h2>
+                <div className={card}>
+                  <div className="space-y-1">
+                    <Label>1st choice *</Label>
+                    <Input
+                      value={name1}
+                      onChange={(e) => setName1(e.target.value)}
+                      placeholder="e.g. Brightpath Ventures"
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>2nd (optional)</Label>
+                    <Input
+                      value={name2}
+                      onChange={(e) => setName2(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>3rd (optional)</Label>
+                    <Input
+                      value={name3}
+                      onChange={(e) => setName3(e.target.value)}
+                      className={field}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-            <p className="rounded-lg bg-warning-soft p-3 text-xs leading-relaxed text-warning-foreground">
-              Demo preview — no real CAC filing. Certificates are available only after processing.
-            </p>
-            <PayActionBar>
-              <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                onClick={() => setStep("names")}
-              >
-                Start application <ArrowRight className="ml-2 size-4" />
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "names" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-2xl font-bold">Business identity</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Choose your preferred name and add your business details.
-              </p>
-            </div>
-            <div className={card}>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-1">1st choice *</Label>
-                <Input
-                  id="cac-field-1"
-                  value={name1}
-                  onChange={(e) => setName1(e.target.value)}
-                  placeholder="e.g. Brightpath Ventures"
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-2">2nd (optional)</Label>
-                <Input
-                  id="cac-field-2"
-                  value={name2}
-                  onChange={(e) => setName2(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-3">3rd (optional)</Label>
-                <Input
-                  id="cac-field-3"
-                  value={name3}
-                  onChange={(e) => setName3(e.target.value)}
-                  className={field}
-                />
-              </div>
-            </div>
-            <h3 className="pt-2 text-sm font-semibold">Business address & contact</h3>
-            <div className={card}>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-nature">Nature of business</Label>
-                <Select value={nature} onValueChange={(value) => setNature(value)}>
-                  <SelectTrigger id="cac-nature" className={field}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NATURE_OPTIONS.map((o) => (
-                      <SelectItem key={o} value={o}>
-                        {o}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-4">Street *</Label>
-                <Input
-                  id="cac-field-4"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="cac-field-5">City *</Label>
-                  <Input
-                    id="cac-field-5"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className={field}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cac-field-6">LGA *</Label>
-                  <Input
-                    id="cac-field-6"
-                    value={lga}
-                    onChange={(e) => setLga(e.target.value)}
-                    className={field}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-state">State *</Label>
-                <Select value={state} onValueChange={(value) => setState(value)}>
-                  <SelectTrigger id="cac-state" className={field}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NG_STATES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-7">Phone *</Label>
-                <Input
-                  id="cac-field-7"
-                  value={bizPhone}
-                  onChange={(e) => setBizPhone(e.target.value)}
-                  inputMode="tel"
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-8">Email *</Label>
-                <Input
-                  id="cac-field-8"
-                  type="email"
-                  value={bizEmail}
-                  onChange={(e) => setBizEmail(e.target.value)}
-                  className={field}
-                />
-              </div>
-            </div>
-            <PayActionBar>
-              <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                onClick={() => {
-                  if (
-                    !name1.trim() ||
-                    !street.trim() ||
-                    !city.trim() ||
-                    !lga.trim() ||
-                    !bizPhone.trim() ||
-                    !bizEmail.trim()
-                  )
-                    toast.error("Enter your preferred name, business address, phone and email.");
-                  else setStep("proprietor");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "proprietor" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-2xl font-bold">Meet the proprietor</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use the details shown on your identification.
-              </p>
-            </div>
-            <div className={card}>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-9">Full name *</Label>
-                <Input
-                  id="cac-field-9"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="cac-gender">Gender *</Label>
-                  <Select
-                    value={gender || undefined}
-                    onValueChange={(value) => setGender(value as "Male" | "Female")}
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (!name1.trim()) toast.error("Enter your first name choice.");
+                      else setStep("business");
+                    }}
                   >
-                    <SelectTrigger id="cac-gender" className={field}>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cac-field-10">Date of birth *</Label>
-                  <Input
-                    id="cac-field-10"
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    className={field}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-11">Nationality</Label>
-                <Input
-                  id="cac-field-11"
-                  value={nationality}
-                  onChange={(e) => setNationality(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-12">Occupation</Label>
-                <Input
-                  id="cac-field-12"
-                  value={occupation}
-                  onChange={(e) => setOccupation(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-13">Phone *</Label>
-                <Input
-                  id="cac-field-13"
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value)}
-                  inputMode="tel"
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-14">Email *</Label>
-                <Input
-                  id="cac-field-14"
-                  type="email"
-                  value={ownerEmail}
-                  onChange={(e) => setOwnerEmail(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="cac-nin">NIN *</Label>
-                  <span
-                    className={`text-xs tabular-nums ${nin.length === 11 ? "text-primary" : "text-muted-foreground"}`}
-                  >
-                    {nin.length}/11 digits
-                  </span>
-                </div>
-                <Input
-                  id="cac-nin"
-                  value={nin}
-                  onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  inputMode="numeric"
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-15">ID type</Label>
-                <Select
-                  value={idType}
-                  onValueChange={(value) => setIdType(value as (typeof ID_TYPES)[number])}
-                >
-                  <SelectTrigger id="cac-field-15" className={field}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ID_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-field-16">ID number *</Label>
-                <Input
-                  id="cac-field-16"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
-                  className={field}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cac-residential">Residential address *</Label>
-                <label className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-                  <Checkbox
-                    checked={resAddress === `${street}, ${city}, ${lga}, ${state}`}
-                    onCheckedChange={(checked) =>
-                      setResAddress(checked ? `${street}, ${city}, ${lga}, ${state}` : "")
-                    }
-                  />
-                  Same as business address
-                </label>
-                <Input
-                  id="cac-residential"
-                  value={resAddress}
-                  onChange={(e) => setResAddress(e.target.value)}
-                  className={field}
-                />
-              </div>
-            </div>
-            <PayActionBar>
-              <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                onClick={() => {
-                  if (
-                    !fullName.trim() ||
-                    !gender ||
-                    !dob ||
-                    !ownerPhone.trim() ||
-                    !ownerEmail.trim() ||
-                    nin.length !== 11 ||
-                    !idNumber.trim() ||
-                    !resAddress.trim()
-                  )
-                    toast.error("Complete required owner fields (NIN must be 11 digits).");
-                  else setStep("documents");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "documents" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-2xl font-bold">Documents & signature</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add clear, readable copies for your application.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <FilePick
-                label="Valid ID"
-                icon={IdCard}
-                accept="image/*,application/pdf"
-                file={idFile}
-                onPick={setIdFile}
-              />
-              <FilePick
-                label="Passport photo"
-                icon={Camera}
-                accept="image/*"
-                file={photoFile}
-                onPick={setPhotoFile}
-              />
-              <div className={card}>
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <PenLine className="size-4 text-primary" /> Signature
-                </p>
-                <SignaturePad onChange={setSignature} initial={signature} />
-              </div>
-            </div>
-            <PayActionBar>
-              <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                onClick={() => {
-                  if (!idFile || !photoFile || !signature)
-                    toast.error("Upload ID, photo and sign.");
-                  else setStep("review");
-                }}
-              >
-                Continue
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
-
-        {step === "review" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-2xl font-bold">Review your application</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Check your details and choose how to receive your certificate.
-              </p>
-            </div>
-            <div className={card}>
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 text-sm font-semibold">
-                  <Building2 className="size-4 text-primary" /> Business details
-                </h3>
-                <Button variant="ghost" size="sm" onClick={() => setStep("names")}>
-                  <Pencil className="mr-1 size-3" />
-                  Edit
-                </Button>
-              </div>
-              <Row label="First choice" value={name1} />
-              <Row label="Second choice" value={name2} />
-              <Row label="Third choice" value={name3} />
-              <Row label="Nature of business" value={nature} />
-              <Row label="Address" value={`${street}, ${city}, ${lga}, ${state}`} />
-              <Row label="Phone" value={bizPhone} />
-              <Row label="Email" value={bizEmail} />
-            </div>
-            <div className={card}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Proprietor details</h3>
-                <Button variant="ghost" size="sm" onClick={() => setStep("proprietor")}>
-                  <Pencil className="mr-1 size-3" />
-                  Edit
-                </Button>
-              </div>
-              <Row label="Full name" value={fullName} />
-              <Row label="Gender" value={gender} />
-              <Row label="Date of birth" value={dob} />
-              <Row label="Nationality" value={nationality} />
-              <Row label="Occupation" value={occupation} />
-              <Row label="Phone" value={ownerPhone} />
-              <Row label="Email" value={ownerEmail} />
-              <Row label="NIN" value={nin} />
-              <Row label={idType} value={idNumber} />
-              <Row label="Residential address" value={resAddress} />
-            </div>
-            <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <FileCheck2 className="size-4 text-primary" /> Documents attached
-                </p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {idFile?.name} · {photoFile?.name}
-                </p>
-                <p className="text-xs text-muted-foreground">Signature included</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setStep("documents")}>
-                Edit
-              </Button>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Receive your certificate</h3>
-              {[
-                {
-                  method: "download",
-                  Icon: Download,
-                  title: "Digital certificate",
-                  detail: "PDF in My documents when ready",
-                  price: CAC_DEMO_PRICE,
-                },
-                {
-                  method: "deliver",
-                  Icon: Truck,
-                  title: "Print & delivery",
-                  detail: "Printed pack sent after processing",
-                  price: CAC_DEMO_PRICE + CAC_COURIER_PRICE,
-                },
-              ].map(({ method, Icon, title, detail, price }) => (
-                <Button
-                  key={method}
-                  type="button"
-                  variant="outline"
-                  aria-pressed={delivery === method}
-                  onClick={() => setDelivery(method as DeliveryMethod)}
-                  className={`h-auto w-full justify-start gap-3 whitespace-normal rounded-lg p-3 text-left ${delivery === method ? "border-primary bg-primary-soft" : "bg-card"}`}
-                >
-                  <Icon className="size-5 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">{title}</span>
-                    <span className="block text-[11px] font-normal text-muted-foreground">
-                      {detail}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs font-semibold text-primary">
-                    {formatNaira(price)}
-                  </span>
-                </Button>
-              ))}
-            </div>
-            {delivery === "deliver" ? (
-              <DeliveryAddressFields value={shipTo} onChange={setShipTo} />
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
             ) : null}
-            <PayBreakdown
-              lines={
-                delivery === "deliver"
-                  ? [
-                      { label: "CAC registration", amount: CAC_DEMO_PRICE },
-                      { label: "Print + delivery", amount: CAC_COURIER_PRICE },
-                    ]
-                  : [{ label: "CAC registration", amount: CAC_DEMO_PRICE }]
-              }
-              total={totalPay}
-            />
-            <label className="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
-              <Checkbox
-                checked={declare}
-                onCheckedChange={(checked) => setDeclare(checked === true)}
-                className="mt-1"
-              />
-              <span>
-                I confirm that the details provided are correct. This is a demo application.
-              </span>
-            </label>
-            <PayActionBar>
-              <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                disabled={paying}
-                onClick={() => void onPay()}
-              >
-                {paying ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Please wait…
-                  </>
-                ) : (
-                  `Pay ${formatNaira(totalPay)}`
-                )}
-              </Button>
-            </PayActionBar>
-          </section>
-        ) : null}
 
-        {step === "success" ? (
-          <section className="flex min-h-[55dvh] flex-col items-center justify-center gap-3 text-center">
-            <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success result-pop">
-              <CheckCircle2 className="size-7" />
-            </span>
-            <h2 className="text-lg font-bold">Application received</h2>
-            <p className="max-w-xs text-sm text-muted-foreground">
-              {delivery === "deliver"
-                ? "We’ll process your CAC, then send the printed pack."
-                : "We’ll process your CAC. Check My documents when the file is ready."}
-            </p>
-            <p className="font-mono text-[10px] text-muted-foreground">{refId}</p>
-            <Button
-              variant="outline"
-              className="h-9 rounded-xl text-xs"
-              onClick={() => {
-                void navigator.clipboard.writeText(refId);
-                toast.success("Copied");
-              }}
-            >
-              <Copy className="mr-1.5 size-3.5" /> Copy ref
-            </Button>
-            <Button
-              className="mt-2 h-12 w-full max-w-xs rounded-lg font-semibold"
-              onClick={() => void navigate({ to: "/home" })}
-            >
-              <Home className="mr-2 size-4" /> Home
-            </Button>
-          </section>
+            {step === "business" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">Business</h2>
+                <div className={card}>
+                  <div className="space-y-1">
+                    <Label>Nature of business</Label>
+                    <select
+                      value={nature}
+                      onChange={(e) => setNature(e.target.value)}
+                      className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                    >
+                      {NATURE_OPTIONS.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Street *</Label>
+                    <Input
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>City *</Label>
+                      <Input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className={field}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>LGA *</Label>
+                      <Input
+                        value={lga}
+                        onChange={(e) => setLga(e.target.value)}
+                        className={field}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>State *</Label>
+                    <select
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                    >
+                      {NG_STATES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Phone *</Label>
+                    <Input
+                      value={bizPhone}
+                      onChange={(e) => setBizPhone(e.target.value)}
+                      inputMode="tel"
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={bizEmail}
+                      onChange={(e) => setBizEmail(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                </div>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (
+                        !street.trim() ||
+                        !city.trim() ||
+                        !lga.trim() ||
+                        !bizPhone.trim() ||
+                        !bizEmail.trim()
+                      )
+                        toast.error("Fill address, phone and email.");
+                      else setStep("proprietor");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "proprietor" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">Owner</h2>
+                <div className={card}>
+                  <div className="space-y-1">
+                    <Label>Full name *</Label>
+                    <Input
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>Gender *</Label>
+                      <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value as "Male" | "Female" | "")}
+                        className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Date of birth *</Label>
+                      <Input
+                        type="date"
+                        value={dob}
+                        onChange={(e) => setDob(e.target.value)}
+                        className={field}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Nationality</Label>
+                    <Input
+                      value={nationality}
+                      onChange={(e) => setNationality(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Occupation</Label>
+                    <Input
+                      value={occupation}
+                      onChange={(e) => setOccupation(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Phone *</Label>
+                    <Input
+                      value={ownerPhone}
+                      onChange={(e) => setOwnerPhone(e.target.value)}
+                      inputMode="tel"
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>NIN *</Label>
+                    <Input
+                      value={nin}
+                      onChange={(e) => setNin(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                      inputMode="numeric"
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>ID type</Label>
+                    <select
+                      value={idType}
+                      onChange={(e) => setIdType(e.target.value as (typeof ID_TYPES)[number])}
+                      className={`w-full border border-input bg-background px-3 text-sm ${field}`}
+                    >
+                      {ID_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>ID number *</Label>
+                    <Input
+                      value={idNumber}
+                      onChange={(e) => setIdNumber(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Residential address *</Label>
+                    <Input
+                      value={resAddress}
+                      onChange={(e) => setResAddress(e.target.value)}
+                      className={field}
+                    />
+                  </div>
+                </div>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (
+                        !fullName.trim() ||
+                        !gender ||
+                        !dob ||
+                        !ownerPhone.trim() ||
+                        !ownerEmail.trim() ||
+                        nin.length !== 11 ||
+                        !idNumber.trim() ||
+                        !resAddress.trim()
+                      )
+                        toast.error("Complete required owner fields (NIN must be 11 digits).");
+                      else setStep("documents");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "documents" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">Documents</h2>
+                <div className="space-y-2">
+                  <FilePick
+                    label="Valid ID"
+                    icon={IdCard}
+                    accept="image/*,application/pdf"
+                    valueName={idFile?.name ?? null}
+                    onPick={setIdFile}
+                  />
+                  <FilePick
+                    label="Passport photo"
+                    icon={Camera}
+                    accept="image/*"
+                    valueName={photoFile?.name ?? null}
+                    onPick={setPhotoFile}
+                  />
+                  <div className={card}>
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <PenLine className="size-4 text-primary" /> Signature
+                    </p>
+                    <SignaturePad onChange={setSignature} />
+                  </div>
+                </div>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (!idFile || !photoFile || !signature)
+                        toast.error("Upload ID, photo and sign.");
+                      else setStep("review");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "review" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">Review</h2>
+                <div className={card}>
+                  <Row label="1st name" value={name1} />
+                  <Row label="2nd name" value={name2} />
+                  <Row label="Nature" value={nature} />
+                  <Row label="Address" value={`${street}, ${city}, ${lga}, ${state}`} />
+                  <Row label="Owner" value={fullName} />
+                  <Row label="NIN" value={nin} />
+                </div>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => setStep("delivery")}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "delivery" ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold">How do you want it?</h2>
+                <DeliveryMethodCards
+                  method={delivery}
+                  onChange={setDelivery}
+                  downloadLabel="Download certificate"
+                  downloadSub="PDF when ready"
+                  downloadPrice={priceQuote?.registration ?? 0}
+                  deliverLabel="Print + deliver"
+                  deliverSub="Printed pack to your address"
+                  deliverPrice={priceQuote ? priceQuote.registration + priceQuote.courier : 0}
+                />
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      if (!delivery) {
+                        toast.error("Choose download or delivery.");
+                        return;
+                      }
+                      if (delivery === "deliver") setStep("address");
+                      else setStep("pay");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "address" ? (
+              <section className="space-y-3">
+                <DeliveryAddressFields value={shipTo} onChange={setShipTo} />
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    onClick={() => {
+                      const err = validateDeliveryAddress(shipTo);
+                      if (err) toast.error(err);
+                      else setStep("pay");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "pay" ? (
+              <section className="space-y-3">
+                <PayBreakdown
+                  lines={
+                    delivery === "deliver"
+                      ? [
+                          { label: "CAC registration", amount: priceQuote?.registration ?? 0 },
+                          { label: "Print + delivery", amount: priceQuote?.courier ?? 0 },
+                        ]
+                      : [{ label: "CAC registration", amount: priceQuote?.registration ?? 0 }]
+                  }
+                  total={totalPay}
+                />
+                {delivery === "deliver" ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Deliver to: {formatDeliveryOneLine(shipTo)}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Certificate will be in My documents when ready.
+                  </p>
+                )}
+                {quoteError ? (
+                  <p role="alert" className="text-xs text-destructive">
+                    {quoteError}
+                  </p>
+                ) : null}
+                {!quoteError && priceQuote && !priceQuote.live ? (
+                  <p className="text-xs text-amber-700">
+                    Your application will be reviewed and processed manually by the RockPay CAC
+                    desk.
+                  </p>
+                ) : null}
+                <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={declare}
+                    onChange={(e) => setDeclare(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>I confirm these details and uploaded documents are correct.</span>
+                </label>
+                <PayActionBar>
+                  <Button
+                    className="h-12 w-full rounded-xl font-semibold"
+                    disabled={
+                      paying || quoteLoading || !priceQuote || !!quoteError || !priceQuote.live
+                    }
+                    onClick={() => void onPay()}
+                  >
+                    {paying ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
+                      </>
+                    ) : (
+                      `Pay ${formatNaira(totalPay)}`
+                    )}
+                  </Button>
+                </PayActionBar>
+              </section>
+            ) : null}
+
+            {step === "success" ? (
+              <section className="flex min-h-[55dvh] flex-col items-center justify-center gap-3 text-center">
+                <span className="grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+                  <CheckCircle2 className="size-7" />
+                </span>
+                <h2 className="text-lg font-bold">Application received</h2>
+                <p className="max-w-xs text-sm text-muted-foreground">
+                  {delivery === "deliver"
+                    ? "We’ll process your CAC, then send the printed pack."
+                    : "We’ll process your CAC. Check My documents when the file is ready."}
+                </p>
+                {refId ? (
+                  <div className="w-full max-w-xs rounded-xl border bg-card p-3 text-left">
+                    <p className="text-[11px] text-muted-foreground">
+                      Application tracking reference
+                    </p>
+                    <p className="mt-1 break-all font-mono text-xs font-semibold">{refId}</p>
+                    <Button
+                      variant="outline"
+                      className="mt-2 h-8 rounded-lg text-xs"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(refId);
+                        toast.success("Application reference copied");
+                      }}
+                    >
+                      <Copy className="mr-1.5 size-3.5" /> Copy application reference
+                    </Button>
+                  </div>
+                ) : null}
+                {paymentReference ? (
+                  <div className="w-full max-w-xs space-y-2">
+                    <ReceiptShareButton
+                      payload={{
+                        reference: paymentReference,
+                        title: "CAC Business Name Registration",
+                        status: "successful",
+                        amountLabel: formatNaira(totalPay),
+                        direction: "out",
+                        service: "CAC registration",
+                        paystackRef: paystackReference || null,
+                        dateLabel: new Date().toLocaleString("en-NG"),
+                        method: "Paystack",
+                        detailRows: refId
+                          ? [{ label: "Application tracking reference", value: refId }]
+                          : [],
+                      }}
+                    />
+                    <p className="break-all text-[10px] text-muted-foreground">
+                      Payment reference: {paymentReference}
+                    </p>
+                  </div>
+                ) : null}
+                <Button
+                  className="mt-2 h-12 w-full max-w-xs rounded-xl font-semibold"
+                  onClick={() => void navigate({ to: "/home" })}
+                >
+                  <Home className="mr-2 size-4" /> Home
+                </Button>
+              </section>
+            ) : null}
+          </div>
+        </main>
+        {step !== "success" ? (
+          <aside className="service-flow-summary">
+            <div className="service-flow-summary-card">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <Building2 className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground">Business Name Registration</p>
+                  <p className="text-xs text-muted-foreground">CAC application workspace</p>
+                </div>
+              </div>
+              <div className="mt-5 border-t border-border/70 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Application progress
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
+                  Step {stepIndex + 1}
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {" "}
+                    / {STEPS.length}
+                  </span>
+                </p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="mt-5 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Application checklist
+                </p>
+                {[
+                  ["Preferred names", Boolean(name1.trim())],
+                  [
+                    "Business details",
+                    Boolean(
+                      street.trim() &&
+                      city.trim() &&
+                      lga.trim() &&
+                      bizPhone.trim() &&
+                      bizEmail.trim(),
+                    ),
+                  ],
+                  [
+                    "Owner information",
+                    Boolean(fullName.trim() && nin.length === 11 && idNumber.trim()),
+                  ],
+                  ["Supporting documents", Boolean(idFile && photoFile && signature)],
+                  ["Review and delivery", Boolean(delivery)],
+                ].map(([label, complete]) => (
+                  <div key={String(label)} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2
+                      className={
+                        complete ? "size-4 text-emerald-600" : "size-4 text-muted-foreground/40"
+                      }
+                    />
+                    <span className={complete ? "text-foreground" : "text-muted-foreground"}>
+                      {String(label)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 rounded-xl bg-muted/60 p-3">
+                <p className="text-xs text-muted-foreground">Estimated service fee</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">
+                  {priceQuote
+                    ? formatNaira(
+                        delivery === "deliver" ? priceQuote.total : priceQuote.registration,
+                      )
+                    : quoteLoading
+                      ? "Loading…"
+                      : "Unavailable"}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Final amount is confirmed before secure payment.
+                </p>
+              </div>
+              <div className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                Your information and uploaded documents are handled securely.
+              </div>
+            </div>
+          </aside>
         ) : null}
       </div>
     </AppShell>

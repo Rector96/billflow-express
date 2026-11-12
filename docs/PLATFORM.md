@@ -65,7 +65,7 @@ RockPay is a **Nigeria-focused utility + identity + formalisation hub** — not 
 | Merge guide  | `docs/MERGE_WITH_MAIN.md`             |
 | This file    | `docs/PLATFORM.md`                    |
 
-**Flags:** `CAC_DEMO_MODE`, `NIN_DEMO_MODE` in flow components — keep `true` until backend is connected.
+**Service readiness:** CAC uses verified Paystack checkout with private uploads and manual staff fulfillment. NIN remains preview-gated until its authorized fulfillment path is connected.
 
 **UI uniformity:** New hub flows reuse AppShell, PageHeader, PayStepper, PayActionBar, card styles — same language as bill pay so merge does not create a second product look.
 

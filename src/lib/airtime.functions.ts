@@ -231,12 +231,34 @@ export const purchaseAirtime = createServerFn({ method: "POST" })
       throw new Error("Could not prepare this payment safely. Your wallet was not charged.");
     }
 
-    const pay = await vtpassPayAirtime({
-      requestId: String(row.request_id),
-      serviceId,
-      amount: providerAmount,
-      phone,
-    });
+    let pay: Awaited<ReturnType<typeof vtpassPayAirtime>>;
+    try {
+      pay = await vtpassPayAirtime({
+        requestId: String(row.request_id),
+        serviceId,
+        amount: providerAmount,
+        phone,
+      });
+    } catch (error) {
+      // The wallet reservation already exists. A network timeout does not prove
+      // VTpass failed, so keep the transaction pending and return its reference.
+      console.warn("[airtime] provider response pending", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        detail: error instanceof Error ? error.message : "Provider response unavailable",
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        requestId: String(row.request_id),
+        providerTransactionId: null,
+        amount: customerAmount,
+        phoneMasked: maskPhone(phone),
+        network: serviceId,
+        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
+        message: customerMessage("pending", customerAmount),
+      };
+    }
     const outcome = mapVtpassOutcome(pay);
     console.info("[airtime] pay", row.internal_reference, {
       code: pay.code,
@@ -345,11 +367,24 @@ export const adminRequeryAirtime = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     if (staffErr || !staff) throw new Error("forbidden");
+    const { data: roles, error: roleError } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleError) throw new Error("Could not verify transaction requery permissions.");
+    if (
+      !(roles ?? []).some((entry) =>
+        ["support", "admin", "super_admin"].includes(String(entry.role)),
+      )
+    ) {
+      throw new Error("Forbidden: transaction requery requires support or admin access.");
+    }
     return requeryAirtimeCore({
       supabase: context.supabase,
       userId: context.userId,
       reference: data.reference,
       audit: true,
+      staffAuthorized: true,
     });
   });
 
@@ -358,6 +393,7 @@ export async function requeryAirtimeCore(opts: {
   userId?: string | null;
   reference: string;
   audit?: boolean;
+  staffAuthorized?: boolean;
 }): Promise<AirtimePurchaseResult> {
   const { vtpassRequery, mapVtpassOutcome } = await import("./vtpass.server");
   const { supabase, reference } = opts;
@@ -371,7 +407,7 @@ export async function requeryAirtimeCore(opts: {
   if (error) throw new Error(error.message);
   const bill = bills?.[0];
   if (!bill) throw new Error("Transaction not found.");
-  if (opts.userId && bill.user_id && bill.user_id !== opts.userId)
+  if (!opts.staffAuthorized && opts.userId && bill.user_id && bill.user_id !== opts.userId)
     throw new Error("Transaction not found.");
   const amount = Number(bill.amount);
   const phone = String(bill.customer_identifier ?? "");
@@ -409,7 +445,8 @@ export async function requeryAirtimeCore(opts: {
   const { data: finalized, error: finError } = await asAdmin(supabaseAdmin).rpc(
     "trusted_complete_airtime_purchase",
     {
-      _user_id: opts.userId,
+      // Settle against the transaction owner, not the staff member performing an audited requery.
+      _user_id: bill.user_id,
       _internal_reference: bill.internal_reference,
       _outcome: outcome,
       _provider_transaction_id: pay.transactionId ?? bill.provider_transaction_id ?? "",

@@ -67,6 +67,7 @@ function TicketThread() {
           .from("support_messages")
           .select("id, body, sender_id, is_internal, created_at")
           .eq("ticket_id", ticketId)
+          .eq("is_internal", false)
           .order("created_at", { ascending: true }),
       ]);
       if (t.error) throw t.error;

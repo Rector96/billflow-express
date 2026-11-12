@@ -39,7 +39,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   },
   {
     title: "One Wallet. Everything You Need.",
-    body: "Fund once and pay anytime — airtime, data, power and cable.",
+    body: "Fund once and pay anytime — electricity, cable TV and other available services.",
     image:
       "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1600&q=90",
     imageAlt: "Person using mobile banking on a phone",

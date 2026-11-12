@@ -11,7 +11,7 @@
  * Requery remains the correct recovery path for an ambiguous VTpass transaction.
  * This router therefore never falls back when the primary call itself throws.
  */
-import { mapVtpassOutcome, vtpassPay, type VtpassPayResult } from "./vtpass.server";
+import { mapVtpassOutcome, vtpassPay, vtpassRequery, type VtpassPayResult } from "./vtpass.server";
 import {
   vtuafricaPayCable,
   vtuafricaPayElectricity,
@@ -31,6 +31,7 @@ export type RoutedPayResult = {
   code: string;
   responseDescription: string;
   requestId: string;
+  vendorReference: string;
   transactionId: string | null;
   purchasedCode: string | null;
   contentStatus: string | null;
@@ -116,6 +117,7 @@ function fromVtpass(result: VtpassPayResult, fallbackUsed: boolean): RoutedPayRe
     code: result.code,
     responseDescription: result.responseDescription,
     requestId: result.requestId,
+    vendorReference: result.requestId,
     transactionId: result.transactionId,
     purchasedCode: result.purchasedCode,
     contentStatus: result.contentStatus,
@@ -135,6 +137,7 @@ function fromVtuafrica(result: VtuafricaPayResult, requestId: string): RoutedPay
       (result.status === "successful" ? "000" : result.status === "pending" ? "099" : "016"),
     responseDescription: result.message,
     requestId,
+    vendorReference: result.reference,
     transactionId: result.transactionId,
     purchasedCode: result.token,
     contentStatus:
@@ -217,7 +220,21 @@ export async function routeElectricityPay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica electricity error", e);
-    return fromVtpass(primary, true);
+    return {
+      vendor: "vtuafrica",
+      status: "pending",
+      code: "099",
+      responseDescription: "Secondary provider response is being confirmed.",
+      requestId: input.request_id,
+      vendorReference: ref,
+      transactionId: null,
+      purchasedCode: null,
+      contentStatus: "pending",
+      totalAmount: null,
+      commission: null,
+      raw: { error: String(e) },
+      fallbackUsed: true,
+    };
   }
 }
 
@@ -270,6 +287,35 @@ export async function routeCablePay(input: {
     return fromVtuafrica(secondary, input.request_id);
   } catch (e) {
     console.error("[vendor-router] VTUAfrica cable error", e);
-    return fromVtpass(primary, true);
+    return {
+      vendor: "vtuafrica",
+      status: "pending",
+      code: "099",
+      responseDescription: "Secondary provider response is being confirmed.",
+      requestId: input.request_id,
+      vendorReference: ref,
+      transactionId: null,
+      purchasedCode: null,
+      contentStatus: "pending",
+      totalAmount: null,
+      commission: null,
+      raw: { error: String(e) },
+      fallbackUsed: true,
+    };
   }
+}
+
+/** Requery the provider that owns an existing transaction; never initiate a new purchase. */
+export async function requeryRoutedBill(input: {
+  vendor: "vtpass" | "vtuafrica";
+  vendorReference: string;
+  requestId: string;
+}): Promise<RoutedPayResult> {
+  if (input.vendor === "vtuafrica") {
+    const { vtuafricaRequery } = await import("./vtuafrica.server");
+    const result = await vtuafricaRequery(input.vendorReference);
+    return fromVtuafrica(result, input.requestId);
+  }
+  const result = await vtpassRequery(input.vendorReference);
+  return fromVtpass(result, false);
 }

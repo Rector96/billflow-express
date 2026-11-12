@@ -18,13 +18,19 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { PinPad } from "@/components/app/pin-pad";
 import { PayActionBar } from "@/components/app/pay-action-bar";
+import { PayStepper } from "@/components/app/pay-step";
 import { scrollForNewStep, scrollIntoAction } from "@/lib/scroll-into-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useServerFn } from "@tanstack/react-start";
 import { friendlyError, useApp } from "@/lib/app-store";
-import { listExamCatalog, purchaseExamPins, type ExamVariation } from "@/lib/exam.functions";
+import {
+  listExamCatalog,
+  purchaseExamPins,
+  requeryExamPins,
+  type ExamVariation,
+} from "@/lib/exam.functions";
 import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +54,7 @@ export function ExamPinsFlow({
   const { refresh, profile } = useApp();
   const loadCatalog = useServerFn(listExamCatalog);
   const purchase = useServerFn(purchaseExamPins);
+  const requery = useServerFn(requeryExamPins);
   const [step, setStep] = useState<Step>("exam");
 
   useEffect(() => {
@@ -59,7 +66,10 @@ export function ExamPinsFlow({
   const [quantity, setQuantity] = useState(1);
   const [profileId, setProfileId] = useState("");
   const [pin, setPin] = useState("");
+  // Reuse the same provider request ID if the client retries after a network interruption.
+  const [purchaseRequestId, setPurchaseRequestId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const [error, setError] = useState("");
   const [resultPins, setResultPins] = useState<string[]>([]);
   const [resultRef, setResultRef] = useState("");
@@ -70,8 +80,17 @@ export function ExamPinsFlow({
   const exam = EXAMS.find((item) => item.id === examId);
   const variation = variations.find((item) => item.variationCode === variationCode);
   const total = variation ? variation.amount * quantity : 0;
-  const progressSteps: Step[] = ["exam", "product", "quantity", "confirm", "pin"];
-  const progressIndex = Math.max(0, progressSteps.indexOf(step === "result" ? "pin" : step));
+  const progressSteps = [
+    { key: "exam", label: "Exam" },
+    { key: "product", label: "Product" },
+    { key: "quantity", label: "Quantity" },
+    { key: "confirm", label: "Review" },
+    { key: "pin", label: "Pay" },
+  ];
+  const progressIndex = Math.max(
+    0,
+    progressSteps.findIndex((item) => item.key === (step === "result" ? "pin" : step)),
+  );
 
   useEffect(() => {
     if (!examId) return;
@@ -101,17 +120,39 @@ export function ExamPinsFlow({
     }
   };
 
+  const checkPaymentStatus = async () => {
+    if (!resultRef || checkingStatus) return;
+    setCheckingStatus(true);
+    try {
+      const latest = await requery({ data: { reference: resultRef } });
+      setResultStatus(latest.status);
+      setResultMsg(latest.message);
+      setResultPins(latest.pins ?? []);
+      await refresh();
+      if (latest.status === "successful") toast.success("Exam PINs confirmed");
+      else if (latest.status === "failed") toast.error(latest.message);
+      else toast.message("The provider is still confirming this purchase.");
+    } catch (err) {
+      toast.error(friendlyError(err, "Could not check this payment yet."));
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
   const submit = async () => {
     if (!variation) return;
     setLoading(true);
     setError("");
     try {
+      const requestId = purchaseRequestId || `exam-${crypto.randomUUID()}`;
+      if (!purchaseRequestId) setPurchaseRequestId(requestId);
       const result = await purchase({
         data: {
           examId,
           variationCode,
           quantity,
           pin,
+          requestId,
           ...(examId === "jamb" ? { profileId } : {}),
         },
       });
@@ -137,6 +178,7 @@ export function ExamPinsFlow({
     const isPending = resultStatus === "pending";
     return (
       <AppShell>
+        <PageHeader title={entryTitle} backTo="/services" />
         <div className="mx-auto flex min-h-[70dvh] max-w-md flex-col items-center justify-center gap-4 px-4 py-10 text-center">
           <span
             className={cn(
@@ -229,6 +271,22 @@ export function ExamPinsFlow({
           ) : null}
 
           <div className="mt-2 w-full space-y-2">
+            {isPending ? (
+              <Button
+                variant="outline"
+                className="h-12 w-full rounded-2xl font-bold"
+                disabled={checkingStatus}
+                onClick={() => void checkPaymentStatus()}
+              >
+                {checkingStatus ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" /> Checking…
+                  </>
+                ) : (
+                  "Check payment status"
+                )}
+              </Button>
+            ) : null}
             <Button
               className="h-12 w-full rounded-2xl font-bold"
               onClick={() => navigate({ to: "/home" })}
@@ -254,17 +312,7 @@ export function ExamPinsFlow({
     <AppShell>
       <PageHeader title={entryTitle} backTo="/services" />
       <div className="mx-auto max-w-md space-y-5 px-4 pb-10 pt-2">
-        <div className="flex items-center gap-1.5">
-          {progressSteps.map((item, index) => (
-            <div
-              key={item}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors",
-                progressIndex >= index ? "bg-primary" : "bg-muted",
-              )}
-            />
-          ))}
-        </div>
+        <PayStepper steps={progressSteps} current={progressIndex} />
 
         {step === "exam" ? (
           <section className="space-y-3">
@@ -496,7 +544,7 @@ export function ExamPinsFlow({
                 Authorise {formatNaira(total, false)} for {quantity} PIN{quantity > 1 ? "s" : ""}.
               </p>
             </div>
-            <PinPad value={pin} onChange={setPin} maxLength={4} />
+            <PinPad value={pin} onChange={setPin} length={4} />
             {error ? (
               <div className="rounded-2xl border border-destructive/30 bg-destructive-soft/40 px-3 py-3 text-xs text-destructive">
                 {error}

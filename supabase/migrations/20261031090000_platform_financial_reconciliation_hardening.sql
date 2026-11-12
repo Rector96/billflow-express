@@ -1,0 +1,402 @@
+-- Platform-wide financial reconciliation hardening.
+-- Read-only: detects wallet ledger and Paystack funding anomalies.
+-- Financial reporting is restricted to Admin and Super Admin.
+
+CREATE OR REPLACE FUNCTION public.admin_wallet_reconciliation(
+  _limit integer DEFAULT 100,
+  _offset integer DEFAULT 0
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  uid uuid := auth.uid();
+  lim integer := LEAST(GREATEST(COALESCE(_limit, 100), 1), 250);
+  off integer := GREATEST(COALESCE(_offset, 0), 0);
+BEGIN
+  -- Customer Care/support must not access financial reports.
+  IF uid IS NULL OR NOT (
+    public.has_role(uid, 'admin'::public.app_role)
+    OR public.has_role(uid, 'super_admin'::public.app_role)
+  ) THEN
+    RAISE EXCEPTION 'forbidden_role';
+  END IF;
+
+  RETURN jsonb_build_object(
+    'wallet_count',
+      (SELECT count(*) FROM public.wallets),
+
+    'wallet_balance_total',
+      COALESCE((SELECT sum(balance) FROM public.wallets), 0),
+
+    'ledger_deposit_total',
+      COALESCE((
+        SELECT sum(amount)
+        FROM public.wallet_transactions
+        WHERE type = 'deposit' AND status = 'successful'
+      ), 0),
+
+    'ledger_debit_total',
+      COALESCE((
+        SELECT sum(amount)
+        FROM public.wallet_transactions
+        WHERE type = 'bill_payment' AND status = 'successful'
+      ), 0),
+
+    'ledger_refund_total',
+      COALESCE((
+        SELECT sum(amount)
+        FROM public.wallet_transactions
+        WHERE type = 'refund' AND status = 'successful'
+      ), 0),
+
+    'pending_funding_count',
+      (
+        SELECT count(*)
+        FROM public.wallet_transactions
+        WHERE type = 'deposit'
+          AND provider = 'paystack'
+          AND status = 'pending'
+      ),
+
+    'pending_funding_total',
+      COALESCE((
+        SELECT sum(amount)
+        FROM public.wallet_transactions
+        WHERE type = 'deposit'
+          AND provider = 'paystack'
+          AND status = 'pending'
+      ), 0),
+
+    'anomalies',
+      COALESCE((
+        SELECT jsonb_agg(
+          row_to_json(page)::jsonb
+          ORDER BY
+            CASE page.severity
+              WHEN 'high' THEN 3
+              WHEN 'medium' THEN 2
+              ELSE 1
+            END DESC,
+            page.created_at DESC
+        )
+        FROM (
+          SELECT a.*
+          FROM (
+            -- Wallet balance versus latest successful ledger entry.
+            SELECT
+              'wallet_balance_chain'::text AS issue,
+              'high'::text AS severity,
+              w.id AS wallet_id,
+              w.user_id,
+              p.full_name AS user_label,
+              p.email AS user_email,
+              w.balance AS current_balance,
+              wtx.created_at,
+              'Latest successful ledger balance_after does not equal wallet balance'::text AS detail
+            FROM public.wallets w
+            JOIN LATERAL (
+              SELECT wt.balance_after, wt.created_at
+              FROM public.wallet_transactions wt
+              WHERE wt.wallet_id = w.id
+                AND wt.status = 'successful'
+              ORDER BY wt.created_at DESC, wt.id DESC
+              LIMIT 1
+            ) wtx ON true
+            LEFT JOIN public.profiles p
+              ON p.user_id = w.user_id
+            WHERE round(w.balance, 2) <> round(wtx.balance_after, 2)
+
+            UNION ALL
+
+            -- Successful ledger entries must form a consistent balance chain.
+            SELECT
+              'ledger_chain'::text,
+              'high'::text,
+              w.id,
+              w.user_id,
+              p.full_name,
+              p.email,
+              w.balance,
+              x.created_at,
+              'A successful ledger entry balance_before does not match the preceding successful balance_after'::text
+            FROM public.wallets w
+            JOIN LATERAL (
+              SELECT
+                recent.id,
+                recent.balance_before,
+                recent.balance_after,
+                recent.created_at,
+                lag(recent.balance_after) OVER (
+                  ORDER BY recent.created_at, recent.id
+                ) AS prior_after
+              FROM (
+                SELECT
+                  wt.id,
+                  wt.balance_before,
+                  wt.balance_after,
+                  wt.created_at
+                FROM public.wallet_transactions wt
+                WHERE wt.wallet_id = w.id
+                  AND wt.status = 'successful'
+                ORDER BY wt.created_at DESC, wt.id DESC
+                LIMIT 250
+              ) recent
+            ) x ON true
+            LEFT JOIN public.profiles p
+              ON p.user_id = w.user_id
+            WHERE x.prior_after IS NOT NULL
+              AND round(x.balance_before, 2) <> round(x.prior_after, 2)
+
+            UNION ALL
+
+            -- Successful deposits must credit their stated amount.
+            SELECT
+              'funding_balance_delta'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Successful deposit amount does not equal balance_after minus balance_before'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.status = 'successful'
+              AND round(wt.balance_after - wt.balance_before, 2)
+                  <> round(wt.amount, 2)
+
+            UNION ALL
+
+            -- Successful Paystack deposits require a provider reference.
+            SELECT
+              'paystack_missing_provider_reference'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Successful Paystack deposit has no provider reference to reconcile against Paystack'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'successful'
+              AND NULLIF(BTRIM(wt.provider_reference), '') IS NULL
+
+            UNION ALL
+
+            -- Successful Paystack deposits require a provider transaction ID.
+            SELECT
+              'paystack_missing_transaction_id'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Successful Paystack deposit has no verified provider transaction ID recorded'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'successful'
+              AND NULLIF(BTRIM(wt.provider_transaction_id), '') IS NULL
+
+            UNION ALL
+
+            -- Detect duplicate Paystack references.
+            SELECT
+              'paystack_duplicate_reference'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'More than one Paystack wallet deposit uses the same provider reference'::text
+            FROM public.wallet_transactions wt
+            JOIN (
+              SELECT BTRIM(provider_reference) AS normalized_reference
+              FROM public.wallet_transactions
+              WHERE type = 'deposit'
+                AND provider = 'paystack'
+                AND NULLIF(BTRIM(provider_reference), '') IS NOT NULL
+              GROUP BY BTRIM(provider_reference)
+              HAVING count(*) > 1
+            ) dup
+              ON dup.normalized_reference = BTRIM(wt.provider_reference)
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+
+            UNION ALL
+
+            -- Detect conflicting Paystack verification metadata.
+            SELECT
+              'paystack_verification_metadata'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Successful Paystack deposit contains verification metadata that conflicts with a successful NGN payment'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'successful'
+              AND (
+                LOWER(COALESCE(
+                  wt.metadata #>> '{paystack,gateway_status}',
+                  'success'
+                )) <> 'success'
+                OR UPPER(COALESCE(
+                  wt.metadata #>> '{paystack,currency}',
+                  'NGN'
+                )) <> 'NGN'
+                OR COALESCE(
+                  wt.metadata #>> '{paystack,reference_match}',
+                  'true'
+                ) = 'false'
+                OR (
+                  wt.metadata #>> '{paystack,domain}' IS NOT NULL
+                  AND wt.metadata #>> '{paystack,domain}'
+                      NOT IN ('test', 'live')
+                )
+              )
+
+            UNION ALL
+
+            -- Detect invalid or mismatched requested amounts.
+            SELECT
+              'paystack_requested_amount_mismatch'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Recorded Paystack requested amount does not match the credited wallet deposit amount'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'successful'
+              AND NULLIF(
+                wt.metadata #>> '{paystack,requested_subunits}',
+                ''
+              ) IS NOT NULL
+              AND CASE
+                WHEN wt.metadata #>> '{paystack,requested_subunits}'
+                     ~ '^[0-9]+$'
+                THEN
+                  (wt.metadata #>> '{paystack,requested_subunits}')::numeric
+                  <> round(wt.amount * 100)
+                ELSE true
+              END
+
+            UNION ALL
+
+            -- Detect missing, malformed or inconsistent fee records.
+            SELECT
+              'paystack_fee_reconciliation'::text,
+              'high'::text,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.balance_after,
+              wt.created_at,
+              'Recorded Paystack charged amount does not equal requested amount plus fee'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'successful'
+              AND NULLIF(
+                wt.metadata #>> '{paystack,fee_subunits}',
+                ''
+              ) IS NOT NULL
+              AND CASE
+                WHEN wt.metadata #>> '{paystack,charged_subunits}'
+                       ~ '^[0-9]+$'
+                 AND wt.metadata #>> '{paystack,requested_subunits}'
+                       ~ '^[0-9]+$'
+                 AND wt.metadata #>> '{paystack,fee_subunits}'
+                       ~ '^[0-9]+$'
+                THEN
+                  (wt.metadata #>> '{paystack,charged_subunits}')::numeric
+                  <>
+                  (wt.metadata #>> '{paystack,requested_subunits}')::numeric
+                  +
+                  (wt.metadata #>> '{paystack,fee_subunits}')::numeric
+                ELSE true
+              END
+
+            UNION ALL
+
+            -- Detect Paystack deposits that remain pending too long.
+            SELECT
+              'pending_funding_age'::text,
+              CASE
+                WHEN wt.created_at < now() - interval '24 hours'
+                THEN 'high'
+                ELSE 'medium'
+              END,
+              wt.wallet_id,
+              wt.user_id,
+              p.full_name,
+              p.email,
+              wt.amount,
+              wt.created_at,
+              'Paystack funding has remained pending beyond the expected operational window'::text
+            FROM public.wallet_transactions wt
+            LEFT JOIN public.profiles p
+              ON p.user_id = wt.user_id
+            WHERE wt.type = 'deposit'
+              AND wt.provider = 'paystack'
+              AND wt.status = 'pending'
+              AND wt.created_at < now() - interval '30 minutes'
+          ) a
+          ORDER BY
+            CASE a.severity
+              WHEN 'high' THEN 3
+              WHEN 'medium' THEN 2
+              ELSE 1
+            END DESC,
+            a.created_at DESC
+          OFFSET off
+          LIMIT lim
+        ) page
+      ), '[]'::jsonb)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_wallet_reconciliation(integer, integer)
+  FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.admin_wallet_reconciliation(integer, integer)
+  TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';

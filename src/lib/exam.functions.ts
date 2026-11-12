@@ -1,5 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -105,6 +103,19 @@ function storedPins(metadata: unknown): string[] {
   if (typeof row["purchased_code"] === "string" && row["purchased_code"].trim())
     return [row["purchased_code"].trim()];
   return [];
+}
+
+function mergePins(existing: string[], incoming: string[], quantity: number): string[] {
+  return [...new Set([...existing, ...incoming].map((pin) => pin.trim()).filter(Boolean))].slice(
+    0,
+    quantity,
+  );
+}
+
+function requestedPinQuantity(metadata: unknown, fallback = 1): number {
+  if (!metadata || typeof metadata !== "object") return fallback;
+  const raw = Number((metadata as Record<string, unknown>)["quantity"]);
+  return Number.isInteger(raw) && raw >= 1 && raw <= 10 ? raw : fallback;
 }
 
 function providerMessage(
@@ -215,27 +226,57 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
 
     const unitAmount = Math.round(variation.amount * 100) / 100;
     const totalAmount = Math.round(unitAmount * data.quantity * 100) / 100;
-    const { data: duplicate } = await context.supabase
+    const { data: duplicate, error: duplicateError } = await context.supabase
       .from("bill_transactions")
-      .select("internal_reference")
+      .select(
+        "internal_reference, status, amount, provider, provider_request_id, provider_transaction_id, metadata",
+      )
       .eq("provider_request_id", data.requestId)
       .eq("user_id", context.userId)
       .limit(1);
-    if (duplicate?.[0])
-      throw new Error("This payment request has already been submitted. Refresh its status.");
+    if (duplicateError) throw new Error(duplicateError.message);
+    if (duplicate?.[0]) {
+      const existing = duplicate[0];
+      const status = existing.status as ExamPurchaseResult["status"];
+      const meta = (existing.metadata ?? {}) as Record<string, unknown>;
+      const pins = status === "successful" ? storedPins(meta) : [];
+      return {
+        status,
+        reference: existing.internal_reference,
+        pins,
+        amount: Number(existing.amount),
+        message:
+          status === "pending"
+            ? "This purchase request is already being processed. Do not pay again; check its status using this reference."
+            : providerMessage(
+                status,
+                String(meta["exam_id"] ?? existing.provider ?? data.exam),
+                Number(existing.amount),
+                String(meta["response_description"] ?? ""),
+              ),
+        requestId: existing.provider_request_id ?? data.requestId,
+        providerTransactionId: existing.provider_transaction_id,
+      };
+    }
 
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("phone")
       .eq("user_id", context.userId)
       .maybeSingle();
-    let phone = "08011111111";
-    if (profile?.phone) {
-      try {
-        phone = normalizeNgPhone(profile.phone);
-      } catch {
-        /* provider fallback */
-      }
+    const profilePhone = String(profile?.phone ?? "").trim();
+    if (!profilePhone) {
+      throw new Error(
+        "Add a valid mobile number to your RockPay profile before purchasing exam PINs.",
+      );
+    }
+    let phone: string;
+    try {
+      phone = normalizeNgPhone(profilePhone);
+    } catch {
+      throw new Error(
+        "Your RockPay profile phone number is invalid. Update it before purchasing exam PINs.",
+      );
     }
     const identifier = data.exam === "jamb" ? data.profileId : data.exam;
     const { data: started, error } = await context.supabase.rpc("start_bill_purchase", {
@@ -268,17 +309,44 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
     if (!row?.internal_reference || !row?.request_id)
       throw new Error("Could not start exam PIN purchase.");
 
-    const pay = await vtpassPay({
-      request_id: row.request_id,
-      serviceID,
-      variation_code: data.variationCode,
-      amount: unitAmount,
-      quantity: data.quantity,
-      phone,
-      ...(data.exam === "jamb" ? { billersCode: data.profileId } : {}),
-    });
-    const outcome = mapVtpassOutcome(pay);
-    const pins = outcome === "successful" ? extractPins(pay) : [];
+    let pay: Awaited<ReturnType<typeof vtpassPay>>;
+    try {
+      pay = await vtpassPay({
+        request_id: row.request_id,
+        serviceID,
+        variation_code: data.variationCode,
+        amount: unitAmount,
+        quantity: data.quantity,
+        phone,
+        ...(data.exam === "jamb" ? { billersCode: data.profileId } : {}),
+      });
+    } catch (error) {
+      // The wallet has already been reserved. A provider timeout is ambiguous:
+      // keep the bill pending and return its reference so the customer can requery.
+      const detail = error instanceof Error ? error.message : "Provider response unavailable";
+      console.warn("[exam] provider response pending", {
+        reference: row.internal_reference,
+        requestId: row.request_id,
+        detail,
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        pins: [],
+        amount: totalAmount,
+        message:
+          "Your wallet payment is reserved and the exam provider has not confirmed the PIN yet. Do not pay again. Use Check payment status or your receipt to retry the status check.",
+        requestId: String(row.request_id),
+        providerTransactionId: null,
+      };
+    }
+    const providerOutcome = mapVtpassOutcome(pay);
+    const pins =
+      providerOutcome === "successful" ? mergePins([], extractPins(pay), data.quantity) : [];
+    // A provider success without every requested PIN is not customer fulfilment.
+    // Keep the wallet reservation pending and recover through VTpass requery.
+    const outcome =
+      providerOutcome === "successful" && pins.length < data.quantity ? "pending" : providerOutcome;
     const payload = {
       vtpass_code: pay.code,
       vtpass_status: pay.contentStatus,
@@ -289,7 +357,7 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
       quantity: data.quantity,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: settleError } = await supabaseAdmin.rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,
@@ -299,7 +367,24 @@ export const purchaseExamPins = createServerFn({ method: "POST" })
         _payload: payload,
       },
     );
-    if (settleError) throw new Error(settleError.message);
+    if (settleError) {
+      // Provider may have fulfilled the PIN even if settlement RPC timed out.
+      // Preserve the reference and let the idempotent requery/settlement path recover.
+      console.error("[exam] settlement pending", {
+        reference: row.internal_reference,
+        error: settleError.message,
+      });
+      return {
+        status: "pending",
+        reference: String(row.internal_reference),
+        pins: [],
+        amount: totalAmount,
+        message:
+          "The provider response was received, but RockPay is still confirming the wallet settlement. Do not pay again. Check payment status shortly.",
+        requestId: String(row.request_id),
+        providerTransactionId: pay.transactionId,
+      };
+    }
     const fin = Array.isArray(finalized) ? finalized[0] : finalized;
     const status = (fin?.status ?? outcome) as ExamPurchaseResult["status"];
     return {
@@ -357,8 +442,14 @@ export const requeryExamPins = createServerFn({ method: "POST" })
     if (!bill.provider_request_id)
       throw new Error("Your payment is still protected. Check again shortly.");
     const pay = await vtpassRequery(bill.provider_request_id);
-    const outcome = mapVtpassOutcome(pay);
-    const pins = outcome === "successful" ? extractPins(pay) : [];
+    const providerOutcome = mapVtpassOutcome(pay);
+    const quantity = requestedPinQuantity(meta);
+    const pins =
+      providerOutcome === "successful"
+        ? mergePins(storedPins(meta), extractPins(pay), quantity)
+        : storedPins(meta);
+    const outcome =
+      providerOutcome === "successful" && pins.length < quantity ? "pending" : providerOutcome;
     const payload = {
       vtpass_code: pay.code,
       vtpass_status: pay.contentStatus,
@@ -366,10 +457,11 @@ export const requeryExamPins = createServerFn({ method: "POST" })
       purchased_code: pay.purchasedCode,
       token: pins.join("\n") || pay.purchasedCode,
       pins,
+      quantity,
       requery: true,
       vtpass_snapshot: safePayload(pay.raw),
     };
-    const { data: finalized, error: settleError } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: settleError } = await supabaseAdmin.rpc(
       "trusted_complete_bill_purchase",
       {
         _user_id: context.userId,

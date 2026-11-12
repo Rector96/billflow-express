@@ -1,21 +1,16 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 /**
- * Paystack webhook — production path used by RockPay on Netlify.
+ * Paystack webhook for RockPay.
  *
- * URL (register in Paystack Dashboard → Settings → API Keys & Webhooks):
- *   https://<your-domain>/api/public/webhooks/paystack
+ * Wallet deposits are settled only after verifyAndSettle independently verifies
+ * the transaction with Paystack. Hub orders are recorded by authenticated
+ * server functions after checking the signed-in customer and expected amount.
  *
- * Security:
- *   - HMAC SHA-512 over the *raw* body vs `x-paystack-signature`
- *   - timing-safe compare
- *   - wallet funding still goes through idempotent verifyAndSettle
- *   - hub services also land in public.hub_orders (idempotent on payment_reference)
- *
- * Note: This is TanStack Start (not Next.js). Do not use
- * `src/app/api/.../route.ts` — that path does not exist in this repo.
+ * The webhook intentionally does not create hub_orders from payment metadata:
+ * metadata is supplied during checkout and is not a trusted order-intent record.
  */
 export const Route = createFileRoute("/api/public/webhooks/paystack")({
   server: {
@@ -38,10 +33,15 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
           return new Response("Not configured", { status: 503 });
         }
 
-        const expected = createHmac("sha512", secret).update(raw).digest("hex");
-        const sigBuf = Buffer.from(signature);
-        const expBuf = Buffer.from(expected);
-        if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+        // Paystack sends a 128-character hexadecimal HMAC-SHA512 signature.
+        if (!/^[a-f0-9]{128}$/i.test(signature)) {
+          console.warn("[paystack-webhook] invalid signature format");
+          return new Response("Invalid signature", { status: 401 });
+        }
+
+        const expected = createHmac("sha512", secret).update(raw).digest();
+        const received = Buffer.from(signature, "hex");
+        if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
           console.warn("[paystack-webhook] invalid signature");
           return new Response("Invalid signature", { status: 401 });
         }
@@ -64,33 +64,31 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
           return new Response("ignored", { status: 200 });
         }
 
-        // 1) Wallet funding path (existing, idempotent)
         try {
           const { verifyAndSettle } = await import("@/lib/paystack.server");
           await verifyAndSettle(reference);
-          console.info("[paystack-webhook] wallet settle ok", reference);
+          console.info("[paystack-webhook] wallet settlement checked", reference);
         } catch (err) {
-          // Unknown funding reference is normal for pure hub payments — do not 503.
-          const msg = (err as Error).message ?? "";
-          if (msg.includes("Unknown funding reference")) {
-            console.info("[paystack-webhook] no wallet funding row — checking hub", reference);
-          } else {
-            console.error("[paystack-webhook] wallet settle failed", msg);
-            // Transient DB/API errors: ask Paystack to retry
-            return new Response("Retry settlement", { status: 503 });
+          const message = (err as Error).message ?? "";
+          if (message.includes("Unknown funding reference")) {
+            try {
+              const handled = await reconcileHubPayment(reference);
+              if (!handled) {
+                console.info("[paystack-webhook] no wallet or Hub payment intent", reference);
+              }
+              return new Response("ok", { status: 200 });
+            } catch (hubError) {
+              const hubMessage =
+                hubError instanceof Error ? hubError.message : "Hub payment reconciliation failed";
+              console.error("[paystack-webhook] Hub reconciliation failed", hubMessage);
+              // A 5xx response lets Paystack retry notification delivery and reconciliation.
+              return new Response("Retry Hub reconciliation", { status: 503 });
+            }
           }
-        }
 
-        // 2) Hub services (TIN / vehicle / CAC / documents / NIN)
-        if (eventName === "charge.success" && event.data) {
-          try {
-            await recordHubOrderFromCharge(event.data);
-          } catch (err) {
-            console.error("[paystack-webhook] hub_orders failed", (err as Error).message);
-            // Do not fail the whole webhook if hub insert fails after wallet settled;
-            // log and return 200 so Paystack does not hammer wallet path.
-            // Operators can reconcile from logs + Paystack dashboard.
-          }
+          console.error("[paystack-webhook] wallet settlement failed", message);
+          // Transient Paystack/API/database errors should be retried by Paystack.
+          return new Response("Retry settlement", { status: 503 });
         }
 
         return new Response("ok", { status: 200 });
@@ -99,175 +97,171 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
   },
 });
 
+async function reconcileHubPayment(reference: string): Promise<boolean> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payment intent table is newly migrated.
+  const admin = supabaseAdmin;
+  const { data: intent, error } = await admin
+    .from("hub_payment_intents")
+    .select("id,service,amount_kobo,currency,paystack_domain,status,provider_transaction_id")
+    .eq("payment_reference", reference)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load Hub payment intent: ${error.message}`);
+  if (!intent) return false;
+  if (intent.service !== "cac" || intent.currency !== "NGN") {
+    throw new Error("Unsupported Hub payment intent service or currency.");
+  }
+
+  const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
+    await import("@/lib/paystack.server");
+  const secret = getPaystackSecret();
+  const expectedDomain = secret.startsWith("sk_test_") ? "test" : "live";
+  if (intent.paystack_domain !== expectedDomain) {
+    throw new Error("Hub payment intent environment does not match Paystack secret.");
+  }
+
+  const transaction = await paystackVerify(reference);
+  if (!transaction)
+    throw new Error("Paystack transaction verification is temporarily unavailable.");
+  const verifiedStatus = String(transaction.status ?? "").toLowerCase();
+  if (verifiedStatus !== "success") {
+    // Only mark a payment failed when Paystack's verification endpoint confirms
+    // a terminal failed/abandoned state. Pending states remain retryable.
+    if (verifiedStatus === "failed" || verifiedStatus === "abandoned") {
+      const { error: updateError } = await admin
+        .from("hub_payment_intents")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("id", intent.id)
+        .eq("status", "pending");
+      if (updateError) {
+        throw new Error(`Could not record verified Hub payment failure: ${updateError.message}`);
+      }
+    }
+    // A signed event alone is not proof of a successful charge.
+    return true;
+  }
+  if (transaction.domain !== expectedDomain) {
+    throw new Error("Paystack transaction domain mismatch.");
+  }
+
+  const classification = classifyPaystackFunding(
+    transaction,
+    reference,
+    Number(intent.amount_kobo),
+  );
+  if (classification.kind === "mismatch") {
+    console.error("[paystack-webhook] Hub payment rejected", {
+      reference,
+      transactionId: transaction.id ?? null,
+      reason: classification.reason,
+    });
+    return true;
+  }
+
+  const providerTransactionId = Number(classification.providerTransactionId);
+  if (!Number.isSafeInteger(providerTransactionId) || providerTransactionId <= 0) {
+    throw new Error("Invalid Paystack transaction identifier.");
+  }
+
+  const { data: finalized, error: finalizeError } = await admin.rpc("finalize_hub_payment_intent", {
+    _payment_reference: reference,
+    _provider_transaction_id: providerTransactionId,
+    _paid_at: transaction.paid_at ?? transaction.paidAt ?? new Date().toISOString(),
+  });
+  if (finalizeError) throw new Error(`Hub payment finalization failed: ${finalizeError.message}`);
+
+  const order = Array.isArray(finalized) ? finalized[0] : finalized;
+  if (!order?.tracking_reference || !order?.user_id) {
+    throw new Error("Hub payment was finalized but the order details were not returned.");
+  }
+
+  // Always attempt the idempotent notifications, including when a previous
+  // webhook already finalized the payment. This recovers transient insert failures.
+  const payload =
+    order.order_payload &&
+    typeof order.order_payload === "object" &&
+    !Array.isArray(order.order_payload)
+      ? order.order_payload
+      : {};
+  const delivery = payload["delivery"] === "deliver" ? "deliver" : "download";
+  const preferredName = String(payload["preferredName"] ?? "CAC application");
+  const amount = Number(order.amount ?? Number(intent.amount_kobo) / 100);
+  const userId = String(order.user_id);
+  const trackingReference = String(order.tracking_reference);
+  const eventKey = `hub-payment:${reference}:paid`;
+  const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] = await Promise.all(
+    [
+      import("@/lib/hub-documents.functions"),
+      import("@/lib/hub-notify.server"),
+      import("@/lib/hub-email.server"),
+    ],
+  );
+
+  const [staffNotice, customerNotice] = await Promise.all([
+    notifyStaffNewHubOrder({
+      service: "cac",
+      amount,
+      orderHint: preferredName,
+      eventKey: `${eventKey}:staff`,
+    }),
+    notifyUser({
+      userId,
+      title: "CAC application received",
+      message:
+        delivery === "deliver"
+          ? "We received your application. We’ll process it and deliver the printed pack to your address."
+          : "We received your application. You’ll be notified when the certificate is ready to download.",
+      type: "success",
+      eventKey: `${eventKey}:customer:${userId}`,
+    }),
+  ]);
+
+  if (!staffNotice.ok || !customerNotice.ok) {
+    throw new Error(
+      `Payment notification delivery failed: ${[
+        !staffNotice.ok ? staffNotice.error : null,
+        !customerNotice.ok ? customerNotice.error : null,
+      ]
+        .filter(Boolean)
+        .join("; ")}`,
+    );
+  }
+
+  // Email delivery is independent of in-app notifications; it must never
+  // affect the already-committed payment or prevent its webhook acknowledgement.
+  void sendHubLifecycleEmail({
+    userId,
+    event: "paid",
+    eventKey: `hub-payment:${reference}:paid:email`,
+    service: "cac",
+    trackingReference,
+    amount,
+  })
+    .then((result) => {
+      if (!result.queued) {
+        console.warn(
+          "[paystack-webhook] paid email was not queued",
+          result.error ?? "unknown error",
+        );
+      }
+    })
+    .catch((error) => {
+      console.warn("[paystack-webhook] paid email enqueue failed", error);
+    });
+
+  console.info("[paystack-webhook] Hub payment intent finalized", {
+    reference,
+    service: intent.service,
+    transactionId: providerTransactionId,
+    wasExisting: Boolean(order.was_existing),
+  });
+  return true;
+}
+
 type PaystackWebhookEvent = {
   event?: string;
-  data?: PaystackChargeData;
+  data?: {
+    reference?: string;
+  };
 };
-
-type PaystackChargeData = {
-  reference?: string;
-  amount?: number;
-  currency?: string;
-  status?: string;
-  customer?: { email?: string; customer_code?: string };
-  metadata?: Record<string, unknown> | null;
-};
-
-function trackingSlug(service: string): string {
-  const prefix =
-    service.includes("vehicle") || service.includes("veh")
-      ? "RPK-VEH"
-      : service.includes("tin")
-        ? "RPK-TIN"
-        : service.includes("cac")
-          ? "RPK-CAC"
-          : service.includes("nin")
-            ? "RPK-NIN"
-            : service.includes("doc")
-              ? "RPK-DOC"
-              : "RPK-HUB";
-  return `${prefix}-${randomBytes(4).toString("hex").toUpperCase()}`;
-}
-
-function readMeta(meta: Record<string, unknown> | null | undefined, key: string): string {
-  if (!meta) return "";
-  const direct = meta[key];
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-  if (typeof direct === "number") return String(direct);
-
-  // Paystack custom_fields: [{ variable_name, value }]
-  const fields = meta["custom_fields"];
-  if (Array.isArray(fields)) {
-    for (const f of fields) {
-      if (!f || typeof f !== "object") continue;
-      const row = f as Record<string, unknown>;
-      const name = String(row["variable_name"] ?? row["display_name"] ?? "");
-      if (name === key && row["value"] != null) return String(row["value"]).trim();
-    }
-  }
-  return "";
-}
-
-async function recordHubOrderFromCharge(data: PaystackChargeData) {
-  const reference = String(data.reference ?? "").trim();
-  if (!reference) return;
-
-  const meta = (data.metadata && typeof data.metadata === "object" ? data.metadata : {}) as Record<
-    string,
-    unknown
-  >;
-
-  const service =
-    readMeta(meta, "service_type") || readMeta(meta, "service") || readMeta(meta, "channel") || "";
-
-  // Only treat as hub if metadata looks like a hub product (not pure wallet fund)
-  const isHub =
-    Boolean(service) &&
-    service !== "wallet" &&
-    service !== "funding" &&
-    (service.includes("vehicle") ||
-      service.includes("tin") ||
-      service.includes("cac") ||
-      service.includes("nin") ||
-      service.includes("doc") ||
-      service.includes("hub") ||
-      service.includes("license") ||
-      service.includes("insurance") ||
-      meta["channel"] === "hub" ||
-      readMeta(meta, "channel") === "hub");
-
-  if (!isHub) {
-    console.info("[paystack-webhook] not a hub charge — skip hub_orders", reference);
-    return;
-  }
-
-  const amountKobo = Number(data.amount ?? 0);
-  const amountNaira = Math.round((Number.isFinite(amountKobo) ? amountKobo : 0) / 100);
-  const email = String(data.customer?.email ?? "")
-    .trim()
-    .toLowerCase();
-  const plate =
-    readMeta(meta, "plate_number") || readMeta(meta, "plate") || readMeta(meta, "identifier");
-  const userIdMeta = readMeta(meta, "user_id");
-
-  console.info("[paystack-webhook] hub charge", {
-    reference,
-    service,
-    amountNaira,
-    email: email ? `${email.slice(0, 3)}…` : null,
-    plate: plate || null,
-  });
-
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // Idempotent: unique payment_reference
-  const { data: existing } = await supabaseAdmin
-    .from("hub_orders")
-    .select("id, payment_reference")
-    .eq("payment_reference", reference)
-    .limit(1);
-  if (existing?.[0]) {
-    console.info("[paystack-webhook] hub_orders already exists", reference);
-    return;
-  }
-
-  let userId = userIdMeta || "";
-  if (!userId && email) {
-    try {
-      const { data: users } = await supabaseAdmin
-        .from("profiles")
-        .select("user_id, id, email")
-        .ilike("email", email)
-        .limit(1);
-      const row = users?.[0] as { user_id?: string; id?: string } | undefined;
-      userId = String(row?.user_id ?? row?.id ?? "");
-    } catch (e) {
-      console.warn("[paystack-webhook] profile lookup", (e as Error).message);
-    }
-  }
-
-  if (!userId) {
-    // Cannot satisfy NOT NULL user_id — log for ops; frontend recordHubPayment may still insert.
-    console.warn("[paystack-webhook] no user_id for hub order", reference, email);
-    return;
-  }
-
-  const tracking = trackingSlug(service);
-  const nowIso = new Date().toISOString();
-  const { error } = await supabaseAdmin.from("hub_orders").insert({
-    user_id: userId,
-    service,
-    amount: amountNaira,
-    status: "successful",
-    payment_reference: reference,
-    tracking_reference: tracking,
-    customer_identifier: plate || email || null,
-    fulfillment_status: "paid",
-    paid_at: nowIso,
-    metadata: {
-      channel: "hub",
-      source: "paystack_webhook",
-      demo: false,
-      fulfillment_status: "paid",
-      customer_email: email || null,
-      paystack_currency: data.currency ?? "NGN",
-      ...meta,
-    },
-  } as never);
-
-  if (error) {
-    // Unique violation = concurrent insert; treat as success
-    if (String(error.message).toLowerCase().includes("duplicate") || error.code === "23505") {
-      console.info("[paystack-webhook] hub_orders race won by peer", reference);
-      return;
-    }
-    throw new Error(error.message);
-  }
-
-  console.info("[paystack-webhook] hub_orders inserted", {
-    reference,
-    tracking,
-    service,
-    amountNaira,
-  });
-}

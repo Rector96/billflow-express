@@ -1,15 +1,47 @@
 import type { Session } from "@supabase/supabase-js";
+import { redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+
+/** Restrict finance and platform-control screens to Admin and Super Admin. */
+export async function requireAdminOrSuperAdmin() {
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+  if (!user) throw redirect({ to: "/login" });
+
+  const { data: roles, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id);
+  if (error || !(roles ?? []).some((row) => row.role === "admin" || row.role === "super_admin")) {
+    throw redirect({ to: "/admin/care" });
+  }
+}
 
 /** Roles that exist in public.app_role enum today. */
 export type StaffRole = "super_admin" | "admin" | "support";
 
-export type AdminPerm = "view" | "users_manage" | "staff_manage" | "wallet_adjust" | "settings";
+export type AdminPerm =
+  | "view"
+  | "users_manage"
+  | "staff_manage"
+  | "wallet_adjust"
+  | "settings"
+  | "cac_documents"
+  | "transaction_requery";
 
 const ROLE_PERMS: Record<StaffRole, AdminPerm[]> = {
-  super_admin: ["view", "users_manage", "staff_manage", "wallet_adjust", "settings"],
-  admin: ["view", "users_manage", "settings"],
-  support: ["view"],
+  super_admin: [
+    "view",
+    "users_manage",
+    "staff_manage",
+    "wallet_adjust",
+    "settings",
+    "cac_documents",
+    "transaction_requery",
+  ],
+  // Account suspension/reactivation is super-admin-only in the database RPC.
+  admin: ["view", "settings", "cac_documents", "transaction_requery"],
+  support: ["view", "cac_documents", "transaction_requery"],
 };
 
 export function permsForRoles(roles: StaffRole[]): Set<AdminPerm> {

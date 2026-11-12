@@ -34,7 +34,7 @@ function HistoryLayout() {
 
 type StatusKey = "all" | TxStatus;
 type ActivityTab = "all" | "payments" | "applications";
-type CategoryKey = "all" | "airtime" | "data" | "electricity" | "cable" | "other";
+type CategoryKey = "all" | "electricity" | "cable" | "other";
 type DateKey = "all" | "today" | "yesterday" | "7d" | "month" | "last_month";
 
 const HUB_SLUGS = new Set(["cac", "nin", "tin", "documents", "vehicle"]);
@@ -50,12 +50,11 @@ const STATUS: Array<{ key: StatusKey; label: string }> = [
   { key: "successful", label: "Successful" },
   { key: "pending", label: "Pending" },
   { key: "failed", label: "Failed" },
+  { key: "reversed", label: "Reversed" },
 ];
 
 const CATEGORY: Array<{ key: CategoryKey; label: string }> = [
   { key: "all", label: "All services" },
-  { key: "airtime", label: "Airtime" },
-  { key: "data", label: "Data" },
   { key: "electricity", label: "Electricity" },
   { key: "cable", label: "Cable" },
   { key: "other", label: "Other" },
@@ -77,8 +76,6 @@ function parseTxTime(tx: Transaction): number {
 
 function categoryOf(tx: Transaction): CategoryKey {
   const s = (tx.serviceSlug || "").toLowerCase();
-  if (s === "airtime") return "airtime";
-  if (s === "data") return "data";
   if (s === "electricity") return "electricity";
   if (s === "cable") return "cable";
   return "other";
@@ -175,6 +172,14 @@ function ModernRow({ tx }: { tx: Transaction }) {
         <p className="truncate text-xs text-muted-foreground">
           {tx.service} · {tx.time}
         </p>
+        {tx.direction === "in" &&
+        tx.serviceSlug === "wallet" &&
+        tx.method === "Paystack" &&
+        tx.status === "pending" ? (
+          <p className="mt-0.5 text-[11px] font-medium text-amber-600">
+            Awaiting Paystack confirmation — not yet credited
+          </p>
+        ) : null}
       </div>
       <div className="shrink-0 text-right">
         <p
@@ -206,6 +211,8 @@ function HistoryPage() {
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return transactions.filter((t) => {
+      // Keep legacy Airtime/Data transactions in the database for audit, but hide them from customer activity.
+      if (t.serviceSlug === "airtime" || t.serviceSlug === "data") return false;
       if (activityTab === "payments" && isHubTx(t)) return false;
       if (activityTab === "applications" && !isHubTx(t)) return false;
       if (status !== "all" && t.status !== status) return false;
@@ -213,7 +220,7 @@ function HistoryPage() {
       if (!inDateRange(t, dateKey)) return false;
       if (needle) {
         const hay =
-          `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""}`.toLowerCase();
+          `${t.title} ${t.service} ${t.id} ${t.amount} ${t.reference ?? ""} ${t.providerReference ?? ""} ${t.method}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;

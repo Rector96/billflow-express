@@ -75,6 +75,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const checkPin = useServerFn(hasTransactionPin);
   const [offline, setOffline] = useState(false);
   const previousPath = useRef(pathname);
+  const isServiceFlow =
+    /^\/(cac|nin|tin|documents|vehicle|education|exam-pins)(\/|$)/.test(pathname) ||
+    /^\/pay\/[^/]+/.test(pathname);
 
   useEffect(() => {
     const sync = () => setOffline(!navigator.onLine);
@@ -118,17 +121,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
   return (
-    <div className="min-h-dvh bg-background lg:flex">
+    <div
+      className={cn(
+        "min-h-dvh bg-background lg:flex",
+        isServiceFlow && "service-flow-shell h-dvh overflow-hidden",
+      )}
+    >
       {offline ? (
         <div
           role="status"
           className="fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-xs font-bold text-warning-foreground shadow-soft"
         >
-          You're offline — payments and top-ups can't be completed right now.
+          You're offline — payments can't be completed right now.
         </div>
       ) : null}
 
-      {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-6 lg:flex">
         <Link to="/home" className="mb-8 flex items-center gap-2.5 px-2">
           <BrandMark />
@@ -147,6 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
+                {...(item.to === "/services" ? { search: {} } : {})}
                 className={cn(
                   "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
                   active
@@ -166,6 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <Link
           to="/services"
+          search={{}}
           className="press brand-gradient mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-semibold text-primary-foreground shadow-sm"
         >
           <ScanLine className="size-4" strokeWidth={2} />
@@ -176,7 +185,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main content — wider on desktop */}
       <div
         key={pathname}
-        className="page-fade mx-auto w-full flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-6xl lg:pb-10 lg:px-6"
+        className={cn(
+          "page-fade mx-auto w-full flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:max-w-6xl lg:pb-10 lg:px-6",
+          isServiceFlow &&
+            "service-flow-content h-dvh min-h-0 max-w-none overflow-hidden p-3 pb-3 lg:p-5",
+        )}
       >
         {children}
       </div>
@@ -184,13 +197,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav */}
       <nav
         aria-label="Bottom navigation"
-        className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 pointer-events-none lg:hidden",
+          isServiceFlow && "hidden",
+        )}
       >
         <div className="mx-auto flex max-w-sm items-center justify-around rounded-2xl border border-border/80 bg-card/95 px-2 py-1.5 shadow-float backdrop-blur-md pointer-events-auto">
           <TabLink item={NAV_HOME} active={isActive("/home")} />
           <TabLink item={NAV_WALLET} active={isActive("/wallet")} />
           <Link
             to="/services"
+            search={{}}
             aria-label="Pay a bill"
             className="press group relative flex flex-col items-center justify-center px-1"
           >

@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira } from "@/lib/mock-data";
@@ -78,8 +77,8 @@ function AdminReconciliation() {
     setError(null);
     try {
       const [txResult, walletResult] = await Promise.all([
-        asLooseRpc(supabase.rpc)("admin_reconciliation_queue", { _limit: 100 }),
-        asLooseRpc(supabase.rpc)("admin_wallet_reconciliation", {
+        supabase.rpc("admin_reconciliation_queue", { _limit: 100 }),
+        supabase.rpc("admin_wallet_reconciliation", {
           _limit: 100,
           _offset: 0,
         }),
@@ -106,7 +105,7 @@ function AdminReconciliation() {
   return (
     <AdminShell
       title="Reconciliation"
-      subtitle="Financial integrity and transactions that need staff attention"
+      subtitle="Platform-wide wallet, Paystack funding and bill-payment integrity checks"
       actions={
         <button
           type="button"
@@ -119,8 +118,14 @@ function AdminReconciliation() {
       }
     >
       {error ? (
-        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive">
-          {error}
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-destructive/30 bg-destructive-soft px-4 py-3 text-sm text-destructive"
+        >
+          {error}{" "}
+          <button type="button" className="ml-2 underline" onClick={() => void load()}>
+            Retry
+          </button>
         </div>
       ) : null}
 
@@ -187,18 +192,23 @@ function AdminReconciliation() {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : !error && wallet ? (
             <div className="mt-4 rounded-2xl border bg-card p-4 text-sm">
               <p className="font-bold">Wallet integrity check passed</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                No wallet balance-chain, funding-delta, or stale-funding anomalies were returned.
+                No wallet ledger, Paystack verification, funding-reference or stale-funding
+                anomalies were returned.
               </p>
             </div>
-          )}
+          ) : null}
 
           <div className="mt-5">
             <p className="mb-2 text-sm font-bold">Bill transaction reconciliation</p>
-            {rows.length === 0 ? (
+            {error ? (
+              <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
+                Bill reconciliation could not be verified because the data request failed.
+              </div>
+            ) : rows.length === 0 ? (
               <AdminEmpty
                 title="Everything is reconciled."
                 body="No transaction mismatches or stale pending bills right now."

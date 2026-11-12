@@ -14,6 +14,7 @@ export type SendEmailInput = {
   subject: string;
   html: string;
   text?: string;
+  idempotencyKey?: string;
 };
 
 export type SendEmailResult =
@@ -54,15 +55,18 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       subject: input.subject,
       html: input.html,
     };
-    if (input.text) body.text = input.text;
-    if (replyTo) body.reply_to = replyTo;
+    if (input.text) body["text"] = input.text;
+    if (replyTo) body["reply_to"] = replyTo;
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (input.idempotencyKey) headers["Idempotency-Key"] = input.idempotencyKey;
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -72,7 +76,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       console.warn("[resend] fail", msg);
       return { ok: false, error: msg };
     }
-    return { ok: true, id: json.id };
+    return { ok: true, ...(json.id === undefined ? {} : { id: json.id }) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Resend request failed";
     console.warn("[resend] error", msg);

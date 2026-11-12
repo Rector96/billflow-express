@@ -1,4 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search, SearchX, ShieldCheck, Sparkles, Zap } from "lucide-react";
@@ -6,7 +5,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState, ServiceTile } from "@/components/app/ui-bits";
 import { Input } from "@/components/ui/input";
-import { SERVICES, type ServiceConfig } from "@/lib/mock-data";
+import { SERVICES, type ServiceConfig, type ServiceSlug } from "@/lib/mock-data";
 import {
   isBillLive,
   isHubDemoOnly,
@@ -19,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/services")({
   validateSearch: (search: Record<string, unknown>) => ({
-    q: typeof search.q === "string" ? search.q : undefined,
+    ...(typeof search["q"] === "string" ? { q: search["q"] } : {}),
   }),
   head: () => ({
     meta: [
@@ -35,7 +34,7 @@ export const Route = createFileRoute("/services")({
   component: ServicesPage,
 });
 
-function servicePath(slug: string): { to: string; params?: { slug: string } } {
+function servicePath(slug: ServiceSlug): { to: string; params?: { slug: ServiceSlug } } {
   if (slug === "cac") return { to: "/cac" };
   if (slug === "nin") return { to: "/nin" };
   if (slug === "tin") return { to: "/tin" };
@@ -44,11 +43,11 @@ function servicePath(slug: string): { to: string; params?: { slug: string } } {
   return { to: "/pay/$slug", params: { slug } };
 }
 
-type Category = { id: string; label: string; slugs: string[] };
+type Category = { id: string; label: string; slugs: ServiceSlug[] };
 
 const CATEGORIES: Category[] = [
   { id: "all", label: "All", slugs: [] },
-  { id: "bills", label: "Bills", slugs: ["electricity", "cable", "airtime", "data"] },
+  { id: "bills", label: "Bills", slugs: ["electricity", "cable"] },
   { id: "education", label: "Education", slugs: ["education", "exam-pins"] },
   { id: "government", label: "Government", slugs: ["cac", "tin"] },
   { id: "identity", label: "Identity", slugs: ["nin"] },
@@ -56,10 +55,10 @@ const CATEGORIES: Category[] = [
   { id: "vehicle", label: "Vehicle", slugs: ["vehicle"] },
 ];
 
-const FEATURED_SLUGS = ["electricity", "cable", "airtime", "data"] as const;
-const BANNER_SLUGS = ["education", "exam-pins"] as const;
+const FEATURED_SLUGS: ServiceSlug[] = ["electricity", "cable"];
+const BANNER_SLUGS: ServiceSlug[] = ["education", "exam-pins"];
 
-const GRID_GROUPS: Array<{ id: string; title: string; slugs: string[] }> = [
+const GRID_GROUPS: Array<{ id: string; title: string; slugs: ServiceSlug[] }> = [
   { id: "gov", title: "Government & business", slugs: ["cac", "tin"] },
   { id: "identity", title: "Identity", slugs: ["nin"] },
   { id: "docs", title: "Documents", slugs: ["documents"] },
@@ -154,7 +153,11 @@ function ServicesPage() {
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
-    const active = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[0];
+    const active = CATEGORIES.find((c) => c.id === category) ?? {
+      id: "all",
+      label: "All",
+      slugs: [],
+    };
     return SERVICES.filter((s) => {
       if (!isServiceVisible(s.slug)) return false;
       if (active.slugs.length > 0 && !active.slugs.includes(s.slug)) return false;
@@ -249,7 +252,7 @@ function ServicesPage() {
                           Icon={s.icon}
                           tint={s.tint}
                           to={path.to}
-                          params={path.params}
+                          {...(path.params ? { params: path.params } : {})}
                         />
                       );
                     })}
@@ -274,7 +277,7 @@ function ServicesPage() {
                           Icon={s.icon}
                           tint={s.tint}
                           to={path.to}
-                          params={path.params}
+                          {...(path.params ? { params: path.params } : {})}
                         />
                       );
                     })}

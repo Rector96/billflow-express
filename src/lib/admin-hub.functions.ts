@@ -7,13 +7,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { notifyCustomerHubStatus } from "@/lib/hub-documents.functions";
-import { sendHubLifecycleEmail } from "@/lib/hub-email.server";
+import { processHubEmailOutbox, sendHubLifecycleEmail } from "@/lib/hub-email.server";
 import {
   FULFILLMENT_STATUSES,
   type FulfillmentStatus,
   paymentStatusForFulfillment,
 } from "@/lib/hub-fulfillment";
 import { notifyStaff, notifyUser } from "@/lib/hub-notify.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export type HubOrderRow = {
   id: string;
@@ -24,7 +25,7 @@ export type HubOrderRow = {
   payment_reference: string | null;
   tracking_reference: string | null;
   customer_identifier: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: Record<string, Json | undefined> | null;
   created_at: string;
   updated_at: string | null;
 };
@@ -37,6 +38,7 @@ export type HubCustomerProfile = {
 
 export type HubOrderDetail = HubOrderRow & {
   profile: HubCustomerProfile | null;
+  applicationFiles?: Record<string, string>;
 };
 
 const HUB_STATUSES = ["pending", "in_progress", "successful", "failed"] as const;
@@ -85,8 +87,50 @@ async function assertStaff(userId: string) {
   return supabaseAdmin;
 }
 
-function asMeta(raw: unknown): Record<string, unknown> {
-  return raw && typeof raw === "object" ? { ...(raw as Record<string, unknown>) } : {};
+async function assertRole(userId: string, allowed: readonly string[], action: string) {
+  const admin = await assertStaff(userId);
+  const { data: roles, error } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (error) throw new Error("Could not verify permissions for this action.");
+  if (!(roles ?? []).some((entry) => allowed.includes(String(entry.role)))) {
+    throw new Error(`Forbidden: ${action} requires ${allowed.join(" or ")} access.`);
+  }
+  return admin;
+}
+
+async function assertAdmin(userId: string, action: string) {
+  return assertRole(userId, ["admin", "super_admin"], action);
+}
+
+async function assertSuperAdmin(userId: string, action: string) {
+  return assertRole(userId, ["super_admin"], action);
+}
+
+function isJsonValue(value: unknown): value is Json {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return true;
+  }
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  if (typeof value === "object") {
+    return Object.values(value).every((item) => item === undefined || isJsonValue(item));
+  }
+  return false;
+}
+
+function asMeta(raw: unknown): Record<string, Json | undefined> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const metadata: Record<string, Json | undefined> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined || isJsonValue(value)) metadata[key] = value;
+  }
+  return metadata;
 }
 
 export const listHubOrders = createServerFn({ method: "GET" })
@@ -115,7 +159,9 @@ export const listHubOrders = createServerFn({ method: "GET" })
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return { orders: (rows ?? []) as HubOrderRow[] };
+    return {
+      orders: (rows ?? []).map((row) => ({ ...row, metadata: asMeta(row.metadata) })),
+    };
   });
 
 /** Full order + profile for bank-grade side panel */
@@ -136,7 +182,7 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       .eq("id", data.orderId)
       .limit(1);
     if (error) throw new Error(error.message);
-    const row = rows?.[0] as HubOrderRow | undefined;
+    const row = rows?.[0];
     if (!row) throw new Error("Order not found");
 
     let profile: HubCustomerProfile | null = null;
@@ -172,7 +218,44 @@ export const getHubOrderDetail = createServerFn({ method: "GET" })
       }
     }
 
-    return { order: { ...row, profile } };
+    const applicationFiles: Record<string, string> = {};
+    if (row.service === "cac") {
+      const meta = asMeta(row.metadata);
+      const files = asMeta(meta["application_files"]);
+      const bucket = admin.storage.from("cac-applications");
+      const expectedFiles = {
+        idDocument: "id-document",
+        passportPhoto: "passport-photo",
+        signature: "signature.png",
+      } as const;
+
+      // Only sign the three canonical CAC evidence objects. Metadata is
+      // database content, not permission to expose arbitrary user files.
+      for (const [key, filename] of Object.entries(expectedFiles)) {
+        const path = files[key];
+        if (typeof path !== "string") continue;
+        const match = path.match(
+          /^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(id-document|passport-photo|signature\.png)$/i,
+        );
+        if (!match || match[2] !== filename) continue;
+        const canonicalPath = `${row.user_id}/${match[1]}/${filename}`;
+        if (path !== canonicalPath) continue;
+
+        const { data: signed, error: signedError } = await bucket.createSignedUrl(
+          canonicalPath,
+          300,
+        );
+        if (signedError) {
+          console.warn("[hub-admin] CAC evidence signing failed", {
+            orderId: row.id,
+            file: key,
+          });
+          continue;
+        }
+        if (signed?.signedUrl) applicationFiles[key] = signed.signedUrl;
+      }
+    }
+    return { order: { ...row, metadata: asMeta(row.metadata), profile, applicationFiles } };
   });
 
 export const listDispatchQueue = createServerFn({ method: "GET" })
@@ -188,27 +271,29 @@ export const listDispatchQueue = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw new Error(error.message);
 
-    const orders = ((rows ?? []) as HubOrderRow[]).filter((o) => {
-      const st = String(o.status).toLowerCase();
-      if (st === "failed") return false;
-      const meta = asMeta(o.metadata);
-      const delivery = String(meta["delivery"] ?? "").toLowerCase();
-      const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
-      if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
-      const svc = o.service.toLowerCase();
-      const physical =
-        delivery === "deliver" ||
-        svc.includes("card_print") ||
-        svc.includes("plastic") ||
-        svc.includes("sticker") ||
-        svc.includes("license");
-      if (!physical && delivery === "download") return false;
-      if (!physical && !delivery) {
-        if (svc.includes("cac") && meta["shipping_address"]) return true;
-        return false;
-      }
-      return true;
-    });
+    const orders = (rows ?? [])
+      .filter((o) => {
+        const st = String(o.status).toLowerCase();
+        if (st === "failed") return false;
+        const meta = asMeta(o.metadata);
+        const delivery = String(meta["delivery"] ?? "").toLowerCase();
+        const ful = String(meta["fulfillment_status"] ?? "paid").toLowerCase();
+        if (ful === "delivered" || ful === "cancelled" || ful === "digital_ready") return false;
+        const svc = o.service.toLowerCase();
+        const physical =
+          delivery === "deliver" ||
+          svc.includes("card_print") ||
+          svc.includes("plastic") ||
+          svc.includes("sticker") ||
+          svc.includes("license");
+        if (!physical && delivery === "download") return false;
+        if (!physical && !delivery) {
+          if (svc.includes("cac") && meta["shipping_address"]) return true;
+          return false;
+        }
+        return true;
+      })
+      .map((order) => ({ ...order, metadata: asMeta(order.metadata) }));
     return { orders };
   });
 
@@ -226,7 +311,7 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
     return { orderId, status: status as HubOrderStatus, note: String(input?.note ?? "").trim() };
   })
   .handler(async ({ data, context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "hub order status changes");
 
     const { data: existing, error: readErr } = await admin
       .from("hub_orders")
@@ -247,54 +332,95 @@ export const updateHubOrderStatus = createServerFn({ method: "POST" })
       | undefined;
     if (!row) throw new Error("Order not found");
 
-    const prevMeta = asMeta(row.metadata);
-    const history = Array.isArray(prevMeta["status_history"])
-      ? [...(prevMeta["status_history"] as unknown[])]
-      : [];
-    history.push({
-      from: row.status,
-      to: data.status,
-      at: new Date().toISOString(),
-      by: context.userId,
-      note: data.note || null,
-    });
+    const statusChanged = row.status !== data.status;
+    const currentMeta = asMeta(row.metadata);
+    if (
+      data.status === "successful" &&
+      row.service === "cac" &&
+      typeof currentMeta["certificate_storage_path"] !== "string" &&
+      currentMeta["certificate_delivery_method"] !== "manual_email"
+    ) {
+      throw new Error(
+        "Upload the completed CAC certificate or record its manual email delivery before marking this order successful.",
+      );
+    }
+    const eventKey = statusChanged
+      ? `hub-order:${data.orderId}:status:${data.status}:${Date.now()}`
+      : typeof currentMeta["status_event_key"] === "string"
+        ? currentMeta["status_event_key"]
+        : `hub-order:${data.orderId}:status:${data.status}:legacy`;
 
-    const nextMeta = { ...prevMeta, status_history: history };
-    if (data.status === "successful") {
-      nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
+    if (statusChanged) {
+      const prevMeta = currentMeta;
+      const historyValue = prevMeta["status_history"];
+      const history: Json[] = Array.isArray(historyValue) ? [...historyValue] : [];
+      history.push({
+        from: row.status,
+        to: data.status,
+        at: new Date().toISOString(),
+        by: context.userId,
+        note: data.note || null,
+      });
+
+      const nextMeta: Record<string, Json | undefined> = {
+        ...prevMeta,
+        status_history: history,
+        status_event_key: eventKey,
+      };
+      if (data.status === "successful" && row.service !== "cac") {
+        nextMeta["fulfillment_status"] = nextMeta["fulfillment_status"] || "digital_ready";
+      }
+
+      const { error } = await admin
+        .from("hub_orders")
+        .update({
+          status: data.status,
+          metadata: nextMeta,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", data.orderId);
+
+      if (error) throw new Error(error.message);
     }
 
-    const { error } = await admin
-      .from("hub_orders")
-      .update({
-        status: data.status,
-        metadata: nextMeta,
-        updated_at: new Date().toISOString(),
-      } as never)
-      .eq("id", data.orderId);
-
-    if (error) throw new Error(error.message);
-
-    if (row.status !== data.status) {
-      await notifyCustomerHubStatus({
+    // Attempt these on every request, not only on the transition. If one
+    // insert failed after the status was saved, staff can retry the same
+    // status and the unique event keys recover only the missing notice.
+    const [customerNotice, staffNotice] = await Promise.all([
+      notifyCustomerHubStatus({
         userId: row.user_id,
         service: row.service,
         status: data.status,
-      });
-      await notifyStaff({
+        eventKey: `${eventKey}:customer:${row.user_id}`,
+      }),
+      notifyStaff({
         title: "Hub order updated",
         message: `${row.service} → ${data.status.replace(/_/g, " ")} (${data.orderId.slice(0, 8)}…)`,
         type: "information",
+        eventKey: `${eventKey}:staff`,
+      }),
+    ]);
+
+    if (!customerNotice.ok || !staffNotice.ok) {
+      throw new Error(
+        `Order status notification failed: ${[
+          !customerNotice.ok ? customerNotice.error : null,
+          !staffNotice.ok ? staffNotice.error : null,
+        ]
+          .filter(Boolean)
+          .join("; ")}`,
+      );
+    }
+
+    if (statusChanged && data.status === "successful") {
+      void sendHubLifecycleEmail({
+        userId: row.user_id,
+        event: "digital_ready",
+        eventKey: `hub-order:${data.orderId}:digital_ready:email`,
+        service: row.service,
+        trackingReference: row.tracking_reference,
+        amount: row.amount,
       });
-      if (data.status === "successful") {
-        void sendHubLifecycleEmail({
-          userId: row.user_id,
-          event: "digital_ready",
-          service: row.service,
-          trackingReference: row.tracking_reference,
-          amount: row.amount,
-        });
-      }
     }
 
     return { ok: true as const, status: data.status };
@@ -500,8 +626,10 @@ export const notifyCustomerToDownload = createServerFn({ method: "POST" })
 
     const meta = asMeta(row.metadata);
     const hasDoc =
-      typeof meta["document_url"] === "string" || typeof meta["certificate_url"] === "string";
-    if (!hasDoc) throw new Error("Attach a document link first");
+      typeof meta["certificate_storage_path"] === "string" ||
+      typeof meta["document_url"] === "string" ||
+      typeof meta["certificate_url"] === "string";
+    if (!hasDoc) throw new Error("Attach a document first");
 
     await notifyUser({
       userId: row.user_id,
@@ -513,6 +641,7 @@ export const notifyCustomerToDownload = createServerFn({ method: "POST" })
     void sendHubLifecycleEmail({
       userId: row.user_id,
       event: "digital_ready",
+      eventKey: `hub-order:${data.orderId}:digital_ready:email`,
       service: row.service,
       trackingReference: row.tracking_reference,
       amount: row.amount,
@@ -572,6 +701,16 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     if (!row) throw new Error("Order not found");
 
     const prevMeta = asMeta(row.metadata);
+    if (
+      data.fulfillmentStatus === "digital_ready" &&
+      row.service === "cac" &&
+      typeof prevMeta["certificate_storage_path"] !== "string" &&
+      prevMeta["certificate_delivery_method"] !== "manual_email"
+    ) {
+      throw new Error(
+        "Upload the completed CAC certificate or record its manual email delivery before marking it ready.",
+      );
+    }
     const history = Array.isArray(prevMeta["fulfillment_history"])
       ? [...(prevMeta["fulfillment_history"] as unknown[])]
       : [];
@@ -639,6 +778,7 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
       void sendHubLifecycleEmail({
         userId: row.user_id,
         event: ful,
+        eventKey: `hub-order:${data.orderId}:fulfillment:${ful}:email`,
         service: row.service,
         trackingReference: row.tracking_reference,
         amount: row.amount,
@@ -648,6 +788,284 @@ export const updateHubFulfillment = createServerFn({ method: "POST" })
     }
 
     return { ok: true as const, fulfillmentStatus: data.fulfillmentStatus, status: nextStatus };
+  });
+
+/** Staff-triggered retry for queued Hub lifecycle emails. */
+export const retryHubLifecycleEmails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { limit?: number } | undefined) => ({
+    limit: Math.min(Math.max(Math.trunc(Number(input?.limit ?? 20)), 1), 100),
+  }))
+  .handler(async ({ data, context }) => {
+    const admin = await assertAdmin(context.userId, "email outbox retry");
+    const { error } = await admin
+      .from("hub_email_outbox")
+      .update({
+        status: "pending",
+        attempts: 0,
+        next_attempt_at: new Date().toISOString(),
+        locked_at: null,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .in("status", ["pending", "failed"]);
+    if (error) throw new Error(error.message);
+    return processHubEmailOutbox(data.limit);
+  });
+
+/** Staff-only, PII-minimised email outbox overview. */
+export const getHubEmailOutboxSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await assertStaff(context.userId);
+    const [pending, processing, sent, failed, recent] = await Promise.all([
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "processing"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "sent"),
+      admin
+        .from("hub_email_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
+      admin
+        .from("hub_email_outbox")
+        .select("id,event,status,attempts,created_at,sent_at,last_error")
+        .order("created_at", { ascending: false })
+        .limit(12),
+    ]);
+    for (const result of [pending, processing, sent, failed, recent]) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    return {
+      counts: {
+        pending: pending.count ?? 0,
+        processing: processing.count ?? 0,
+        sent: sent.count ?? 0,
+        failed: failed.count ?? 0,
+      },
+      recent: (recent.data ?? []).map((row) => ({
+        id: row.id,
+        event: row.event,
+        status: row.status,
+        attempts: row.attempts,
+        createdAt: row.created_at,
+        sentAt: row.sent_at,
+        lastError: row.last_error ? String(row.last_error).slice(0, 180) : null,
+      })),
+    };
+  });
+
+/** Staff-only recheck. Paystack and the atomic settlement RPC remain authoritative. */
+export const recheckHubPaymentIntent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { intentId: string }) => {
+    const intentId = String(input?.intentId ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(intentId)) throw new Error("Invalid intent ID.");
+    return { intentId };
+  })
+  .handler(async ({ data, context }) => {
+    const admin = await assertSuperAdmin(context.userId, "CAC payment reconciliation");
+    const { data: intent, error } = await admin
+      .from("hub_payment_intents")
+      .select("id,service,amount_kobo,currency,payment_reference,paystack_domain,status")
+      .eq("id", data.intentId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!intent) throw new Error("Payment intent not found.");
+    if (intent.service !== "cac" || intent.currency !== "NGN") {
+      throw new Error("Only CAC payment intents are supported by this recheck.");
+    }
+    if (intent.status === "paid") {
+      return {
+        status: "already_paid" as const,
+        message: "This intent is already paid. Refresh the order list.",
+      };
+    }
+    if (!["pending", "expired"].includes(String(intent.status))) {
+      return {
+        status: "not_eligible" as const,
+        message: "This payment intent is not eligible for rechecking.",
+      };
+    }
+
+    const { getPaystackSecret, paystackVerify, classifyPaystackFunding } =
+      await import("@/lib/paystack.server");
+    const secret = getPaystackSecret();
+    const domain = secret.startsWith("sk_test_") ? "test" : "live";
+    if (intent.paystack_domain !== domain) throw new Error("Paystack environment mismatch.");
+    const transaction = await paystackVerify(String(intent.payment_reference));
+    if (!transaction) {
+      return {
+        status: "pending" as const,
+        message: "Paystack verification is unavailable. Try again shortly.",
+      };
+    }
+    const gatewayStatus = String(transaction.status ?? "").toLowerCase();
+    if (gatewayStatus !== "success") {
+      return {
+        status: "pending" as const,
+        message: "Paystack has not confirmed a successful payment.",
+      };
+    }
+    if (transaction.domain && transaction.domain !== domain) {
+      throw new Error("Paystack transaction domain mismatch.");
+    }
+    const expectedKobo = Number(intent.amount_kobo);
+    if (!Number.isSafeInteger(expectedKobo) || expectedKobo <= 0) {
+      throw new Error("Saved checkout amount is invalid.");
+    }
+    const classification = classifyPaystackFunding(
+      transaction,
+      String(intent.payment_reference),
+      expectedKobo,
+    );
+    if (classification.kind === "mismatch") {
+      return {
+        status: "mismatch" as const,
+        message: "Paystack transaction details do not match this checkout. No order was created.",
+      };
+    }
+    const paidAtRaw = transaction.paid_at ?? transaction.paidAt;
+    if (!paidAtRaw || !Number.isFinite(Date.parse(paidAtRaw))) {
+      return {
+        status: "timestamp_missing" as const,
+        message: "Paystack did not return a valid payment timestamp. No order was created.",
+      };
+    }
+    const transactionId = Number(classification.providerTransactionId);
+    if (!Number.isSafeInteger(transactionId) || transactionId <= 0) {
+      throw new Error("Invalid Paystack transaction ID.");
+    }
+    const { data: result, error: settleError } = await admin.rpc("finalize_hub_payment_intent", {
+      _payment_reference: intent.payment_reference,
+      _provider_transaction_id: transactionId,
+      _paid_at: new Date(paidAtRaw).toISOString(),
+    });
+    if (settleError) {
+      if (/outside.*validity|not eligible|expired/i.test(settleError.message)) {
+        return {
+          status: "outside_window" as const,
+          message:
+            "Payment was verified, but Paystack's timestamp falls outside the original checkout window. No order was created.",
+        };
+      }
+      throw new Error(settleError.message);
+    }
+    const order = Array.isArray(result) ? result[0] : result;
+    if (!order?.tracking_reference || !order?.user_id) {
+      throw new Error("Settlement did not return the reconciled order details.");
+    }
+
+    // Recover notifications with the same stable event keys used by the webhook.
+    const payload = asMeta(order.order_payload);
+    const delivery = payload["delivery"] === "deliver" ? "deliver" : "download";
+    const userId = String(order.user_id);
+    const reference = String(intent.payment_reference);
+    const amount = Number(order.amount ?? expectedKobo / 100);
+    const trackingReference = String(order.tracking_reference);
+    const preferredName = String(payload["preferredName"] ?? "CAC application");
+    const eventKey = `hub-payment:${reference}:paid`;
+    const [{ notifyStaffNewHubOrder }, { notifyUser }, { sendHubLifecycleEmail }] =
+      await Promise.all([
+        import("@/lib/hub-documents.functions"),
+        import("@/lib/hub-notify.server"),
+        import("@/lib/hub-email.server"),
+      ]);
+    const [staffNotice, customerNotice] = await Promise.all([
+      notifyStaffNewHubOrder({
+        service: "cac",
+        amount,
+        orderHint: preferredName,
+        eventKey: `${eventKey}:staff`,
+      }),
+      notifyUser({
+        userId,
+        title: "CAC application received",
+        message:
+          delivery === "deliver"
+            ? "We received your application. We’ll process it and deliver the printed pack to your address."
+            : "We received your application. You’ll be notified when the certificate is ready to download.",
+        type: "success",
+        eventKey: `${eventKey}:customer:${userId}`,
+      }),
+    ]);
+    if (!staffNotice.ok || !customerNotice.ok) {
+      throw new Error("Payment is settled, but one or more in-app notifications need retry.");
+    }
+    void sendHubLifecycleEmail({
+      userId,
+      event: "paid",
+      eventKey: `${eventKey}:email`,
+      service: "cac",
+      trackingReference,
+      amount,
+    }).catch((emailError) => {
+      console.warn("[admin-payment-recheck] paid email enqueue failed", emailError);
+    });
+
+    return {
+      status: "paid" as const,
+      message: order.was_existing
+        ? "The payment was already reconciled. No duplicate order was created."
+        : "Payment verified and the CAC order was created.",
+      orderId: String(order.order_id),
+    };
+  });
+
+/** Staff-only overview of Hub checkout intents; excludes customer application payloads. */
+export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const admin = await assertStaff(context.userId);
+    const statuses = ["pending", "paid", "failed", "expired"] as const;
+    const countResults = await Promise.all(
+      statuses.map((status) =>
+        admin
+          .from("hub_payment_intents")
+          .select("id", { count: "exact", head: true })
+          .eq("status", status),
+      ),
+    );
+    for (const result of countResults) {
+      if (result.error) throw new Error(result.error.message);
+    }
+    const { data, error } = await admin
+      .from("hub_payment_intents")
+      .select("id,service,amount_kobo,status,payment_reference,created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error) throw new Error(error.message);
+    const counts = Object.fromEntries(
+      statuses.map((status, index) => [status, countResults[index]?.count ?? 0]),
+    ) as Record<(typeof statuses)[number], number>;
+    return {
+      counts,
+      recent: (data ?? []).map(
+        (row: {
+          id: string;
+          service: string;
+          amount_kobo: number;
+          status: string;
+          payment_reference: string;
+          created_at: string;
+        }) => ({
+          id: row.id,
+          service: row.service,
+          amountNaira: Number(row.amount_kobo) / 100,
+          status: row.status,
+          referenceSuffix: String(row.payment_reference).slice(-8),
+          createdAt: row.created_at,
+        }),
+      ),
+    };
   });
 
 export const listHubCatalogFees = createServerFn({ method: "GET" })
@@ -678,13 +1096,31 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const admin = await assertStaff(context.userId);
+    const { data: roles, error: rolesError } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (rolesError) throw new Error(rolesError.message);
+    if (!roles?.some((row) => row.role === "admin" || row.role === "super_admin")) {
+      throw new Error("Forbidden: only admins can change catalog pricing");
+    }
 
-    const { data: rows } = await admin
+    const { data: rows, error: lookupError } = await admin
       .from("pricing_rules")
       .select("id")
       .eq("service", data.service)
+      .is("provider", null)
+      .is("product_code", null)
+      .eq("markup_type", "selling_price")
       .eq("is_active", true)
-      .limit(1);
+      .order("priority", { ascending: false })
+      .limit(2);
+    if (lookupError) throw new Error(lookupError.message);
+    if ((rows ?? []).length > 1) {
+      throw new Error(
+        "Multiple active default pricing rules exist for this service. Resolve the duplicates before saving.",
+      );
+    }
 
     if (rows?.[0]?.id) {
       const { error } = await admin
@@ -693,7 +1129,7 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
           markup_type: "selling_price",
           markup_value: data.markupValue,
           updated_at: new Date().toISOString(),
-        } as never)
+        })
         .eq("id", rows[0].id);
       if (error) throw new Error(error.message);
     } else {
@@ -705,7 +1141,7 @@ export const updateHubCatalogFee = createServerFn({ method: "POST" })
         markup_value: data.markupValue,
         is_active: true,
         priority: 100,
-      } as never);
+      });
       if (error) throw new Error(error.message);
     }
 

@@ -1,17 +1,31 @@
 // @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n, type OpsStats } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin, type OpsStats } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
+import { recheckWalletFunding } from "@/lib/paystack.functions";
+import { friendlyError } from "@/lib/app-store";
 
 export const Route = createFileRoute("/admin/wallet")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Wallet — ${BRAND.name} Admin` }] }),
   component: AdminWallet,
 });
+
+type WalletRecheckAuditRow = {
+  id: string;
+  actor_user_id: string;
+  created_at: string;
+  description: string;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+};
 
 type FundingRow = {
   id: string;
@@ -30,18 +44,24 @@ type FundingRow = {
 };
 
 function AdminWallet() {
+  const recheck = useServerFn(recheckWalletFunding);
   const [loading, setLoading] = useState(true);
+  const [recheckingReference, setRecheckingReference] = useState<string | null>(null);
   const [stats, setStats] = useState<OpsStats>({});
   const [rows, setRows] = useState<FundingRow[]>([]);
+  const [auditRows, setAuditRows] = useState<WalletRecheckAuditRow[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const [ops, funding] = await Promise.all([
+      const [ops, funding, audit] = await Promise.all([
         supabase.rpc("admin_ops_stats"),
         supabase.rpc("admin_wallet_funding_queue", {
           _query: query.trim(),
@@ -49,9 +69,34 @@ function AdminWallet() {
           _limit: 50,
           _offset: page * 50,
         }),
+        supabase
+          .from("admin_audit_logs")
+          .select("id, actor_user_id, created_at, description, target_id, metadata")
+          .eq("action", "wallet_funding_recheck")
+          .order("created_at", { ascending: false })
+          .limit(12),
       ]);
 
+      if (ops.error) throw ops.error;
       if (ops.data && typeof ops.data === "object") setStats(ops.data as OpsStats);
+      if (audit.error) {
+        console.warn("[AdminWallet] could not load recheck audit history", audit.error.message);
+        setAuditRows([]);
+        setAuditError(
+          "Wallet funding loaded, but the audit history could not be retrieved. Retry to confirm previous staff actions.",
+        );
+      } else {
+        setAuditError(null);
+        setAuditRows(
+          (audit.data ?? []).map((entry) => ({
+            ...entry,
+            metadata:
+              entry.metadata && typeof entry.metadata === "object" && !Array.isArray(entry.metadata)
+                ? (entry.metadata as Record<string, unknown>)
+                : {},
+          })),
+        );
+      }
 
       if (funding.error) throw funding.error;
       const payload = (funding.data ?? {}) as {
@@ -96,7 +141,10 @@ function AdminWallet() {
     } catch (error) {
       console.error("[AdminWallet] failed to load", error);
       setRows([]);
+      setAuditRows([]);
+      setAuditError(null);
       setTotalCount(0);
+      setLoadError(error instanceof Error ? error.message : "Could not load wallet operations");
     } finally {
       setLoading(false);
     }
@@ -112,8 +160,38 @@ function AdminWallet() {
 
   const pageCount = Math.max(1, Math.ceil(totalCount / 50));
 
+  const runRecheck = async (reference: string) => {
+    if (recheckingReference) return;
+    setRecheckingReference(reference);
+    try {
+      const result = await recheck({ data: { reference } });
+      if (result.credited) {
+        toast.success(
+          "Paystack verified. " + formatNaira(result.amount, false) + " credited to the wallet.",
+        );
+      } else if (result.status === "successful") {
+        toast.success("This funding transaction is already settled; no duplicate credit was made.");
+      } else {
+        toast.info("Paystack recheck completed: " + result.status + ". No wallet credit was made.");
+      }
+      await load();
+      if (result.auditId) {
+        toast.message("Audit record saved", { description: result.auditId });
+      }
+    } catch (error) {
+      toast.error(friendlyError(error, "Wallet funding recheck failed"));
+    } finally {
+      setRecheckingReference(null);
+    }
+  };
+
   return (
     <AdminShell title="Wallet" subtitle="Platform liability and ledger activity">
+      {loadError ? (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
       {loading ? (
         <AdminLoading />
       ) : (
@@ -134,6 +212,128 @@ function AdminWallet() {
           </p>
 
           <div className="mt-5 rounded-2xl border bg-card p-4 shadow-card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold">Wallet recheck audit trail</p>
+                <p className="text-xs text-muted-foreground">
+                  Recent staff Paystack verification attempts and settlement outcomes.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">{auditRows.length} recent</span>
+            </div>
+            {auditError ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+              >
+                {auditError}
+              </p>
+            ) : auditRows.length === 0 ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                No wallet recheck audit events recorded yet.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {auditRows.map((entry) => {
+                  const meta = entry.metadata;
+                  const paystack =
+                    meta["paystack"] && typeof meta["paystack"] === "object"
+                      ? (meta["paystack"] as Record<string, unknown>)
+                      : {};
+                  const actor =
+                    typeof meta["actor_email"] === "string"
+                      ? meta["actor_email"]
+                      : entry.actor_user_id;
+                  const outcome = String(meta["outcome"] ?? "unknown");
+                  const credited = meta["credited"] === true;
+                  const creditState =
+                    meta["credited"] === true
+                      ? "Wallet credited"
+                      : outcome === "started"
+                        ? "Recheck in progress"
+                        : meta["credited"] === false
+                          ? "No new credit"
+                          : "Credit not confirmed";
+                  return (
+                    <div
+                      key={entry.id}
+                      className="rounded-xl border bg-background px-3 py-3 text-xs"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{entry.target_id || "Unknown reference"}</p>
+                          <p className="text-muted-foreground">By {actor}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold capitalize">{outcome.replaceAll("_", " ")}</p>
+                          <p
+                            className={
+                              credited ? "font-semibold text-success" : "text-muted-foreground"
+                            }
+                          >
+                            {creditState}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-1 text-muted-foreground">
+                        {new Date(entry.created_at).toLocaleString("en-NG")}
+                      </p>
+                      <p className="mt-1">{entry.description}</p>
+                      {Object.keys(paystack).length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                          <span>Paystack: {String(paystack["gatewayStatus"] ?? "unknown")}</span>
+                          <span>Channel: {String(paystack["channel"] ?? "—")}</span>
+                          <span>Currency: {String(paystack["currency"] ?? "—")}</span>
+                          <span>Domain: {String(paystack["domain"] ?? "—")}</span>
+                          <span>
+                            Gateway response: {String(paystack["gatewayResponse"] ?? "—")}
+                          </span>
+                          <span>
+                            Paid at:{" "}
+                            {paystack["paidAt"]
+                              ? new Date(String(paystack["paidAt"])).toLocaleString("en-NG")
+                              : "—"}
+                          </span>
+                          <span>
+                            Transaction ID: {String(paystack["providerTransactionId"] ?? "—")}
+                          </span>
+                          <span>
+                            Charged:{" "}
+                            {paystack["chargedSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["chargedSubunits"]) / 100, false)}
+                          </span>
+                          <span>
+                            Requested:{" "}
+                            {paystack["requestedSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["requestedSubunits"]) / 100, false)}
+                          </span>
+                          <span>
+                            Fee:{" "}
+                            {paystack["feeSubunits"] == null
+                              ? "—"
+                              : formatNaira(Number(paystack["feeSubunits"]) / 100, false)}
+                          </span>
+                          {paystack["validationReason"] ? (
+                            <span>Validation: {String(paystack["validationReason"])}</span>
+                          ) : null}
+                        </div>
+                      ) : meta["error_message"] ? (
+                        <p className="mt-1 text-destructive">{String(meta["error_message"])}</p>
+                      ) : outcome === "pending" ? (
+                        <p className="mt-1 text-muted-foreground">
+                          Paystack did not return a verifiable transaction record.
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 rounded-2xl border bg-card p-4 shadow-card">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-bold">Funding operations</p>
@@ -147,6 +347,7 @@ function AdminWallet() {
                   ["successful", "Successful"],
                   ["pending", "Pending"],
                   ["failed", "Failed"],
+                  ["reversed", "Reversed"],
                 ].map((pair) => {
                   const value = pair[0] ?? "all";
                   const label = pair[1] ?? "";
@@ -214,6 +415,20 @@ function AdminWallet() {
                         <span>Completed {new Date(r.completedAt).toLocaleString("en-NG")}</span>
                       ) : null}
                     </div>
+                    {r.status === "pending" || r.status === "failed" ? (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => void runRecheck(r.reference)}
+                          disabled={recheckingReference !== null}
+                          className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-bold text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {recheckingReference === r.reference
+                            ? "Verifying with Paystack…"
+                            : "Recheck with Paystack"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}

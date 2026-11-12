@@ -1,46 +1,31 @@
 # Paystack webhook (RockPay)
 
-## Endpoint (this repo)
+## Endpoint
 
 ```
 POST https://<your-netlify-domain>/api/public/webhooks/paystack
 ```
 
-Implemented in:
-
-`src/routes/api/public/webhooks/paystack.ts`
-
-This is **TanStack Start**, not Next.js. There is no `src/app/api/.../route.ts`.
+Implemented in `src/routes/api/public/webhooks/paystack.ts` (TanStack Start).
 
 ## Paystack Dashboard setup
 
-1. Paystack → Settings → API Keys & Webhooks
-2. Webhook URL = the URL above (must be HTTPS)
-3. Use the **same** secret as `PAYSTACK_SECRET_KEY` on Netlify (`sk_test_...` for now)
+1. Open Paystack → Settings → API Keys & Webhooks.
+2. Set the webhook URL to the HTTPS endpoint above.
+3. Use the same secret configured as `PAYSTACK_SECRET_KEY` on Netlify.
 
-## What it does
+## Security and processing
 
-1. Reads **raw body** + header `x-paystack-signature`
-2. Validates **HMAC SHA-512** with `PAYSTACK_SECRET_KEY` (timing-safe)
-3. On supported events:
-   - **Wallet funding** → existing `verifyAndSettle` (never double-credits)
-   - **`charge.success` hub metadata** → insert into `public.hub_orders` (idempotent on `payment_reference`)
+1. The handler reads the raw request body.
+2. It validates the 128-character hexadecimal `x-paystack-signature` using HMAC SHA-512 and a timing-safe comparison.
+3. Wallet references are settled through `verifyAndSettle`, which independently verifies the reference and payment details with Paystack before any wallet credit.
+4. Unknown wallet references are acknowledged as non-wallet events. The webhook does **not** create Hub orders from checkout metadata.
 
-## Hub metadata expected from Inline checkout
+## Hub orders
 
-Pass when opening Paystack (already done in hub flows via `simulatePaystackInline` / `openPaystackInline`):
+Hub orders must be recorded by the authenticated server functions after they verify the Paystack reference against the expected server-side amount and the signed-in customer's identity.
 
-```json
-{
-  "service": "vehicle_license_sticker",
-  "plate": "ABC123XY",
-  "user_id": "<supabase-auth-uuid>"
-}
-```
-
-or `service_type`, `plate_number`, `channel: "hub"`.
-
-If `user_id` is missing, webhook tries to resolve the user from `customer.email` → `profiles`.
+The webhook deliberately does not create a Hub order from `metadata.user_id`, customer email, service name, or the amount in the webhook payload. Those fields do not constitute a trusted order-intent record. If the customer closes checkout before the authenticated server function records the order, it requires a separate reconciliation flow; it must not be guessed from metadata.
 
 ## Netlify logs
 
@@ -48,12 +33,16 @@ Search for:
 
 - `[paystack-webhook] received`
 - `[paystack-webhook] event`
-- `[paystack-webhook] hub_orders inserted`
+- `[paystack-webhook] wallet settlement checked`
 - `[paystack-webhook] invalid signature`
+- `[paystack-webhook] no wallet funding row`
 
 ## Test
 
-1. Set `PAYSTACK_SECRET_KEY=sk_test_...` and `VITE_PAYSTACK_PUBLIC_KEY=pk_test_...`
-2. Redeploy `feature/rockpay-pricing`
-3. Complete a test charge with hub metadata
-4. Confirm row in Supabase `hub_orders`
+1. Use Paystack test keys on the feature branch.
+2. Send a valid test wallet payment and confirm one wallet credit.
+3. Replay the same signed webhook and confirm the balance does not change.
+4. Send a request with a missing or invalid signature and confirm HTTP 401.
+5. Confirm Hub orders are still written by their authenticated server functions after successful payment verification.
+
+Do not treat a green CI run as approval to deploy production.

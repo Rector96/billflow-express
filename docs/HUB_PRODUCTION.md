@@ -16,18 +16,18 @@ A price in `pricing_rules` does **not** make a service available by itself.
 
 ## Current service status
 
-| Service     | Status      | Reason                                                        |
-| ----------- | ----------- | ------------------------------------------------------------- |
-| Airtime     | AVAILABLE   | VTpass production path                                        |
-| Data        | AVAILABLE   | VTpass production path                                        |
-| Electricity | AVAILABLE   | VTpass production path + settlement                           |
-| Cable       | AVAILABLE   | VTpass production path + settlement                           |
-| Exam PINs   | CONTROLLED  | Depends on the selected VTpass product                        |
-| CAC         | COMING_SOON | No production CAC filing/status connection                    |
-| NIN         | COMING_SOON | No authorized NIN fulfillment provider connected              |
-| TIN         | COMING_SOON | Dojah/TIN provider access not configured                      |
-| Vehicle     | COMING_SOON | Verified registry/issuance provider access not configured     |
-| Documents   | COMING_SOON | Secure payment + real PDF delivery path still being finalized |
+| Service     | Status      | Reason                                                                             |
+| ----------- | ----------- | ---------------------------------------------------------------------------------- |
+| Airtime     | AVAILABLE   | VTpass production path                                                             |
+| Data        | AVAILABLE   | VTpass production path                                                             |
+| Electricity | AVAILABLE   | VTpass production path + settlement                                                |
+| Cable       | AVAILABLE   | VTpass production path + settlement                                                |
+| Exam PINs   | CONTROLLED  | Depends on the selected VTpass product                                             |
+| CAC         | MANUAL_LIVE | Verified Paystack checkout + staff-led application filing and certificate delivery |
+| NIN         | COMING_SOON | No authorized NIN fulfillment provider connected                                   |
+| TIN         | COMING_SOON | Dojah/TIN provider access not configured                                           |
+| Vehicle     | COMING_SOON | Verified registry/issuance provider access not configured                          |
+| Documents   | COMING_SOON | Secure payment + real PDF delivery path still being finalized                      |
 
 `src/lib/product-mode.ts` is the central payment gate. A service that is not in
 `LIVE_BILL_SLUGS` must not accept customer payment.
@@ -73,9 +73,10 @@ A price in `pricing_rules` does **not** make a service available by itself.
 
 ### CAC
 
-- The current Business Name UI is retained for development.
-- It is not a real CAC filing connection and therefore remains unavailable for
-  customer payment until submission/status handling is connected.
+- CAC Business Name is available through a manual-assisted RockPay operations workflow; this is not an automated CAC registry/API integration.
+- The complete application and private evidence files are stored before checkout. The server verifies payment before creating the staff order.
+- Staff manually submit the application through the authorized CAC process and deliver the resulting certificate digitally or by print-and-courier.
+- Do not accept new orders unless the operations team can process them within the customer-facing service promise.
 
 ### Documents
 

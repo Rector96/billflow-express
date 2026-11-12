@@ -1,5 +1,5 @@
-/**
- * Client-side receipt export — polished RockPay receipt (image + PDF).
+﻿/**
+ * Client-side receipt export ÔÇö polished RockPay receipt (image + PDF).
  * Presentation only; no money logic.
  */
 
@@ -15,6 +15,7 @@ export type ReceiptPayload = {
   network?: string | null;
   recipient?: string | null;
   providerRef?: string | null;
+  paystackRef?: string | null;
   channel?: string | null;
   dateLabel?: string | null;
   method?: string | null;
@@ -66,7 +67,7 @@ function roundRect(
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const value = String(text || "—");
+  const value = String(text || "ÔÇö");
   const words = value.split(/\s+/);
   const lines: string[] = [];
   let line = "";
@@ -98,7 +99,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   }
 
   if (line) lines.push(line);
-  return lines.length ? lines : ["—"];
+  return lines.length ? lines : ["ÔÇö"];
 }
 
 function drawCenteredText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number) {
@@ -122,19 +123,42 @@ function drawPerforation(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 
 function drawStatusIcon(ctx: CanvasRenderingContext2D, status: string, x: number, y: number) {
   const color = statusColor(status);
+
+  ctx.save();
+
   ctx.beginPath();
   ctx.arc(x, y, 24, 0, Math.PI * 2);
   ctx.fillStyle = `${color}18`;
   ctx.fill();
+
   ctx.beginPath();
   ctx.arc(x, y, 16, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
+
+  ctx.strokeStyle = "#FFFFFF";
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "800 19px system-ui, -apple-system, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(status === "successful" ? "✓" : status === "pending" ? "…" : "!", x, y + 7);
-  ctx.textAlign = "left";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  if (status === "successful") {
+    ctx.beginPath();
+    ctx.moveTo(x - 7, y);
+    ctx.lineTo(x - 2, y + 5);
+    ctx.lineTo(x + 8, y - 6);
+    ctx.stroke();
+  } else if (status === "pending") {
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.font = "800 19px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("!", x, y + 7);
+  }
+
+  ctx.restore();
 }
 
 /** Render a premium, spacious RockPay receipt suitable for WhatsApp and PDF. */
@@ -156,7 +180,9 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   if (payload.detailRows) rows.push(...payload.detailRows);
   if (payload.dateLabel) rows.push({ label: "Date & time", value: payload.dateLabel });
   rows.push({ label: "RockPay reference", value: payload.reference });
-  if (payload.providerRef) rows.push({ label: "Provider reference", value: payload.providerRef });
+  if (payload.paystackRef) rows.push({ label: "Paystack reference", value: payload.paystackRef });
+  if (payload.providerRef)
+    rows.push({ label: "Fulfilment provider reference", value: payload.providerRef });
   if (payload.channel) rows.push({ label: "Channel", value: payload.channel });
   if (payload.method) rows.push({ label: "Payment method", value: payload.method });
 
@@ -212,6 +238,16 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   ctx.fill();
   ctx.restore();
 
+  // Subtle diagonal RockPay watermark behind receipt content.
+  ctx.save();
+  ctx.globalAlpha = 0.055;
+  ctx.fillStyle = "#5B21B6";
+  ctx.font = "900 76px system-ui, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.translate(width / 2, height * 0.57);
+  ctx.rotate(-Math.PI / 7);
+  ctx.fillText("ROCKPAY", 0, 0);
+  ctx.restore();
   // Branded top panel.
   const topGrad = ctx.createLinearGradient(cardX, 24, cardX + cardW, 190);
   topGrad.addColorStop(0, "#5B21B6");
@@ -389,7 +425,7 @@ export async function renderReceiptPng(payload: ReceiptPayload): Promise<Blob> {
   ctx.font = "500 11px system-ui, -apple-system, sans-serif";
   drawCenteredText(ctx, `Securely processed by ${BRAND.name}`, width / 2, footerY + 52);
   ctx.fillStyle = "#CBD5E1";
-  drawCenteredText(ctx, "PAY  •  FUND  •  CONNECT", width / 2, footerY + 73);
+  drawCenteredText(ctx, BRAND.tagline, width / 2, footerY + 73);
 
   // Receipt-style perforated bottom edge.
   drawPerforation(ctx, cardX + 12, height - 25, cardW - 24);
@@ -412,7 +448,7 @@ async function blobToImage(blob: Blob): Promise<HTMLImageElement> {
   }
 }
 
-/** PDF via canvas → JPEG embed (no npm deps). */
+/** PDF via canvas ÔåÆ JPEG embed (no npm deps). */
 export async function renderReceiptPdfFromCanvas(payload: ReceiptPayload): Promise<Blob> {
   const pngBlob = await renderReceiptPng(payload);
   const img = await blobToImage(pngBlob);
@@ -505,34 +541,35 @@ export async function shareOrDownload(opts: {
   filename: string;
   title: string;
   text?: string;
-}): Promise<"shared" | "downloaded"> {
+}): Promise<"shared" | "unsupported"> {
   const file = new File([opts.blob], opts.filename, { type: opts.blob.type });
 
   if (
-    typeof navigator !== "undefined" &&
-    navigator.share &&
-    navigator.canShare?.({ files: [file] })
+    typeof navigator === "undefined" ||
+    typeof navigator.share !== "function" ||
+    typeof navigator.canShare !== "function" ||
+    !navigator.canShare({ files: [file] })
   ) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: opts.title,
-        text: opts.text ?? opts.title,
-      });
-      return "shared";
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") throw e;
-    }
+    return "unsupported";
   }
 
-  const url = URL.createObjectURL(opts.blob);
+  await navigator.share({
+    files: [file],
+    title: opts.title,
+    text: opts.text ?? opts.title,
+  });
+
+  return "shared";
+}
+
+export function downloadReceiptBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = opts.filename;
+  a.download = filename;
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
-  return "downloaded";
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

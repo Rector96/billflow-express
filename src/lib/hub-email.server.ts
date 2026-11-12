@@ -1,5 +1,5 @@
 /**
- * Hub lifecycle emails via Resend.
+ * Durable Hub lifecycle email outbox with Resend delivery.
  * Events: paid | digital_ready | dispatched | delivered
  */
 import { sendEmail, isResendConfigured } from "@/lib/resend.server";
@@ -34,40 +34,33 @@ function layout(title: string, bodyHtml: string): string {
 }
 
 async function resolveUserEmail(userId: string): Promise<string | null> {
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-    if (error) {
-      console.warn("[hub-email] getUserById", error.message);
-      return null;
-    }
-    const email = data.user?.email?.trim();
-    return email && email.includes("@") ? email : null;
-  } catch (e) {
-    console.warn("[hub-email] resolve email", e);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error) {
+    console.warn("[hub-email] getUserById", error.message);
     return null;
   }
+  const email = data.user?.email?.trim();
+  return email && email.includes("@") ? email : null;
 }
 
 export type HubEmailEvent = "paid" | "digital_ready" | "dispatched" | "delivered";
 
-export async function sendHubLifecycleEmail(input: {
+export type HubLifecycleEmailInput = {
   userId: string;
   event: HubEmailEvent;
+  eventKey: string;
   service: string;
   trackingReference?: string | null;
   amount?: number | null;
   trackingNote?: string | null;
   courierName?: string | null;
   appOrigin?: string;
-}): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
-  if (!isResendConfigured()) {
-    return { sent: false, skipped: true };
-  }
+};
 
-  const to = await resolveUserEmail(input.userId);
-  if (!to) return { sent: false, error: "No user email" };
+type EmailPayload = Omit<HubLifecycleEmailInput, "userId" | "event" | "eventKey">;
 
+function buildEmail(input: HubLifecycleEmailInput, to: string) {
   const service = input.service.replace(/_/g, " ");
   const ref = input.trackingReference || "—";
   const amount =
@@ -80,7 +73,6 @@ export async function sendHubLifecycleEmail(input: {
   let subject = "";
   let title = "";
   let lines: string[] = [];
-
   switch (input.event) {
     case "paid":
       subject = `Payment received · ${service}`;
@@ -97,7 +89,7 @@ export async function sendHubLifecycleEmail(input: {
       title = "Your document is ready";
       lines = [
         `Your <strong>${escapeHtml(service)}</strong> file is ready.`,
-        `Open the app → <strong>Profile → My documents</strong> to download.`,
+        "Open the app → <strong>Profile → My documents</strong> to download.",
         origin
           ? `Or sign in: <a href="${escapeHtml(origin)}/profile">${escapeHtml(docsLink)}</a>`
           : "",
@@ -124,25 +116,142 @@ export async function sendHubLifecycleEmail(input: {
       ];
       break;
   }
-
   const bodyHtml = lines
     .filter(Boolean)
     .map(
       (p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;color:#334155;">${p}</p>`,
     )
     .join("");
-
-  const result = await sendEmail({
+  return {
     to,
     subject,
     html: layout(title, bodyHtml),
     text: lines
       .filter(Boolean)
-      .map((l) => l.replace(/<[^>]+>/g, ""))
+      .map((line) => line.replace(/<[^>]+>/g, ""))
       .join("\n"),
-  });
+    idempotencyKey: input.eventKey,
+  };
+}
 
-  if (!result.ok) return { sent: false, error: result.error };
-  if (result.skipped) return { sent: false, skipped: true };
-  return { sent: true };
+/** Enqueue first, then make a best-effort immediate delivery attempt. */
+export async function sendHubLifecycleEmail(
+  input: HubLifecycleEmailInput,
+): Promise<{ queued: boolean; sent?: boolean; error?: string }> {
+  const eventKey = String(input.eventKey ?? "").trim();
+  if (!eventKey) return { queued: false, error: "A stable email event key is required" };
+
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const payload: EmailPayload = {
+      service: input.service,
+      trackingReference: input.trackingReference ?? null,
+      amount: input.amount ?? null,
+      trackingNote: input.trackingNote ?? null,
+      courierName: input.courierName ?? null,
+      ...(input.appOrigin === undefined ? {} : { appOrigin: input.appOrigin }),
+    };
+    const { error } = await supabaseAdmin.from("hub_email_outbox").upsert(
+      {
+        event_key: eventKey,
+        user_id: input.userId,
+        event: input.event,
+        payload,
+        status: "pending",
+        next_attempt_at: new Date().toISOString(),
+      },
+      { onConflict: "event_key", ignoreDuplicates: true },
+    );
+    if (error) {
+      console.warn("[hub-email] enqueue failed", error.message);
+      return { queued: false, error: error.message };
+    }
+
+    if (!isResendConfigured()) return { queued: true };
+    const delivery = await processHubEmailOutbox(5);
+    const firstError = delivery.errors[0];
+    return {
+      queued: true,
+      sent: delivery.sent > 0,
+      ...(firstError === undefined ? {} : { error: firstError }),
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Email enqueue failed";
+    console.warn("[hub-email] enqueue exception", message);
+    return { queued: false, error: message };
+  }
+}
+
+/** Service-role worker. Safe for concurrent callers through SKIP LOCKED claims. */
+export async function processHubEmailOutbox(
+  batchSize = 10,
+): Promise<{ claimed: number; sent: number; failed: number; errors: string[] }> {
+  if (!isResendConfigured()) return { claimed: 0, sent: 0, failed: 0, errors: [] };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: jobs, error: claimError } = await supabaseAdmin.rpc("claim_hub_email_outbox", {
+    _batch_size: Math.min(Math.max(Math.trunc(batchSize), 1), 100),
+  });
+  if (claimError) {
+    console.warn("[hub-email] claim failed", claimError.message);
+    return { claimed: 0, sent: 0, failed: 0, errors: [claimError.message] };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  for (const raw of jobs ?? []) {
+    const job = raw as {
+      id: string;
+      event_key: string;
+      user_id: string;
+      event: HubEmailEvent;
+      payload: EmailPayload;
+      attempts: number;
+    };
+    try {
+      const to = await resolveUserEmail(job.user_id);
+      if (!to) throw new Error("No valid email address for customer");
+      const input = {
+        userId: job.user_id,
+        event: job.event,
+        eventKey: job.event_key,
+        ...job.payload,
+      } as HubLifecycleEmailInput;
+      const result = await sendEmail(buildEmail(input, to));
+      if (!result.ok || result.skipped) {
+        throw new Error(result.ok ? "Resend is not configured" : result.error);
+      }
+      const { error: updateError } = await supabaseAdmin
+        .from("hub_email_outbox")
+        .update({
+          status: "sent",
+          sent_at: new Date().toISOString(),
+          provider_message_id: result.id ?? null,
+          locked_at: null,
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", job.id);
+      if (updateError) throw new Error(updateError.message);
+      sent++;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Email delivery failed";
+      const terminal = job.attempts >= 5;
+      const delayMinutes = Math.min(360, 2 ** Math.min(job.attempts, 8));
+      const { error: updateError } = await supabaseAdmin
+        .from("hub_email_outbox")
+        .update({
+          status: terminal ? "failed" : "pending",
+          next_attempt_at: new Date(Date.now() + delayMinutes * 60_000).toISOString(),
+          locked_at: null,
+          last_error: message.slice(0, 1000),
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", job.id);
+      if (updateError) errors.push(updateError.message);
+      errors.push(message);
+      failed++;
+    }
+  }
+  return { claimed: (jobs ?? []).length, sent, failed, errors };
 }

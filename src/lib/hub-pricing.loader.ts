@@ -44,12 +44,15 @@ function fallbackFor(slug: string): number {
   return 0;
 }
 
-function feeFromRule(row: { markup_type?: string | null; markup_value?: number | null }): number {
+function feeFromRule(row: {
+  markup_type?: string | null;
+  markup_value?: number | null;
+}): number | null {
   const type = String(row.markup_type ?? "").toLowerCase();
   const value = Number(row.markup_value ?? 0);
-  if (!Number.isFinite(value) || value < 0) return 0;
+  if (!Number.isFinite(value) || value < 0) return null;
   if (type === "selling_price" || type === "fixed") return Math.round(value);
-  return 0;
+  return null;
 }
 
 export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
@@ -72,19 +75,13 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
     }
 
     const best = new Map<string, { fee: number; priority: number }>();
-    for (const raw of data ?? []) {
-      const row = raw as {
-        service?: string;
-        markup_type?: string;
-        markup_value?: number;
-        priority?: number;
-      };
+    for (const row of data ?? []) {
       const service = String(row.service ?? "")
         .trim()
         .toLowerCase();
       if (!service) continue;
       const fee = feeFromRule(row);
-      if (fee <= 0) continue;
+      if (fee === null) continue;
       const pri = Number(row.priority) || 0;
       const prev = best.get(service);
       if (!prev || pri >= prev.priority) best.set(service, { fee, priority: pri });
@@ -101,7 +98,7 @@ export async function loadHubFeesFromSupabase(): Promise<HubFeeMap> {
 
 export function feeFromMap(fees: HubFeeMap, slug: string, fallback = 0): number {
   const v = fees[slug];
-  if (typeof v === "number" && v > 0) return v;
+  if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
   const fb = fallbackFor(slug);
   return fb > 0 ? fb : fallback;
 }

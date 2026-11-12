@@ -40,21 +40,20 @@ function ForgotPassword() {
 
   if (step === "done") {
     return (
-      <AuthShell title="Password reset" subtitle="You're all set.">
-        <div className="flex flex-col items-center gap-4 py-6 text-center">
-          <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
-            <CheckCircle2 className="size-10" />
-          </span>
-          <p className="text-sm text-muted-foreground">
-            Your password has been changed. You can now log in with your new password.
-          </p>
-          <Button
-            className="mt-2 h-13 w-full rounded-full bg-violet-600 text-base font-bold text-white hover:bg-violet-700"
-            onClick={() => navigate({ to: "/login" })}
-          >
-            Back to Login
-          </Button>
-        </div>
+      <AuthShell title="Password reset" subtitle="You are all set.">
+        <span className="grid size-20 place-items-center rounded-full bg-success-soft text-success">
+          <CheckCircle2 className="size-10" />
+        </span>
+        <h1 className="text-2xl font-extrabold">Password Reset</h1>
+        <p className="text-sm text-muted-foreground">
+          Your password has been changed. You can now log in with your new password.
+        </p>
+        <Button
+          className="mt-4 h-13 w-full rounded-2xl text-base font-bold"
+          onClick={() => navigate({ to: "/login" })}
+        >
+          Back to Login
+        </Button>
       </AuthShell>
     );
   }
@@ -124,7 +123,7 @@ function ForgotPassword() {
   return (
     <AuthShell
       title="Forgot password"
-      subtitle="Enter the email linked to your account and we'll send a secure reset link."
+      subtitle="Enter the email linked to your account and we will send a secure reset link."
     >
       <form
         className="space-y-4"

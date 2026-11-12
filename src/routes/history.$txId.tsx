@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { requeryAirtime } from "@/lib/airtime.functions";
 import { requeryBill } from "@/lib/bills.functions";
+import { verifyWalletFunding } from "@/lib/paystack.functions";
 
 export const Route = createFileRoute("/history/$txId")({
   head: ({ params }) => ({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/history/$txId")({
 
 type BillExtra = {
   provider: string | null;
+  external_reference: string | null;
   provider_request_id: string | null;
   provider_transaction_id: string | null;
   provider_status: string | null;
@@ -48,6 +50,7 @@ function TransactionDetails() {
   const tx = transactions.find((t) => t.id === txId);
   const checkAirtime = useServerFn(requeryAirtime);
   const checkBill = useServerFn(requeryBill);
+  const verifyFunding = useServerFn(verifyWalletFunding);
   const [bill, setBill] = useState<BillExtra | null>(null);
   const [loadingBill, setLoadingBill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +62,7 @@ function TransactionDetails() {
       const { data } = await supabase
         .from("bill_transactions")
         .select(
-          "provider, provider_request_id, provider_transaction_id, provider_status, provider_channel, customer_identifier, service, status, amount, created_at, metadata",
+          "provider, external_reference, provider_request_id, provider_transaction_id, provider_status, provider_channel, customer_identifier, service, status, amount, created_at, metadata",
         )
         .eq("internal_reference", txId)
         .maybeSingle();
@@ -87,18 +90,40 @@ function TransactionDetails() {
     bill?.customer_identifier ?? (typeof tx?.reference === "string" ? tx.reference : "");
   const channel =
     bill?.provider_channel ||
+    (typeof bill?.metadata?.["vendor"] === "string" ? String(bill.metadata["vendor"]) : null) ||
     (typeof bill?.metadata?.["channel"] === "string" ? String(bill.metadata["channel"]) : null) ||
     (isAirtime ? "vtpass" : null);
-  const providerRef = bill?.provider_request_id || bill?.provider_transaction_id || "";
-
+  const receiptToken =
+    (typeof bill?.metadata?.["token"] === "string" ? String(bill.metadata["token"]) : null) ||
+    (typeof bill?.metadata?.["purchased_code"] === "string"
+      ? String(bill.metadata["purchased_code"])
+      : null) ||
+    tx?.token ||
+    null;
+  const manualReviewRequired = bill?.metadata?.["manual_review_required"] === true;
+  const isWalletFunding =
+    tx?.direction === "in" && tx?.serviceSlug === "wallet" && tx?.method === "Paystack";
+  const paystackRef =
+    bill?.external_reference ||
+    (typeof bill?.metadata?.["paystack_reference"] === "string"
+      ? String(bill.metadata["paystack_reference"])
+      : "") ||
+    (isWalletFunding ? tx?.providerReference || "" : "");
+  const providerRef = isWalletFunding
+    ? ""
+    : bill?.provider_request_id || bill?.provider_transaction_id || tx?.providerReference || "";
   const canRequery =
-    status === "pending" && Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime);
+    status === "pending" &&
+    ((Boolean(bill) && Boolean(bill?.provider_request_id || isAirtime)) ||
+      (isWalletFunding && Boolean(tx?.providerReference)));
 
   const onRefresh = async () => {
     if (status !== "pending") return;
     setRefreshing(true);
     try {
-      if (isAirtime) {
+      if (isWalletFunding && tx?.providerReference) {
+        await verifyFunding({ data: { reference: tx.providerReference } });
+      } else if (isAirtime) {
         await checkAirtime({ data: { reference: txId } });
       } else {
         await checkBill({ data: { reference: txId } });
@@ -172,11 +197,27 @@ function TransactionDetails() {
             alt={BRAND.name}
             className="h-[clamp(2.5rem,11vw,3.5rem)] w-auto object-contain"
           />
-          <StatusBadge status={status as "successful" | "pending" | "failed"} />
+          <StatusBadge
+            status={
+              status === "successful" ||
+              status === "pending" ||
+              status === "failed" ||
+              status === "reversed"
+                ? status
+                : "pending"
+            }
+          />
           <p className="text-sm font-bold">{tx?.title ?? bill?.service ?? "Payment"}</p>
           <p className="text-3xl font-extrabold tabular-nums">
             {formatNaira(Math.abs(Number(amount) || 0))}
           </p>
+          {status === "pending" ? (
+            <p className="max-w-xs text-center text-xs text-muted-foreground">
+              {manualReviewRequired
+                ? "Payment was received but needs a manual check. Contact RockPay Care with this reference."
+                : "Your transaction is still being confirmed. Tap Refresh Status if this takes long."}
+            </p>
+          ) : null}
         </div>
 
         <div className="divide-y rounded-2xl border bg-card px-4 py-2 shadow-card">
@@ -197,10 +238,28 @@ function TransactionDetails() {
               <Copy className="size-3.5" /> Copy
             </Button>
           </div>
+          {channel ? <InfoRow label="Channel" value={String(channel).toUpperCase()} /> : null}
+          {paystackRef ? (
+            <div className="flex items-center justify-between gap-2 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground">Paystack Reference</p>
+                <p className="truncate font-mono text-xs font-semibold">{paystackRef}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-lg text-xs font-bold"
+               onClick={() => void copyText(paystackRef, "Paystack ref")}
+              >
+                <Copy className="size-3.5" /> Copy
+              </Button>
+            </div>
+          ) : null}
           {providerRef ? (
             <div className="flex items-center justify-between gap-2 py-2.5">
               <div className="min-w-0">
-                <p className="text-[11px] text-muted-foreground">Provider reference</p>
+                <p className="text-[11px] text-muted-foreground">Fulfilment Provider Reference</p>
                 <p className="truncate font-mono text-xs font-semibold">{providerRef}</p>
               </div>
               <Button
@@ -218,10 +277,23 @@ function TransactionDetails() {
           {tx?.method ? <InfoRow label="Payment method" value={tx.method} /> : null}
         </div>
 
-        {tx?.token ? (
+        {receiptToken && status === "successful" ? (
           <div className="rounded-2xl border border-dashed bg-primary-soft p-4 text-center">
-            <p className="text-xs font-semibold text-muted-foreground">Electricity Token</p>
-            <p className="mt-1 text-lg font-extrabold tracking-[0.15em]">{tx.token}</p>
+            <p className="text-xs font-semibold text-muted-foreground">
+              {isAirtime ? "Recharge Details" : "Token / PIN"}
+            </p>
+            <p className="mt-1 break-all text-lg font-extrabold tracking-[0.08em]">
+              {receiptToken}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-3 h-8 rounded-lg text-xs font-bold"
+            onClick={() => void copyText(receiptToken, "Token / PIN")}
+            >
+              <Copy className="size-3.5" /> Copy details
+            </Button>
           </div>
         ) : null}
 
@@ -240,6 +312,13 @@ function TransactionDetails() {
               Refresh Status
             </Button>
           ) : null}
+          {status === "failed" ? (
+            <Button className="h-12 w-full rounded-2xl font-bold" asChild>
+              <Link to="/services" search={{}}>
+                Browse services
+              </Link>
+            </Button>
+          ) : null}
           <ReceiptShareButton
             payload={{
               reference: txId,
@@ -255,19 +334,23 @@ function TransactionDetails() {
               network: network || null,
               recipient: phone || null,
               providerRef: providerRef || null,
+              paystackRef: paystackRef || null,
               channel: channel || null,
               dateLabel: bill?.created_at
                 ? new Date(bill.created_at).toLocaleString("en-NG")
                 : `${tx?.date ?? ""} ${tx?.time ?? ""}`.trim() || null,
               method: tx?.method || null,
-              tokenLabel: tx?.token ? "Token / PIN" : null,
-              tokenValue: tx?.token || null,
+              tokenLabel: receiptToken && status === "successful" ? "Token / PIN" : null,
+              tokenValue: receiptToken && status === "successful" ? receiptToken : null,
             }}
           />
           <CareContextLink
             reference={txId}
             status={
-              status === "successful" || status === "pending" || status === "failed"
+              status === "successful" ||
+              status === "pending" ||
+              status === "failed" ||
+              status === "reversed"
                 ? status
                 : "pending"
             }

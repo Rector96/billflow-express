@@ -9,6 +9,8 @@
  * on existing rows — never overwrites non-NULL values and never invents economics.
  */
 
+import type { Database } from "@/integrations/supabase/types";
+
 export type ProfitService = "airtime" | "data" | "cable" | "electricity";
 
 export type RecordProfitInput = {
@@ -38,11 +40,22 @@ export type BackfillProfitResult = {
   id?: string | null;
 };
 
+type ProfitRpcArgs = Database["public"]["Functions"]["trusted_record_transaction_profit"]["Args"];
+type BackfillRpcArgs =
+  Database["public"]["Functions"]["trusted_backfill_transaction_profit_costs"]["Args"];
+
 type SupabaseLike = {
   rpc: (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    fn: "trusted_record_transaction_profit",
+    args: ProfitRpcArgs,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+type BackfillSupabaseLike = {
+  rpc: (
+    fn: "trusted_backfill_transaction_profit_costs",
+    args: BackfillRpcArgs,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
 };
 
 function roundMoney(n: number): number {
@@ -188,7 +201,7 @@ export async function maybeRecordTransactionProfit(
  * Never overwrites non-NULL economics. Never invents values.
  */
 export async function backfillTransactionProfitCosts(
-  supabase: SupabaseLike,
+  supabase: BackfillSupabaseLike,
   input: BackfillProfitInput,
 ): Promise<BackfillProfitResult> {
   const reference = input.internalReference?.trim() ?? "";

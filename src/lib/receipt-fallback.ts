@@ -87,7 +87,8 @@ function drawFallbackReceipt(payload: ReceiptPayload): HTMLCanvasElement {
   if (payload.service) rows.push(["Service", payload.service]);
   if (payload.recipient) rows.push(["Recipient", payload.recipient]);
   if (payload.dateLabel) rows.push(["Date & time", payload.dateLabel]);
-  if (payload.providerRef) rows.push(["Provider reference", payload.providerRef]);
+  if (payload.paystackRef) rows.push(["Paystack reference", payload.paystackRef]);
+  if (payload.providerRef) rows.push(["Fulfilment provider reference", payload.providerRef]);
   if (payload.channel) rows.push(["Channel", payload.channel]);
   if (payload.method) rows.push(["Payment method", payload.method]);
   if (payload.detailRows) for (const row of payload.detailRows) rows.push([row.label, row.value]);

@@ -5,7 +5,6 @@ import { Copy, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { asLooseRpc } from "@/lib/loose-rpc";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
 import { StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import {
   reconcileVerdict,
 } from "@/lib/reconciliation";
 import { adminRequeryAirtime } from "@/lib/airtime.functions";
+import { requeryBill } from "@/lib/bills.functions";
 import { friendlyError } from "@/lib/app-store";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
@@ -58,13 +58,20 @@ type BillRow = {
 
 type TransactionFilter = "all" | TxStatus;
 
-const transactionFilters: TransactionFilter[] = ["all", "successful", "pending", "failed"];
+const transactionFilters: TransactionFilter[] = [
+  "all",
+  "successful",
+  "pending",
+  "failed",
+  "reversed",
+];
 
 const PAGE = 30;
 
 function AdminTransactions() {
   const search = Route.useSearch();
   const requery = useServerFn(adminRequeryAirtime);
+  const requeryBillFn = useServerFn(requeryBill);
   const [q, setQ] = useState(search.q);
   const [status, setStatus] = useState<TransactionFilter>(
     ["all", "pending", "successful", "failed", "reversed"].includes(search.status)
@@ -88,6 +95,8 @@ function AdminTransactions() {
     null,
   );
   const [requerying, setRequerying] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const dateFrom = (): string | null => {
     const now = new Date();
@@ -116,7 +125,7 @@ function AdminTransactions() {
         to = end.toISOString();
       }
 
-      const { data, error } = await asLooseRpc(supabase.rpc)("admin_transaction_directory", {
+      const { data, error } = await supabase.rpc("admin_transaction_directory", {
         _query: q.trim(),
         _status: status,
         _service: service,
@@ -133,7 +142,7 @@ function AdminTransactions() {
         ...t,
         amount: n(t.amount),
         metadata: (t.metadata ?? {}) as Record<string, unknown>,
-        user_label: t.user_label || t.user_email || t.user_id.slice(0, 8),
+        user_label: t.user_label || t.user_email || t.user_id?.slice(0, 8) || "Unknown customer",
         user_email: t.user_email || "",
         user_phone: t.user_phone || "",
       }));
@@ -166,8 +175,10 @@ function AdminTransactions() {
     setSelected(row);
     setWalletSnap(null);
     setCareTicket(null);
+    setDetailError(null);
+    setDetailLoading(true);
     try {
-      const [{ data: wt }, { data: tickets }] = await Promise.all([
+      const [walletResult, ticketResult] = await Promise.all([
         supabase
           .from("wallet_transactions")
           .select("balance_before, balance_after, amount")
@@ -183,17 +194,20 @@ function AdminTransactions() {
           .order("created_at", { ascending: false })
           .limit(1),
       ]);
-      if (wt) {
+      if (walletResult.error) throw walletResult.error;
+      if (ticketResult.error) throw ticketResult.error;
+      if (walletResult.data)
         setWalletSnap({
-          balance_before: n(wt.balance_before),
-          balance_after: n(wt.balance_after),
-          amount: n(wt.amount),
+          balance_before: n(walletResult.data.balance_before),
+          balance_after: n(walletResult.data.balance_after),
+          amount: n(walletResult.data.amount),
         });
-      }
-      const t = tickets?.[0];
-      if (t) setCareTicket({ id: t.id, ticket_number: t.ticket_number });
-    } catch {
-      /* non-fatal */
+      const ticket = ticketResult.data?.[0];
+      if (ticket) setCareTicket({ id: ticket.id, ticket_number: ticket.ticket_number });
+    } catch (error) {
+      setDetailError(friendlyError(error, "Could not load transaction investigation details."));
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -201,16 +215,20 @@ function AdminTransactions() {
     if (!selected) return;
     setRequerying(true);
     try {
-      const res = await requery({ data: { reference: selected.internal_reference } });
+      const res =
+        selected.service.toLowerCase() === "airtime"
+          ? await requery({ data: { reference: selected.internal_reference } })
+          : await requeryBillFn({ data: { reference: selected.internal_reference, admin: true } });
       toast.success(`Requery: ${res.status}`);
       await load();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("bill_transactions")
         .select(
           "id, internal_reference, service, provider, product, amount, status, customer_identifier, provider_request_id, provider_transaction_id, provider_status, provider_response_code, provider_response_message, provider_channel, metadata, created_at, updated_at, user_id, wallet_id",
         )
         .eq("internal_reference", selected.internal_reference)
         .maybeSingle();
+      if (error) throw error;
       if (data) {
         await openDetail({
           ...(data as BillRow),
@@ -248,7 +266,7 @@ function AdminTransactions() {
           placeholder="Name, email, phone, BIL-, VTpass id…"
           className="h-10 min-w-[200px] flex-1 rounded-xl border bg-card px-3 text-sm"
         />
-        {["all", "successful", "pending", "failed"].map((s) => (
+        {["all", "successful", "pending", "failed", "reversed"].map((s) => (
           <button
             key={s}
             type="button"
@@ -474,6 +492,25 @@ function AdminTransactions() {
                 <Row k="Updated" v={new Date(selected.updated_at).toLocaleString("en-NG")} />
               </section>
 
+              {detailLoading ? (
+                <p className="rounded-xl border p-3 text-xs text-muted-foreground">
+                  Loading wallet and support evidence…
+                </p>
+              ) : null}
+              {detailError ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  {detailError} The transaction record above is still available, but wallet and
+                  support evidence could not be confirmed.
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-8"
+                    onClick={() => void openDetail(selected)}
+                  >
+                    Retry evidence lookup
+                  </Button>
+                </div>
+              ) : null}
               {walletSnap ? (
                 <section className="space-y-1 rounded-xl border p-3">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">Wallet</p>

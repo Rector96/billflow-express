@@ -34,13 +34,14 @@ export async function simulatePaystackInline(input: {
   email: string;
   amountNaira: number;
   metadata?: Record<string, string>;
+  reference?: string;
 }): Promise<PaystackInlineSuccess> {
   const metadata: Record<string, string> = {
     channel: "hub",
     ...(input.metadata ?? {}),
   };
-  if (!metadata.service && metadata.service_type) {
-    metadata.service = metadata.service_type;
+  if (!metadata["service"] && metadata["service_type"]) {
+    metadata["service"] = metadata["service_type"];
   }
   const payload = { ...input, metadata };
   if (hasPaystackPublicKey()) {
@@ -48,7 +49,7 @@ export async function simulatePaystackInline(input: {
     return openPaystackInline(payload);
   }
   await new Promise((r) => setTimeout(r, 900));
-  const reference = `PSK_DEMO_${Date.now()}${Math.floor(Math.random() * 1e4)}`;
+  const reference = input.reference || `PSK_DEMO_${Date.now()}${Math.floor(Math.random() * 1e4)}`;
   if (import.meta.env.DEV) {
     console.info("[Paystack demo — no VITE_PAYSTACK_PUBLIC_KEY]", { ...payload, reference });
   }
@@ -130,8 +131,8 @@ export function buildGenerateDocumentPayload(input: {
     partyA: input.partyA.trim(),
     partyB: input.partyB.trim(),
     address: input.address.trim(),
-    rentAmountYearly: input.rent ? Number(input.rent.replace(/,/g, "")) : undefined,
-    duration: input.duration?.trim() || undefined,
+    ...(input.rent ? { rentAmountYearly: Number(input.rent.replace(/,/g, "")) } : {}),
+    ...(input.duration?.trim() ? { duration: input.duration.trim() } : {}),
     paymentReference: input.paymentReference,
     amount: input.fee,
     currency: "NGN",

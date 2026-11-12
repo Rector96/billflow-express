@@ -1,5 +1,3 @@
-// @ts-nocheck -- generated DB types are out of date with the live schema; re-enable after regenerating types.
-import { asLooseRpc } from "@/lib/loose-rpc";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
@@ -137,29 +135,26 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
         productCode: meterType,
         baseAmount: data.amount,
       });
-      const { data: started, error } = await asLooseRpc(context.supabase.rpc)(
-        "start_direct_bill_order",
-        {
-          _service_slug: "electricity",
-          _service_label: "Electricity",
-          _provider: data.serviceID,
-          _product: meterType,
-          _customer_identifier: data.billersCode,
-          _amount: pricing.customerAmount,
-          _metadata: {
-            title: "Electricity Payment",
-            service_slug: "electricity",
-            meter_type: meterType,
-            provider_amount: data.amount,
-            pricing_rule_id: pricing.pricingRuleId,
-            rockpay_fee: pricing.rockpayFee,
-            customer: verified.customerName,
-            variation_code: meterType,
-            phone: data.phone ?? null,
-          },
-          _request_id: data.requestId,
+      const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+        _service_slug: "electricity",
+        _service_label: "Electricity",
+        _provider: data.serviceID,
+        _product: meterType,
+        _customer_identifier: data.billersCode,
+        _amount: pricing.customerAmount,
+        _metadata: {
+          title: "Electricity Payment",
+          service_slug: "electricity",
+          meter_type: meterType,
+          provider_amount: data.amount,
+          pricing_rule_id: pricing.pricingRuleId,
+          rockpay_fee: pricing.rockpayFee,
+          customer: verified.customerName,
+          variation_code: meterType,
+          phone: data.phone ?? null,
         },
-      );
+        _request_id: data.requestId,
+      });
       if (error) throw new Error(error.message);
       const row = Array.isArray(started) ? started[0] : started;
       if (!row?.["paystack_reference"] || !row?.internal_reference) {
@@ -189,29 +184,26 @@ export const initializeDirectBillPay = createServerFn({ method: "POST" })
       productCode: variationCode,
       baseAmount: providerAmount,
     });
-    const { data: started, error } = await asLooseRpc(context.supabase.rpc)(
-      "start_direct_bill_order",
-      {
-        _service_slug: "cable",
-        _service_label: "Cable TV",
-        _provider: data.serviceID,
-        _product: pack.name,
-        _customer_identifier: data.billersCode,
-        _amount: pricing.customerAmount,
-        _metadata: {
-          title: "Cable TV Payment",
-          service_slug: "cable",
-          variation_code: variationCode,
-          provider_amount: providerAmount,
-          pricing_rule_id: pricing.pricingRuleId,
-          rockpay_fee: pricing.rockpayFee,
-          customer: data.customerName ?? null,
-          subscription_type: (data as { subscriptionType?: string }).subscriptionType ?? "change",
-          phone: data.phone ?? null,
-        },
-        _request_id: data.requestId,
+    const { data: started, error } = await context.supabase.rpc("start_direct_bill_order", {
+      _service_slug: "cable",
+      _service_label: "Cable TV",
+      _provider: data.serviceID,
+      _product: pack.name,
+      _customer_identifier: data.billersCode,
+      _amount: pricing.customerAmount,
+      _metadata: {
+        title: "Cable TV Payment",
+        service_slug: "cable",
+        variation_code: variationCode,
+        provider_amount: providerAmount,
+        pricing_rule_id: pricing.pricingRuleId,
+        rockpay_fee: pricing.rockpayFee,
+        customer: data.customerName ?? null,
+        subscription_type: (data as { subscriptionType?: string }).subscriptionType ?? "change",
+        phone: data.phone ?? null,
       },
-    );
+      _request_id: data.requestId,
+    });
     if (error) throw new Error(error.message);
     const row = Array.isArray(started) ? started[0] : started;
     if (!row?.["paystack_reference"] || !row?.internal_reference) {
@@ -295,7 +287,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const { paystackVerify } = await import("./paystack.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { normalizeNgPhone } = await import("./vtpass.server");
-    const { routeElectricityPay, routeCablePay, toVtpassShape } =
+    const { routeElectricityPay, routeCablePay, toVtpassShape, requeryRoutedBill } =
       await import("./vendor-router.server");
 
     let q = supabaseAdmin
@@ -350,7 +342,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     if (gatewayStatus !== "success") {
       const failed = gatewayStatus === "failed" || gatewayStatus === "abandoned";
       if (failed) {
-        await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
+        await supabaseAdmin.rpc("trusted_complete_direct_bill_purchase", {
           _user_id: context.userId,
           _internal_reference: billRef,
           _outcome: "failed",
@@ -381,19 +373,26 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       Number(ps.amount) !== expectedKobo ||
       String(ps.reference) !== paystackRef
     ) {
-      await asLooseRpc(supabaseAdmin.rpc)("trusted_complete_direct_bill_purchase", {
+      await supabaseAdmin.rpc("trusted_complete_direct_bill_purchase", {
         _user_id: context.userId,
         _internal_reference: billRef,
-        _outcome: "failed",
+        _outcome: "pending",
         _provider_transaction_id: "",
-        _payload: { reason: "paystack_validation_mismatch" },
+        _payload: {
+          reason: "paystack_validation_mismatch",
+          manual_review_required: true,
+          gateway_status: gatewayStatus,
+          verified_currency: ps.currency ?? null,
+          verified_amount_kobo: ps.amount ?? null,
+        },
       });
       return {
         billReference: billRef,
-        status: "failed",
+        status: "pending",
         amount,
         token: null,
-        message: "Payment validation failed. Contact Care with your reference.",
+        message:
+          "Paystack confirmed a payment, but its details need manual verification. Your order has been held safely; contact Care with your reference.",
         providerTransactionId: null,
       };
     }
@@ -412,8 +411,51 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
     const billersCode = bill.customer_identifier as string;
     const providerAmount = Number(meta["provider_amount"] ?? amount);
 
+    // Persist the fulfilment attempt before contacting VTpass. If this request
+    // times out or the browser retries, the next verification must requery the
+    // existing provider request instead of submitting a second purchase.
+    const hadFulfilmentAttempt = Boolean(meta["fulfilment_attempted_at"]);
+    if (!hadFulfilmentAttempt) {
+      const attemptedMeta = {
+        ...meta,
+        fulfilment_attempted_at: new Date().toISOString(),
+        vendor: "vtpass",
+        vendor_reference: providerRequestId,
+        fulfilment_state: "submitted_or_unknown",
+      };
+      const { error: attemptErr } = await supabaseAdmin
+        .from("bill_transactions")
+        .update({ metadata: attemptedMeta })
+        .eq("id", bill.id)
+        .eq("status", "pending");
+      if (attemptErr) {
+        console.error("[direct-bill] could not persist fulfilment attempt", attemptErr.message);
+        return {
+          billReference: billRef,
+          status: "pending",
+          amount,
+          token: null,
+          message:
+            "Payment is confirmed. We are safely preparing delivery; please check again shortly.",
+          providerTransactionId: null,
+        };
+      }
+      Object.assign(meta, attemptedMeta);
+    }
+
     let routed;
-    if (slug === "electricity") {
+    const priorVendor = hadFulfilmentAttempt
+      ? meta["vendor"] === "vtuafrica"
+        ? "vtuafrica"
+        : "vtpass"
+      : null;
+    if (priorVendor) {
+      routed = await requeryRoutedBill({
+        vendor: priorVendor,
+        vendorReference: String(meta["vendor_reference"] ?? providerRequestId),
+        requestId: providerRequestId,
+      });
+    } else if (slug === "electricity") {
       const meterType = String(meta["meter_type"] ?? bill.product ?? "prepaid");
       routed = await routeElectricityPay({
         request_id: providerRequestId,
@@ -438,7 +480,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
 
     const pay = toVtpassShape(routed);
     const outcome = routed.status;
-    const { data: finalized, error: finErr } = await asLooseRpc(supabaseAdmin.rpc)(
+    const { data: finalized, error: finErr } = await supabaseAdmin.rpc(
       "trusted_complete_direct_bill_purchase",
       {
         _user_id: context.userId,
@@ -453,6 +495,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
           vtpass_fulfilled: true,
           paystack_id: ps.id ? String(ps.id) : null,
           vendor: routed.vendor,
+          vendor_reference: routed.vendorReference,
           fallback_used: routed.fallbackUsed,
           vtpass_snapshot: safePayload(pay.raw),
         },
@@ -478,7 +521,7 @@ export const verifyAndFulfillDirectBill = createServerFn({ method: "POST" })
       try {
         const { maybeRecordTransactionProfit } = await import("./transaction-profits.server");
         await maybeRecordTransactionProfit(
-          { rpc: asLooseRpc(supabaseAdmin.rpc) },
+          { rpc: (fn, args) => supabaseAdmin.rpc(fn, args) },
           {
             internalReference: billRef,
             customerAmount: amount,

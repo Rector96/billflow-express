@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Car, FileText, Home, Loader2, Shield } from "lucide-react";
+import { Car, FileText, Home, Loader2, Shield, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app/app-shell";
 import { PageHeader } from "@/components/app/page-header";
@@ -14,13 +14,60 @@ import { PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useApp } from "@/lib/app-store";
 import { simulatePaystackInline } from "@/lib/hub-api.demo";
 import { completeVehicleRenewal, verifyVehicle } from "@/lib/hub.functions";
 import { feeFromMap, type HubFeeMap } from "@/lib/hub-pricing.loader";
 import { formatNaira } from "@/lib/mock-data";
+import { isHubDemoOnly } from "@/lib/product-mode";
 
 type Step = "lookup" | "result" | "renew" | "done";
+const NIGERIAN_STATES = [
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "FCT",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+] as const;
 type RenewalChoice = "license_sticker" | "third_party_insurance";
 
 type VehicleInfo = {
@@ -50,8 +97,9 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
 
   const [step, setStep] = useState<Step>("lookup");
   const [plate, setPlate] = useState("");
-  const [state, setState] = useState("Lagos");
+  const [state, setState] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
+  const [lookupError, setLookupError] = useState("");
   const [vehicle, setVehicle] = useState<VehicleInfo | null>(null);
   const [choice, setChoice] = useState<RenewalChoice | null>(null);
   const [paying, setPaying] = useState(false);
@@ -75,9 +123,14 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   const onLookup = async () => {
     const cleaned = plate.replace(/\s+/g, "").toUpperCase();
     if (cleaned.length < 5) {
-      toast.error("Enter a valid plate number.");
+      setLookupError("Enter a valid vehicle plate number (at least 5 characters).");
       return;
     }
+    if (!NIGERIAN_STATES.includes(state as (typeof NIGERIAN_STATES)[number])) {
+      setLookupError("Select the state where the vehicle is registered.");
+      return;
+    }
+    setLookupError("");
     if (!authed) {
       toast.error("Please log in to continue.");
       navigate({ to: "/login" });
@@ -91,18 +144,26 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
         state: info.state || state,
         makeModel: info.makeModel || "Vehicle",
         color: info.color,
-        chassisNumber: info.chassisNumber,
+        chassisNumber: "chassisMasked" in info ? info.chassisMasked : info.chassisNumber,
         expiryStatus: info.expiryStatus,
       });
       setStep("result");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Vehicle not found.");
+      const message = e instanceof Error ? e.message : "Vehicle not found.";
+      setLookupError(message);
+      toast.error(message);
     } finally {
       setLookingUp(false);
     }
   };
 
   const onPay = async () => {
+    if (isHubDemoOnly("vehicle")) {
+      toast.error(
+        "Vehicle renewal is in preview. Payments are disabled until live registry and fulfilment are enabled.",
+      );
+      return;
+    }
     if (!vehicle || !choice) {
       toast.error("Choose a renewal option.");
       return;
@@ -156,12 +217,10 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   if (step === "done" && vehicle && choice) {
     return (
       <AppShell>
-        <div className="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center lg:max-w-lg lg:px-0">
-          <span className="grid size-14 place-items-center rounded-full bg-success-soft text-success result-pop">
-            <Car className="size-7" />
-          </span>
-          <h1 className="text-lg font-bold lg:text-xl">Order received</h1>
-          <p className="max-w-sm text-sm text-muted-foreground">
+        <PageHeader title="Vehicle" backTo="/services" />
+        <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-4 text-center">
+          <h1 className="text-lg font-bold">Order received</h1>
+          <p className="text-sm text-muted-foreground">
             {choice === "third_party_insurance"
               ? "Insurance request is with our team. Official docs will appear under My documents."
               : "License sticker is queued. Staff will process and notify you."}
@@ -188,30 +247,87 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
   return (
     <AppShell>
       <PageHeader title="Vehicle" backTo="/services" />
-      <div className="hub-flow-page mx-auto w-full max-w-md space-y-3 px-4 pb-24 pt-1 lg:max-w-2xl lg:space-y-3 lg:px-0 lg:pb-10 lg:pt-2">
+      <div className="vehicle-workflow mx-auto w-full max-w-5xl space-y-4 px-4 pb-28 pt-2">
         <PayStepper steps={STEPS} current={stepIndex} />
 
         {step === "lookup" ? (
-          <section className="space-y-3">
-            <div className="grid grid-cols-1 gap-2.5 rounded-2xl border border-border/80 bg-card p-3.5 shadow-soft sm:grid-cols-2 sm:gap-x-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Plate number</Label>
-                <Input
-                  value={plate}
-                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
-                  className={field}
-                  placeholder="e.g. ABC123XY"
-                />
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-start">
+            <div className="form-section-card space-y-5">
+              <div className="flex items-start gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <Search className="size-5" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold tracking-tight">Find your vehicle</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Enter the registration plate and choose the state where the vehicle is
+                    registered.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">State</Label>
-                <Input value={state} onChange={(e) => setState(e.target.value)} className={field} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle-plate">Vehicle plate number</Label>
+                  <Input
+                    id="vehicle-plate"
+                    value={plate}
+                    onChange={(e) => {
+                      setPlate(e.target.value.toUpperCase());
+                      setLookupError("");
+                    }}
+                    className="font-mono uppercase tracking-wider"
+                    placeholder="e.g. ABC123XY"
+                    autoComplete="off"
+                  />
+                  <p className="form-field-hint">
+                    Enter the plate exactly as printed on the vehicle plate.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle-state">Registration state</Label>
+                  <Select
+                    value={state}
+                    onValueChange={(value) => {
+                      setState(value);
+                      setLookupError("");
+                    }}
+                  >
+                    <SelectTrigger id="vehicle-state">
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NIGERIAN_STATES.map((item) => (
+                        <SelectItem key={item} value={item}>
+                          {item === "FCT" ? "FCT (Abuja)" : item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="form-field-hint">
+                    Choose the state shown on the vehicle registration record.
+                  </p>
+                </div>
               </div>
+              {lookupError ? (
+                <p role="alert" className="form-field-error rounded-xl bg-destructive/5 p-3">
+                  {lookupError}
+                </p>
+              ) : null}
             </div>
+            <aside className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <Shield className="size-4 text-primary" /> Lookup checklist
+              </div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                <li>• Confirm every character on the plate.</li>
+                <li>• Select the state shown on the registration.</li>
+                <li>• Check the returned vehicle details before renewal.</li>
+              </ul>
+            </aside>
             <PayActionBar>
               <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                disabled={lookingUp}
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={lookingUp || plate.trim().length < 5}
                 onClick={() => void onLookup()}
               >
                 {lookingUp ? (
@@ -227,60 +343,105 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
         ) : null}
 
         {step === "result" && vehicle ? (
-          <section className="space-y-3">
-            <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-soft lg:mx-auto lg:max-w-lg">
-              <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary">
-                  <Car className="size-5" />
+          <section className="vehicle-registration-panel space-y-4 rounded-[26px] border border-[#dce5f2] bg-[#eef3fb] p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  Registration details
+                </p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">
+                  Current vehicle registration
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Review the returned record before choosing a renewal.
+                </p>
+              </div>
+              <span
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide ${/\\bvalid\\b/i.test(vehicle.expiryStatus ?? "") && !/invalid/i.test(vehicle.expiryStatus ?? "") ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}
+              >
+                {vehicle.expiryStatus || "Record found"}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/75 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600">
+                  <Car className="size-6" />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{vehicle.plate}</p>
-                  <p className="text-xs text-muted-foreground">{vehicle.makeModel}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold">{vehicle.makeModel}</p>
+                  <p className="mt-0.5 font-mono text-xs tracking-wider text-muted-foreground">
+                    {vehicle.plate}
+                  </p>
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl bg-secondary/50 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    State
+              <Button
+                className="h-10 rounded-full px-5 font-semibold"
+                onClick={() => setStep("renew")}
+              >
+                Renew <span className="ml-1">→</span>
+              </Button>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white p-4 sm:p-5">
+              <h3 className="text-base font-bold">Vehicle registration details</h3>
+              <div className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Registration number
                   </p>
-                  <p className="mt-0.5 font-semibold">{vehicle.state}</p>
+                  <p className="mt-1 font-mono text-sm font-semibold">{vehicle.plate}</p>
                 </div>
-                {vehicle.expiryStatus ? (
-                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Status
-                    </p>
-                    <p className="mt-0.5 font-semibold">{vehicle.expiryStatus}</p>
-                  </div>
-                ) : null}
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Registration state
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">{vehicle.state}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Vehicle
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">{vehicle.makeModel}</p>
+                </div>
                 {vehicle.color ? (
-                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Color
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Colour
                     </p>
-                    <p className="mt-0.5 font-semibold">{vehicle.color}</p>
+                    <p className="mt-1 text-sm font-semibold">{vehicle.color}</p>
                   </div>
                 ) : null}
                 {vehicle.chassisNumber ? (
-                  <div className="rounded-xl bg-secondary/50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Chassis
+                  <div className="sm:col-span-2">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Chassis number
                     </p>
-                    <p className="mt-0.5 truncate font-mono text-[11px] font-semibold">
+                    <p className="mt-1 break-all font-mono text-sm font-semibold">
                       {vehicle.chassisNumber}
                     </p>
                   </div>
                 ) : null}
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Record status
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {vehicle.expiryStatus || "Returned by registry lookup"}
+                  </p>
+                </div>
               </div>
             </div>
-            <PayActionBar>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+              <p className="text-xs text-muted-foreground">
+                Confirm these details before renewing a vehicle document.
+              </p>
               <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                onClick={() => setStep("renew")}
+                variant="outline"
+                className="h-10 rounded-full"
+                onClick={() => setStep("lookup")}
               >
-                Continue to renew
+                Change vehicle
               </Button>
-            </PayActionBar>
+            </div>
           </section>
         ) : null}
 
@@ -330,8 +491,8 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
             </div>
             <PayActionBar>
               <Button
-                className="h-11 w-full rounded-xl font-semibold lg:h-12"
-                disabled={!choice || paying}
+                className="h-12 w-full rounded-xl font-semibold"
+                disabled={!choice || paying || isHubDemoOnly("vehicle")}
                 onClick={() => void onPay()}
               >
                 {paying ? (
@@ -339,7 +500,11 @@ export function VehiclePaperworkFlow({ fees = {} }: { fees?: HubFeeMap }) {
                     <Loader2 className="mr-2 size-4 animate-spin" /> Please wait…
                   </>
                 ) : choice ? (
-                  `Pay ${formatNaira(fee, false)}`
+                  isHubDemoOnly("vehicle") ? (
+                    "Payments unavailable"
+                  ) : (
+                    `Pay ${formatNaira(fee, false)}`
+                  )
                 ) : (
                   "Select an option"
                 )}

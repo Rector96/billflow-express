@@ -22,6 +22,7 @@ import { DataPlanPicker } from "@/components/app/data-plan-picker";
 import { PageHeader } from "@/components/app/page-header";
 import { InfoRow } from "@/components/app/ui-bits";
 import { PayActionBar } from "@/components/app/pay-action-bar";
+import { ReceiptShareButton } from "@/components/app/receipt-share-sheet";
 import { PayStepBody, PayStepper, type PayStepMeta } from "@/components/app/pay-step";
 import { PinPad } from "@/components/app/pin-pad";
 import { Button } from "@/components/ui/button";
@@ -302,7 +303,9 @@ export function RockPayBillFlow() {
             This RockPay bill service is not enabled yet.
           </p>
           <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
-            <Link to="/services">Back to services</Link>
+            <Link to="/services" search={{}}>
+              Back to services
+            </Link>
           </Button>
         </div>
       </AppShell>
@@ -548,7 +551,12 @@ export function RockPayBillFlow() {
   if (step === "processing")
     return (
       <AppShell>
-        <div className="payment-flow-page mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
+        <PageHeader
+          title={service?.name ?? "Bill payment"}
+          subtitle="Processing payment"
+          showBack={false}
+        />
+        <div className="mx-auto flex min-h-[70dvh] w-full max-w-md items-center justify-center px-4 py-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -612,14 +620,9 @@ export function RockPayBillFlow() {
   if (step === "result")
     return (
       <AppShell>
-        <div className="payment-flow-page mx-auto min-h-[calc(100dvh-6rem)] w-full max-w-md space-y-4 px-4 py-7">
-          <div
-            className={cn(
-              "rounded-2xl border bg-card p-5 text-center shadow-float",
-              outcome === "successful" && "border-success/25",
-              outcome === "failed" && "border-destructive/25",
-            )}
-          >
+        <PageHeader title={service?.name ?? "Bill payment"} backTo="/services" />
+        <div className="mx-auto w-full max-w-md space-y-4 px-4 py-8">
+          <div className="rounded-2xl border bg-card p-6 text-center shadow-card">
             <span
               className={cn(
                 "relative mx-auto grid size-16 place-items-center rounded-full",
@@ -707,15 +710,34 @@ export function RockPayBillFlow() {
             </Button>
           ) : null}
           {txId ? (
-            <Button
-              variant={outcome === "successful" ? "default" : "outline"}
-              className="h-12 w-full rounded-xl font-bold"
-              asChild
-            >
-              <Link to="/history/$txId" params={{ txId }}>
-                View receipt
-              </Link>
-            </Button>
+            <>
+              <ReceiptShareButton
+                payload={{
+                  reference: txId,
+                  title: `${service?.name ?? "Bill payment"} - ${provider || serviceID}`,
+                  status: outcome,
+                  amountLabel: formatNaira(total),
+                  direction: "out",
+                  service: service?.name ?? "Bill payment",
+                  network: provider || null,
+                  recipient: identifier || null,
+                  providerRef: providerTxId || null,
+                  detailRows: [
+                    { label: "Provider", value: provider || serviceID },
+                    ...(variation?.name ? [{ label: "Plan", value: variation.name }] : []),
+                  ],
+                }}
+              />
+              <Button
+                variant={outcome === "successful" ? "default" : "outline"}
+                className="h-12 w-full rounded-xl font-bold"
+                asChild
+              >
+                <Link to="/history/$txId" params={{ txId }}>
+                  View full transaction
+                </Link>
+              </Button>
+            </>
           ) : null}
           <Button variant="outline" className="h-12 w-full rounded-xl font-bold" asChild>
             <Link to="/home">Home</Link>

@@ -43,7 +43,7 @@ function loadPaystackScript(): Promise<void> {
     const s = document.createElement("script");
     s.src = "https://js.paystack.co/v1/inline.js";
     s.async = true;
-    s.dataset.paystack = "inline";
+    s.dataset["paystack"] = "inline";
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("Failed to load Paystack script."));
     document.body.appendChild(s);
