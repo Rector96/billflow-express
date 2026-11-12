@@ -90,7 +90,13 @@ function StaffTicket() {
       if (p.error) throw p.error;
       setMessages((m.data as Msg[]) ?? []);
       const contact = Array.isArray(p.data) ? p.data[0] : p.data;
-      setCustomer((contact as { full_name: string | null; email: string | null; phone: string | null } | null) ?? null);
+      setCustomer(
+        (contact as {
+          full_name: string | null;
+          email: string | null;
+          phone: string | null;
+        } | null) ?? null,
+      );
     } catch (e) {
       setTicket(null);
       setMessages([]);
