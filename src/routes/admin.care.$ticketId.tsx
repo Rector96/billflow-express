@@ -82,16 +82,15 @@ function StaffTicket() {
           .select("id, body, sender_id, is_internal, created_at")
           .eq("ticket_id", ticketId)
           .order("created_at", { ascending: true }),
-        supabase
-          .from("profiles")
-          .select("full_name, email, phone")
-          .eq("user_id", t.user_id)
-          .maybeSingle(),
+        supabase.rpc("admin_care_customer_contact", {
+          _ticket_id: ticketId,
+        }),
       ]);
       if (m.error) throw m.error;
       if (p.error) throw p.error;
       setMessages((m.data as Msg[]) ?? []);
-      setCustomer(p.data ?? null);
+      const contact = Array.isArray(p.data) ? p.data[0] : p.data;
+      setCustomer((contact as { full_name: string | null; email: string | null; phone: string | null } | null) ?? null);
     } catch (e) {
       setTicket(null);
       setMessages([]);
