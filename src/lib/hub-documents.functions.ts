@@ -32,21 +32,13 @@ function asMeta(raw: unknown): Record<string, unknown> {
 
 async function assertCacOperator(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: isStaff, error: staffError } = await supabaseAdmin.rpc("is_staff", {
-    _user_id: userId,
-  });
-  if (staffError) throw new Error(staffError.message || "Staff check failed");
-  if (isStaff !== true) throw new Error("Forbidden: staff only");
-
-  const { data: roles, error: roleError } = await supabaseAdmin
+  const { data: roles, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId);
-  if (roleError) throw new Error("Could not verify CAC document permissions.");
-  if (
-    !(roles ?? []).some((entry) => ["support", "admin", "super_admin"].includes(String(entry.role)))
-  ) {
-    throw new Error("Forbidden: CAC certificate handling requires support or admin access.");
+  if (error) throw new Error("Could not verify CAC document permissions.");
+  if (!(roles ?? []).some((entry) => ["admin", "super_admin"].includes(String(entry.role)))) {
+    throw new Error("Forbidden: CAC certificate handling requires Admin or Super Admin access.");
   }
   return supabaseAdmin;
 }
