@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
@@ -6,6 +6,18 @@ import { BRAND } from "@/lib/brand";
 import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/staff")({
+  beforeLoad: async () => {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session.session?.user.id;
+    if (!userId) throw redirect({ to: "/login" });
+    const { data: roles, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (error || !(roles ?? []).some((row) => row.role === "super_admin")) {
+      throw redirect({ to: "/admin" });
+    }
+  },
   head: () => ({ meta: [{ title: `Staff — ${BRAND.name} Admin` }] }),
   component: AdminStaff,
 });
