@@ -233,8 +233,8 @@ function FundWallet() {
 
     return (
       <AppShell>
-        <main className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6 sm:py-9 lg:px-8 lg:py-12">
-          <div className="mx-auto mb-6 max-w-3xl text-center lg:mb-8">
+        <main className="mx-auto flex h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom))] w-full max-w-6xl flex-col overflow-hidden px-3 py-2 sm:px-5 lg:h-[calc(100dvh-2.5rem)] lg:px-4 lg:py-2">
+          <div className="mx-auto mb-2 max-w-3xl shrink-0 text-center lg:mb-3">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground shadow-sm">
               <ShieldCheck className="size-3.5 text-primary" />
               RockPay secure transaction
@@ -242,17 +242,17 @@ function FundWallet() {
             <p className="text-xs text-muted-foreground">Wallet funding confirmation</p>
           </div>
 
-          <div className="grid items-start gap-4 lg:grid-cols-[1.08fr_0.92fr] lg:gap-6">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-[1.08fr_0.92fr] lg:gap-4">
             {/* Main confirmation card */}
             <section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-lg shadow-black/[0.04]">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
               <div className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-primary/[0.07] blur-3xl" />
               <div className="pointer-events-none absolute -bottom-24 -left-20 size-64 rounded-full bg-emerald-500/[0.06] blur-3xl" />
 
-              <div className="relative flex flex-col items-center px-5 py-9 text-center sm:px-9 sm:py-12 lg:min-h-[540px] lg:justify-center">
+              <div className="relative flex min-h-0 h-full flex-col items-center justify-center overflow-hidden px-4 py-3 text-center sm:px-9 sm:py-6 lg:px-7">
                 <div
                   className={cn(
-                    "mb-5 grid size-20 place-items-center rounded-full ring-8 ring-offset-4 ring-offset-card sm:size-24",
+                    "mb-2 grid size-12 place-items-center rounded-full ring-4 ring-offset-2 ring-offset-card sm:mb-4 sm:size-20 sm:ring-8 sm:ring-offset-4",
                     meta.tone,
                     meta.ring,
                   )}
@@ -268,27 +268,27 @@ function FundWallet() {
 
                 <span
                   className={cn(
-                    "mb-3 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[0.15em]",
+                    "mb-1 rounded-full px-3 py-1 text-[9px] font-extrabold tracking-[0.12em] sm:mb-2 sm:py-1.5 sm:text-[10px]",
                     meta.tone,
                   )}
                 >
                   {meta.label}
                 </span>
 
-                <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+                <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
                   {meta.title}
                 </h1>
 
-                <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground sm:text-base">
+                <p className="mt-1 max-w-sm text-xs leading-4 text-muted-foreground sm:mt-2 sm:text-sm sm:leading-6 lg:text-base">
                   {meta.body}
                 </p>
 
-                <div className="mt-8 w-full max-w-sm rounded-2xl border border-border/60 bg-secondary/40 px-4 py-6 sm:px-6 sm:py-7">
+                <div className="mt-3 w-full max-w-sm rounded-xl border border-border/60 bg-secondary/40 px-3 py-3 sm:mt-5 sm:rounded-2xl sm:px-6 sm:py-5">
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                     {stage === "successful" ? "Amount added to your wallet" : "Transaction amount"}
                   </p>
 
-                  <p className="mt-3 break-words text-3xl font-black tracking-tight text-foreground tabular-nums sm:text-4xl">
+                  <p className="mt-1 break-words text-2xl font-black tracking-tight text-foreground tabular-nums sm:mt-2 sm:text-4xl">
                     {formatNaira(settled?.amount ?? 0)}
                   </p>
 
@@ -300,11 +300,37 @@ function FundWallet() {
                   )}
                 </div>
 
-                <div className="mt-7 w-full max-w-sm space-y-3">
+                <div className="mt-2 w-full max-w-sm rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-left sm:hidden">
+                  <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="text-muted-foreground">Payment method</span>
+                    <span className="font-semibold text-foreground">Paystack</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className={cn("font-bold", meta.accent)}>{meta.status}</span>
+                  </div>
+                  {profile.email && (
+                    <div className="mt-1 flex items-start justify-between gap-3 text-[11px]">
+                      <span className="shrink-0 text-muted-foreground">Account</span>
+                      <span className="min-w-0 break-all text-right font-semibold text-foreground">{profile.email}</span>
+                    </div>
+                  )}
+                  {settled?.reference && (
+                    <div className="mt-1 flex min-w-0 items-center gap-2 border-t border-border/60 pt-1.5">
+                      <span className="shrink-0 text-[10px] text-muted-foreground">Reference</span>
+                      <span className="min-w-0 flex-1 break-all font-mono text-[10px] text-foreground">{settled.reference}</span>
+                      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 rounded-md px-2 text-[10px]" onClick={() => void copyRef()}>
+                        <Copy className="mr-1 size-3" /> Copy
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 grid w-full max-w-sm grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-1 sm:gap-3">
                   {stage === "successful" ? (
                     <>
                       <Button
-                        className="h-12 w-full rounded-xl text-sm font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+                        className="h-10 w-full rounded-xl px-2 text-xs font-bold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 sm:h-12 sm:px-4 sm:text-sm"
                         onClick={() => navigate({ to: "/wallet" })}
                       >
                         <Wallet className="mr-2 size-4" />
@@ -314,7 +340,7 @@ function FundWallet() {
 
                       <Button
                         variant="outline"
-                        className="h-12 w-full rounded-xl text-sm font-semibold"
+                        className="h-10 w-full rounded-xl px-2 text-xs font-semibold sm:h-12 sm:px-4 sm:text-sm"
                         onClick={() => navigate({ to: "/home" })}
                       >
                         <Home className="mr-2 size-4" />
@@ -372,7 +398,7 @@ function FundWallet() {
             </section>
 
             {/* Transaction receipt */}
-            <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-lg shadow-black/[0.04]">
+            <section className="hidden min-h-0 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-lg shadow-black/[0.04] lg:block">
               <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-5 sm:px-6">
                 <div>
                   <h2 className="text-base font-extrabold tracking-tight text-foreground">
@@ -476,7 +502,7 @@ function FundWallet() {
             </section>
           </div>
 
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2 text-center text-[11px] text-muted-foreground">
+          <div className="hidden mt-2 flex-wrap items-center justify-center gap-2 text-center text-[11px] text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" />
             <span>{BRAND.name} · Secure payments, simpler everyday transactions.</span>
           </div>
