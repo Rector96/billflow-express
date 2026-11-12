@@ -4,6 +4,7 @@
  * Agent assign + care call before dispatch.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAdminOrSuperAdmin } from "@/lib/admin";
 import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, X, Phone, User, MapPin, FileText, Bell, Mail } from "lucide-react";
@@ -40,6 +41,7 @@ import { formatNaira } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/hub-orders")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Hub Orders — ${BRAND.name} Admin` }] }),
   component: AdminHubOrders,
 });
