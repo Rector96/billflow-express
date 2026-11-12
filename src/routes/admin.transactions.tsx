@@ -8,7 +8,7 @@ import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-s
 import { StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin } from "@/lib/admin";
 import {
   buildBillTimeline,
   formatPendingDuration,
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/transactions")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Transactions — ${BRAND.name} Admin` }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     q: typeof s["q"] === "string" ? s["q"] : "",
