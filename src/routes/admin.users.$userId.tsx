@@ -6,10 +6,11 @@ import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-s
 import { StatusBadge } from "@/components/app/ui-bits";
 import { Button } from "@/components/ui/button";
 import { formatNaira, type TxStatus } from "@/lib/mock-data";
-import { n, requireStaffSession, can } from "@/lib/admin";
+import { n, requireStaffSession, can, requireAdminOrSuperAdmin } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/users/$userId")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `User — ${BRAND.name} Admin` }] }),
   component: AdminUserDetail,
 });
