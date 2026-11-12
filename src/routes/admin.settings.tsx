@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight, Boxes, Percent, ShieldCheck, Settings2 } from "lucide-react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { BRAND } from "@/lib/brand";
+import { requireAdminOrSuperAdmin } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/settings")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Settings — ${BRAND.name} Admin` }] }),
   component: AdminSettings,
 });
