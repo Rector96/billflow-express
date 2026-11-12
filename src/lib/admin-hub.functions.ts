@@ -1070,7 +1070,7 @@ export const getHubPaymentIntentSummary = createServerFn({ method: "GET" })
 export const listHubCatalogFees = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const admin = await assertStaff(context.userId);
+    const admin = await assertAdmin(context.userId, "catalog pricing access");
     const { data, error } = await admin
       .from("pricing_rules")
       .select("id, service, markup_type, markup_value, is_active, priority")
