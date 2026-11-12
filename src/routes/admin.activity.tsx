@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAdminOrSuperAdmin } from "@/lib/admin";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminEmpty, AdminLoading, AdminShell } from "@/components/admin/admin-shell";
@@ -8,6 +9,7 @@ import { n } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
 
 export const Route = createFileRoute("/admin/activity")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Activity — ${BRAND.name} Admin` }] }),
   component: AdminActivity,
 });
