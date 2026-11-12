@@ -312,14 +312,24 @@ function FundWallet() {
                   {profile.email && (
                     <div className="mt-1 flex items-start justify-between gap-3 text-[11px]">
                       <span className="shrink-0 text-muted-foreground">Account</span>
-                      <span className="min-w-0 break-all text-right font-semibold text-foreground">{profile.email}</span>
+                      <span className="min-w-0 break-all text-right font-semibold text-foreground">
+                        {profile.email}
+                      </span>
                     </div>
                   )}
                   {settled?.reference && (
                     <div className="mt-1 flex min-w-0 items-center gap-2 border-t border-border/60 pt-1.5">
                       <span className="shrink-0 text-[10px] text-muted-foreground">Reference</span>
-                      <span className="min-w-0 flex-1 break-all font-mono text-[10px] text-foreground">{settled.reference}</span>
-                      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 rounded-md px-2 text-[10px]" onClick={() => void copyRef()}>
+                      <span className="min-w-0 flex-1 break-all font-mono text-[10px] text-foreground">
+                        {settled.reference}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 shrink-0 rounded-md px-2 text-[10px]"
+                        onClick={() => void copyRef()}
+                      >
                         <Copy className="mr-1 size-3" /> Copy
                       </Button>
                     </div>
