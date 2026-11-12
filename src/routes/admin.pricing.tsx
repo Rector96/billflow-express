@@ -16,8 +16,10 @@ import {
 } from "@/lib/admin-hub.functions";
 import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { requireAdminOrSuperAdmin } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/pricing")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Pricing — ${BRAND.name} Admin` }] }),
   component: AdminPricing,
 });
