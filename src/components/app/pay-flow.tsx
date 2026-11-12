@@ -190,6 +190,26 @@ export function PayFlow() {
       cancelled = true;
     };
   }, [isPackageLive, serviceID, loadVariations]);
+  // Airtime and Data have been discontinued on RockPay.
+  // Block direct access even if someone enters the URL manually.
+  if (isAirtime || isData) {
+    return (
+      <AppShell>
+        <PageHeader title="Service unavailable" backTo="/services" />
+        <div className="mx-auto max-w-md px-4 py-10 text-center">
+          <p className="text-sm font-bold">This service is unavailable</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Airtime and Data purchases are no longer available on RockPay.
+          </p>
+          <Button className="mt-5 h-11 rounded-xl font-bold" asChild>
+            <Link to="/services" search={{}}>
+              Back to services
+            </Link>
+          </Button>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (slug === "education") return <ExamPinsFlow entryTitle="Education" />;
   if (slug === "exam-pins") return <ExamPinsFlow entryTitle="Exam Pins" />;
@@ -210,7 +230,6 @@ export function PayFlow() {
       </AppShell>
     );
   }
-
   if (!service) {
     return (
       <AppShell>

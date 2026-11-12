@@ -77,10 +77,14 @@ function ServicesPage() {
     () =>
       SERVICES.filter(
         (s) =>
-          isServiceVisible(s.slug) && s.name.toLowerCase().includes(query.trim().toLowerCase()),
+          s.slug !== "airtime" &&
+          s.slug !== "data" &&
+          isServiceVisible(s.slug) &&
+          s.name.toLowerCase().includes(query.trim().toLowerCase()),
       ),
     [query],
   );
+
 
   const grouped = useMemo(() => {
     const bySlug = new Map(visible.map((s) => [s.slug, s]));
