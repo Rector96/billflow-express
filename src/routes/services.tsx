@@ -159,6 +159,9 @@ function ServicesPage() {
       slugs: [],
     };
     return SERVICES.filter((s) => {
+      // Airtime and Data are permanently removed from the RockPay interface.
+      if (s.slug === "airtime" || s.slug === "data") return false;
+
       if (!isServiceVisible(s.slug)) return false;
       if (active.slugs.length > 0 && !active.slugs.includes(s.slug)) return false;
       if (term && !s.name.toLowerCase().includes(term)) return false;
