@@ -9,9 +9,9 @@
 [build.environment]
   NODE_VERSION = "22"
   NPM_FLAGS = "--legacy-peer-deps"
-  # Bake hub preview into every build (VITE_ vars must exist at build time)
-  VITE_HUB_PREVIEW_FLOWS = "true"
-  HUB_PREVIEW_FLOWS = "true"
+  # Disable preview flows and demo payment references in production builds.
+  VITE_HUB_PREVIEW_FLOWS = "false"
+  HUB_PREVIEW_FLOWS = "false"
 
 # Required environment variables (Site settings → Environment):
 #   VITE_SUPABASE_URL
