@@ -73,6 +73,7 @@ function ServicesPage() {
   const { q: qFromSearch } = Route.useSearch();
   const [query, setQuery] = useState(qFromSearch ?? "");
 
+<<<<<<< HEAD
   const visible = useMemo(
     () =>
       SERVICES.filter(
@@ -81,6 +82,25 @@ function ServicesPage() {
       ),
     [query],
   );
+=======
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const active = CATEGORIES.find((c) => c.id === category) ?? {
+      id: "all",
+      label: "All",
+      slugs: [],
+    };
+    return SERVICES.filter((s) => {
+      // Airtime and Data are permanently removed from the RockPay interface.
+      if (s.slug === "airtime" || s.slug === "data") return false;
+
+      if (!isServiceVisible(s.slug)) return false;
+      if (active.slugs.length > 0 && !active.slugs.includes(s.slug)) return false;
+      if (term && !s.name.toLowerCase().includes(term)) return false;
+      return true;
+    });
+  }, [query, category]);
+>>>>>>> e28b581 (Remove airtime and data from RockPay interface)
 
   const grouped = useMemo(() => {
     const bySlug = new Map(visible.map((s) => [s.slug, s]));
