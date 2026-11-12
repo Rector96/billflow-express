@@ -6,11 +6,12 @@ import { AdminEmpty, AdminLoading, AdminShell, KpiCard } from "@/components/admi
 import { StatusBadge } from "@/components/app/ui-bits";
 import { formatNaira } from "@/lib/mock-data";
 import { formatPendingDuration } from "@/lib/reconciliation";
-import { n } from "@/lib/admin";
+import { n, requireAdminOrSuperAdmin } from "@/lib/admin";
 import { BRAND } from "@/lib/brand";
 import { friendlyError } from "@/lib/app-store";
 
 export const Route = createFileRoute("/admin/reconciliation")({
+  beforeLoad: requireAdminOrSuperAdmin,
   head: () => ({ meta: [{ title: `Reconciliation — ${BRAND.name} Admin` }] }),
   component: AdminReconciliation,
 });
