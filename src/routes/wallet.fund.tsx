@@ -233,8 +233,8 @@ function FundWallet() {
 
     return (
       <AppShell>
-        <main className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-5 sm:py-7 lg:px-6 lg:py-6">
-          <div className="mx-auto mb-5 max-w-3xl text-center lg:mb-6">
+        <main className="mx-auto w-full max-w-6xl px-3 py-2 sm:px-5 sm:py-3 lg:px-6 lg:py-6">
+          <div className="mx-auto mb-2 max-w-3xl text-center lg:mb-6">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground shadow-sm">
               <ShieldCheck className="size-3.5 text-primary" />
               RockPay secure transaction
@@ -242,14 +242,14 @@ function FundWallet() {
             <p className="text-xs text-muted-foreground">Wallet funding confirmation</p>
           </div>
 
-          <div className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[1.04fr_0.96fr] lg:gap-5">
+          <div className="grid grid-cols-1 items-stretch gap-2 lg:grid-cols-[1.04fr_0.96fr] lg:gap-5">
             {/* Main confirmation card */}
             <section className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card shadow-lg shadow-black/[0.04] lg:min-h-[560px]">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
               <div className="pointer-events-none absolute -right-24 -top-24 size-64 rounded-full bg-primary/[0.07] blur-3xl" />
               <div className="pointer-events-none absolute -bottom-24 -left-20 size-64 rounded-full bg-emerald-500/[0.06] blur-3xl" />
 
-              <div className="relative flex min-h-[420px] flex-col items-center justify-center px-4 py-7 text-center sm:px-9 sm:py-9 lg:min-h-[560px] lg:px-8 lg:py-8">
+              <div className="relative flex min-h-0 h-full flex-col items-center justify-center px-4 py-3 text-center sm:px-9 sm:py-6 lg:min-h-[560px] lg:px-8 lg:py-8">
                 <div
                   className={cn(
                     "mb-2 grid size-12 place-items-center rounded-full ring-4 ring-offset-2 ring-offset-card sm:mb-4 sm:size-20 sm:ring-8 sm:ring-offset-4",
