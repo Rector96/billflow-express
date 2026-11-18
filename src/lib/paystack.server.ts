@@ -1,10 +1,18 @@
 /**
  * Server-only Paystack helpers. Secret never leaves this module.
- * Accepts sk_test_ and sk_live_ keys; transaction domain is checked against the key.
+ * Accepts only the key type matching PAYSTACK_MODE (test by default).
  */
 
 export const PAYSTACK_API = "https://api.paystack.co";
+export function getPaystackMode(): "test" | "live" {
+  const mode = (process.env["PAYSTACK_MODE"] ?? "test").trim().toLowerCase();
 
+  if (mode !== "test" && mode !== "live") {
+    throw new Error("Invalid PAYSTACK_MODE. Use test or live.");
+  }
+
+  return mode;
+}
 export function getPaystackSecret(): string {
   const key = (process.env["PAYSTACK_SECRET_KEY"] ?? "").trim();
   const mode = (process.env["PAYSTACK_MODE"] ?? "test").trim().toLowerCase();

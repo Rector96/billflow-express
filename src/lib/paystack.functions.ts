@@ -7,30 +7,42 @@ export type InitFundingResult =
   | { status: "pending"; reference: string; amount: number; message: string };
 
 function resolveCallbackUrl(): string | undefined {
-  // Prefer explicit site URL (set on Netlify), then Origin, then Referer.
-  const siteUrl = (
-    process.env["URL"] ??
+  // Prefer the unique Netlify deploy URL when running a preview.
+  const configuredUrl = (
     process.env["DEPLOY_PRIME_URL"] ??
+    process.env["URL"] ??
     process.env["SITE_URL"] ??
     ""
-  )
-    .trim()
-    .replace(/\/$/, "");
-  if (siteUrl.startsWith("http")) return `${siteUrl}/wallet/fund`;
+  ).trim();
 
-  const origin = getRequestHeader("origin")?.trim();
-  if (origin?.startsWith("http")) return `${origin.replace(/\/$/, "")}/wallet/fund`;
+  if (!configuredUrl) return undefined;
 
-  const referer = getRequestHeader("referer")?.trim();
-  if (referer?.startsWith("http")) {
-    try {
-      const u = new URL(referer);
-      return `${u.origin}/wallet/fund`;
-    } catch {
-      /* ignore */
+  try {
+    const url = new URL(configuredUrl);
+    const hostname = url.hostname.toLowerCase();
+
+    const isProduction =
+      hostname === "weblinespay.netlify.app";
+
+    const isDeployPreview =
+      /^deploy-preview-\d+--weblinespay\.netlify\.app$/.test(hostname);
+
+    if (
+      url.protocol !== "https:" ||
+      (!isProduction && !isDeployPreview) ||
+      url.username ||
+      url.password ||
+      url.port
+    ) {
+      console.error("[paystack] rejected untrusted callback URL");
+      return undefined;
     }
+
+    return `${url.origin}/wallet/fund`;
+  } catch {
+    console.error("[paystack] invalid callback URL configuration");
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -40,7 +52,7 @@ function resolveCallbackUrl(): string | undefined {
  */
 export const initializeWalletFunding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { amount: number }) => {
+    .inputValidator((input: { amount: number }) => {
     const amount = Math.round(Number(input?.amount));
     if (!Number.isFinite(amount) || amount < 100 || amount > 1000000) {
       throw new Error("Enter an amount between ₦100 and ₦1,000,000.");
@@ -48,7 +60,8 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
     return { amount };
   })
   .handler(async ({ data, context }): Promise<InitFundingResult> => {
-    const { getPaystackSecret, PAYSTACK_API } = await import("./paystack.server");
+    const { getPaystackSecret, getPaystackMode, PAYSTACK_API } =
+  await import("./paystack.server");
 
     // Fail fast if secret is missing — clearer than a vague Paystack API error.
     const secret = getPaystackSecret();
@@ -61,11 +74,13 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
       console.error("[paystack] create_wallet_funding_intent", error.message);
       throw new Error(error.message);
     }
-    const row = Array.isArray(intent) ? intent[0] : intent;
-    if (!row?.reference) {
-      throw new Error("Could not create funding intent (no reference returned).");
-    }
-    if (!row.email) {
+        const row = Array.isArray(intent) ? intent[0] : intent;
+
+      if (!row?.reference) {
+        throw new Error("Could not create funding intent (no reference returned).");
+      }
+
+      if (!row.email) {
       return {
         status: "pending",
         reference: row.reference,
@@ -97,7 +112,7 @@ export const initializeWalletFunding = createServerFn({ method: "POST" })
             internal_reference: row.reference,
             user_id: context.userId,
             purpose: "wallet_funding",
-            mode: "test",
+            mode: getPaystackMode(),
           },
         }),
       });
@@ -203,7 +218,6 @@ export const recheckWalletFunding = createServerFn({ method: "POST" })
       if (!(roles ?? []).some((entry) => entry.role === "super_admin")) {
         throw new Error("Forbidden: super admin access required for wallet funding rechecks.");
       }
-
       const { data: rows, error } = await supabaseAdmin
         .from("wallet_transactions")
         .select("reference, amount, status, type, provider")
